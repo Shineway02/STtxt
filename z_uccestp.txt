@@ -1,0 +1,43 @@
+z_uccestp1:--z_uccestp1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bstoreno nvarchar(30)
+declare @t_estoreno nvarchar(30)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+set @t_bdate = case when '#non' = [2] then '' else [2] end
+set @t_edate = case when '#non' = [3] then CHAR(255) else [3] end
+set @t_bstoreno = case when '#non' = [4] then '' else [4] end
+set @t_estoreno = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bproductno = case when '#non' = [6] then '' else [6] end
+set @t_eproductno = case when '#non' = [7] then CHAR(255) else [7] end
+declare @tmp table(
+	gno nvarchar(1),
+	datea nvarchar(10),
+	noa nvarchar(30),
+	store nvarchar(30),
+	uno nvarchar(50),
+	productno nvarchar(30),
+	products nvarchar(90),
+	sizea nvarchar(max),
+	eweight2 float, ----帳面重量
+	aeweight float, -----盤點重量
+	diff float,
+	memo nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',a.datea,a.noa,b.store,b.uno,b.productno,b.product,
+		dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) sizea,		
+		b.eweight2,b.eweight,0,b.memo
+	from view_ucce[1] a
+	left join view_ucces[1] b on a.noa = b.noa
+	where (a.datea between @t_bdate and @t_edate) and
+			 (b.storeno between @t_bstoreno and @t_estoreno) and
+			 (b.productno between @t_bproductno and @t_eproductno)
+update @tmp set diff = eweight2-aeweight
+insert into @tmp(gno,noa)
+	select '1',noa from @tmp group by noa
+select
+	gno,datea,noa,store,uno,productno,products,sizea,eweight2,aeweight,diff,memo
+from @tmp order by noa,gno;

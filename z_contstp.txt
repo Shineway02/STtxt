@@ -1,0 +1,245 @@
+﻿z_contstp1:--z_contstp1
+declare @t_custno nvarchar(20)
+declare @t_cno nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_xnoa nvarchar(20)
+declare @t_xstype nvarchar(50)
+declare @t_xetype nvarchar(20)
+declare @t_xpaydate nvarchar(20)
+declare @t_xsort nvarchar(20)
+declare @sortname nvarchar(50)
+declare @t_xbeend nvarchar(50)
+set @t_xnoa = case when '#non' = [1] then '' else [1] end
+set @t_custno = case when '#non' = [2] then '' else [2] end
+set @t_cno = case when '#non' = [5] then '' else [5] end
+set @t_bdate = case when '#non' = [6] then '' else [6] end
+set @t_edate = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_xstype = case when '#non' = [8] then '' else [8] end
+set @t_xetype = case when '#non'=[9] then '' when '全部'=[9] then '' else [9] end
+set @t_xpaydate = case when '#non' = [10] then '' else [10] end
+set @t_xsort = case when '#non' = [11] then '' else [11] end
+set @t_xbeend = case when '#non' = [12] then '' else [12] end
+declare @t_xtypea nvarchar(50)
+set @t_xtypea  = @t_xstype
+if(@t_xsort = 'Changecontdate')
+	set @sortname = '換約日'
+else if(@t_xsort = 'acomp')
+	set @sortname = '公司'
+else if(@t_xsort = 'comp')
+	set @sortname = '客戶'
+if(@t_xbeend = '')
+	set @t_xbeend = '(1=1)'
+else if(@t_xbeend = '已繳回')
+	set @t_xbeend = '(isnull(len(enddate),0) > 0)'
+else if(@t_xbeend = '未繳回')
+	set @t_xbeend = '(isnull(len(enddate),0) = 0)'
+-----------------------------------------------------------------------------------------
+declare @cmd nvarchar(max)
+declare @t_xstype_cmd nvarchar(max)
+declare @t_xsort_cmd nvarchar(max)
+set @cmd = ''
+set @t_xstype_cmd = '(''' + @t_xstype + '''= '''' or '
+set @t_xsort_cmd = 'order by ' + @t_xsort
+set @t_xstype += ','
+while(CHARINDEX(',',@t_xstype) > 0)
+begin
+	set @t_xstype_cmd += ' charindex(LEFT(''' + @t_xstype +''',CHARINDEX('','','''+ @t_xstype +''')-1) , a.stype) > 0 or'
+	set @t_xstype = RIGHT(@t_xstype,LEN(@t_xstype)-CHARINDEX(',',@t_xstype))
+end
+if(right(@t_xstype_cmd,2) = 'or')
+	set @t_xstype_cmd = left(@t_xstype_cmd,len(@t_xstype_cmd)-2)
+set @t_xstype_cmd += ')'
+-----------------------------------------------------------------------------------------
+declare @tmp table( 
+	gno nvarchar(1), 
+	idno int identity(0,1),
+	noa nvarchar(30), 
+	custno nvarchar(20), 
+	comp nvarchar(50), 
+	conn nvarchar(50), 
+	tel nvarchar(20), 
+	acomp nvarchar(30), 
+	datea nvarchar(50), 
+	cdate nvarchar(20), 
+	contitem nvarchar(max), 
+	contracta nvarchar(20), 
+	memo nvarchar(max),
+	stype nvarchar(20),
+	etype nvarchar(20),
+	paydate nvarchar(20),
+	earnest float
+) 
+set @cmd = '	select ''0'' gno,a.noa,a.custno,a.nick,b.namea,b.tel,a.acompnick,a.bcontdate+''~''+a.econtdate,a.changecontdate,a.contitem,a.contract,a.memo,
+	a.stype,a.etype,a.paydate,a.earnest
+	from cont a 
+	left join (select * from conn where CHARINDEX(''合約'',memo)>0 ) b on a.custno = b.noa 
+	where 1=1 and
+		(len(''' + @t_custno + ''') = 0 or charindex(a.custno,''' + @t_custno + ''') > 0) and 
+		(len(''' + @t_cno + ''') = 0 or charindex(a.cno,''' + @t_cno + ''') > 0) and 
+		(LEN(''' + @t_xnoa + ''') = 0 or ''' + @t_xnoa + ''' = a.noa) and 
+		((len(''' + @t_bdate + ''') = 0 ) or ( a.bcontdate between ''' + @t_bdate + ''' and ''' + @t_edate + ''') or ( a.econtdate between ''' + @t_bdate + ''' and ''' + @t_edate + ''') or ( ''' + @t_bdate + ''' between a.bcontdate and a.econtdate) or ( ''' + @t_edate + ''' between a.bcontdate and a.econtdate)) and 
+		(LEN(''' + @t_xetype + ''') = 0 or ''' + @t_xetype + ''' = a.etype) and 
+		(a.paydate >= ''' + @t_xpaydate + ''') and ' + @t_xstype_cmd + ' and ' + @t_xbeend + ' ' + @t_xsort_cmd
+insert into @tmp 
+	exec(@cmd)
+update @tmp set memo = REPLACE(memo,'chr(10)','.')
+update @tmp set memo = REPLACE(memo,'~#^','''')
+declare @noa nvarchar(35)
+declare @typea nvarchar(30)
+declare cursor_table cursor for
+	select noa,typea from conttype
+open cursor_table
+fetch next from cursor_table
+into @noa,@typea
+while(@@FETCH_STATUS <> -1)
+begin
+	update @tmp set stype = REPLACE(stype,@noa,@typea)
+	fetch next from cursor_table
+	into @noa,@typea
+end
+close cursor_table
+deallocate cursor_table
+select gno,noa,custno,comp,conn,tel,acomp,datea,cdate,contitem,contracta,memo,stype,etype,paydate, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,earnest),1)),4,12)) earnest,@sortname sortname,
+(case when LEN(@t_bdate)>0 and LEN(@t_edate)>1 then '合約區間：'+@t_bdate+'～'+@t_edate 
+when LEN(@t_bdate)>0 and LEN(@t_edate) = 1 then '合約區間：'+@t_bdate 
+when len(@t_edate)>1 and LEN(@t_bdate) = 0 then '合約區間：'+@t_edate 
+when len(@t_bdate)=0 and len(@t_edate) = 1 then '' end) +'     '+
+(case when LEN(@t_xtypea) >0 then 
+'類別：'+ STUFF((select ','+typea from conttype where CHARINDEX(noa,@t_xtypea)>0 FOR XML PATH('')),1,1,'')
+else '' end)+'     '+
+(case when LEN(@t_xetype) >0 then  '保證金類型：'+@t_xetype else '保證金類型：全部' end)+'     '+ 
+(case when len(@t_xpaydate) > 0 then '到期日：'+@t_xpaydate else ' ' end )+'     '+
+(case when @t_xbeend = '已繳回'  then '狀態：已繳回'
+when @t_xbeend = '未繳回' then '狀態：未繳回'  else '狀態：全部' end ) typesort
+from @tmp  
+order by idno ;
+--*******************************************************************************************
+z_contstp2:--z_contstp2
+declare @t_custno nvarchar(20)
+declare @t_cno nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_xnoa nvarchar(20)
+declare @t_xstype nvarchar(50)
+declare @t_xetype nvarchar(20)
+declare @t_xpaydate nvarchar(20)
+declare @t_xsort nvarchar(20)
+declare @t_xbeend nvarchar(50)
+
+set @t_xnoa = case when '#non' = [1] then '' else [1] end
+set @t_custno = case when '#non' = [2] then '' else [2] end
+set @t_cno = case when '#non' = [5] then '' else [5] end
+set @t_bdate = case when '#non' = [6] then '' else [6] end
+set @t_edate = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_xstype = case when '#non' = [8] then '' else [8] end
+set @t_xetype = case when '#non'=[9] then '' when '全部'=[9] then '' else [9] end
+set @t_xpaydate = case when '#non' = [10] then '' else [10] end
+set @t_xsort = case when '#non' = [11] then '' else [11] end
+set @t_xbeend = case when '#non' = [12] then '' else [12] end
+if(@t_xbeend = '')
+	set @t_xbeend = '(1=1)'
+else if(@t_xbeend = '已繳回')
+	set @t_xbeend = '(isnull(len(enddate),0) > 0)'
+else if(@t_xbeend = '未繳回')
+	set @t_xbeend = '(isnull(len(enddate),0) = 0)'
+-----------------------------------------------------------------------------------------
+declare @cmd nvarchar(max)
+declare @t_xstype_cmd nvarchar(max)
+declare @t_xsort_cmd nvarchar(max)
+set @cmd = ''
+set @t_xstype_cmd = '(''' + @t_xstype + '''= '''' or '
+set @t_xsort_cmd = 'order by ' + @t_xsort
+set @t_xstype += ','
+while(CHARINDEX(',',@t_xstype) > 0)
+begin
+	set @t_xstype_cmd += ' charindex(LEFT(''' + @t_xstype +''',CHARINDEX('','','''+ @t_xstype +''')-1) , a.stype) > 0 or'
+	set @t_xstype = RIGHT(@t_xstype,LEN(@t_xstype)-CHARINDEX(',',@t_xstype))
+end
+if(right(@t_xstype_cmd,2) = 'or')
+	set @t_xstype_cmd = left(@t_xstype_cmd,len(@t_xstype_cmd)-2)
+set @t_xstype_cmd += ')'
+-----------------------------------------------------------------------------------------
+declare @tmp table( 
+	gno nvarchar(1), 
+	idno int identity(0,1),
+	noa nvarchar(30), 
+	bcontract nvarchar(30),
+	datea nvarchar(10),
+	custno nvarchar(20), 
+	comp nvarchar(90), 
+	conn nvarchar(50), 
+	tel nvarchar(20), 
+	acom nvarchar(90),
+	guarantor nvarchar(50),
+	pledgdate nvarchar(10),
+	bexdate nvarchar(50), 
+	cdate nvarchar(20), 
+	contitem nvarchar(max), 
+	contracta nvarchar(20), 
+	memo nvarchar(max),
+	stype nvarchar(20),
+	etype nvarchar(20),
+	paydate nvarchar(20),
+	earnest float,
+	ensuretype nvarchar(90),
+	checkno nvarchar(50),
+	bank nvarchar(90),
+	sales nvarchar(50),
+	assigner nvarchar(50),
+	assistant nvarchar(50),
+	workera nvarchar(50),
+	workerb nvarchar(50),
+	apv nvarchar(50),
+	xn int,
+	tpayweights float,
+	tunpayweight float,
+	ttransferordes float,
+	tuntransferorde float,
+	tenda nvarchar(10),
+	mpayweights float,
+	munpayweight float,
+	mtransferordes float,
+	muntransferorde float,
+	menda nvarchar(10)
+) 
+set @cmd = 'select ''0'' gno,a.noa,a.bcontract,a.datea,a.custno,a.comp,b.namea,b.tel,a.acomp,a.guarantor,a.pledgedate,
+	a.bcontdate+''~''+a.econtdate,a.changecontdate,a.contitem,a.contract,a.memo,
+	a.stype,a.etype,a.paydate,a.earnest,a.ensuretype,a.checkno,a.bank,a.sales,a.assigner,a.assistant,
+	a.worker,a.worker2,a.apv,0,a.tpayweight,a.tunpayweight,a.ttransferorde,a.tuntransferorde,
+	(case when a.tenda = 0 then ''未結案'' else ''已結案'' end) tenda,
+	a.mpayweight,a.munpayweight,a.mtransferorde,a.muntransferorde,
+	(case when a.menda = 0 then ''未結案'' else ''已結案'' end) menda
+	from cont a 
+	left join (select * from conn where CHARINDEX(''合約'',memo)>0 ) b on a.custno = b.noa 
+	where 1=1 and
+		(len(''' + @t_custno + ''') = 0 or charindex(a.custno,''' + @t_custno + ''') > 0) and 
+		(len(''' + @t_cno + ''') = 0 or charindex(a.cno,''' + @t_cno + ''') > 0) and 
+		(LEN(''' + @t_xnoa + ''') = 0 or ''' + @t_xnoa + ''' = a.noa) and 
+		((len(''' + @t_bdate + ''') = 0 ) or ( a.bcontdate between ''' + @t_bdate + ''' and ''' + @t_edate + ''') or ( a.econtdate between ''' + @t_bdate + ''' and ''' + @t_edate + ''')) and
+		(LEN(''' + @t_xetype + ''') = 0 or ''' + @t_xetype + ''' = a.etype) and 
+		(a.paydate >= ''' + @t_xpaydate + ''') and ' + @t_xstype_cmd + ' and ' + @t_xbeend + ' ' + @t_xsort_cmd
+insert into @tmp 
+	exec(@cmd)
+update @tmp set memo = REPLACE(memo,'chr(10)','.')
+update @tmp set memo = REPLACE(memo,'~#^','''')
+declare @noa nvarchar(35)
+declare @typea nvarchar(30)
+declare cursor_table cursor for
+	select noa,typea from conttype
+open cursor_table
+fetch next from cursor_table
+into @noa,@typea
+while(@@FETCH_STATUS <> -1)
+begin
+	update @tmp set stype = REPLACE(stype,@noa,@typea)
+	fetch next from cursor_table
+	into @noa,@typea
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set xn = idno
+insert into @tmp(gno,noa,xn)
+	select '1',noa,xn from @tmp where gno = 0 and (idno % 2) = 1
+select * from @tmp order by xn,idno,gno;

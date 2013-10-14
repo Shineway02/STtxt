@@ -1,0 +1,120 @@
+z_rc2stp1:--z_rc2stp1
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_pageline int = 5--------一頁幾行
+set @t_bxnoa = case when '#non' = [2] then '' else [2] end
+set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bcustno = case when '#non' = [6] then '' else [6] end
+set @t_ecustno = case when '#non' = [7] then CHAR(255) else [7] end
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	a_noa nvarchar(30),
+	a_typea nvarchar(15),
+	a_comp nvarchar(90),
+	a_tel nvarchar(90),
+	a_sales nvarchar(50),
+	a_addr nvarchar(max),
+	a_datea nvarchar(10),
+	a_memo nvarchar(max),
+	a_tax float,
+	a_money float,
+	a_total float,
+	b_productno nvarchar(30),
+	b_products nvarchar(30),
+	b_unit nvarchar(15),
+	b_mount float,
+	b_price float,
+	b_total float,
+	b_memo nvarchar(max)
+)
+insert into @tmp
+select
+	'0',
+	ROW_NUMBER()over(partition by a.noa order by a.noa),1
+	,a.noa,a.typea,c.comp,a.tel,a.sales,a.addr,a.datea,a.memo,a.tax,0,a.total,b.productno,b.product,b.unit,b.mount,b.price,b.total,b.memo
+from view_rc2[1] a
+left join view_rc2s[1] b on a.noa = b.noa
+left join tgg c on a.tggno = c.noa
+where (a.noa between @t_bxnoa and @t_exnoa) and 
+(a.datea between @t_bdate and @t_edate) and 
+(isnull(a.tggno,'') between @t_bcustno and @t_ecustno) 
+
+declare @a_noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+	select a_noa,count(*),max(orderno) from @tmp group by a_noa
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @a_noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare cursor_table cursor for
+	select distinct a_noa,max(orderno),pageno,min(idno),count(*) from @tmp group by a_noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,a_noa,a_memo,a_typea,a_comp)
+				select '0',(@orderno+1),@pageno,@a_noa,a_memo,a_typea,a_comp from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_comp,a_tax,a_money)
+		select '1',(@t_pageline+1),pageno,a_noa,a_typea,a_comp,max(a_tax),sum(b_total) from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_comp
+	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_memo) 
+		select '2',(@t_pageline+2),pageno,a_noa,a_typea,a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_memo
+	fetch next from cursor_table
+	into @a_noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set a_total = a_tax + a_money where gno = '1'
+update @tmp set a_typea = case a_typea when '1' then '進' when '2' then '退' end
+select
+	gno,a_noa,a_typea,a_comp,a_tel,a_sales,a_addr,a_datea,a_memo,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_tax),1)),4,12)) a_tax,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_total),1)),4,12)) a_total,
+	b_productno,b_products,b_unit,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) b_mount,b_price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,b_memo
+from @tmp order by a_noa desc,pageno,gno,orderno;

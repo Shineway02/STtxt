@@ -1,0 +1,270 @@
+z_rc2st1:--z_rc2st1
+declare @t_accy nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bmon nvarchar(7)
+declare @t_emon nvarchar(7)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+set @t_accy = '[1]'
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bmon = case when '#non'=[4] then '' else [4] end
+set @t_emon = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(15),
+	noq nvarchar(3),
+	type nvarchar(4),
+	datea nvarchar(10),
+	mon nvarchar(7),
+	tggno nvarchar(20),
+	comp nvarchar(40),
+	productno nvarchar(30),
+	xproduct nvarchar(40),
+	unit nvarchar(8),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	csize nvarchar(max)
+)
+insert into @tmp
+	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) type, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit, 
+		   b.mount, b.weight, b.price, b.total,
+		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
+	from rc2s[1] b
+	left join rc2[1] a on a.noa = b.noa
+	where (a.datea between @t_bdate and @t_edate) and
+		  ((case when a.mon='' then left(a.datea,6) else a.mon end)  between @t_bmon and @t_emon) and
+		  (a.tggno between @t_btggno and @t_etggno) and
+		  (a.salesno between @t_bsalesno and @t_esalesno) and
+		  (b.productno between @t_bproductno and @t_eproductno)  
+	order by datea desc,gno,noa,noq
+update @tmp set csize = replace(csize,'~#$','''')
+insert into @tmp(gno,datea,mount,total)
+	select '1',datea,sum(mount),sum(total) from @tmp where gno='0' group by datea
+insert into @tmp(gno,datea,mount,total)
+	select '2',left(datea,6),sum(mount),sum(total) from @tmp where gno='0' group by left(datea,6)
+
+select gno, noa, noq, type, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4) comp, productno, xproduct,unit,csize
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price 
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
+,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno
+,'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+from @tmp order by datea desc,gno,noa,noq;
+--***********************************************************************************
+z_rc2st2:--z_rc2st2
+declare @t_accy nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bmon nvarchar(7)
+declare @t_emon nvarchar(7)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+set @t_accy = '[1]'
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bmon = case when '#non'=[4] then '' else [4] end
+set @t_emon = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @result table(
+	gno nvarchar(1),
+	type nvarchar(4),
+	noa nvarchar(15),
+	datea nvarchar(10),
+	tggno nvarchar(20),
+	comp nvarchar(40),
+	addr_invo nvarchar(90),
+	tel nvarchar(90),
+	productno nvarchar(30),
+	xproduct nvarchar(40),
+	unit nvarchar(8),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	pcount int,
+	csize nvarchar(max)
+)
+insert into @result
+	select '0' gno, (case when a.typea='2' then '退' else '進' end), a.noa, a.datea, 
+		   a.tggno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit, 
+	       b.mount, b.weight, b.price, b.total, 0 pcount,
+	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
+	from rc2s[1] b
+	left join rc2[1] a on a.noa = b.noa
+	left join tgg c on  a.tggno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and
+		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+		  (a.tggno between @t_btggno and @t_etggno) and
+		  (a.salesno between @t_bsalesno and @t_esalesno) and
+		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
+	order by a.tggno,a.datea,a.noa
+update @result set csize = replace(csize,'~#$','''')
+insert into @result(gno,tggno,comp,pcount,mount,total)
+	select '1',tggno,comp,count(pcount),sum(mount),sum(total) from @result where gno='0' group by tggno,comp
+select  
+	gno,type,noa,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit,csize
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pcount),1)),0,30)) pcount,
+	'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	row_number()over(partition by tggno,comp order by tggno,gno,datea,noa) idno
+from @result order by tggno,gno,datea,noa;
+--***********************************************************************************
+z_rc2st3:--z_rc2st3
+declare @t_accy nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bmon nvarchar(7)
+declare @t_emon nvarchar(7)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+set @t_accy = '[1]'
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bmon = case when '#non'=[4] then '' else [4] end
+set @t_emon = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @result table(
+	gno nvarchar(1),
+	type nvarchar(4),
+	noa nvarchar(15),
+	datea nvarchar(10),
+	tggno nvarchar(20),
+	comp nvarchar(40),
+	productno nvarchar(30),
+	xproduct nvarchar(40),
+	unit nvarchar(8),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	csize nvarchar(max)
+)
+insert into @result
+	select '0' gno, (case when a.typea='2' then '退' else '進' end), a.noa,a.datea, 
+		   a.tggno, isnull(c.comp,''), b.productno, b.product, b.unit, 
+	       b.mount, b.weight, b.price, b.total,
+	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
+	from rc2s[1] b
+	left join rc2[1] a on a.noa = b.noa
+	left join tgg c on  a.tggno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and
+		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+		  (a.tggno between @t_btggno and @t_etggno) and
+		  (a.salesno between @t_bsalesno and @t_esalesno) and
+		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
+	order by b.productno,gno,a.datea,a.noa
+update @result set csize = replace(csize,'~#$','''')
+insert into @result(gno,productno,xproduct,csize,mount,total)
+	select '1',productno,xproduct,csize,sum(mount),sum(total) from @result where gno='0' group by productno,xproduct,csize
+select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,csize,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight ,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
+	'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	row_number()over(partition by productno,xproduct order by productno,xproduct,gno,datea,noa) idno
+from @result order by productno,xproduct,gno,datea,noa;
+--***********************************************************************************
+z_rc2st4:	--z_rc2st4
+declare @t_accy nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bmon nvarchar(7)
+declare @t_emon nvarchar(7)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+set @t_accy = '[1]'
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bmon = case when '#non'=[4] then '' else [4] end
+set @t_emon = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @result table(
+	gno nvarchar(1),
+	type nvarchar(4),
+	noa nvarchar(15),
+	datea nvarchar(10),
+	tggno nvarchar(20),
+	comp nvarchar(40),
+	productno nvarchar(30),
+	xproduct nvarchar(40),
+	unit nvarchar(8),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	memo nvarchar(max),
+	csize nvarchar(max)
+)
+insert into @result
+	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.datea,a.tggno,
+			 isnull(c.comp,''), b.productno, b.product, b.unit,b.mount, b.weight, b.price, b.total,a.memo,
+			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
+	from rc2s[1] b
+	left join rc2[1] a on a.noa = b.noa
+	left join tgg c on  a.tggno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and
+		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+		  (a.tggno between @t_btggno and @t_etggno) and
+		  (a.salesno between @t_bsalesno and @t_esalesno) and
+		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
+	order by a.tggno,b.productno,a.datea,a.noa
+update @result set csize = replace(csize,'~#$','''')
+insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
+	select '1',tggno,comp,productno,xproduct,sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp,productno,xproduct
+insert into @result(gno,tggno,comp,productno,mount,weight,total)
+	select '2',tggno,comp,char(255),sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp
+select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct, unit,csize,
+		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
+		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
+		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price ,
+		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
+		'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+		row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno
+from @result order by tggno,productno,gno,datea;
+--***********************************************************************************

@@ -1,0 +1,96 @@
+﻿z_ordestp1:--z_ordestp1
+declare @t_noa nvarchar(30)
+declare @t_pageline int = 8   --------一頁幾行
+set @t_noa = case when '#non' = [4] then '' else [4] end
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	noa nvarchar(35),
+	odate nvarchar(10),
+	custno nvarchar(30),
+	comp nvarchar(50),
+	tel nvarchar(50),
+	fax nvarchar(50),
+	addra nvarchar(max),
+	addrb nvarchar(max),
+	products nvarchar(90),
+	productno nvarchar(35),
+	spec nvarchar(15),
+	size nvarchar(200),
+	mount float,
+	unit nvarchar(10),
+	price float,
+	total float,
+	weight float
+)
+insert into @tmp
+select
+	'0',ROW_NUMBER()over(partition by b.noa order by b.noa),1,
+	a.noa,a.odate,a.custno,a.comp,a.tel,a.fax,a.addr,a.addr2,b.product,b.productno,b.spec,
+	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+	b.mount,b.unit,b.price,b.total,b.weight
+from view_orde[1] a
+left join view_ordes[1] b on b.noa = a.noa and a.accy = b.accy
+where (len(@t_noa) = 0 or a.noa = @t_noa)
+update @tmp set size = replace(size,'~#$','''')
+declare @a_noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+	select noa,count(*),max(orderno) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @a_noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+declare cursor_table cursor for
+	select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,noa)
+				select '0',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,noa,mount,total,weight)
+		select '1',(@t_pageline+1),pageno,noa,sum(mount),sum(total),sum(weight) from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+	insert into @tmp(gno,orderno,pageno,noa) 
+		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+	fetch next from cursor_table
+	into @a_noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+select * from @tmp  order by noa desc,pageno,gno,orderno;

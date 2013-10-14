@@ -1,0 +1,59 @@
+﻿z_bornst1:--z_bornst1
+declare @t_noa nvarchar(30)
+declare @t_noq nvarchar(3)
+declare @t_ordeno nvarchar(50)
+declare @checkNoq int
+set @t_noa = case when '#non' = [2] then '' else [2] end 
+set @t_noq = case when '#non' = [3] then '' else [3] end 
+set @checkNoq = case when (len(@t_noq) > 0) then '1' else '0' end
+set @t_ordeno =case when (@checkNoq = '1') then @t_noa + '-' + @t_noq else @t_noa end
+--************************************************************************************************
+declare @tmp table(
+	gno nvarchar(1),
+	ordeno nvarchar(50),
+	typea nvarchar(20),
+	noa nvarchar(30),
+	datea nvarchar(10),
+	productno nvarchar(30),
+	products nvarchar(50),
+	size nvarchar(50),
+	mount float,
+	weight float,
+	uno nvarchar(30),
+	memo nvarchar(50),
+	orderby int,
+	qhref nvarchar(50)
+)
+
+insert into @tmp
+	select '0',b.noa + '-' + a.no2 ordeno,'訂單',b.noa,b.odate,a.productno,a.product,
+	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'ordest'
+	from view_ordes[1] a
+	left join view_orde[1] b on a.noa = b.noa
+	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and b.noa + '-' + a.no2 =@t_ordeno) or  (@checkNoq = 0 and b.noa = @t_ordeno)))
+			 and isnull(b.noa,'') != '' 
+	union all
+	select '0', isnull(a.ordeno,'') + '-' + isnull(a.no2,'') ordeno,'派車單',b.noa,b.datea,a.productno,a.product,
+	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'vccest'
+	from view_vcces[1] a 
+	left join view_vcce[1] b on a.noa = b.noa
+	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and b.ordeno + '-' + a.noq = @t_ordeno) or (@checkNoq = 0 and b.ordeno = @t_ordeno)))
+			 and isnull(a.ordeno,'') != '' 
+	union all
+	select '0', isnull(a.ordeno,'') + '-' + isnull(a.no2,'')  ordeno,'出貨單',b.noa,b.datea,a.productno,a.product,
+	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'vccst'
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and a.ordeno + '-' + a.no2 = @t_ordeno) or  (@checkNoq = 0 and a.ordeno = @t_ordeno)))
+			 and isnull(a.ordeno,'') != '' 
+
+insert into @tmp(ordeno,gno)
+	select distinct ordeno,'1' from @tmp
+update @tmp set size = replace(size,'~#$','''')
+update @tmp set qhref = qhref+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'
+select
+	gno,ordeno,typea,noa,datea,productno,products,size,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
+	uno,memo,orderby,qhref
+from @tmp order by ordeno,gno,datea,typea,noa,orderby;

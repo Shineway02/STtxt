@@ -1,0 +1,185 @@
+﻿z_ordbstp1:--z_ordbstp1
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+declare @t_pageline int = 5   --------一頁幾行
+set @t_bnoa = case when '#non' = [2] then '' else [2] end
+set @t_enoa = case when '#non' = [3] then CHAR(255) else [3] end
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	noa nvarchar(30),
+	noq nvarchar(20),
+	odate nvarchar(10),
+	tno nvarchar(20),
+	tgg nvarchar(50),
+	tel nvarchar(20),
+	fax nvarchar(20),
+	addr nvarchar(60),
+	kind nvarchar(20),
+	trantype nvarchar(20),
+	paytype nvarchar(20),
+	datea nvarchar(10),
+	uno nvarchar(20),
+	pno nvarchar(20),
+	product nvarchar(50),
+	spec nvarchar(20),
+	csize nvarchar(50),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	ordeno nvarchar(20),
+	moneys float,
+	tax float,
+	ttotal float,
+	memo nvarchar(200)
+)
+insert into @tmp
+	select '0' gno,ROW_NUMBER()over(partition by b.noa order by b.noa),1,a.noa,b.no3,a.odate,a.tggno,a.tgg,a.tel,
+	a.fax,a.addr,
+	case a.kind when 'A1' then '鋼捲鋼板' when 'B2' then '鋼管' when 'C3' then '鋼筋' when 'A4' then '鋼胚' end,a.trantype,
+	a.paytype,a.datea,b.uno,b.productno,b.product,b.spec,
+	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+	b.mount,b.weight,b.price,b.total,b.ordeno,a.money,a.tax,a.total,a.memo
+	from view_ordb[1] a
+	left join view_ordbs[1] b on a.noa = b.noa
+	where a.noa between @t_bnoa and @t_enoa
+declare @a_noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+	select noa,count(*),max(orderno) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @a_noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+declare cursor_table cursor for
+	select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,noa)
+				select '0',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,noa,mount,total,weight,moneys,tax,ttotal)
+		select '1',(@t_pageline+1),pageno,noa,sum(mount),sum(total),sum(weight),sum(total),isnull(max(tax),0),sum(total)+isnull(max(tax),0) from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+	insert into @tmp(gno,orderno,pageno,noa) 
+		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+	fetch next from cursor_table
+	into @a_noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set csize = replace(csize,'~#$','''')
+select gno,noa,noq,odate,tno,tgg,tel,fax,addr,kind,trantype,paytype,datea,uno,pno,product,spec,csize,
+reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,mount),1)),4,30)) mount,
+reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,weight),1)),4,30)) weight,
+reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,price),1)),4,30)) price,
+reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,total),1)),4,30)) total,ordeno,
+reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,moneys),1)),4,30)) moneys,
+reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,tax),1)),4,30)) tax,
+reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,ttotal),1)),4,30)) ttotal,memo
+from @tmp order by noa desc,pageno,gno,orderno;
+--**************************************************************************************************************
+z_ordbstp2:--z_ordbstp2
+declare @t_kind nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bcno nvarchar(20)
+declare @t_ecno nvarchar(20)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_aeno nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_kind = case when '#non'= [4] then ''when '全部'=[3] then '' else [4] end
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+set @t_bcno = case when '#non' = [7] then '' else [7] end
+set @t_ecno = case when '#non' = [8] then CHAR(255) else [8] end
+set @t_btggno = case when '#non' = [9] then '' else [9] end
+set @t_etggno = case when '#non' = [10] then CHAR(255) else [10] end
+set @t_trantype = case when '#non'= [11] then '' when '全部'=[11] then '' else [11] end
+set @t_aeno = case when '#non'=[12] then '' when 'Y'=[12] then '1' when 'N'=[12] then '0' end
+set @t_enda = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		datea nvarchar(10),
+		cno nvarchar(20),
+		tggno nvarchar(20),
+		comp nvarchar(50),
+		s nvarchar(20),
+		coilno nvarchar(30),
+		class nvarchar(20),
+		spec nvarchar(20),
+		pno nvarchar(20),
+		product nvarchar(90),
+		size nvarchar(90),
+		mount float,
+		weightb float,
+		price float,
+		total float,
+		ordeno nvarchar(20),
+		w nvarchar(20),
+		kind nvarchar(20)
+)
+insert into @tmp
+select '0' gno,a.noa,b.no3,a.datea,a.cno,a.tggno,a.tgg,b.source,b.uno,b.classa,b.spec,b.productno,b.product,
+(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+b.mount,b.weight,b.price,b.total,b.ordeno,a.worker,a.kind
+from view_ordb[1] a
+left join view_ordbs[1] b on a.noa = b.noa
+where (LEN(@t_kind) = 0 or @t_kind = a.kind) and
+(a.datea between @t_bdate and @t_edate) and
+(a.cno between @t_bcno and @t_ecno) and
+(a.tggno between @t_btggno and @t_etggno) and
+(len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_aeno)=0 or @t_aeno=a.aeno) and
+(len(@t_enda)=0 or @t_enda=a.enda)
+
+insert into @tmp
+select '1' gno,'','','','','','','','','','','','','',SUM(mount),0,0,SUM(total),'','',''
+from @tmp
+update @tmp set size = replace(size,'~#$','''')
+select gno,noa,noq,datea,cno,tggno,comp,s,coilno,class,spec,pno,product,size,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
+ordeno,kind,w
+from @tmp;

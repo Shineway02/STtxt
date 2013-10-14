@@ -1,0 +1,238 @@
+z_cngst1:--z_cngst1
+declare @pagecount int
+declare @t_accy nvarchar(20)
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+set @pageCount = 7
+set @t_accy = '[1]'
+set @t_bnoa = case when '#non' = [2] then '' else [2] end
+set @t_enoa = case when '#non' = [3] then CHAR(255) else [3] end
+declare @tmpa table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		storno nvarchar(20),
+		store nvarchar(50),
+		stornno nvarchar(20),
+		storin nvarchar(50),
+		datea nvarchar(10),
+		sto nvarchar(20),
+		s nvarchar(20),
+		uno nvarchar(20),
+		spec nvarchar(30),
+		class nvarchar(20),
+		product nvarchar(50),
+		size nvarchar(90),
+		mo float,
+		weightb float,
+		memo nvarchar(200),
+		cardeal nvarchar(50),
+		carno nvarchar(20),
+		t nvarchar(20),
+		tmo float,
+		tweightb float,
+		tmemo nvarchar(200),
+		primary key(gno,noa,noq)
+)
+insert into @tmpa
+select '0' gno,a.noa,b.noq,a.storeno,a.store,a.storinno,a.storin,a.datea,b.storeno,
+c.source,b.uno,b.spec,c.class,b.product,
+dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+b.mount,b.weight,b.memo,case when len(d.nick)>0 then d.nick else LEFT(a.cardeal,3) end,
+a.carno,a.trantype,0,0,a.memo
+from cng[1] a
+left join cngs[1] b on a.noa = b.noa
+left join uccc c on b.uno = a.noa
+left join cardeal d on a.cardealno = d.noa
+where (a.noa between @t_bnoa and @t_enoa)
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		storno nvarchar(20),
+		store nvarchar(50),
+		stornno nvarchar(20),
+		storin nvarchar(50),
+		datea nvarchar(10),
+		sto nvarchar(20),
+		s nvarchar(20),
+		uno nvarchar(20),
+		spec nvarchar(30),
+		class nvarchar(20),
+		product nvarchar(50),
+		size nvarchar(90),
+		mo float,
+		weightb float,
+		memo nvarchar(200),
+		cardeal nvarchar(50),
+		carno nvarchar(20),
+		t nvarchar(20),
+		tmo float,
+		tweightb float,
+		tmemo nvarchar(200),
+		recno int,
+		currecno int,
+		curpage int,
+		totpage int
+)
+insert into @tmp
+select a.*,ROW_NUMBER()over(order by gno) recno,0 currecno,0 curpage,0 totpage 
+				 from( 
+				select  gno,noa,noq,storno,store,stornno,storin,datea,sto,s,uno,spec,class,product,
+						size,mo,weightb,memo,cardeal,carno,t,tmo,tweightb,tmemo
+				from @tmpa a
+				 )a
+
+declare @noa nvarchar(20)
+declare @tmo float
+declare @tweightb float
+
+declare @t_noa nvarchar(20)
+declare @t_tmo float
+declare @t_tweightb float
+declare @count int
+declare @t_count int
+declare @recno int
+declare @currecno int
+declare @curpage int
+declare @totpage int
+declare @t_currecno float
+set @t_currecno = 0
+set @t_noa = 'xasddfwef'
+set @t_tmo = 0
+set @t_tweightb = 0
+	declare cursor_table cursor for
+	select noa,mo,weightb from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@tmo,@tweightb
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if not(@t_noa = @noa)
+		begin
+			if not(@t_noa = 'xasddfwef')
+			begin
+				insert into @tmp
+				select  '',@t_noa,'','','','','','','','','','','','',
+						'',0,0,'','','','',@t_tmo,@t_tweightb,'',0,0,0,0
+			end
+			set @t_noa = @noa
+			set @t_tmo = @tmo
+			set @t_tweightb = @tweightb
+			
+		end
+		else
+		begin
+			set @t_tmo = @t_tmo + @tmo
+			set @t_tweightb = @t_tweightb + @tweightb
+		end
+		update @tmp set tmo = @t_tmo,tweightb = @t_tweightb where noa = @noa 
+		fetch next from cursor_table
+		into @noa,@tmo,@tweightb
+		
+	end
+	close cursor_table
+	deallocate cursor_table
+	declare cursor_table cursor for
+	select noa,min(recno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set currecno = recno - @recno +1 where noa=@noa
+		fetch next from cursor_table
+		into @noa,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	--------------------------------------------------
+	declare @count1 int
+	declare @count2 int
+	declare cursor_table cursor for
+	select noa,max(tmo),max(tweightb),count(*) count1,(count(*)/@pageCount+1)*@pageCount count2 from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@tmo,@tweightb,@count1,@count2
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while(@count1<@count2) and not(@count1 % @pagecount = 0)
+		begin
+			insert into @tmp (gno,noa,tmo,tweightb,currecno)VALUES(0,@noa,@tmo,@tweightb,@count1+1)
+			set @count1=@count1+1
+		end
+		fetch next from cursor_table
+		into @noa,@tmo,@tweightb,@count1,@count2
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	---------------------------------------------------
+	declare cursor_table cursor for
+	select noa,max(currecno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set totpage = (@currecno-@currecno%@pagecount)/@pagecount where noa=@noa
+		fetch next from cursor_table
+		into @noa,@currecno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,recno,currecno from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set curpage = FLOOR((@currecno-1)/@pagecount)+1 where noa=@noa and recno=@recno
+		fetch next from cursor_table
+		into @noa,@recno,@currecno
+	end
+		close cursor_table
+	deallocate cursor_table
+
+select gno,noa,noq,storno,store,stornno,storin,datea,sto,s,uno,spec,class,product,
+size,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mo),1)),4,12)) mo,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12))weightb,memo,cardeal,carno,t,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tmo),1)),4,12)) tmo,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tweightb),1)),4,12)) tweightb,tmemo,recno,currecno,curpage,totpage,
+CONVERT(nvarchar(5),curpage)+'/'+CONVERT(nvarchar(5),totpage) page
+from @tmp;
+--********************************************************************************************************************************
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+set @t_bdate = case when '#non' = '#non' then '' else '#non' end
+set @t_edate = case when '#non' = '#non' then CHAR(255) else '#non' end
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		datea nvarchar(10),
+		product nvarchar(50),
+		uno nvarchar(20),
+		istore nvarchar(30),
+		size nvarchar(50),
+		mount float,
+		weightb float,
+		price float,
+		moneys float,
+		store nvarchar(20),
+		storin nvarchar(20)
+)
+insert into @tmp
+select '0' gno,a.noa,b.noq,a.datea,b.product,b.uno,a.storin,
+dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+b.mount,b.weight,b.price,ROUND(b.weight*b.price,0),a.store,a.storin
+from cng[1] a
+left join cngs[1] b on a.noa = b.noa
+where (a.datea between @t_bdate and @t_edate) 
+and a.kind = '3' or a.kind = '4'
+
+select *
+from @tmp;
