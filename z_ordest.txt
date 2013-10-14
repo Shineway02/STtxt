@@ -1,0 +1,317 @@
+﻿z_ordest1:--z_ordest1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+declare @tmp table(
+	gno nvarchar(1),
+	odate nvarchar(10),
+	e nvarchar(10),
+	noa nvarchar(35),
+	no2 nvarchar(10),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	productno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	unit nvarchar(12),
+	mount float,
+	weight float,
+	price float,
+	total float
+)
+insert into @tmp
+	select
+		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
+		a.custno,c.nick,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		b.unit,b.mount,b.weight,b.price,b.total
+	from view_orde[1] a
+	left join view_ordes[1] b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+	order by a.odate,a.noa,b.no2
+insert into @tmp(gno,odate,mount,weight,total)
+	select '1',left(odate,6),sum(mount),sum(weight),sum(total) from @tmp group by left(odate,6)
+insert into @tmp(gno,odate,mount,weight,total)
+	select '2',char(255),sum(mount),sum(weight),sum(total) from @tmp
+select
+	gno,odate,e,noa,no2,custno,comp,productno,products,csize,unit,mount,weight,price,total,
+	row_number()over(partition by left(odate,6) order by left(odate,6),gno) idno,
+	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+from @tmp order by left(odate,6),gno;
+--*****************************************************************************************
+z_ordest2a:--z_ordest2a
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	productno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	unit nvarchar(12),
+	weight float,
+	mount float,
+	notv float,
+	price float,
+	nototal float,
+	e nvarchar(10)
+)
+insert into @tmp
+	select
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
+	from view_orde[1] a
+	left join view_ordes[1] b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+insert into @tmp(gno,custno,comp,weight,mount,notv,nototal)
+	select '1',custno,comp,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by custno,comp
+select
+	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,
+	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	row_number()over(partition by custno,comp order by custno,comp,gno,noa) idno
+from @tmp order by custno,comp,gno,noa;
+--****************************************************************************************************
+z_ordest2b:--z_ordest2b
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	productno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	unit nvarchar(12),
+	weight float,
+	mount float,
+	notv float,
+	price float,
+	nototal float,
+	e nvarchar(10)
+)
+insert into @tmp
+	select
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
+	from view_orde[1] a
+	left join view_ordes[1] b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+insert into @tmp(gno,productno,products,weight,mount,notv,nototal)
+	select '1',productno,products,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by productno,products
+select
+	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,
+	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	row_number()over(partition by productno,products order by productno,products,gno,noa) idno
+from @tmp order by productno,products,gno,noa;
+--****************************************************************************************************
+z_ordest2c:--z_ordest2c
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	productno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	unit nvarchar(12),
+	weight float,
+	mount float,
+	notv float,
+	price float,
+	nototal float,
+	e nvarchar(10)
+)
+insert into @tmp
+	select
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
+	from view_orde[1] a
+	left join view_ordes[1] b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+insert into @tmp(gno,noa,weight,mount,notv,nototal)
+	select '1',noa,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by noa
+select
+	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,
+	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	row_number()over(partition by noa order by noa,gno,no2) idno
+from @tmp order by noa,gno,no2;
+--****************************************************************************************************
+z_ordest3:--z_ordest3
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(1),
+	ordeno nvarchar(30),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	custno nvarchar(30),
+	custnick nvarchar(50),
+	productno nvarchar(30),
+	products nvarchar(90),
+	sizea nvarchar(90),
+	weight float,
+	mount float,
+	notv float
+)
+insert into @tmp
+	select 
+		'0',b.noa,a.no2,a.datea,b.custno,c.nick,a.productno,a.product,
+		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) sizea,a.weight,a.notv,a.mount
+	from view_ordes[1] a
+	left join view_orde[1] b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	where (a.mount>0) and (b.odate between @t_bodate and @t_eodate) and
+		(b.custno between @t_bcustno and @t_ecustno) and 
+		(a.productno between @t_bproductno and @t_eproductno)
+	order by b.custno,a.product,b.noa,b.odate,b.datea
+insert into @tmp(gno,weight,mount,notv)
+	select '1',sum(weight),sum(mount),sum(notv) from @tmp
+select
+	gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+	ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
+from @tmp order by gno,ordeno,datea,products;
+--****************************************************************************************************
