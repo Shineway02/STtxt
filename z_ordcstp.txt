@@ -105,6 +105,6 @@ select
 	gno,a_noa,a_odate,a_kind,a_tggno,a_tggs,a_tel,a_fax,a_addr_a,a_addr_b,a_trantype,a_paytype,b_productno,b_products,b_unit,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) b_mount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_weight),1)),4,12)) b_weight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_price),1)),4,12)) b_price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar) b_price,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,b_memo
 from @tmp order by a_noa desc,pageno,gno,orderno;

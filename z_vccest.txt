@@ -204,7 +204,7 @@ set @cmd =	"select a.*,ROW_NUMBER()over(order by gno),0,0,0"+
 				" from view_vcc"+@t_accy+ " a "+
 				" left join view_vccs"+@t_accy+" b on a.noa = b.noa " + 
 				" left join cust c on c.noa = a.custno" + 
-				" left join vcct d on d.vccno = a.noa" + 
+				" left join vcct d on d.noa = a.noa" + 
 				" where "+
 				" (LEN(@t_xnoa) = 0 or @t_xnoa > a.noa) and "+
 				" (isnull(a.datea,'') between @t_bdate and @t_edate) and "+
@@ -298,7 +298,7 @@ set @cmd =	"select a.*,ROW_NUMBER()over(order by gno),0,0,0"+
 
 	select gno,noa,noq,custno,comp,datea,tel,addr_conn connaddr,addr,serial,product,spec,unit,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,memo, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pay),1)),4,12)) pay,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,

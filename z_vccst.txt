@@ -63,7 +63,7 @@ select
 	(case when ltrim(rtrim(isnull(size,'')))='' then dbo.csize(akind,adime,awidth,alengthb,aradius) else replace(size,'~#$','''') end) specfi,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aprice),1)),4,12)) aprice,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,car,tranmoney,memo,qhref
 from @tmp order by idno;
 ----------********************************************************************----------
@@ -133,7 +133,7 @@ select
 	(case when ltrim(rtrim(isnull(size,'')))='' then dbo.csize(akind,adime,awidth,alengthb,aradius) else replace(size,'~#$','''') end) sfi,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aprice),1)),4,12)) aprice,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,comp,carno2,qhref
 from @tmp order by idno;
 ----------********************************************************************----------
@@ -289,7 +289,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,allprice),1)),4,12)) allprice,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(allprice)),1)),4,12))+'.'+cast(floor((allprice*1000)-(floor(allprice)*1000)) as nvarchar) allprice,
 	cast(persent as nvarchar) + '%' persent,memo
 from @tmpa order by gno,idno;
 ----------********************************************************************----------

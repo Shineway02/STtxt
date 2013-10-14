@@ -60,7 +60,7 @@ insert into @tmp(gno,datea,mount,total)
 select gno, noa, noq, type, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4) comp, productno, xproduct,unit,csize
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
-,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price 
+,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price 
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
 ,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno
 ,'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
@@ -129,7 +129,7 @@ select
 	gno,type,noa,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit,csize
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price 
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pcount),1)),0,30)) pcount,
 	'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
@@ -195,7 +195,7 @@ insert into @result(gno,productno,xproduct,csize,mount,total)
 select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,csize,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight ,
-	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
 	'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
 	row_number()over(partition by productno,xproduct order by productno,xproduct,gno,datea,noa) idno
@@ -262,7 +262,7 @@ insert into @result(gno,tggno,comp,productno,mount,weight,total)
 select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct, unit,csize,
 		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
 		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price ,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price ,
 		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
 		'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
 		row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno

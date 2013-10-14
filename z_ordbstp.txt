@@ -108,7 +108,7 @@ update @tmp set csize = replace(csize,'~#$','''')
 select gno,noa,noq,odate,tno,tgg,tel,fax,addr,kind,trantype,paytype,datea,uno,pno,product,spec,csize,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,mount),1)),4,30)) mount,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,weight),1)),4,30)) weight,
-reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,price),1)),4,30)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,total),1)),4,30)) total,ordeno,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,moneys),1)),4,30)) moneys,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,tax),1)),4,30)) tax,
@@ -179,7 +179,7 @@ update @tmp set size = replace(size,'~#$','''')
 select gno,noa,noq,datea,cno,tggno,comp,s,coilno,class,spec,pno,product,size,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
 ordeno,kind,w
 from @tmp;

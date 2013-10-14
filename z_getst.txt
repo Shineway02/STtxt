@@ -149,8 +149,8 @@ insert into @tmp
 select '0' gno,a.noa,b.noq,a.typea,a.datea,a.comp,b.uno,b.productno,b.product,b.unit,b.spec,
 dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
 b.mount,b.weight,c.sprice,(b.weight*c.price),b.memo
-from get[1] a
-left join gets[1] b on a.noa = b.noa
+from view_get[1] a
+left join view_gets[1] b on a.noa = b.noa
 left join uccc c on c.noa = b.uno
 where  (LEN(@t_itype)= 0 or @t_itype = a.typea) and
 (a.datea between @t_bdate and @t_edate ) and
@@ -163,7 +163,7 @@ from @tmp
 select gno,noa,noq,typea,datea,comp,uno,pno,product,unit,spec,size,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,moneys),1)),4,12)) moneys,memo,
 'getst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
 from @tmp;
