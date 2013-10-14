@@ -47,7 +47,8 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
-		a.custno,c.nick,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		a.custno,c.nick,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 		b.unit,b.mount,b.weight,b.price,b.total
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
@@ -58,6 +59,7 @@ insert into @tmp
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
 	      (len(@t_enda)=0 or @t_enda=b.enda)
 	order by a.odate,a.noa,b.no2
+update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,odate,mount,weight,total)
 	select '1',left(odate,6),sum(mount),sum(weight),sum(total) from @tmp group by left(odate,6)
 insert into @tmp(gno,odate,mount,weight,total)
@@ -117,7 +119,8 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
@@ -127,6 +130,7 @@ insert into @tmp
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
 	      (len(@t_enda)=0 or @t_enda=b.enda)
+update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,custno,comp,weight,mount,notv,nototal)
 	select '1',custno,comp,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by custno,comp
 select
@@ -184,7 +188,8 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
@@ -194,6 +199,7 @@ insert into @tmp
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
 	      (len(@t_enda)=0 or @t_enda=b.enda)
+update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,productno,products,weight,mount,notv,nototal)
 	select '1',productno,products,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by productno,products
 select
@@ -251,7 +257,8 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
@@ -261,6 +268,7 @@ insert into @tmp
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
 	      (len(@t_enda)=0 or @t_enda=b.enda)
+update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,noa,weight,mount,notv,nototal)
 	select '1',noa,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by noa
 select
@@ -299,7 +307,8 @@ declare @tmp table(
 insert into @tmp
 	select 
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,a.productno,a.product,
-		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) sizea,a.weight,a.notv,a.mount
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,
+		a.weight,a.notv,a.mount
 	from view_ordes[1] a
 	left join view_orde[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -307,6 +316,7 @@ insert into @tmp
 		(b.custno between @t_bcustno and @t_ecustno) and 
 		(a.productno between @t_bproductno and @t_eproductno)
 	order by b.custno,a.product,b.noa,b.odate,b.datea
+update @tmp set sizea = replace(sizea,'~#$','''')
 insert into @tmp(gno,weight,mount,notv)
 	select '1',sum(weight),sum(mount),sum(notv) from @tmp
 select
