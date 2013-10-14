@@ -47,7 +47,8 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
-		a.custno,c.nick,b.productno,b.product,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+		a.custno,c.nick,b.productno,b.product
+		,case when len(a.size)>0 then a.size else dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)end,
 		b.unit,b.mount,b.weight,b.price,b.total
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
