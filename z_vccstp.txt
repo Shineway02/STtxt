@@ -130,7 +130,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,b_memo
 from @tmp order by a_noa desc,pageno,gno,orderno;
 ------------************************************************************-------------
-z_vccstp2:--z_vccsp2
+z_vccstp2:--z_vccstp2
 declare @t_bxnoa nvarchar(20)
 declare @t_exnoa nvarchar(20)
 declare @t_pageline int = 6   --------一頁幾行
@@ -158,7 +158,7 @@ declare @tmp table(
 	total float,
 	ordeno nvarchar(35),
 	uno nvarchar(50),
-	pno nvarchar(35),
+	spec nvarchar(35),
 	products nvarchar(90),
 	csize nvarchar(max),
 	mount float,
@@ -170,7 +170,7 @@ select
 	'0',
 	ROW_NUMBER()over(partition by a.noa order by a.noa),1,
 	a.kind,a.noa,a.datea,a.custno,a.comp,a.tel,a.post+a.addr,a.cardeal,a.carno,a.memo,
-	a.money,a.tax,a.total,b.ordeno,b.uno,b.productno,b.product,
+	a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
 	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 	b.mount,b.weight,b.price
 from view_vcc[1] a
@@ -241,6 +241,5 @@ begin
 end
 update @tmp set csize = replace(csize,'~#$','''')
 select
-	gno,idno,orderno,pageno,kind,noa,datea,custno,custs,tel,addr,cardeal,carno,memo,money,tax,total,ordeno,uno,pno,products,csize,mount,weight,price,
-	(case upper(left(kind,1)) when 'B' then '(短徑x長徑x厚x長)' when 'C' then '(長)' else '(厚x寬x長)' end) sizetype
+	gno,idno,orderno,pageno,kind,noa,datea,custno,custs,tel,addr,cardeal,carno,memo,money,tax,total,ordeno,uno,spec,products,csize,mount,weight,price
 from @tmp  order by noa desc,pageno,gno,orderno;
