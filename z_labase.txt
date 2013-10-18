@@ -1,0 +1,611 @@
+﻿z_labase1:--z_labase1 
+declare @t_bxsssno nvarchar(20) 
+declare @t_exsssno nvarchar(20)
+declare @t_bxcno nvarchar(20) 
+declare @t_excno nvarchar(20)
+declare @t_bxmon nvarchar(10) 
+declare @t_exmon nvarchar(10) 
+
+set @t_bxsssno = case when '#non' = [2] then '' else [2] end 
+set @t_exsssno = case when '#non' = [3] then CHAR(255) else [3] end 
+set @t_bxcno = case when '#non' = [4] then '' else [4] end 
+set @t_excno = case when '#non' = [5] then CHAR(255) else [5] end 
+set @t_bxmon = case when '#non' = [6] then '' else [6] end 
+set @t_exmon = case when '#non' = [7] then CHAR(255) else [7] end 
+--*******************************************************************
+declare @tmp table( 
+	gno nvarchar(1), 
+	mon nvarchar(10), 
+	cno nvarchar(20), 
+	comp nvarchar(90), 
+	he_comp int, 
+	la_comp int, 
+	re_comp int, 
+	he_self int, 
+	la_self int, 
+	re_self int, 
+	selftotal int, 
+	comptotal int, 
+	to1 int, 
+	to2 int, 
+	to3 int, 
+	total int 
+) 
+
+declare @cmd nvarchar(MAX) 
+set @cmd = 'select '''' gno, a.mon,a.cno,e.nick, 
+ a.he_comp , 
+(case when b.issssp = 0 then a.la_comp+a.disaster else a.la_comp end), 
+a.re_comp, 
+a.he_person, 
+(case when b.issssp = 1 then a.la_person+a.disaster else a.la_person end), 
+a.re_person, 
+0,0,0,0,0,0 
+from salinsures a 
+left join labase b on a.noa = b.noa 
+left join acomp e on a.cno=e.noa 
+where (a.mon between @t_bxmon and @t_exmon) and 
+(a.cno between @t_bxcno and @t_excno) and 
+(b.noa between @t_bxsssno and @t_exsssno)' 
+
+
+insert into @tmp 
+execute sp_executesql @cmd,N'@t_bxmon nvarchar(10),@t_exmon nvarchar(10),@t_bxcno nvarchar(20),@t_excno nvarchar(20),@t_bxsssno nvarchar(20),@t_exsssno nvarchar(20)', 
+@t_bxmon=@t_bxmon,@t_exmon=@t_exmon,@t_bxcno=@t_bxcno,@t_excno=@t_excno,@t_bxsssno=@t_bxsssno,@t_exsssno=@t_exsssno
+update @tmp set selftotal = he_self + la_self + re_self
+update @tmp set comptotal = he_comp + la_comp + re_comp
+update @tmp set to1 = he_comp + he_self
+update @tmp set to2 = la_comp + la_self
+update @tmp set to3 = re_comp + re_self
+update @tmp set total = selftotal+comptotal
+
+insert into @tmp 
+select '0' gno,mon,cno,max(comp),SUM(he_comp),SUM(la_comp),SUM(re_comp),SUM(he_self),SUM(la_self), 
+SUM(re_self),SUM(selftotal),SUM(comptotal),SUM(to1),SUM(to2),SUM(to3),SUM(total) 
+from @tmp 
+group by mon,cno,comp 
+
+
+insert into @tmp 
+select '1' gno,CHAR(255),CHAR(255),'',SUM(he_comp),SUM(la_comp),SUM(re_comp),SUM(he_self),SUM(la_self), 
+SUM(re_self),SUM(selftotal),SUM(comptotal),SUM(to1),SUM(to2),SUM(to3),SUM(total) 
+from @tmp 
+where gno = '' 
+
+select gno,mon,cno,comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_self),1)),4,12)) he_self, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_self),1)),4,12)) la_self, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_self),1)),4,12)) re_self, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,selftotal),1)),4,12)) selftotal, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,comptotal),1)),4,12)) comptotal, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,to1),1)),4,12)) to1 ,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,to2),1)),4,12)) to2 ,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,to3),1)),4,12)) to3 ,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total 
+from @tmp 
+where gno != '' and
+((he_self > 0 or he_comp > 0) or (re_comp > 0 or re_self > 0) or (la_comp > 0 or la_self > 0))
+order by cno,gno;
+--------------------------------------------------------------------------------------------------
+z_labase2:--z_labase2
+declare @t_bxsssno nvarchar(20) 
+declare @t_exsssno nvarchar(20)
+declare @t_bxcno nvarchar(20) 
+declare @t_excno nvarchar(20)
+declare @t_bxmon nvarchar(10) 
+declare @t_exmon nvarchar(10) 
+
+set @t_bxsssno = case when '#non' = [2] then '' else [2] end 
+set @t_exsssno = case when '#non' = [3] then CHAR(255) else [3] end 
+set @t_bxcno = case when '#non' = [4] then '' else [4] end 
+set @t_excno = case when '#non' = [5] then CHAR(255) else [5] end 
+set @t_bxmon = case when '#non' = [6] then '' else [6] end 
+set @t_exmon = case when '#non' = [7] then CHAR(255) else [7] end 
+--*******************************************************************
+
+declare @tmp table( 
+	gno nvarchar(1), 
+	mon nvarchar(10), 
+	cno nvarchar(20), 
+	comp nvarchar(90), 
+	noa nvarchar(50), 
+	namea nvarchar(50), 
+	he_comp int, 
+	la_comp int, 
+	re_comp int, 
+	he_self int, 
+	la_self int, 
+	re_self int, 
+	he_tot int,
+	la_tot int,
+	re_tot int,
+	selftotal int, 
+	comptotal int, 
+	total int 
+) 
+
+declare @cmd nvarchar(MAX) 
+
+set @cmd ='select '''' gno,a.mon,a.cno,e.nick,a.noa,b.namea, 
+a.he_comp , 
+(case when b.issssp = 0 then a.la_comp+a.disaster else a.la_comp end), 
+a.re_comp , 
+a.he_person, 
+(case when b.issssp = 1 then a.la_person+a.disaster else a.la_person end), 
+a.re_person, 
+0,0,0,0,0,0 
+from salinsures a 
+left join labase b on a.noa = b.noa 
+left join acomp e on a.cno=e.noa 
+where (a.mon between @t_bxmon and @t_exmon) and 
+(a.cno between @t_bxcno and @t_excno) and 
+(a.noa between @t_bxsssno and @t_exsssno)' 
+
+insert into @tmp 
+execute sp_executesql @cmd,N'@t_bxmon nvarchar(10),@t_exmon nvarchar(10),@t_bxcno nvarchar(20),@t_excno nvarchar(20),@t_bxsssno nvarchar(20),@t_exsssno nvarchar(20)', 
+@t_bxmon=@t_bxmon,@t_exmon=@t_exmon,@t_bxcno=@t_bxcno,@t_excno=@t_excno,@t_bxsssno=@t_bxsssno,@t_exsssno=@t_exsssno
+
+update @tmp set he_tot = he_self + he_comp
+update @tmp set la_tot = la_self + la_comp
+update @tmp set re_tot = re_self + re_comp
+update @tmp set selftotal = he_self + la_self + re_self
+update @tmp set comptotal = he_comp + la_comp + re_comp
+update @tmp set total = selftotal+comptotal
+
+insert into @tmp 
+select '0' gno,a.mon,'','',a.noa,MAX(a.namea),SUM(he_comp),SUM(la_comp),SUM(re_comp),SUM(he_self),SUM(la_self), 
+SUM(re_self),SUM(he_tot),SUM(la_tot),SUM(re_tot),SUM(selftotal),SUM(comptotal),SUM(total) 
+from @tmp a left join sss b on a.noa=b.noa
+group by a.mon,a.noa
+
+insert into @tmp 
+select '1' gno,char(255),char(255),char(255),char(255),char(255),SUM(he_comp),SUM(la_comp),SUM(re_comp),SUM(he_self),SUM(la_self), 
+SUM(re_self),SUM(he_tot),SUM(la_tot),SUM(re_tot),SUM(selftotal),SUM(comptotal),SUM(total) 
+from @tmp 
+where gno = '0' 
+
+select gno,mon,cno,comp,noa,namea, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_self),1)),4,12)) he_self, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_tot),1)),4,12)) he_tot, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_self),1)),4,12)) la_self, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_tot),1)),4,12)) la_tot, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_self),1)),4,12)) re_self, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_tot),1)),4,12)) re_tot, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,selftotal),1)),4,12)) selftotal, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,comptotal),1)),4,12)) comptotal, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total 
+,@t_bxmon btxmon,@t_exmon etxmon
+from @tmp
+where gno != '' and
+((he_self > 0 or he_comp > 0) or (re_comp > 0 or re_self > 0) or (la_comp > 0 or la_self > 0))
+order by mon,noa ;
+
+-------------------------------------------------------------------------------------------------
+z_labase3:--z_labase3
+declare @t_bxcno nvarchar(20) 
+declare @t_excno nvarchar(20)
+declare @t_bxmon nvarchar(10) 
+declare @t_exmon nvarchar(10) 
+
+set @t_bxcno = case when '#non' = [4] then '' else [4] end 
+set @t_excno = case when '#non' = [5] then CHAR(255) else [5] end 
+set @t_bxmon = case when '#non' = [6] then '' else [6] end 
+set @t_exmon = case when '#non' = [7] then CHAR(255) else [7] end 
+
+declare @tmp table( 
+	gno nvarchar(1), 
+	idno int identity(0,1),
+	noa nvarchar(20), 
+	namea nvarchar(50), 
+	mon nvarchar(10),
+	cno nvarchar(20), 
+	comp nvarchar(90),
+	he_self int, 
+	he_comp int, 
+	he_tot int,
+	la_self int, 
+	la_comp int, 
+	la_tot int,
+	re_self int, 
+	re_comp int, 
+	re_tot int,
+	selftotal int, 
+	comptotal int, 
+	total int,
+	xcount int
+)  
+
+insert into @tmp
+select '0',a.noa,b.namea,a.mon,a.cno,c.nick, 
+a.he_person,a.he_comp,a.he_person+a.he_comp, 
+a.la_person+(case when b.issssp=1 then a.disaster else 0 end),a.la_comp+(case when b.issssp=0 then a.disaster else 0 end),a.la_person+a.la_comp+a.disaster, 
+a.re_person,a.re_comp,a.re_person+a.re_comp, 
+a.he_person+a.la_person+a.re_person+(case when b.issssp=1 then a.disaster else 0 end), 
+a.he_comp+a.la_comp+a.re_comp+(case when b.issssp=0 then a.disaster else 0 end), 
+a.he_person+a.la_person+a.re_person+a.he_comp+a.la_comp+a.re_comp +a.disaster,0
+from salinsures a left join labase b on a.noa=b.noa left join acomp c on a.cno=c.noa 
+where 
+(a.mon between @t_bxmon and @t_exmon) 
+and (b.namea is not null) and
+(a.cno between @t_bxcno and @t_excno)
+
+if(CHARINDEX('全部',@t_xsss) = 0)
+begin
+	if(CHARINDEX('員工',@t_xsss) = 0)
+		delete @tmp where noa in (select noa from sss where noa not in (select noa from labase where issssp=1))
+	if(CHARINDEX('司機',@t_xsss) = 0)
+		delete @tmp where noa in (select noa from driver where noa not in (select noa from labase where issssp=1))
+	if(CHARINDEX('寄保',@t_xsss) = 0)
+		delete @tmp where noa in (select noa from labase where issssp=1)
+end
+
+delete @tmp 
+where total=0
+
+insert into @tmp
+select '1' gno,char(255),char(255),mon,char(255),
+		   char(255),SUM(he_self),SUM(he_comp),SUM(he_tot),
+		   SUM(la_self),SUM(la_comp),SUM(la_tot),
+		   SUM(re_self),SUM(re_comp),SUM(re_tot),
+		   SUM(selftotal),SUM(comptotal),SUM(total),COUNT(*)
+	from @tmp
+	group by mon
+	
+if(@t_xorder='員工編號')
+begin
+	select gno,mon,cno,comp,noa,namea, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_self),1)),4,12)) he_self, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_tot),1)),4,12)) he_tot, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_self),1)),4,12)) la_self, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_tot),1)),4,12)) la_tot, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_self),1)),4,12)) re_self, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_tot),1)),4,12)) re_tot, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,selftotal),1)),4,12)) selftotal, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,comptotal),1)),4,12)) comptotal, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,xcount),1)),4,12)) xcount
+	from @tmp 
+	order by mon,noa,cno,gno
+end
+if(@t_xorder='投保公司')
+begin
+	select gno,mon,cno,comp,noa,namea, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_self),1)),4,12)) he_self, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_tot),1)),4,12)) he_tot, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_self),1)),4,12)) la_self, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_tot),1)),4,12)) la_tot, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_self),1)),4,12)) re_self, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_tot),1)),4,12)) re_tot, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,selftotal),1)),4,12)) selftotal, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,comptotal),1)),4,12)) comptotal, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total, 
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,xcount),1)),4,12)) xcount
+	from @tmp 
+	order by mon,cno,noa,gno
+end
+;
+
+---************************************************************************************
+z_labase5:--z_labase5
+declare @t_bxcno nvarchar(20)
+declare @t_excno nvarchar(20)
+declare @t_bsalary nvarchar(20)
+declare @t_esalary nvarchar(20)
+declare @t_xlab nvarchar(20)
+set @t_bxcno = case when '#non' = [3] then '' else [3] end
+set @t_excno = case when '#non' = [4] then CHAR(255) else [4] end
+set @t_bsalary = case when '#non' = [21] then '0' else [21] end
+set @t_esalary = case when '#non' = [22] then '9999999' else [22] end
+set @t_xlab = case when '#non' = [20] then '' else [20] end
+
+--****************************************************************************************
+declare @tmp table( 
+	gno nvarchar(1), 
+	cno nvarchar(20), 
+	acomp nvarchar(50), 
+	noa nvarchar(20), 
+	namea nvarchar(50), 
+	id nvarchar(20), 
+	birthday nvarchar(20), 
+	indate nvarchar(10), 
+	bdate nvarchar(10), 
+	salary float,
+	osalary float,
+	ocomp nvarchar(50),
+	edate nvarchar(10),  
+	addr nvarchar(MAX), 
+	memo nvarchar(MAX),
+	child nvarchar(1),
+	elab nvarchar(1)
+) 
+
+if(@t_xlab='全部')
+begin
+	insert into @tmp 
+	select '0',d.cno,d.acomp,a.noa,a.namea,b.id,b.birthday,b.indate,d.health_bdate,a.salary
+	,(select top 1 salary from salinsures where noa=a.noa and cno!=d.cno order by mon desc) osalary
+	,(select top 1 comp from salinsures where noa=a.noa and cno!=d.cno order by mon desc)ocomp
+	,d.health_edate,b.addr_home,a.memo ,'0',(case when (len(d.health_edate)>0 and len(d.labor_edate)>0 and len(d.retire_edate)>0) then '1' else '0' end)
+	from labase a left join (
+	select noa,cno,id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from sss
+	union
+	select noa,cno,id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from sssp
+	union
+	select noa,cno,idno id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from driver
+	union
+	select noa,cno,idno id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from carOwner
+	) b on a.noa=b.noa
+	left join acomp c on b.cno=c.noa
+	left join (select * from labased where noa+noq in (select noa+MAX(noq) from labased group by noa))d
+	on a.noa=d.noa
+	where (d.cno between @t_bxcno and @t_excno) and (a.salary between CAST(@t_bsalary as float) and CAST(@t_esalary as float))
+end
+
+if(@t_xlab='投保')
+begin
+	insert into @tmp 
+	select '0',d.cno,d.acomp,a.noa,a.namea,b.id,b.birthday,b.indate,d.health_bdate,a.salary
+	,(select top 1 salary from salinsures where noa=a.noa and cno!=d.cno order by mon desc) osalary
+	,(select top 1 comp from salinsures where noa=a.noa and cno!=d.cno order by mon desc)ocomp
+	,d.health_edate,b.addr_home,a.memo ,'0',(case when (len(d.health_edate)>0 and len(d.labor_edate)>0 and len(d.retire_edate)>0) then '1' else '0' end)
+	from labase a left join (
+	select noa,cno,id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from sss
+	union
+	select noa,cno,id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from sssp
+	union
+	select noa,cno,idno id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from driver
+	union
+	select noa,cno,idno id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from carOwner
+	) b on a.noa=b.noa
+	left join acomp c on b.cno=c.noa 
+	left join (select * from labased where noa+noq in (select noa+MAX(noq) from labased group by noa))d
+	on a.noa=d.noa
+	where (d.cno between @t_bxcno and @t_excno) and (a.salary between CAST(@t_bsalary as float) and CAST(@t_esalary as float))
+	and ((len(d.health_bdate)>0 and len(d.health_edate)=0) or (len(d.labor_bdate)>0 and len(d.labor_edate)=0) or (len(d.retire_bdate)>0 and len(d.retire_edate)=0))
+end
+
+if(@t_xlab='退保')
+begin
+	insert into @tmp 
+	select '0',d.cno,d.acomp,a.noa,a.namea,b.id,b.birthday,b.indate,d.health_bdate,a.salary
+	,(select top 1 salary from salinsures where noa=a.noa and cno!=d.cno order by mon desc) osalary
+	,(select top 1 comp from salinsures where noa=a.noa and cno!=d.cno order by mon desc)ocomp
+	,d.health_edate,b.addr_home,a.memo ,'0',(case when (len(d.health_edate)>0 and len(d.labor_edate)>0 and len(d.retire_edate)>0) then '1' else '0' end)
+	from labase a left join (
+	select noa,cno,id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from sss
+	union
+	select noa,cno,id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from sssp
+	union
+	select noa,cno,idno id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from driver
+	union
+	select noa,cno,idno id,birthday,indate,health_bdate,health_edate,labor1_bdate,labor1_edate,labor2_bdate,labor2_edate,addr_home from carOwner
+	) b on a.noa=b.noa
+	left join acomp c on b.cno=c.noa
+	left join (select * from labased where noa+noq in (select noa+MAX(noq) from labased group by noa))d
+	on a.noa=d.noa
+	where (d.cno between @t_bxcno and @t_excno) and (a.salary between CAST(@t_bsalary as float) and CAST(@t_esalary as float))
+	and (len(d.health_edate)>0 and len(d.labor_edate)>0 and len(d.retire_edate)>0)
+end
+
+insert into @tmp 
+select '0',b.cno,b.acomp,b.noa,' 眷：'+a.namea,a.id,a.birthday,'',a.indate,null,'','',a.outdate,'',a.memo,'1',b.elab 
+from labases a , @tmp b  where a.noa=b.noa 
+--insert into @tmp
+--select '0',b.cno,b.acomp,a.noa,' 眷：'+a.namea,a.id,a.birthday,'','',null,null,'','','','','1',b.elab
+--from labases a left join @tmp b on a.noa=b.noa
+
+insert into @tmp
+select '1',cno,'','','','','','','',null,null,'','','','','','0' from @tmp
+where elab='1'
+group by cno,elab
+
+insert into @tmp
+select '2',cno,'','','','','','','',null,null,'','','','','','3' from @tmp
+group by cno
+ 
+select a.gno,a.cno,a.acomp,a.noa,(case when a.child='1' then '' else a.noa end)xnoa,a.namea,a.id,a.birthday,
+a.indate,a.bdate,a.ocomp,a.edate,a.addr,a.memo,a.child,a.elab,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.salary),1)),4,12)) salary,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.osalary),1)),4,12)) osalary,
+b.healthno hno,b.laborno lno
+from @tmp a left join acomp b on a.cno=b.noa order by a.cno,a.elab,a.gno,a.noa,a.child;
+---------------------------------------------------------------------------------------------------
+
+z_labase6:--z_labase6
+declare @t_bxmon nvarchar(10)
+declare @t_exmon nvarchar(10) 
+
+set @t_bxmon = case when '#non' = [18] then '' else [18] end 
+set @t_exmon = case when '#non' = [19] then CHAR(255) else [19] end 
+declare @t_bxsssno nvarchar(10)
+declare @t_exsssno nvarchar(10) 
+set @t_bxsssno = case when '#non' = [1] then '' else [1] end 
+set @t_exsssno = case when '#non' = [2] then CHAR(255) else [2] end 
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	namea nvarchar(50),
+	isforeign nvarchar(15),
+	issssp nvarchar(15),
+	insur_fund float,
+	insur_disaster float,
+	bdate nvarchar(20),
+	salary nvarchar(15),
+	custno nvarchar(20),
+	comp nvarchar(50),
+	sa_retire nvarchar(15),
+	re_comp nvarchar(15),
+	re_person nvarchar(15),
+	sa_labor nvarchar(15),
+	as_labor nvarchar(15),
+	la_person nvarchar(15),
+	la_comp nvarchar(15),
+	sa_health nvarchar(15),
+	as_health nvarchar(15),
+	he_person nvarchar(15),
+	he_comp nvarchar(15),
+	tax float,
+	mount float,
+	disaster float,
+	worker nvarchar(50),
+	memo nvarchar(200)
+)
+declare @tmpa table(
+	gno nvarchar(15),
+	noa nvarchar(30),
+	namea nvarchar(50),
+	isforeign nvarchar(15),
+	issssp nvarchar(15),
+	insur_fund float,
+	insur_disaster float,
+	bdate nvarchar(20),
+	salary nvarchar(15),
+	custno nvarchar(20),
+	comp nvarchar(50),
+	sa_retire nvarchar(15),
+	re_comp nvarchar(15),
+	re_person nvarchar(15),
+	sa_labor nvarchar(15),
+	as_labor nvarchar(15),
+	la_person nvarchar(15),
+	la_comp nvarchar(15),
+	sa_health nvarchar(15),
+	as_health nvarchar(15),
+	he_person nvarchar(15),
+	he_comp nvarchar(15),
+	tax float,
+	mount float,
+	disaster float,
+	worker nvarchar(50),
+	memo nvarchar(200),
+	b_noa nvarchar(15),
+	b_noq nvarchar(15),
+	b_prefix nvarchar(15),
+	b_namea nvarchar(15),
+	b_birthday nvarchar(15),
+	b_id nvarchar(15),
+	b_ch_money nvarchar(15),
+	b_as_health nvarchar(15),
+	b_indate nvarchar(15),
+	b_outdate nvarchar(15)
+)
+insert into @tmp
+select '0' gno, noa,namea,case isforeign
+when '1' then '外勞'
+else '非外勞'
+end,
+case issssp
+when '1' then '寄保'
+else '非寄保'
+end,
+insur_fund,insur_disaster,bdate,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,salary),1)),4,12)) salary,custno,comp,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_retire),1)),4,12)) sa_retire,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_person),1)),4,12)) re_person,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_labor),1)),4,12)) sa_labor,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,as_labor),1)),4,12)) as_labor,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_person),1)),4,12)) la_person,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_health),1)),4,12)) sa_health,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,as_health),1)),4,12)) as_health,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_person),1)),4,12)) he_person,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp,
+tax,mount,disaster,worker,memo
+from labase
+where (noa between @t_bxsssno and @t_exsssno)  
+insert into @tmpa
+select a.gno,a.noa,a.namea,a.isforeign,a.issssp,a.insur_fund,a.insur_disaster,a.bdate,a.salary,
+a.custno,a.comp,a.sa_retire,a.re_comp,a.re_person,a.sa_labor,a.as_labor,a.la_person,
+a.la_comp,a.sa_health,a.as_health,a.he_person,a.he_comp,a.tax,a.mount,a.disaster,a.worker,a.memo,
+b.noa,b.noq,b.prefix,b.namea,b.birthday,b.id,b.ch_money,b.as_health,b.indate,b.outdate
+from @tmp a 
+left join labases b on a.noa = b.noa
+insert into @tmpa
+select '1' gno,noa,max(namea),'','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','' from @tmpa
+group by noa
+select * from @tmpa order by noa,gno;
+---------------------------------------------------------------------------------------------------
+
+z_labase7:--z_labase7
+declare @t_bxmon nvarchar(10)
+declare @t_exmon nvarchar(10) 
+set @t_bxmon = case when '#non' = [18] then '' else [18] end 
+set @t_exmon = case when '#non' = [19] then CHAR(255) else [19] end 
+declare @t_bxsssno nvarchar(10)
+declare @t_exsssno nvarchar(10) 
+set @t_bxsssno = case when '#non' = [1] then '' else [1] end 
+set @t_exsssno = case when '#non' = [2] then CHAR(255) else [2] end
+declare @tmp table( 
+gno nvarchar(1), 
+noa nvarchar(10), 
+mon nvarchar(10), 
+namea nvarchar(50), 
+he_comp float, 
+la_comp float, 
+re_comp float, 
+he_person float, 
+la_person float, 
+re_person float, 
+total1 float, 
+total2 float, 
+payc nvarchar(20), 
+pay float, 
+unpay float, 
+salary float, 
+sa_retire float, 
+sa_labor float, 
+sa_health float, 
+mount float, 
+disaster float, 
+comp nvarchar(90) 
+) 
+
+insert into @tmp 
+select '0' gno,a.noa,mon,(select namea from labase where labase.noa = a.noa) namea, 
+a.he_comp,a.la_comp,a.re_comp,a.he_person, a.la_person,a.re_person ,
+total1,total2,payc,pay,unpay,salary,sa_retire,sa_labor,sa_health, 
+mount,disaster,e.nick 
+from salinsures a
+left join acomp e on a.cno=e.noa
+where (mon between @t_bxmon and @t_exmon) and
+(a.noa between @t_bxsssno and @t_exsssno)
+
+insert into @tmp 
+select '1' gno,noa,'',namea,SUM(he_comp),SUM(la_comp),SUM(re_comp),SUM(he_person),SUM(la_person), 
+SUM(re_person),SUM(total1),SUM(total2),'',SUM(pay),SUM(unpay),SUM(salary),SUM(sa_retire), 
+SUM(sa_labor),SUM(sa_health),SUM(mount),SUM(disaster),'' 
+from @tmp 
+group by noa,namea 
+
+select gno, noa,mon,namea, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_person),1)),4,12)) he_person, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_person),1)),4,12)) la_person, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_person),1)),4,12)) re_person, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2, 
+payc, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pay),1)),4,12)) pay, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unpay),1)),4,12)) unpay, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,salary),1)),4,12)) salary, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_retire),1)),4,12)) sa_retire, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_labor),1)),4,12)) sa_labor, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_health),1)),4,12)) sa_health, 
+mount,disaster,comp 
+from @tmp order by noa,gno;
+-----------------------------------------------------------------------------------------------
