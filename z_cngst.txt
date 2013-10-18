@@ -66,7 +66,7 @@ declare @tmp table(
 		memo nvarchar(200),
 		cardeal nvarchar(50),
 		carno nvarchar(20),
-		t nvarchar(20),
+		trant nvarchar(20),
 		tmo float,
 		tweightb float,
 		tmemo nvarchar(200),
@@ -199,40 +199,9 @@ set @t_tweightb = 0
 select gno,noa,noq,storno,store,stornno,storin,datea,sto,s,uno,spec,class,product,
 size,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mo),1)),4,12)) mo,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12))weightb,memo,cardeal,carno,t,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12))weightb,memo,cardeal,carno,trant,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tmo),1)),4,12)) tmo,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tweightb),1)),4,12)) tweightb,tmemo,recno,currecno,curpage,totpage,
 CONVERT(nvarchar(5),curpage)+'/'+CONVERT(nvarchar(5),totpage) page
 from @tmp;
 --********************************************************************************************************************************
-declare @t_bdate nvarchar(10)
-declare @t_edate nvarchar(10)
-set @t_bdate = case when '#non' = '#non' then '' else '#non' end
-set @t_edate = case when '#non' = '#non' then CHAR(255) else '#non' end
-declare @tmp table(
-		gno nvarchar(1),
-		noa nvarchar(30),
-		noq nvarchar(20),
-		datea nvarchar(10),
-		product nvarchar(50),
-		uno nvarchar(20),
-		istore nvarchar(30),
-		size nvarchar(50),
-		mount float,
-		weightb float,
-		price float,
-		moneys float,
-		store nvarchar(20),
-		storin nvarchar(20)
-)
-insert into @tmp
-select '0' gno,a.noa,b.noq,a.datea,b.product,b.uno,a.storin,
-dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
-b.mount,b.weight,b.price,ROUND(b.weight*b.price,0),a.store,a.storin
-from cng[1] a
-left join cngs[1] b on a.noa = b.noa
-where (a.datea between @t_bdate and @t_edate) 
-and a.kind = '3' or a.kind = '4'
-
-select *
-from @tmp;
