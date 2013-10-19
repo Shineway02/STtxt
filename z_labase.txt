@@ -230,20 +230,7 @@ a.he_person+a.la_person+a.re_person+(case when b.issssp=1 then a.disaster else 0
 a.he_comp+a.la_comp+a.re_comp+(case when b.issssp=0 then a.disaster else 0 end), 
 a.he_person+a.la_person+a.re_person+a.he_comp+a.la_comp+a.re_comp +a.disaster,0
 from salinsures a left join labase b on a.noa=b.noa left join acomp c on a.cno=c.noa 
-where 
-(a.mon between @t_bxmon and @t_exmon) 
-and (b.namea is not null) and
-(a.cno between @t_bxcno and @t_excno)
-
-if(CHARINDEX('全部',@t_xsss) = 0)
-begin
-	if(CHARINDEX('員工',@t_xsss) = 0)
-		delete @tmp where noa in (select noa from sss where noa not in (select noa from labase where issssp=1))
-	if(CHARINDEX('司機',@t_xsss) = 0)
-		delete @tmp where noa in (select noa from driver where noa not in (select noa from labase where issssp=1))
-	if(CHARINDEX('寄保',@t_xsss) = 0)
-		delete @tmp where noa in (select noa from labase where issssp=1)
-end
+where (a.mon between @t_bxmon and @t_exmon) and (b.namea is not null) and (a.cno between @t_bxcno and @t_excno)
 
 delete @tmp 
 where total=0
@@ -257,8 +244,6 @@ select '1' gno,char(255),char(255),mon,char(255),
 	from @tmp
 	group by mon
 	
-if(@t_xorder='員工編號')
-begin
 	select gno,mon,cno,comp,noa,namea, 
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_self),1)),4,12)) he_self, 
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp, 
@@ -273,28 +258,7 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,comptotal),1)),4,12)) comptotal, 
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total, 
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,xcount),1)),4,12)) xcount
-	from @tmp 
-	order by mon,noa,cno,gno
-end
-if(@t_xorder='投保公司')
-begin
-	select gno,mon,cno,comp,noa,namea, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_self),1)),4,12)) he_self, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_tot),1)),4,12)) he_tot, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_self),1)),4,12)) la_self, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_tot),1)),4,12)) la_tot, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_self),1)),4,12)) re_self, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_tot),1)),4,12)) re_tot, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,selftotal),1)),4,12)) selftotal, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,comptotal),1)),4,12)) comptotal, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,xcount),1)),4,12)) xcount
-	from @tmp 
-	order by mon,cno,noa,gno
-end
+	from @tmp order by mon,noa,cno,gno
 ;
 
 ---************************************************************************************
@@ -304,11 +268,11 @@ declare @t_excno nvarchar(20)
 declare @t_bsalary nvarchar(20)
 declare @t_esalary nvarchar(20)
 declare @t_xlab nvarchar(20)
-set @t_bxcno = case when '#non' = [3] then '' else [3] end
-set @t_excno = case when '#non' = [4] then CHAR(255) else [4] end
-set @t_bsalary = case when '#non' = [21] then '0' else [21] end
-set @t_esalary = case when '#non' = [22] then '9999999' else [22] end
-set @t_xlab = case when '#non' = [20] then '' else [20] end
+set @t_bxcno = case when '#non' = [4] then '' else [4] end
+set @t_excno = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bsalary = case when '#non' = [10] then '0' else [10] end
+set @t_esalary = case when '#non' = [11] then '9999999' else [11] end
+set @t_xlab = case when '#non' = [9] then '' else [9] end
 
 --****************************************************************************************
 declare @tmp table( 
@@ -422,23 +386,17 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.osalary),1)),4,12
 b.healthno hno,b.laborno lno
 from @tmp a left join acomp b on a.cno=b.noa order by a.cno,a.elab,a.gno,a.noa,a.child;
 ---------------------------------------------------------------------------------------------------
-
 z_labase6:--z_labase6
-declare @t_bxmon nvarchar(10)
-declare @t_exmon nvarchar(10) 
-
-set @t_bxmon = case when '#non' = [18] then '' else [18] end 
-set @t_exmon = case when '#non' = [19] then CHAR(255) else [19] end 
 declare @t_bxsssno nvarchar(10)
 declare @t_exsssno nvarchar(10) 
-set @t_bxsssno = case when '#non' = [1] then '' else [1] end 
-set @t_exsssno = case when '#non' = [2] then CHAR(255) else [2] end 
+set @t_bxsssno = case when '#non' = [2] then '' else [2] end 
+set @t_exsssno = case when '#non' = [3] then CHAR(255) else [3] end 
+
 declare @tmp table(
 	gno nvarchar(1),
 	noa nvarchar(30),
 	namea nvarchar(50),
-	isforeign nvarchar(15),
-	issssp nvarchar(15),
+	typea nvarchar(15),
 	insur_fund float,
 	insur_disaster float,
 	bdate nvarchar(20),
@@ -460,14 +418,14 @@ declare @tmp table(
 	mount float,
 	disaster float,
 	worker nvarchar(50),
-	memo nvarchar(200)
+	memo nvarchar(200),
+	plus2  float
 )
 declare @tmpa table(
 	gno nvarchar(15),
 	noa nvarchar(30),
 	namea nvarchar(50),
-	isforeign nvarchar(15),
-	issssp nvarchar(15),
+	typea nvarchar(15),
 	insur_fund float,
 	insur_disaster float,
 	bdate nvarchar(20),
@@ -499,17 +457,14 @@ declare @tmpa table(
 	b_ch_money nvarchar(15),
 	b_as_health nvarchar(15),
 	b_indate nvarchar(15),
-	b_outdate nvarchar(15)
+	b_outdate nvarchar(15),
+	plus2  float
 )
 insert into @tmp
-select '0' gno, noa,namea,case isforeign
-when '1' then '外勞'
-else '非外勞'
-end,
-case issssp
-when '1' then '寄保'
-else '非寄保'
-end,
+select '0' gno, noa,namea,
+(case isforeign when '1' then '外勞' else ''end)
++(case issssp when '1' then '寄保' else '' end)
++(case when isforeign='0' and issssp='0' then '員工' end),
 insur_fund,insur_disaster,bdate,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,salary),1)),4,12)) salary,custno,comp,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_retire),1)),4,12)) sa_retire,
@@ -523,54 +478,58 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_health),1)),4,12
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,as_health),1)),4,12)) as_health,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_person),1)),4,12)) he_person,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp,
-tax,mount,disaster,worker,memo
-from labase
-where (noa between @t_bxsssno and @t_exsssno)  
+tax,mount,disaster,worker,memo,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus2),1)),4,12)) plus2
+from labase where (noa between @t_bxsssno and @t_exsssno)  
+
 insert into @tmpa
-select a.gno,a.noa,a.namea,a.isforeign,a.issssp,a.insur_fund,a.insur_disaster,a.bdate,a.salary,
+select a.gno,a.noa,a.namea,a.typea,a.insur_fund,a.insur_disaster,a.bdate,a.salary,
 a.custno,a.comp,a.sa_retire,a.re_comp,a.re_person,a.sa_labor,a.as_labor,a.la_person,
 a.la_comp,a.sa_health,a.as_health,a.he_person,a.he_comp,a.tax,a.mount,a.disaster,a.worker,a.memo,
-b.noa,b.noq,b.prefix,b.namea,b.birthday,b.id,b.ch_money,b.as_health,b.indate,b.outdate
+b.noa,b.noq,b.prefix,b.namea,b.birthday,b.id,b.ch_money,b.as_health,b.indate,b.outdate,plus2
 from @tmp a 
 left join labases b on a.noa = b.noa
+
 insert into @tmpa
 select '1' gno,noa,max(namea),'','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','' from @tmpa
 group by noa
 select * from @tmpa order by noa,gno;
 ---------------------------------------------------------------------------------------------------
-
 z_labase7:--z_labase7
-declare @t_bxmon nvarchar(10)
+declare @t_bxsssno nvarchar(20) 
+declare @t_exsssno nvarchar(20)
+declare @t_bxmon nvarchar(10) 
 declare @t_exmon nvarchar(10) 
-set @t_bxmon = case when '#non' = [18] then '' else [18] end 
-set @t_exmon = case when '#non' = [19] then CHAR(255) else [19] end 
-declare @t_bxsssno nvarchar(10)
-declare @t_exsssno nvarchar(10) 
-set @t_bxsssno = case when '#non' = [1] then '' else [1] end 
-set @t_exsssno = case when '#non' = [2] then CHAR(255) else [2] end
+
+set @t_bxsssno = case when '#non' = [2] then '' else [2] end 
+set @t_exsssno = case when '#non' = [3] then CHAR(255) else [3] end 
+set @t_bxmon = case when '#non' = [6] then '' else [6] end 
+set @t_exmon = case when '#non' = [7] then CHAR(255) else [7] end 
+--*******************************************************************
+
 declare @tmp table( 
-gno nvarchar(1), 
-noa nvarchar(10), 
-mon nvarchar(10), 
-namea nvarchar(50), 
-he_comp float, 
-la_comp float, 
-re_comp float, 
-he_person float, 
-la_person float, 
-re_person float, 
-total1 float, 
-total2 float, 
-payc nvarchar(20), 
-pay float, 
-unpay float, 
-salary float, 
-sa_retire float, 
-sa_labor float, 
-sa_health float, 
-mount float, 
-disaster float, 
-comp nvarchar(90) 
+	gno nvarchar(1), 
+	noa nvarchar(10), 
+	mon nvarchar(10), 
+	namea nvarchar(50), 
+	he_comp float, 
+	la_comp float, 
+	re_comp float, 
+	he_person float, 
+	la_person float, 
+	re_person float, 
+	total1 float, 
+	total2 float, 
+	payc nvarchar(20), 
+	pay float, 
+	unpay float, 
+	salary float, 
+	sa_retire float, 
+	sa_labor float, 
+	sa_health float, 
+	mount float, 
+	disaster float, 
+	comp nvarchar(90) 
 ) 
 
 insert into @tmp 
