@@ -1,14 +1,8 @@
 ﻿z_getstp1:--z_getstp1
 declare @t_bnoa nvarchar(20)
 declare @t_enoa nvarchar(20)
-declare @t_typea nvarchar(30)
-declare @t_bdate nvarchar(20)
-declare @t_edate nvarchar(20)
 set @t_bnoa = case when '#non' = [2] then '' else [2] end
 set @t_enoa = case when '#non' = [3] then char(255) else [3] end
-set @t_typea = case when '#non' = [4] then '' else [4] end
-set @t_bdate = case when '#non' = [5] then '' else [5] end
-set @t_edate = case when '#non' = [6] then char(255) else [6] end
 declare @t_pageline int = 5--------一頁幾行
 declare @tmp table(
 	gno nvarchar(1),
@@ -48,7 +42,7 @@ select
 from view_get[1] a
 left join view_gets[1] b on a.noa = b.noa
 left join cust c on a.custno = c.noa
-where (a.noa between @t_bnoa and @t_enoa) and (a.datea between @t_bdate and @t_edate) and (len(@t_typea)=0 or a.typea=@t_typea)
+where (a.noa between @t_bnoa and @t_enoa)
 declare @a_noa nvarchar(30)
 declare @a_count int
 declare @idno int
