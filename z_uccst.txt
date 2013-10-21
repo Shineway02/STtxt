@@ -84,23 +84,32 @@ declare @t_blengthb float
 declare @t_elengthb float
 declare @t_bstoreno nvarchar(30)
 declare @t_estoreno nvarchar(30)
+declare @t_itype nvarchar(30)
+declare @t_btggno nvarchar(50)
+declare @t_etggno nvarchar(50)
+
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
-set @t_bproductno = case when '#non'=[5] then '' else [5] end
-set @t_eproductno = case when '#non'=[6] then char(255) else [6] end
+set @t_bproductno = case when '#non'=[6] then '' else [6] end
+set @t_eproductno = case when '#non'=[7] then char(255) else [7] end
 set @t_stktype = case when '#non'=[4] then '' else [4] end
-set @t_style = case when '#non'=[7] then '' else [7] end
-set @t_waste = case when '#non'=[8] then '' else [8] end
-set @t_bradius = case when '#non'=[9] then 0.00 else cast([9] as float) end
-set @t_eradius = case when '#non'=[10] then 9999.99 else cast([10] as float) end
-set @t_bwidth = case when '#non'=[11] then 0.00 else cast([11] as float)end
-set @t_ewidth = case when '#non'=[12] then 9999.99 else cast([12] as float) end
-set @t_bdime = case when '#non'=[13] then 0.000 else cast([13] as float) end
-set @t_edime = case when '#non'=[14] then 999.990 else cast([14] as float) end
-set @t_blengthb = case when '#non'=[15] then 0.0 else cast([15] as float) end
-set @t_elengthb = case when '#non'=[16] then 99999.9 else cast([16] as float) end
-set @t_bstoreno = case when '#non'=[17] then '' else [17] end
-set @t_estoreno = case when '#non'=[18] then char(255) else [18] end
+set @t_style = case when '#non'=[8] then '' else [8] end
+set @t_waste = case when '#non'=[9] then '' else [9] end
+set @t_bradius = case when '#non'=[10] then 0.00 else cast([10] as float) end
+set @t_eradius = case when '#non'=[11] then 9999.99 else cast([11] as float) end
+set @t_bwidth = case when '#non'=[12] then 0.00 else cast([12] as float)end
+set @t_ewidth = case when '#non'=[13] then 9999.99 else cast([13] as float) end
+set @t_bdime = case when '#non'=[14] then 0.000 else cast([14] as float) end
+set @t_edime = case when '#non'=[15] then 999.990 else cast([15] as float) end
+set @t_blengthb = case when '#non'=[16] then 0.0 else cast([16] as float) end
+set @t_elengthb = case when '#non'=[17] then 99999.9 else cast([17] as float) end
+set @t_bstoreno = case when '#non'=[18] then '' else [18] end
+set @t_estoreno = case when '#non'=[19] then char(255) else [19] end
+set @t_itype = case when '#non'=[5] then '' else [5] end
+set @t_btggno = case when '#non'=[20] then '' else [20] end
+set @t_etggno = case when '#non'=[21] then char(255) else [21] end
+----------------------------------------------------------------------------------------------
+
 set @t_style = upper(@t_style)
 set @t_waste = upper(@t_waste)
 set @t_stktype = upper(@t_stktype)
@@ -117,18 +126,21 @@ declare @tmp table(
 	mount float,
 	weight float
 )
+
 insert into @tmp
 	select
 		'0',a.datea,a.storeno,a.uno,a.productno,a.product,a.class,a.spec,
 		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) csize,
 		a.emount,a.eweight
-	from view_uccc a
+	from view_uccc a left join view_ina[1] b on a.tablea='inas' and a.noa=b.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 			 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
 			 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
 			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.emount > 0 and a.eweight > 0) and
 			 (a.storeno between @t_bstoreno and @t_estoreno)
+			 and b.itype=@t_itype and (b.tggno between @t_btggno and @t_etggno)
 	order by a.datea desc
+	
 update @tmp set csize = replace(csize,'~#$','''')
 select * from @tmp order by datea desc;
