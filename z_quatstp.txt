@@ -130,6 +130,26 @@ close cursor_table
 deallocate cursor_table
 
 select
+	case when b_total>0 or len(b_products)>0 then ROW_NUMBER()over(partition by a_noa order by pageno,gno,orderno) else null end rr
+	,gno,a_noa,a_stype,a_datea,a_odate,a_cno,a_acomp,a_coin,a_floata,a_contract,a_custno,a_comp
+	,a_paytype,a_sales,a_tel,a_fax,
+	a_kind,a_addressa,a_addressb,a_apv aa,a_memo
+	,b_productno ppno,b_no3,b_products ptno,b_class cc,b_size,b_unit uu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_taxs),1)),4,12)) a_taxs,a_taxtype ttp,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_totala),1)),4,12)) a_totala,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_totalus),1)),4,12)) a_totalus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_weight),1)),4,12)) ww1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) mm2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_weight),1)),4,12)) ww2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar) pp1 ,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_theory),1)),4,12)) b_theory,
+	b_memo,b_ordeno,b_enda ee
+from @tmp order by a_noa desc,pageno,gno,orderno
+return
+--old
+select
 	gno,a_noa,a_stype,a_datea,a_odate,a_cno,a_acomp,a_coin,a_floata,a_contract,a_custno,a_comp,a_paytype,a_sales,a_tel,a_fax,
 	a_kind,a_addressa,a_addressb,a_apv,a_memo,b_productno,b_no3,b_products,b_class,b_size,b_unit,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
