@@ -126,7 +126,8 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_weight),1)),4,12)) b_weight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_theory),1)),4,12)) b_theory,
 	b_productno,b_products,b_unit,b_uno,b_size,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) b_mount,b_price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) b_mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,b_memo
 from @tmp order by a_noa desc,pageno,gno,orderno;
 ------------************************************************************-------------
@@ -241,5 +242,11 @@ begin
 end
 update @tmp set csize = replace(csize,'~#$','''')
 select
-	gno,idno,orderno,pageno,kind,noa,datea,custno,custs,tel,addr,cardeal,carno,memo,money,tax,total,ordeno,uno,spec,products,csize,mount,weight,price
+	gno,idno,orderno,pageno,kind,noa,datea,custno,custs,tel,addr,cardeal,carno,memo,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,ordeno,uno,spec,products,csize,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((price*1000)-(floor(price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) price
 from @tmp  order by noa desc,pageno,gno,orderno;
