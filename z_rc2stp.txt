@@ -80,7 +80,8 @@ z_rc2stp1:--z_rc2stp1
 	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0)"+
-	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total,a.size,a.memo"+
+	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,case when len(isnull(a.size,''))=0 then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
 	" from view_rc2s"+@t_accy+" a"+
 	" left join view_rc2"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+

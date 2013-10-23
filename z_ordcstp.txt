@@ -72,7 +72,8 @@
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.fax,b.addr,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
-	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total,a.size,a.memo"+
+	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,case when len(isnull(a.size,''))=0 then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
 	" from view_ordcs"+@t_accy+" a"+
 	" left join view_ordc"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
