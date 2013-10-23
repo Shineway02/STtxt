@@ -137,10 +137,10 @@ z_rc2stp1:--z_rc2stp1
 
 	update @tmp set tggno=b.tggno,tgg=b.tgg,tel=b.tel,addr=b.addr
 		,datea=b.datea,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
-		,[weight]=c.[weight],[mount]=b.[mount],[money]=b.[money],[tax]=b.[tax],[total]=b.[total]
+		,[weight]=c.[weight],[mount]=c.[mount],[money]=b.[money],[tax]=b.[tax],[total]=b.[total]
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
-	left join (select noa,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
+	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
 	
 	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 	from(
