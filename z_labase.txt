@@ -461,26 +461,25 @@ declare @tmpa table(
 	plus2  float
 )
 insert into @tmp
-select '0' gno, noa,namea,
-(case isforeign when '1' then '外勞' else ''end)
-+(case issssp when '1' then '寄保' else '' end)
-+(case when isforeign='0' and issssp='0' then '員工' end),
-insur_fund,insur_disaster,bdate,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,salary),1)),4,12)) salary,custno,comp,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_retire),1)),4,12)) sa_retire,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_comp),1)),4,12)) re_comp,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,re_person),1)),4,12)) re_person,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_labor),1)),4,12)) sa_labor,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,as_labor),1)),4,12)) as_labor,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_person),1)),4,12)) la_person,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,la_comp),1)),4,12)) la_comp,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_health),1)),4,12)) sa_health,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,as_health),1)),4,12)) as_health,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_person),1)),4,12)) he_person,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,he_comp),1)),4,12)) he_comp,
-tax,mount,disaster,worker,memo,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus2),1)),4,12)) plus2
-from labase where (noa between @t_bxsssno and @t_exsssno)  
+select '0' gno, a.noa,a.namea,
+(case a.issssp when '1' then '寄保' else '' end)
++b.typea,
+a.insur_fund,a.insur_disaster,a.bdate,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.salary),1)),4,12)) salary,a.custno,a.comp,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.sa_retire),1)),4,12)) sa_retire,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.re_comp),1)),4,12)) re_comp,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.re_person),1)),4,12)) re_person,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.sa_labor),1)),4,12)) sa_labor,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.as_labor),1)),4,12)) as_labor,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.la_person),1)),4,12)) la_person,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.la_comp),1)),4,12)) la_comp,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.sa_health),1)),4,12)) sa_health,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.as_health),1)),4,12)) as_health,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.he_person),1)),4,12)) he_person,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.he_comp),1)),4,12)) he_comp,
+a.tax,a.mount,a.disaster,a.worker,a.memo,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.plus2),1)),4,12)) plus2
+from labase a left join sss b on a.noa=b.noa where (a.noa between @t_bxsssno and @t_exsssno)  
 
 insert into @tmpa
 select a.gno,a.noa,a.namea,a.typea,a.insur_fund,a.insur_disaster,a.bdate,a.salary,
