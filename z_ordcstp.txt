@@ -62,8 +62,9 @@
 		unit nvarchar(20),
 		mounts float,
 		weights float,
-		price float,
+		price decimal(10,3),
 		totals float,
+		size nvarchar(max),
 		memos nvarchar(max) 
 	)
 	
@@ -71,7 +72,7 @@
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.fax,b.addr,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
-	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total,a.memo"+
+	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total,a.size,a.memo"+
 	" from view_ordcs"+@t_accy+" a"+
 	" left join view_ordc"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
@@ -81,7 +82,7 @@
 	" order by a.noa,a.no2 "
 	
 	insert into @tmp(gno,noa,tggno,tgg,tel,fax,addr,odate,kind,paytype,trantype,memo
-		,no2,productno,product,unit,mounts,weights,price,totals,memos)
+		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_noa nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_noa=@t_noa
 	
@@ -152,12 +153,13 @@
 		
 		,productno b01
 		,product b02
-		,unit b03
-		,mounts b04
-		,weights b05
-		,price b06
-		,totals b07
-		,memos b08
+		,size b03
+		,unit b04
+		,mounts b05
+		,weights b06
+		,price b07
+		,totals b08
+		,memos b09
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
