@@ -81,7 +81,7 @@ z_rc2stp1:--z_rc2stp1
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0)"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
-	" ,case when len(isnull(a.size,''))=0 then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
+	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
 	" from view_rc2s"+@t_accy+" a"+
 	" left join view_rc2"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
@@ -137,7 +137,7 @@ z_rc2stp1:--z_rc2stp1
 
 	update @tmp set tggno=b.tggno,tgg=b.tgg,tel=b.tel,addr=b.addr
 		,datea=b.datea,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
-		,[weight]=c.[weight],[mount]=b.[mount],[money]=b.[money],[total]=b.[total]
+		,[weight]=c.[weight],[mount]=b.[mount],[money]=b.[money],[tax]=b.[tax],[total]=b.[total]
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	left join (select noa,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
