@@ -1,148 +1,222 @@
 z_vccstp1:--z_vccsp1
-declare @t_bxnoa nvarchar(20)
-declare @t_exnoa nvarchar(20)
-declare @t_pageline int = 8   --------一頁幾行
-declare @t_showprice nvarchar(10)
-declare @t_stype nvarchar(30)
-set @t_bxnoa = case when '#non' = [2] then '' else [2] end
-set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
-set @t_showprice = case when '#non' = [10] then 0 else [10] end
-set @t_stype = case when '#non'=[14] then '' else [14] end
-declare @tmp table(
-	gno nvarchar(1),
-	idno int identity(0,1),
-	orderno int,
-	pageno int,
-	a_noa nvarchar(30),
-	a_typea nvarchar(15),
-	a_custno nvarchar(30),
-	a_custs nvarchar(90),
-	a_tel nvarchar(90),
-	a_sales nvarchar(50),
-	a_trantype nvarchar(50),
-	a_addr nvarchar(max),
-	a_datea nvarchar(10),
-	a_memo nvarchar(max),
-	a_taxtype nvarchar(90),
-	a_tax float,
-	a_money float,
-	a_total float,
-	b_uno nvarchar(50),
-	b_productno nvarchar(30),
-	b_products nvarchar(30),
-	b_size nvarchar(max),
-	b_unit nvarchar(15),
-	b_mount float,
-	b_weight float,
-	b_price float,
-	b_total float,
-	b_theory float,
-	b_memo nvarchar(max)
-)
-insert into @tmp
-select
-	'0',
-	ROW_NUMBER()over(partition by a.noa order by a.noa),1
-	,a.noa,a.typea,a.custno,c.comp,a.tel,a.sales,a.trantype,a.addr,a.datea,a.memo,a.taxtype,a.tax,a.money,a.total,
-	b.uno,b.productno,b.product,
-	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-	b.unit,
-	b.mount,b.weight,b.price,b.total,b.theory,b.memo
-from view_vcc[1] a
-left join view_vccs[1] b on a.noa = b.noa
-left join cust c on a.custno = c.noa
-where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
-declare @a_noa nvarchar(30)
-declare @a_count int
-declare @idno int
-declare @k int = 0 ----差幾頁
-declare @pageCount int
-declare @orderno int
-declare @pageno int
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_accy nvarchar(max)
+	declare @t_kind nvarchar(max)
+	declare @t_taxtype nvarchar(max)
+	declare @t_bno nvarchar(20)
+	declare @t_eno nvarchar(20)
+	declare @t_showprice nvarchar(10)
+	declare @t_stype nvarchar(30)
+	
+	set @t_accy = '[1]'
+	set @t_kind = '[2]'
+	set @t_taxtype = '[3]'
+	set @t_bno = case when '#non' = [4] then '' else [4] end
+	set @t_eno = case when '#non' = [5] then CHAR(255) else [5] end
+	set @t_showprice = case when '#non' = [6] then 0 else [6] end
+	set @t_stype = case when '#non'=[7] then '' else [7] end
+	----------------------------------------------------------------------------------------------
+	declare @t_pageline int = 6   --------一頁幾行
+	----------------------------------------------------------------------------------------------
+	declare @string nvarchar(max)
+	declare @n int
+	--解析要計算的種類
+	declare @listKind table(
+		noa nvarchar(20),
+		namea nvarchar(max)
+	)
+	set @string = @t_kind
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @listKind select LEFT(@string,CHARINDEX('@',@string)-1),RIGHT(@string,len(@string)-CHARINDEX('@',@string))
+			end
+			break
+		end
+		insert into @listKind select LEFT(@string,CHARINDEX('@',@string)-1), SUBSTRING(LEFT(@string,@n-1),CHARINDEX('@',LEFT(@string,@n-1))+1,@n)
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	
+	declare @listTaxtype table(
+		noa nvarchar(20),
+		namea nvarchar(max)
+	)
+	set @string = @t_taxtype
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @listTaxtype select LEFT(@string,CHARINDEX('@',@string)-1),RIGHT(@string,len(@string)-CHARINDEX('@',@string))
+			end
+			break
+		end
+		insert into @listTaxtype select LEFT(@string,CHARINDEX('@',@string)-1), SUBSTRING(LEFT(@string,@n-1),CHARINDEX('@',LEFT(@string,@n-1))+1,@n)
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	----------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		noa nvarchar(20),
+		custno nvarchar(20),
+		cust nvarchar(max),
+		tel nvarchar(max),
+		addr nvarchar(max),
+		datea nvarchar(20),
+		kind nvarchar(20),
+		ckind nvarchar(max),
+		paytype nvarchar(20),
+		trantype nvarchar(20),
+		memo nvarchar(max),
+		mount float,
+		[weight] float,
+		[money] float,
+		taxtype nvarchar(20),
+		ctaxtype nvarchar(20),
+		tax float,
+		total float,
+		
+		no2 nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(max),
+		unit nvarchar(20),
+		mounts float,
+		weights float,
+		price decimal(10,3),
+		totals float,
+		size nvarchar(max),
+		memos nvarchar(max) 
+	)
+	
+	set @cmd =
+	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
+	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
+	" ,b.tel,b.addr"+
+	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
+	" ,b.taxtype,b.tax,b.money,b.total"+
+	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
+	" from view_vccs"+@t_accy+" a"+
+	" left join view_vcc"+@t_accy+" b on a.noa = b.noa"+
+	" left join cust c on b.custno = c.noa"+
+	" where b.noa is not null "+
+	" and a.noa between @t_bno and @t_eno"+
+	" and (len(@t_stype)=0 or b.stype=@t_stype)"+
+	" order by a.noa,a.no2 "
+	
+	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total
+		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
+	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_stype nvarchar(max)'
+	,@t_bno=@t_bno,@t_eno=@t_eno,@t_stype=@t_stype
+	
+	update @tmp set ckind=b.namea,ctaxtype=c.namea
+	from @tmp a 
+	left join @listKind b on a.kind= b.noa
+	left join @listTaxtype c on a.taxtype=c.noa
+	----------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		insert into @tmp(noa,no2,gno,memos)
+		values(@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
+	
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while(@n%@t_pageline!=0)
+		begin
+			insert into @tmp(noa,no2,gno)values(@noa,'zzz','4')
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
 
-declare cursor_table cursor for
-	select a_noa,count(*),max(orderno) from @tmp group by a_noa
-open cursor_table
-fetch next from cursor_table
-into @a_noa,@a_count,@orderno
-while(@@FETCH_STATUS <> -1)
-begin		
-	if(@a_count > @t_pageline)
-	begin
-		set @k = CEILING((cast(@a_count as float)/@t_pageline))
-		while(@k > 0)
-		begin
-			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
-			set @k -=1
-		end
-	end
-	fetch next from cursor_table
-	into @a_noa,@a_count,@orderno
-end
-close cursor_table
-deallocate cursor_table
-update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
-declare cursor_table cursor for
-	select distinct a_noa,max(orderno),pageno,min(idno),count(*) from @tmp group by a_noa,pageno
-open cursor_table
-fetch next from cursor_table
-into @a_noa,@orderno,@pageno,@idno,@a_count
-while(@@FETCH_STATUS <> -1)
-begin		
-	set @k = @t_pageline -(@a_count%@t_pageline)
-	set @pageCount = @a_count/@t_pageline
-	if(@k < @t_pageline and (@pageCount =0))
-	begin
-		while(@k > 0)
-		begin
-			insert into @tmp(gno,orderno,pageno,a_noa,a_memo,a_typea,a_custno,a_custs,a_tax,a_money,a_total)
-				select '0',(@orderno+1),@pageno,@a_noa,a_memo,a_typea,a_custno,a_custs,a_tax,a_money,a_total from @tmp where idno = @idno
-			set @k = @k-1
-			set @orderno = @orderno +1
-		end
-	end
-	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_custno,a_custs,a_tax,a_taxtype,a_money,a_total,a_memo)
-		select '1',(@t_pageline+1),pageno,a_noa,a_typea,a_custno,a_custs,max(a_tax),max(a_taxtype),max(a_money),max(a_total),a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_custno,a_custs,a_memo
-	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_memo) 
-		select '2',(@t_pageline+2),pageno,a_noa,a_typea,a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_memo
-	fetch next from cursor_table
-	into @a_noa,@orderno,@pageno,@idno,@a_count
-end
-close cursor_table
-deallocate cursor_table
-update @tmp set a_total = a_tax + a_money where gno = '1'
-update @tmp set a_typea = case a_typea when '1' then '出' when '2' then '退' end
-if(@t_showprice = '0')
-begin
-	update @tmp set a_tax = null,a_money = null,a_total = null,b_price = null,b_total = null
-end
-update @tmp set a_taxtype = (case when a_taxtype = '1' then '應稅' when a_taxtype = '2' then '零稅率' when a_taxtype = '3' then '內含'
-												  when a_taxtype = '4' then '免稅' when a_taxtype = '5' then '自訂' when a_taxtype = '6' then '作廢' end)
-update @tmp set b_size = replace(b_size,'~#$','''')
-select
-	gno,a_noa,a_typea,a_custno,a_custs,a_tel,a_sales,a_addr,a_datea,a_trantype
-	,Replace(a_memo,'chr(10)','</BR>&nbsp') a_memo,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_tax),1)),4,12)) a_tax,a_taxtype,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_total),1)),4,12)) a_total,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_weight),1)),4,12)) b_weight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_theory),1)),4,12)) b_theory,
-	b_productno,b_products,b_unit,b_uno,b_size,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) b_mount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,b_memo
-from @tmp order by a_noa desc,pageno,gno,orderno;
-------------************************************************************-------------
+	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,addr=b.addr
+		,datea=b.datea,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
+		,taxtype=b.taxtype,ctaxtype=b.ctaxtype,tax=b.tax,[money]=b.[money],total=b.total
+	from @tmp a
+	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
+	
+	
+	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	from(
+		select gno,noa,no2
+		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+		,b.rrno ttno
+		,datea a01
+		,noa a02
+		,custno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+cust a03
+		,tel a04
+		,addr a05
+		,ckind a06
+		,trantype a07
+		,ctaxtype a08
+		,case when @t_showprice='0' then null else tax end a09
+		,case when @t_showprice='0' then null else [money] end  a10
+		,case when @t_showprice='0' then null else [total] end  a11
+		,memo a12
+		
+		,productno b01
+		,product b02
+		,replace(size,'~#$',"'") b03
+		,unit b04
+		,mounts b05
+		,weights b06
+		,case when @t_showprice='0' then null else price end  b07
+		,case when @t_showprice='0' then null else totals end  b08
+		,memos b09
+		from @tmp a
+		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
+	)a
+	order by a.noa,a.no2;
+	
+	
 z_vccstp2:--z_vccstp2
-declare @t_bxnoa nvarchar(20)
-declare @t_exnoa nvarchar(20)
-declare @t_pageline int = 6   --------一頁幾行
-declare @t_showprice nvarchar(10)
-declare @t_stype nvarchar(30)
-set @t_bxnoa = case when '#non' = [2] then '' else [2] end
-set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
-set @t_showprice = case when '#non' = [10] then 0 else [10] end
-set @t_stype = case when '#non'=[14] then '' else [14] end
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_accy nvarchar(max)
+	declare @t_kind nvarchar(max)
+	declare @t_taxtype nvarchar(max)
+	declare @t_bxnoa nvarchar(20)
+	declare @t_exnoa nvarchar(20)
+	declare @t_pageline int = 8   --------一頁幾行
+	declare @t_showprice nvarchar(10)
+	declare @t_stype nvarchar(30)
+	
+	set @t_accy = '[1]'
+	set @t_kind = '[2]'
+	set @t_taxtype = '[3]'
+	set @t_bxnoa = case when '#non' = [4] then '' else [4] end
+	set @t_exnoa = case when '#non' = [5] then CHAR(255) else [5] end
+	set @t_showprice = case when '#non' = [6] then 0 else [6] end
+	set @t_stype = case when '#non'=[7] then '' else [7] end
 declare @tmp table(
 	gno nvarchar(1),
 	idno int identity(0,1),
