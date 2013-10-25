@@ -141,9 +141,10 @@ insert into @tmp
 			 (a.storeno between @t_bstoreno and @t_estoreno)
 			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
 	order by a.datea desc
-	
+insert into @tmp(gno,mount,weight)
+	select '1',sum(mount),sum(weight) from @tmp
 update @tmp set csize = replace(csize,'~#$','''')
-select * from @tmp order by datea desc;
+select ROW_NUMBER()over(order by gno,datea desc) idno,* from @tmp order by gno,datea desc;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
 declare @t_bdate nvarchar(10)
