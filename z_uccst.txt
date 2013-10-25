@@ -139,7 +139,7 @@ insert into @tmp
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
 			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.emount > 0 and a.eweight > 0) and
 			 (a.storeno between @t_bstoreno and @t_estoreno)
-			 and a.itype=@t_itype and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
+			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
 	order by a.datea desc
 	
 update @tmp set csize = replace(csize,'~#$','''')
@@ -218,7 +218,7 @@ insert into @tmp
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
 			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.emount > 0 and a.eweight > 0) and
 			 (a.storeno between @t_bstoreno and @t_estoreno)
-			 and a.itype=@t_itype and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
+			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
 	order by a.datea desc
 insert into @tmp(gno,storeno)
 	select '1',storeno from @tmp group by storeno
