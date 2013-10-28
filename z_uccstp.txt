@@ -3,6 +3,7 @@ z_uccstp01:--z_uccstp01
 	set @t_count = 43
 
 	declare @tmp table(
+		gno nvarchar(10),
 		rr1 int,
 		noa1 nvarchar(20),
 		product1 nvarchar(max),
@@ -11,8 +12,8 @@ z_uccstp01:--z_uccstp01
 		product2 nvarchar(max)
 	)
 	
-	insert into @tmp(rr1,noa1,product1)
-	select * 
+	insert into @tmp(gno,rr1,noa1,product1)
+	select '0',* 
 	from (select ROW_NUMBER()over(order by noa) rr,noa,product from ucc) a
 	where floor(rr/@t_count)%2 = 0
 	order by rr
