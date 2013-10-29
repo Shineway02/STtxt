@@ -4,12 +4,14 @@
 	declare @t_accy nvarchar(max) 
 	declare @t_kind nvarchar(max) 
 	declare @t_bno nvarchar(20) 
-	declare @t_eno nvarchar(20)  
+	declare @t_eno nvarchar(20) 
+	declare @t_showtype nvarchar(max)   
 	
 	set @t_accy = '[1]' 
 	set @t_kind = '[2]' 
 	set @t_bno = case when '#non' = [3] then '' else [3] end
 	set @t_eno = case when '#non' = [4] then CHAR(255) else [4] end
+	set @t_showtype = '[5]' 
 	----------------------------------------------------------------------------------------------
 	declare @t_pageline int = 6   --------一頁幾行
 	----------------------------------------------------------------------------------------------
@@ -72,7 +74,10 @@
 	" ,b.tel,b.fax,case when len(isnull(b.addr2,''))>0 then b.addr2 else b.addr end"+
 	" ,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
-	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
+	" ,case when @t_showtype='1' then a.size "+
+	"		when @t_showtype='2' dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)"+
+	"		else (case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) end"+
+	" ,a.memo"+
 	" from view_ordes"+@t_accy+" a"+
 	" left join view_orde"+@t_accy+" b on a.noa = b.noa"+
 	" left join cust c on b.custno = c.noa"+
