@@ -221,7 +221,7 @@ insert into @tmp
 			 (a.storeno between @t_bstoreno and @t_estoreno)
 			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
 	order by a.datea desc
-insert into @tmp(gno,storeno)
-	select '1',storeno from @tmp group by storeno
+insert into @tmp(gno,storeno,mount,weight)
+	select '1',storeno,sum(mount),sum(weight) from @tmp group by storeno
 update @tmp set csize = replace(csize,'~#$','''') 
 select * from @tmp order by storeno,gno;
