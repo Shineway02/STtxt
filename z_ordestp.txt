@@ -75,7 +75,7 @@
 	" ,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when @t_showtype='1' then a.size "+
-	"		when @t_showtype='2' dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)"+
+	"		when @t_showtype='2' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)"+
 	"		else (case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) end"+
 	" ,a.memo"+
 	" from view_ordes"+@t_accy+" a"+
@@ -87,8 +87,8 @@
 	
 	insert into @tmp(gno,noa,custno,cust,tel,fax,addr,odate,kind,paytype,trantype,memo
 		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
-	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20)'
-	,@t_bno=@t_bno,@t_eno=@t_eno
+	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_showtype nvarchar(max)'
+	,@t_bno=@t_bno,@t_eno=@t_eno,@t_showtype=@t_showtype
 	
 	update @tmp set ckind=b.namea
 	from @tmp a left join @listKind b on a.kind= b.noa
