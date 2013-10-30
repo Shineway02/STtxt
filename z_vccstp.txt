@@ -243,7 +243,9 @@ declare @tmp table(
 	csize nvarchar(max),
 	mount float,
 	weight float, 
-	price float
+	price float,
+	trantype nvarchar(30)
+	
 )
 insert into @tmp
 select
@@ -252,7 +254,7 @@ select
 	a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post+a.addr,a.cardeal,a.carno,a.memo,
 	a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
 	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-	b.mount,b.weight,b.price
+	b.mount,b.weight,b.price,a.trantype
 from view_vcc[1] a
 left join view_vccs[1] b on a.noa = b.noa
 where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
@@ -299,16 +301,16 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,noa,memo,kind,stype,custno,custs,tax,money,total)
-				select '0',(@orderno+1),@pageno,@noa,memo,kind,stype,custno,custs,tax,money,total from @tmp where idno = @idno
+			insert into @tmp(gno,orderno,pageno,noa,trantype,memo,kind,stype,custno,custs,tax,money,total)
+				select '0',(@orderno+1),@pageno,@noa,trantype,memo,kind,stype,custno,custs,tax,money,total from @tmp where idno = @idno
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,noa,kind,stype,custno,custs,tax,money,total,memo,mount,weight) 
-		select '1',(@t_pageline+1),pageno,noa,kind,stype,custno,custs,max(tax),max(money),max(total),memo,sum(mount),sum(weight) from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno,kind,stype,custno,custs,tax,money,total,memo 
-	insert into @tmp(gno,orderno,pageno,noa,kind,stype,memo) 
-		select '2',(@t_pageline+2),pageno,noa,kind,stype,memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno,kind,stype,memo
+	insert into @tmp(gno,orderno,pageno,noa,trantype,kind,stype,custno,custs,tax,money,total,memo,mount,weight) 
+		select '1',(@t_pageline+1),pageno,noa,trantype,kind,stype,custno,custs,max(tax),max(money),max(total),memo,sum(mount),sum(weight) from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,trantype,pageno,kind,stype,custno,custs,tax,money,total,memo 
+	insert into @tmp(gno,orderno,pageno,noa,trantype,kind,stype,memo) 
+		select '2',(@t_pageline+2),pageno,noa,trantype,kind,stype,memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,trantype,pageno,kind,stype,memo
 	fetch next from cursor_table
 	into @noa,@orderno,@pageno,@idno,@count
 end
@@ -328,5 +330,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,ordeno,uno,spec,products,csize,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((price*1000)-(floor(price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) price
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((price*1000)-(floor(price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) price,
+	case when trantype='自取' then '' else 'v' end aa,
+	case when trantype='自取' then 'v' else '' end bb
 from @tmp  order by noa desc,pageno,gno,orderno;
