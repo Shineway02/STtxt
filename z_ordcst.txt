@@ -11,7 +11,7 @@ declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
 declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
-declare @t_aeno nvarchar(2)
+declare @t_isproj nvarchar(2)
 declare @t_enda nvarchar(2)
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
@@ -25,7 +25,7 @@ set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
 set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
-set @t_aeno = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
 set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
 declare @tmp table(
 	gno nvarchar(1),
@@ -50,14 +50,14 @@ insert into @tmp
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg,
 		   b.productno pno,b.product pname,b.spec,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
-		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.aeno='1' then 'Y' else 'N' end) a
+		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where 
 	      (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_aeno)=0 or @t_aeno=a.aeno) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
 	      (len(@t_enda)=0 or @t_enda=a.enda)
 	order by a.odate,gno,a.noa,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
@@ -85,7 +85,7 @@ declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
 declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
-declare @t_aeno nvarchar(1)
+declare @t_isproj nvarchar(1)
 declare @t_enda nvarchar(1)
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
@@ -99,7 +99,7 @@ set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
 set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
-set @t_aeno = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
 set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
 declare @tmp table(
 	gno nvarchar(1),
@@ -126,13 +126,13 @@ insert into @tmp
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
 		   b.spec,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
-		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.aeno='1' then 'Y' else 'N' end) a, b.notv, b.notv*b.price noptotal
+		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv, b.notv*b.price noptotal
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_aeno)=0 or @t_aeno=a.aeno) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
 	      (len(@t_enda)=0 or @t_enda=a.enda)
 	order by a.tggno,gno,a.noa,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
@@ -164,7 +164,7 @@ declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
 declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
-declare @t_aeno nvarchar(1)
+declare @t_isproj nvarchar(1)
 declare @t_enda nvarchar(1)
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
@@ -178,7 +178,7 @@ set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
 set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
-set @t_aeno = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
 set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
 declare @tmp table(
 	gno nvarchar(1),
@@ -206,13 +206,13 @@ insert into @tmp
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 			b.mount pmount, b.weight pweight,
-			b.price, b.total ptotal, a.enda e, (case when a.aeno='1' then 'Y' else 'N' end) a, b.notv,b.notv*b.price noptotal
+			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv,b.notv*b.price noptotal
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_aeno)=0 or @t_aeno=a.aeno) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
 	      (len(@t_enda)=0 or @t_enda=a.enda)
 	order by pno,gno,a.tggno,a.noa,b.no2
 update @tmp set csize = replace(csize,'~#$','''')
@@ -244,7 +244,7 @@ declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
 declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
-declare @t_aeno nvarchar(1)
+declare @t_isproj nvarchar(1)
 declare @t_enda nvarchar(1)
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
@@ -258,7 +258,7 @@ set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
 set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
-set @t_aeno = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
 set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
 declare @tmp table(
 	gno nvarchar(1),
@@ -286,13 +286,13 @@ insert into @tmp
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 			b.mount, b.weight,b.price,
-			b.total, a.enda, (case when a.aeno='1' then 'Y' else 'N' end), b.notv, b.notv*b.price noptotal
+			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), b.notv, b.notv*b.price noptotal
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_aeno)=0 or @t_aeno=a.aeno) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
 	      (len(@t_enda)=0 or @t_enda=a.enda)
 	order by a.noa,gno,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)

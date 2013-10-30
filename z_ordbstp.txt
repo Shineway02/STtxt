@@ -124,7 +124,7 @@ declare @t_ecno nvarchar(20)
 declare @t_btggno nvarchar(20)
 declare @t_etggno nvarchar(20)
 declare @t_trantype nvarchar(20)
-declare @t_aeno nvarchar(1)
+declare @t_isproj nvarchar(1)
 declare @t_enda nvarchar(1)
 set @t_kind = case when '#non'= [4] then ''when '全部'=[3] then '' else [4] end
 set @t_bdate = case when '#non' = [5] then '' else [5] end
@@ -134,7 +134,7 @@ set @t_ecno = case when '#non' = [8] then CHAR(255) else [8] end
 set @t_btggno = case when '#non' = [9] then '' else [9] end
 set @t_etggno = case when '#non' = [10] then CHAR(255) else [10] end
 set @t_trantype = case when '#non'= [11] then '' when '全部'=[11] then '' else [11] end
-set @t_aeno = case when '#non'=[12] then '' when 'Y'=[12] then '1' when 'N'=[12] then '0' end
+set @t_isproj = case when '#non'=[12] then '' when 'Y'=[12] then '1' when 'N'=[12] then '0' end
 set @t_enda = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
 declare @tmp table(
 		gno nvarchar(1),
@@ -169,7 +169,7 @@ where (LEN(@t_kind) = 0 or @t_kind = a.kind) and
 (a.datea between @t_bdate and @t_edate) and
 (a.cno between @t_bcno and @t_ecno) and
 (a.tggno between @t_btggno and @t_etggno) and
-(len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_aeno)=0 or @t_aeno=a.aeno) and
+(len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
 (len(@t_enda)=0 or @t_enda=a.enda)
 
 insert into @tmp
