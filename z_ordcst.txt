@@ -1,0 +1,314 @@
+﻿z_ordcst1:--z_ordcst1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(2)
+declare @t_enda nvarchar(2)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	no2 nvarchar(15),
+	datea nvarchar(10),
+	odate nvarchar(10),
+	tggno nvarchar(30),
+	comp nvarchar(90),
+	pno nvarchar(30),
+	pname nvarchar(90),
+	spec nvarchar(40),
+	csize nvarchar(max),
+	pmount float,
+	pweight float,
+	price float,
+	ptotal float,
+	e nvarchar(10),
+	a nvarchar(10)
+)
+insert into @tmp
+	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg,
+		   b.productno pno,b.product pname,b.spec,
+		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a
+	from view_ordcs[1] b
+	left join view_ordc[1] a on a.noa=b.noa
+	where 
+	      (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	      (len(@t_enda)=0 or @t_enda=a.enda)
+	order by a.odate,gno,a.noa,b.no2
+update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+update @tmp set csize = replace(csize,'~#$','''')
+insert into @tmp(gno,odate,pmount,pweight,ptotal)
+	select '1',left(odate,6),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0' group by left(odate,6)
+insert into @tmp(gno,odate,pmount,pweight,ptotal)
+	select '2',char(255),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0'
+select
+	gno,noa,no2,datea,odate,tggno,left(comp,4) comp,pno,pname,spec,csize,pmount,pweight,price,ptotal,e,a,
+	row_number()over(partition by left(odate,6) order by left(odate,6),gno,noa,no2) idno,
+	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+from @tmp order by left(odate,6),gno,noa,no2;
+--****************************************************************************************************
+z_ordcst2a:--z_ordcst2a
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	odate nvarchar(10),
+	tggno nvarchar(30),
+	comp nvarchar(90),
+	pno nvarchar(30),
+	pname nvarchar(90),
+	spec nvarchar(40),
+	size nvarchar(max),
+	pmount float,
+	pweight float,
+	price float,
+	ptotal float,
+	e nvarchar(10),
+	a nvarchar(10),
+	notv float,
+	noptotal float
+)	
+insert into @tmp
+	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
+		   b.spec,
+		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv, b.notv*b.price noptotal
+	from view_ordcs[1] b
+	left join view_ordc[1] a on a.noa=b.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	      (len(@t_enda)=0 or @t_enda=a.enda)
+	order by a.tggno,gno,a.noa,b.no2
+update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+update @tmp set size = replace(size,'~#$','''')
+insert into @tmp(gno,tggno,comp,pmount,pweight,ptotal,noptotal)
+	select '1',tggno,comp,sum(pmount),sum(pweight),sum(ptotal),sum(noptotal) from @tmp group by tggno,comp
+select
+	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pweight),1)),4,12)) pweight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
+	row_number()over(partition by tggno,comp order by tggno,comp,gno,odate,noa,no2) idno,
+	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+from @tmp order by tggno,comp,gno,odate,noa,no2;
+--****************************************************************************************************
+z_ordcst2b:--z_ordcst2b
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(30)
+declare @t_etggno nvarchar(30)
+declare @t_bsalesno nvarchar(30)
+declare @t_esalesno nvarchar(30)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	odate nvarchar(10),
+	tggno nvarchar(30),
+	comp nvarchar(90),
+	pno nvarchar(30),
+	pname nvarchar(40),
+	spec nvarchar(40),
+	csize nvarchar(max),
+	pmount float,
+	pweight float,
+	price float,
+	ptotal float,
+	e nvarchar(10),
+	a nvarchar(10),
+	notv float,
+	noptotal float
+)	
+insert into @tmp
+	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, left(a.tgg,4), b.productno pno,b.product pname,
+			b.spec,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+			b.mount pmount, b.weight pweight,
+			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv,b.notv*b.price noptotal
+	from view_ordcs[1] b
+	left join view_ordc[1] a on a.noa=b.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	      (len(@t_enda)=0 or @t_enda=a.enda)
+	order by pno,gno,a.tggno,a.noa,b.no2
+update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+insert into @tmp(gno,pno,pname,pmount,pweight,ptotal,notv,noptotal)
+	select '1',pno,pname,sum(pmount),sum(pweight),sum(ptotal),sum(notv),sum(noptotal) from @tmp group by pno,pname
+select
+	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pweight),1)),4,12)) pweight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
+	row_number()over(partition by pno,pname order by pno,pname,gno,odate,noa,no2) idno,
+	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+from @tmp order by pno,pname,gno,odate,noa,no2;
+--****************************************************************************************************
+z_ordcst2c:--z_ordcst2c
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(30)
+declare @t_etggno nvarchar(30)
+declare @t_bsalesno nvarchar(30)
+declare @t_esalesno nvarchar(30)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(15),
+	no2 nvarchar(3),
+	datea nvarchar(10),
+	odate nvarchar(10),
+	tggno nvarchar(30),
+	comp nvarchar(90),
+	pno nvarchar(30),
+	pname nvarchar(90),
+	spec nvarchar(40),
+	csize nvarchar(max),
+	pmount float,
+	pweight float,
+	price float,
+	ptotal float,
+	e nvarchar(10),
+	a nvarchar(10),
+	notv float,
+	noptotal float
+)	
+insert into @tmp
+	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname,
+			b.spec,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+			b.mount, b.weight,b.price,
+			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), b.notv, b.notv*b.price noptotal
+	from view_ordcs[1] b
+	left join view_ordc[1] a on a.noa=b.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	      (len(@t_enda)=0 or @t_enda=a.enda)
+	order by a.noa,gno,b.no2
+update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+update @tmp set csize = replace(csize,'~#$','''')
+insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
+	select '1',noa,sum(pmount),sum(pweight),sum(notv),sum(noptotal) from @tmp where gno='0' group by noa
+insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
+	select '2',null,sum(pmount),sum(pweight),sum(notv),sum(noptotal) from @tmp where gno='0'
+select
+	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pweight),1)),4,12)) pweight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
+	row_number()over(partition by noa order by noa desc,gno,no2,datea) idno,
+	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+from @tmp order by noa desc,gno,no2,datea;

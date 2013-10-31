@@ -1,0 +1,99 @@
+quatst2contst:--quatst2contst	
+SET QUOTED_IDENTIFIER OFF
+declare @cmd nvarchar(max)
+declare @t_accy nvarchar(10) = [1]
+declare @t_quatstnoa nvarchar(30) = [2]
+declare @t_datea nvarchar(10) = [3]
+declare @t_contno nvarchar(30) = [4]
+declare @t_contPreFix nvarchar(30) = [5]
+declare @t_worker nvarchar(30) = [6]
+declare @newNoa nvarchar(30) = ''
+declare @newNoaAuto nvarchar(3) = ''
+declare @deleteNoa nvarchar(30) = ''
+declare @bbm_tmp table(
+	noa nvarchar(30),
+	datea nvarchar(10),
+	tggno nvarchar(30),
+	comp nvarchar(90),
+	nick nvarchar(50),
+	kind nvarchar(15),
+	contract nvarchar(30),
+	cno nvarchar(30),
+	acomp nvarchar(90),
+	acompnick nvarchar(50),
+	salesno nvarchar(30),
+	sales nvarchar(50),
+	memo nvarchar(max),
+	gweight float,
+	eweight float,
+	ordgweight float,
+	ordeweight float,
+	enda bit,
+	worker nvarchar(30)
+)
+declare @bbs_tmp table(
+	noa nvarchar(30),
+	noq nvarchar(10),
+	idno int identity(1,1),
+	no3 nvarchar(10),
+	productno nvarchar(30),
+	product nvarchar(90),
+	dime float,
+	width float,
+	lengthb float,
+	radius float,
+	spec nvarchar(40),
+	unit nvarchar(12),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	theory float,
+	class nvarchar(30),
+	memo nvarchar(max),
+	gweight float,
+	eweight float,
+	enda bit
+)
+set @cmd = "select '',@t_datea,a.custno,b.comp,b.nick,a.kind,@t_contno,a.cno,c.acomp,c.nick, " + 
+				 "a.salesno,a.sales,a.memo,0,0,a.ordgweight,a.ordeweight,a.enda,@t_worker " + 
+				 "from quat"+@t_accy+" a left join cust b on a.custno = b.noa 	left join acomp c on a.cno = c.noa " + 
+				 "where a.noa = @t_quatstnoa "
+insert into @bbm_tmp
+	execute sp_executesql @cmd,N'@t_datea nvarchar(10),@t_contno nvarchar(30),@t_worker nvarchar(30),
+											   @t_quatstnoa nvarchar(30)',
+	@t_datea=@t_datea,@t_contno=@t_contno,@t_worker=@t_worker,@t_quatstnoa=@t_quatstnoa
+
+set @cmd = "select '','',a.no3,a.productno,a.product,a.dime,a.width,a.lengthb,a.radius,a.spec, " + 
+				 "a.unit,a.mount,a.weight,a.price,a.total,a.theory,a.class,a.memo,a.gweight,a.eweight,a.enda " + 
+				 "from quats"+@t_accy+" a where a.noa = @t_quatstnoa "
+insert into @bbs_tmp
+	execute sp_executesql @cmd,N'@t_quatstnoa nvarchar(30)',@t_quatstnoa=@t_quatstnoa
+
+update @bbm_tmp set gweight = (select sum(gweight) from @bbs_tmp)
+update @bbm_tmp set eweight = (select sum(eweight) from @bbs_tmp)
+update @bbs_tmp set noq = RIGHT(REPLICATE('0', 3) + CAST(idno as NVARCHAR), 3)
+------------執行前刪除已存在的單據------------
+select @deleteNoa = isnull(max(noa),'') from cont where contract = @t_contno and isnull(bcontract,'') = ''
+if(len(@deleteNoa) > 0)
+begin
+	delete conts where noa = @deleteNoa
+	delete cont where noa = @deleteNoa
+end
+------------執行前刪除已存在的單據------------
+set @newNoa = @t_contPreFix + replace(@t_datea,'/','')
+select @newNoaAuto =  (cast(max(right(noa,3)) as int)+1) from cont where  left(noa,len(@t_contPreFix)+7) = left(@newNoa,len(@t_contPreFix)+7)
+set @newNoa += RIGHT(REPLICATE('0', 3) + CAST(isnull(@newNoaAuto,1) as NVARCHAR), 3)
+update @bbm_tmp set noa = @newNoa
+update @bbs_tmp set noa = @newNoa
+insert into cont(noa,datea,tggno,comp,nick,kind,contract,cno,acomp,acompnick,
+			salesno,sales,memo,gweight,eweight,ordgweight,ordeweight,enda,worker)
+	select noa,datea,tggno,comp,nick,kind,contract,cno,acomp,acompnick,
+			salesno,sales,memo,gweight,eweight,ordgweight,ordeweight,enda,worker
+	from @bbm_tmp
+insert into conts(noa,noq,no3,productno,product,dime,width,lengthb,radius,spec,unit,
+		mount,weight,price,total,theory,class,memo,gweight,eweight,enda)
+	select noa,noq,no3,productno,product,dime,width,lengthb,radius,spec,unit,mount,
+			weight,price,total,theory,class,memo,gweight,eweight,enda
+	from @bbs_tmp
+--*****************************************************************************************************;
