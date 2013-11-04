@@ -32,6 +32,17 @@ set @t_elengthb = case when '#non'=[16] then 99999.9 else cast([16] as float) en
 set @t_style = upper(@t_style)
 set @t_waste = upper(@t_waste)
 set @t_stktype = upper(@t_stktype)
+declare @swapTmp1 int = 0
+declare @swapTmp2 int = 0
+if(left(@t_stktype,1) != 'B' and left(@t_stktype,1) != '')
+begin
+	set @swapTmp1 = @t_bwidth
+	set @swapTmp2 = @t_ewidth
+	set @t_bwidth = @t_bdime
+	set @t_ewidth = @t_edime
+	set @t_bdime = @swapTmp1
+	set @t_edime = @swapTmp2	
+end
 declare @tmp table(
 	gno nvarchar(1),
 	datea nvarchar(10),
@@ -113,6 +124,17 @@ set @t_etggno = case when '#non'=[21] then char(255) else [21] end
 set @t_style = upper(@t_style)
 set @t_waste = upper(@t_waste)
 set @t_stktype = upper(@t_stktype)
+declare @swapTmp1 int = 0
+declare @swapTmp2 int = 0
+if(left(@t_stktype,1) != 'B' and left(@t_stktype,1) != '')
+begin
+	set @swapTmp1 = @t_bwidth
+	set @swapTmp2 = @t_ewidth
+	set @t_bwidth = @t_bdime
+	set @t_ewidth = @t_edime
+	set @t_bdime = @swapTmp1
+	set @t_edime = @swapTmp2	
+end
 declare @tmp table(
 	gno nvarchar(1),
 	datea nvarchar(10),
