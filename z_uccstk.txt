@@ -766,7 +766,32 @@
 	from #z_uccstk01 a
 	left join style b on a.style=b.noa 
 
-	select a.* 
+	----------------------------------------
+	declare @result table(
+		gno nvarchar(10),
+		uno nvarchar(50),
+		mount float,
+		[weight] float,
+		price float,
+		[money] float,
+		dime float,
+		width float,
+		lengthb float,
+		radius float,
+		size nvarchar(max),
+		productno nvarchar(max),
+		product nvarchar(max),
+		class nvarchar(max),
+		style nvarchar(10),
+		spec nvarchar(max),
+		kind nvarchar(10),
+		csize nvarchar(max),
+		cstyle nvarchar(max)
+	)
+	insert into @result(gno,uno,mount,[weight],price,[money],dime,width,lengthb,radius,size
+		,productno,product,class,style,spec,kind,csize,cstyle)
+	select '1',uno,curmount,curweight,price,[money],dime,width,lengthb,radius,size
+		,productno,product,class,style,spec,kind,csize,cstyle
 	from #z_uccstk01 a
 	left join @listStyle b on a.style=b.noa
 	where b.noa is not null
@@ -776,5 +801,21 @@
 	and (a.width between CAST(@t_bwidth as float) and CAST(@t_ewidth as float))
 	and (a.lengthb between CAST(@t_blength as float) and CAST(@t_elength as float))
 	and (a.radius between CAST(@t_bradius as float) and CAST(@t_eradius as float))
+	and a.curmount>0
+	and a.curweight>0
 	order by isnull(kind,char(255)),isnull(style,char(255)),isnull(productno,char(255)),radius,dime,width,lengthb,uno
-	drop table #z_uccstk01;
+	drop table #z_uccstk01
+	
+	insert into @result(gno,kind,style,cstyle,mount,[weight],[money])
+	select '2',CHAR(255),style,cstyle,SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0)),SUM(ISNULL([money],0))
+	from @result where gno='1' group by style,cstyle
+	insert into @result(gno,kind,style,mount,[weight],[money])
+	select '3',CHAR(255),CHAR(255),SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0)),SUM(ISNULL([money],0))
+	from @result where gno='1'
+	
+	select * 
+	,style s1
+	,productno ppn
+	,product ppt
+	from @result 
+	order by isnull(kind,char(255)),isnull(style,char(255)),isnull(productno,char(255)),radius,dime,width,lengthb,uno;
