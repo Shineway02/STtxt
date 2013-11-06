@@ -97,9 +97,10 @@ declare @t_elengthb float
 declare @t_bstoreno nvarchar(30)
 declare @t_estoreno nvarchar(30)
 declare @t_itype nvarchar(30)
-declare @t_btggno nvarchar(50)
-declare @t_etggno nvarchar(50)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_orderstatus nvarchar(10)
+declare @t_isordermemo nvarchar(10)
 
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
@@ -119,9 +120,10 @@ set @t_elengthb = case when '#non'=[17] then 99999.9 else cast([17] as float) en
 set @t_bstoreno = case when '#non'=[18] then '' else [18] end
 set @t_estoreno = case when '#non'=[19] then char(255) else [19] end
 set @t_itype = case when '#non'=[5] then '' else [5] end
-set @t_btggno = case when '#non'=[20] then '' else [20] end
-set @t_etggno = case when '#non'=[21] then char(255) else [21] end
+set @t_bcustno = case when '#non'=[20] then '' else [20] end
+set @t_ecustno = case when '#non'=[21] then char(255) else [21] end
 set @t_orderstatus = case when '#non'=[22] then '' else [22] end
+set @t_isordermemo = case when '#non'=[23] then '' else [23] end
 ----------------------------------------------------------------------------------------------
 
 set @t_style = upper(@t_style)
@@ -148,8 +150,12 @@ begin
 end
 declare @tmp table(
 	gno nvarchar(1),
+	g2 nvarchar(1),
+	sortno int ,
 	datea nvarchar(10),
 	storeno nvarchar(35),
+	custno nvarchar(30),
+	custs nvarchar(90),
 	uno nvarchar(50),
 	productno nvarchar(35),
 	products nvarchar(90),
@@ -164,56 +170,72 @@ declare @tmp table(
 
 insert into @tmp
 	select
-		'0',a.datea,a.storeno,a.uno,a.productno,a.product,a.class,a.spec,
+		a.gno,'0' g2,a.sortno,a.datea,a.storeno,a.custno,c.nick,a.uno,a.productno,a.product,a.class,a.spec,
 		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) csize,
-		a.emount,a.eweight,a.ordeno,a.no2
+		a.mount,a.weight,a.ordeno,a.no2
 	from (
-		select a.*, ISNULL( y.eweight, a.weight) eweight ,ISNULL( y.emount ,a.mount) emount  from( 
-			select 'rc2s' tablea,'進貨作業' [action],a.noa,a.datea,a.uno,a.productno,a.product,a.radius,a.dime,a.width,a.lengthb,a.spec,a.style,a.storeno,a.class,a.class2,a.typea,a.waste,a.mount,(case when isnull(a.gweight,0) > 0 then a.gweight else a.weight end) weight,a.mweight,a.size,a.memo,a.unit,b.kind,'1' itype,isnull(d.ordeno,'') ordeno,isnull(d.no2,'') no2
-			from rc2s[1] a 
-			left join rc2[1] b on a.noa = b.noa 
-			left join ordcs[1] c on (a.ordeno = c.noa) and (a.no2 = c.no2)
-			left join ordbs[1] d on (c.ordbno = d.noa) and (c.no3 = d.no3)
-			where a.typea<>'2' and len(a.uno) >0 
-			union all 
-			select 'inas' tablea,'入庫作業' [action],a.noa,a.datea,a.uno,a.productno,a.product,a.radius,a.dime,a.width,a.lengthb,a.spec,a.style,a.storeno,a.class,a.class2,a.typea,a.waste,a.mount,a.weight,a.mweight,a.size,a.memo,a.unit,b.kind, b.itype ,'' ordeno,'' no2
-			from inas[1] a
-			left join ina[1] b on a.noa = b.noa 
-			where len(a.uno) >0 
-			union all 
-			select 'cuts' tablea,'裁剪作業' [action],a.noa,b.datea,bno uno, case when len( RTRIM( b.productno)) >0 then RTRIM( b.productno) else a.productno end productno,case when len( RTRIM( b.product)) >0 then RTRIM( b.product) else a.product end product,b.radius,b.dime,b.width,b.lengthb,b.spec,style,b.storeno,class,class2,'1' typea,b.waste,b.mount,b.weight,b.mweight,b.size,b.memo,'' unit,a.kind, a.itype ,b.ordeno,b.no2
-			from cuts[1] b 
-			left join cut[1] a on a.noa=b.noa 
-			where len(b.bno) >0 
-			union all 
-			select 'cubu' tablea,'製管作業' [action],a.noa,a.datea,a.uno,a.productno,a.product,a.radius,a.dime,a.width,a.lengthb,a.spec,a.style,a.storeno,a.class,a.class2,'1' typea,a.waste,a.mount,a.weight,0 mweight,'' size,a.memo,'' unit,'B2' kind ,'1' itype ,a.ordeno,a.no2
-			from cubu[1] a 
-			where len(a.uno) >0 
-		) a 
-		left join uccy y on y.uno=a.uno
-		where not(UPPER(a.uno)='X001' or UPPER(a.uno)='Y001' or UPPER(a.uno)='Z001')
+		select
+			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
+			a.emount mount,a.eweight weight,a.ordeno,a.no2
+		from view_uccc a
+		union
+		select
+			'ordet' tablea,'1' gno,'1' sortno,a.noa,'' style,
+			'' waste,'1' itype,b.odate,'' storeno,b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
+			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3
+		from ordet[1] a
+		left join orde[1] b on a.noa = b.noa 
+		left join view_uccc c on a.uno = c.uno
+		where c.uno is not null and @t_isordermemo='1' and c.kind='A1'
 	) a
 	left join view_ina[1] b on a.tablea='inas' and a.noa=b.noa
+	left join cust c on a.custno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 			 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
 			 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
-			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.emount > 0 and a.eweight > 0) and
+			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
 			 (a.storeno between @t_bstoreno and @t_estoreno)
-			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
+			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
 	order by a.datea desc
 if(@t_orderstatus = '1') ----已受訂
 	delete @tmp where isnull(ordeno,'') = ''
 else if(@t_orderstatus = '2') ----未受訂
-	delete @tmp where isnull(ordeno,'') != ''	
-
-insert into @tmp(gno,mount,weight)
-	select '1',sum(mount),sum(weight) from @tmp
+	delete @tmp where isnull(ordeno,'') != ''
+declare @t_uno nvarchar(max)
+declare @t_count int
+declare cursor_table cursor for
+	select distinct uno,count(*) from @tmp group by uno
+open cursor_table
+fetch next from cursor_table
+into @t_uno,@t_count
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@t_count >=2)
+	begin
+		insert into @tmp(gno,g2,sortno,uno,productno,mount,weight)
+			select
+				'2' gno,'0' g2,'2' sortno,uno,productno,
+				sum((case when gno='1' then mount*(-1) else mount end)),
+				sum((case when gno='1' then weight*(-1) else weight end))
+			from @tmp where uno = @t_uno group by uno,productno
+	end
+	fetch next from cursor_table
+	into @t_uno,@t_count
+end 
+close cursor_table
+deallocate cursor_table
+insert into @tmp(gno,g2,mount,weight)
+	select '3','1',
+		sum((case when gno='1' then mount*(-1) else mount end)),
+		sum((case when gno='1' then weight*(-1) else weight end))
+	from @tmp where gno <=1
 update @tmp set csize = replace(csize,'~#$','''')
 select 
-	ROW_NUMBER()over(order by gno,productno,spec desc,class desc,datea desc) idno,*,@t_title t_title ,
-	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref
-from @tmp order by gno,productno,spec desc,class desc,datea desc;
+	ROW_NUMBER()over(order by g2,productno,uno,sortno) idno,*,@t_title t_title ,
+	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref
+from @tmp order by g2,productno,uno,sortno;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
 z_uccst3A:--z_uccst3A
@@ -235,9 +257,10 @@ declare @t_elengthb float
 declare @t_bstoreno nvarchar(30)
 declare @t_estoreno nvarchar(30)
 declare @t_itype nvarchar(30)
-declare @t_btggno nvarchar(50)
-declare @t_etggno nvarchar(50)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_orderstatus nvarchar(10)
+declare @t_isordermemo nvarchar(10)
 
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
@@ -257,23 +280,25 @@ set @t_elengthb = case when '#non'=[17] then 99999.9 else cast([17] as float) en
 set @t_bstoreno = case when '#non'=[18] then '' else [18] end
 set @t_estoreno = case when '#non'=[19] then char(255) else [19] end
 set @t_itype = case when '#non'=[5] then '' else [5] end
-set @t_btggno = case when '#non'=[20] then '' else [20] end
-set @t_etggno = case when '#non'=[21] then char(255) else [21] end
+set @t_bcustno = case when '#non'=[20] then '' else [20] end
+set @t_ecustno = case when '#non'=[21] then char(255) else [21] end
 set @t_orderstatus = case when '#non'=[22] then '' else [22] end
+set @t_isordermemo = case when '#non'=[23] then '' else [23] end
 ----------------------------------------------------------------------------------------------
 
 set @t_style = upper(@t_style)
 set @t_waste = upper(@t_waste)
 set @t_stktype = upper(@t_stktype)
-declare @swapTmp1 int = 0
-declare @swapTmp2 int = 0
-declare @t_title nvarchar(max) = '庫存彙總表(依倉庫)'
+declare @t_title nvarchar(max) = '庫存彙總表'
 if(@t_stktype = 'B2')
 	set @t_title = '鋼管' + @t_title
 if(@t_stktype = 'C3')
 	set @t_title = '鋼筋' + @t_title
 if(@t_stktype = 'A4')
 	set @t_title = '鋼胚' + @t_title
+	
+declare @swapTmp1 int = 0
+declare @swapTmp2 int = 0
 if(left(@t_stktype,1) != 'B' and left(@t_stktype,1) != '')
 begin
 	set @swapTmp1 = @t_bwidth
@@ -285,8 +310,12 @@ begin
 end
 declare @tmp table(
 	gno nvarchar(1),
+	g2 nvarchar(1),
+	sortno int ,
 	datea nvarchar(10),
 	storeno nvarchar(35),
+	custno nvarchar(30),
+	custs nvarchar(90),
 	uno nvarchar(50),
 	productno nvarchar(35),
 	products nvarchar(90),
@@ -301,51 +330,69 @@ declare @tmp table(
 
 insert into @tmp
 	select
-		'0',a.datea,a.storeno,a.uno,a.productno,a.product,a.class,a.spec,
+		a.gno,'0' g2,a.sortno,a.datea,a.storeno,a.custno,c.nick,a.uno,a.productno,a.product,a.class,a.spec,
 		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) csize,
-		a.emount,a.eweight,a.ordeno,a.no2
+		a.mount,a.weight,a.ordeno,a.no2
 	from (
-		select a.*, ISNULL( y.eweight, a.weight) eweight ,ISNULL( y.emount ,a.mount) emount  from( 
-			select 'rc2s' tablea,'進貨作業' [action],a.noa,a.datea,a.uno,a.productno,a.product,a.radius,a.dime,a.width,a.lengthb,a.spec,a.style,a.storeno,a.class,a.class2,a.typea,a.waste,a.mount,(case when isnull(a.gweight,0) > 0 then a.gweight else a.weight end) weight,a.mweight,a.size,a.memo,a.unit,b.kind,'1' itype,isnull(d.ordeno,'') ordeno,isnull(d.no2,'') no2
-			from rc2s[1] a 
-			left join rc2[1] b on a.noa = b.noa 
-			left join ordcs[1] c on (a.ordeno = c.noa) and (a.no2 = c.no2)
-			left join ordbs[1] d on (c.ordbno = d.noa) and (c.no3 = d.no3)
-			where a.typea<>'2' and len(a.uno) >0 
-			union all 
-			select 'inas' tablea,'入庫作業' [action],a.noa,a.datea,a.uno,a.productno,a.product,a.radius,a.dime,a.width,a.lengthb,a.spec,a.style,a.storeno,a.class,a.class2,a.typea,a.waste,a.mount,a.weight,a.mweight,a.size,a.memo,a.unit,b.kind, b.itype ,'' ordeno,'' no2
-			from inas[1] a
-			left join ina[1] b on a.noa = b.noa 
-			where len(a.uno) >0 
-			union all 
-			select 'cuts' tablea,'裁剪作業' [action],a.noa,b.datea,bno uno, case when len( RTRIM( b.productno)) >0 then RTRIM( b.productno) else a.productno end productno,case when len( RTRIM( b.product)) >0 then RTRIM( b.product) else a.product end product,b.radius,b.dime,b.width,b.lengthb,b.spec,style,b.storeno,class,class2,'1' typea,b.waste,b.mount,b.weight,b.mweight,b.size,b.memo,'' unit,a.kind, a.itype ,b.ordeno,b.no2
-			from cuts[1] b 
-			left join cut[1] a on a.noa=b.noa 
-			where len(b.bno) >0 
-			union all 
-			select 'cubu' tablea,'製管作業' [action],a.noa,a.datea,a.uno,a.productno,a.product,a.radius,a.dime,a.width,a.lengthb,a.spec,a.style,a.storeno,a.class,a.class2,'1' typea,a.waste,a.mount,a.weight,0 mweight,'' size,a.memo,'' unit,'B2' kind ,'1' itype ,a.ordeno,a.no2
-			from cubu[1] a 
-			where len(a.uno) >0 
-		) a 
-		left join uccy y on y.uno=a.uno
-		where not(UPPER(a.uno)='X001' or UPPER(a.uno)='Y001' or UPPER(a.uno)='Z001')
-	) a 
+		select
+			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
+			a.emount mount,a.eweight weight,a.ordeno,a.no2
+		from view_uccc a
+		union
+		select
+			'ordet' tablea,'1' gno,'1' sortno,a.noa,'' style,
+			'' waste,'1' itype,b.odate,'' storeno,b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
+			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3
+		from ordet[1] a
+		left join orde[1] b on a.noa = b.noa 
+		left join view_uccc c on a.uno = c.uno
+		where c.uno is not null and @t_isordermemo='1' and c.kind='A1'
+	) a
 	left join view_ina[1] b on a.tablea='inas' and a.noa=b.noa
+	left join cust c on a.custno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 			 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
 			 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
-			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.emount > 0 and a.eweight > 0) and
+			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
 			 (a.storeno between @t_bstoreno and @t_estoreno)
-			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(b.tggno,'') between @t_btggno and @t_etggno)
+			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
 	order by a.datea desc
-insert into @tmp(gno,storeno,mount,weight)
-	select '1',storeno,sum(mount),sum(weight) from @tmp group by storeno
-update @tmp set csize = replace(csize,'~#$','''') 
 if(@t_orderstatus = '1') ----已受訂
 	delete @tmp where isnull(ordeno,'') = ''
 else if(@t_orderstatus = '2') ----未受訂
-	delete @tmp where isnull(ordeno,'') != ''	
-select
-	 *,@t_title t_title,'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref
-from @tmp order by storeno,gno,productno,spec desc,class desc,datea desc,ordeno,no2;
+	delete @tmp where isnull(ordeno,'') != ''
+declare @t_uno nvarchar(max)
+declare @t_count int
+declare cursor_table cursor for
+	select distinct uno,count(*) from @tmp group by uno
+open cursor_table
+fetch next from cursor_table
+into @t_uno,@t_count
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@t_count >=2)
+	begin
+		insert into @tmp(gno,g2,sortno,storeno,uno,productno,mount,weight)
+			select
+				'2' gno,'0' g2,'2' sortno,storeno,uno,productno,
+				sum((case when gno='1' then mount*(-1) else mount end)),
+				sum((case when gno='1' then weight*(-1) else weight end))
+			from @tmp where uno = @t_uno group by storeno,uno,productno
+	end
+	fetch next from cursor_table
+	into @t_uno,@t_count
+end 
+close cursor_table
+deallocate cursor_table
+insert into @tmp(gno,g2,storeno,mount,weight)
+	select '3','1',storeno,
+		sum((case when gno='1' then mount*(-1) else mount end)),
+		sum((case when gno='1' then weight*(-1) else weight end))
+	from @tmp where gno <=1 group by storeno
+update @tmp set csize = replace(csize,'~#$','''')
+select 
+	ROW_NUMBER()over(order by g2,productno,uno,sortno) idno,*,@t_title t_title ,
+	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref
+from @tmp order by storeno,g2,productno,uno,sortno;
