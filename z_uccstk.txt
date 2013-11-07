@@ -813,7 +813,8 @@
 	select '3',CHAR(255),CHAR(255),SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0)),SUM(ISNULL([money],0))
 	from @result where gno='1'
 	
-	select * 
+	select ROW_NUMBER()over(order by isnull(kind,char(255)),isnull(style,char(255)),isnull(productno,char(255)),radius,dime,width,lengthb,uno) rr
+	,* 
 	,style s1
 	,productno ppn
 	,product ppt
