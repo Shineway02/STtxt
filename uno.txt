@@ -10,6 +10,9 @@ getuno:--getuno
 	set @t_buno = [1]
 	set @t_datea = [2]
 	set @t_style = [3]
+	set @t_buno = replace(@t_buno,'　','')
+	set @t_datea = replace(@t_datea,'　','')
+	set @t_style = replace(@t_style,'　','')
 	---------------------------------------------------------------------------------------
 	if not exists(select * from INFORMATION_SCHEMA.TABLES where TABLE_NAME = 'unolist')
 	begin
@@ -178,9 +181,6 @@ getuno:--getuno
 	close cursor_table
 	deallocate cursor_table
 	----------------------------------------------------------------------------------------
-	insert into @curUnoList(uno)
-	select uno from unolist where not exists(select * from @curUnoList where uno=unolist.uno)
-	----------------------------------------------------------------------------------------
 	declare @recno int
 	declare @uno nvarchar(max)
 	declare @buno nvarchar(30)
@@ -222,7 +222,7 @@ getuno:--getuno
 				begin
 					set @status = SUBSTRING(@statusCode,@n,1)
 					set @uno = @tmpuno + @status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -244,11 +244,11 @@ getuno:--getuno
 				while(@n<=999)
 				begin
 					set @uno = @datea+RIGHT('000'+CAST(@n as nvarchar),3)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
-						update @listInput set uno=@uno,typea='C>C' where recno=@recno
+						update @listInput set uno=@uno,typea='C' where recno=@recno
 						break
 					end
 					else
@@ -269,7 +269,7 @@ getuno:--getuno
 				while(@n<=99)
 				begin
 					set @uno = @tmpuno+RIGHT('00'+CAST(@n as nvarchar),2)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -293,7 +293,7 @@ getuno:--getuno
 				begin
 					set @status = SUBSTRING(@statusCode,@n,1)
 					set @uno = @tmpuno + @status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -315,7 +315,7 @@ getuno:--getuno
 				while(@n<=999999)
 				begin
 					set @uno = @datea+RIGHT('000000'+CAST(@n as nvarchar),6)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -341,7 +341,7 @@ getuno:--getuno
 				while(@n<=9999)
 				begin
 					set @uno = @tmpuno+RIGHT('0000'+CAST(@n as nvarchar),4)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -363,7 +363,7 @@ getuno:--getuno
 				while(@n<=9)
 				begin
 					set @uno = @tmpuno+RIGHT('0'+CAST(@n as nvarchar),1)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -386,7 +386,7 @@ getuno:--getuno
 				begin
 					set @status = SUBSTRING(@statusCode,@n,1)
 					set @uno = @tmpuno + @status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -408,7 +408,7 @@ getuno:--getuno
 				while(@n<=99999999)
 				begin
 					set @uno = @datea+RIGHT('00000000'+CAST(@n as nvarchar),8)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -433,7 +433,7 @@ getuno:--getuno
 				while(@n<=99)
 				begin
 					set @uno = @tmpuno+RIGHT('00'+CAST(@n as nvarchar),2)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -463,7 +463,7 @@ getuno:--getuno
 				begin
 					set @status = SUBSTRING(@statusCode_t,@n,1)
 					set @uno = @tmpuno + @status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
@@ -485,7 +485,7 @@ getuno:--getuno
 				while(@n<=999999999)
 				begin
 					set @uno = @datea+RIGHT('000000000'+CAST(@n as nvarchar),9)+@status
-					if not exists(select * from @curUnoList where uno=@uno)
+					if not exists(select * from @curUnoList where uno=@uno) and not exists(select * from unolist where uno=@uno)
 					begin
 						insert into unolist(uno)values(@uno)
 						insert into @curUnoList(uno)values(@uno)
