@@ -118,6 +118,6 @@ update @tmp set csize = replace(csize,'~#$','''')
 select
 	gno,noa,comp,datea,uno,pno,product,class,spec,style,csize,mount,gweight,
 	'vccst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
-	ROW_NUMBER()over(order by comp,datea desc) idno
+	ROW_NUMBER()over(order by gno,comp,datea desc) idno
 from @tmp order by gno,comp,datea desc;
 ----------********************************************************************----------
