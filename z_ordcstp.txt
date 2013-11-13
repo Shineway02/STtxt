@@ -13,7 +13,7 @@
 	set @t_edate = case when '#non' = [4] then CHAR(255) else [4] end
 	set @t_noa = case when '#non' = [5] then '' else [5] end
 	----------------------------------------------------------------------------------------------
-	declare @t_pageline int = 6   --------一頁幾行
+	declare @t_pageline int = 32   --------一頁幾行
 	----------------------------------------------------------------------------------------------
 	declare @string nvarchar(max)
 	declare @n int
@@ -55,10 +55,14 @@
 		mount float,
 		[weight] float,
 		[money] float,
+		tax float,
+		total float,
 		
 		no2 nvarchar(10),
 		productno nvarchar(20),
 		product nvarchar(max),
+		class nvarchar(max),
+		spec nvarchar(max),
 		unit nvarchar(20),
 		mounts float,
 		weights float,
@@ -72,7 +76,8 @@
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.fax,b.addr,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
-	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,b.[money],b.tax,b.total"+
+	" ,a.no2,a.productno,a.product,a.class,a.spec,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
 	" from view_ordcs"+@t_accy+" a"+
 	" left join view_ordc"+@t_accy+" b on a.noa = b.noa"+
@@ -82,8 +87,8 @@
 	" and (len(@t_noa)=0 or @t_noa=a.noa)"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,tggno,tgg,tel,fax,addr,odate,kind,paytype,trantype,memo
-		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
+	insert into @tmp(gno,noa,tggno,tgg,tel,fax,addr,odate,kind,paytype,trantype,memo,[money],tax,total
+		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_noa nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_noa=@t_noa
 	
@@ -128,10 +133,11 @@
 
 	update @tmp set tggno=b.tggno,tgg=b.tgg,tel=b.tel,fax=b.fax,addr=b.addr
 		,odate=b.odate,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
-		,mount=c.mount,[weight]=c.[weight],[money]=c.[money]
+		,[money]=b.[money],tax=b.tax,total=b.total
+		,mount=c.mount,[weight]=c.[weight]
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
-	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight],SUM(isnull(totals,0)) [money] from @tmp group by noa ) c on a.noa=c.noa
+	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
 	
 	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 	from(
@@ -150,17 +156,21 @@
 		,mount a10
 		,[weight] a11
 		,[money] a12
-		,memo a13
+		,tax a13
+		,total a14
+		,memo a15
 		
 		,productno b01
 		,product b02
-		,replace(size,'~#$',"'") b03
-		,unit b04
-		,mounts b05
-		,weights b06
-		,price b07
-		,totals b08
-		,memos b09
+		,class b03
+		,spec b04
+		,replace(size,'~#$',"'") b05
+		,unit b06
+		,mounts b07
+		,weights b08
+		,price b09
+		,totals b10
+		,memos b11
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
