@@ -238,10 +238,10 @@ insert into @tmp(gno,g2,mount,weight)
 	from @tmp where gno <=1
 update @tmp set csize = replace(csize,'~#$','''')
 select 
-	ROW_NUMBER()over(order by g2,productno,uno,sortno) idno,*,@t_title t_title ,
+	ROW_NUMBER()over(order by g2,productno,csize,uno,sortno) idno,*,@t_title t_title ,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
-from @tmp order by g2,productno,uno,sortno;
+from @tmp order by g2,productno,csize,uno,sortno;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
 z_uccst3A:--z_uccst3A
@@ -404,7 +404,7 @@ insert into @tmp(gno,g2,storeno,mount,weight)
 	from @tmp where gno <=1 group by storeno
 update @tmp set csize = replace(csize,'~#$','''')
 select 
-	ROW_NUMBER()over(order by g2,productno,uno,sortno) idno,*,@t_title t_title ,
+	ROW_NUMBER()over(order by g2,productno,csize,uno,sortno) idno,*,@t_title t_title ,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
-from @tmp order by storeno,g2,productno,uno,sortno;
+from @tmp order by storeno,g2,productno,csize,uno,sortno;
