@@ -15,6 +15,7 @@
 	----------------------------------------------------------------------------------------------
 	declare @t_pageline int = 28   --------一頁幾行
 	----------------------------------------------------------------------------------------------
+	----------------------------------------------------------------------------------------------
 	declare @string nvarchar(max)
 	declare @n int
 	--解析要計算的種類
@@ -47,6 +48,7 @@
 		cfax nvarchar(max),
 		tggno nvarchar(20),
 		tgg nvarchar(max),
+		taddr nvarchar(max),
 		tel nvarchar(max),
 		fax nvarchar(max),
 		addr nvarchar(max),
@@ -80,7 +82,7 @@
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.cno,d.acomp,d.tel,d.fax,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
-	" ,b.tel,b.fax,b.addr,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
+	" ,c.addr_comp,b.tel,b.fax,b.addr,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.[money],b.tax,b.total"+
 	" ,a.no2,a.productno,a.product,a.class,a.spec,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
@@ -93,7 +95,7 @@
 	" and (len(@t_noa)=0 or @t_noa=a.noa)"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,cno,acomp,ctel,cfax,tggno,tgg,tel,fax,addr,sales,odate,kind,paytype,trantype,memo,[money],tax,total
+	insert into @tmp(gno,noa,cno,acomp,ctel,cfax,tggno,tgg,taddr,tel,fax,addr,sales,odate,kind,paytype,trantype,memo,[money],tax,total
 		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_noa nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_noa=@t_noa
@@ -157,11 +159,12 @@
 		,noa a01
 		,tggno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+tgg a02
 		,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then 'FAX：'+fax else '' end a03
+		,taddr a04
 		,addr a05
 		,ckind a06
 		,odate a07
-		,paytype a08
-		,trantype a09
+		,'付款方式：'+paytype a08
+		,'交運方式：'+trantype a09
 		,mount a10
 		,[weight] a11
 		,[money] a12
