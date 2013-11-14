@@ -13,7 +13,7 @@
 	set @t_edate = case when '#non' = [4] then CHAR(255) else [4] end
 	set @t_noa = case when '#non' = [5] then '' else [5] end
 	----------------------------------------------------------------------------------------------
-	declare @t_pageline int = 32   --------一頁幾行
+	declare @t_pageline int = 20   --------一頁幾行
 	----------------------------------------------------------------------------------------------
 	declare @string nvarchar(max)
 	declare @n int
@@ -41,11 +41,17 @@
 	declare @tmp table(
 		gno nvarchar(10),
 		noa nvarchar(20),
+		cno nvarchar(20),
+		acomp nvarchar(max),
+		ctel nvarchar(max),
+		cfax nvarchar(max),
 		tggno nvarchar(20),
 		tgg nvarchar(max),
+		taddr nvarchar(max),
 		tel nvarchar(max),
 		fax nvarchar(max),
 		addr nvarchar(max),
+		sales nvarchar(max),
 		odate nvarchar(20),
 		kind nvarchar(20),
 		ckind nvarchar(max),
@@ -74,20 +80,21 @@
 	
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
-	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
-	" ,b.tel,b.fax,b.addr,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
+	" ,a.noa,b.cno,d.acomp,d.tel,d.fax,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
+	" ,c.addr_comp,b.tel,b.fax,b.addr,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.[money],b.tax,b.total"+
 	" ,a.no2,a.productno,a.product,a.class,a.spec,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
 	" from view_ordcs"+@t_accy+" a"+
 	" left join view_ordc"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
+	" left join acomp d on b.cno=d.noa"+
 	" where b.noa is not null "+
 	" and ISNULL(b.odate,'') between @t_bdate and @t_edate"+
 	" and (len(@t_noa)=0 or @t_noa=a.noa)"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,tggno,tgg,tel,fax,addr,odate,kind,paytype,trantype,memo,[money],tax,total
+	insert into @tmp(gno,noa,cno,acomp,ctel,cfax,tggno,tgg,taddr,tel,fax,addr,sales,odate,kind,paytype,trantype,memo,[money],tax,total
 		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_noa nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_noa=@t_noa
@@ -131,7 +138,8 @@
 	close cursor_table
 	deallocate cursor_table
 
-	update @tmp set tggno=b.tggno,tgg=b.tgg,tel=b.tel,fax=b.fax,addr=b.addr
+	update @tmp set cno=b.cno,acomp=b.acomp,ctel=b.ctel,cfax=b.cfax,sales=b.sales
+		,tggno=b.tggno,tgg=b.tgg,tel=b.tel,fax=b.fax,addr=b.addr
 		,odate=b.odate,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
 		,[money]=b.[money],tax=b.tax,total=b.total
 		,mount=c.mount,[weight]=c.[weight]
@@ -144,21 +152,25 @@
 		select gno,noa,no2
 		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 		,b.rrno ttno
+		,cno
+		,acomp
+		,case when len(ISNULL(ctel,''))>0 then 'TEL：'+ctel else '' end +case when len(ISNULL(cfax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+cfax else '' end comptel
 		,noa a01
 		,tggno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+tgg a02
-		,tel a03
-		,fax a04
+		,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end a03
+		,taddr a04
 		,addr a05
 		,ckind a06
 		,odate a07
-		,paytype a08
-		,trantype a09
+		,'付款方式：'+paytype a08
+		,'交運方式：'+trantype a09
 		,mount a10
 		,[weight] a11
 		,[money] a12
 		,tax a13
 		,total a14
 		,memo a15
+		,sales a16
 		
 		,productno b01
 		,product b02
