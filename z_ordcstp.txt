@@ -51,6 +51,7 @@
 		tel nvarchar(max),
 		fax nvarchar(max),
 		addr nvarchar(max),
+		addr2 nvarchar(max),
 		sales nvarchar(max),
 		odate nvarchar(20),
 		kind nvarchar(20),
@@ -81,7 +82,7 @@
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.cno,d.acomp,d.tel,d.fax,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
-	" ,c.addr_comp,b.tel,b.fax,b.addr,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
+	" ,b.addr,b.tel,b.fax,b.addr2,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.[money],b.tax,b.total"+
 	" ,a.no2,a.productno,a.product,a.class,a.spec,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
