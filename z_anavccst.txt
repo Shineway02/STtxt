@@ -1,0 +1,427 @@
+z_anavccst02:--z_anavccst02
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_item nvarchar(max)
+	declare @t_detail nvarchar(max)
+	
+	set @t_bdate = case when '#non'=[1] then '' else [1] end
+	set @t_edate = case when '#non'=[2] then char(255) else [2] end
+	set @t_bcustno = case when '#non'=[3] then '' else [3] end
+	set @t_ecustno = case when '#non'=[4] then char(255) else [4] end
+	set @t_bsssno = case when '#non'=[5] then '' else [5] end
+	set @t_esssno = case when '#non'=[6] then char(255) else [6] end
+	set @t_item = case when '#non'=[7] then '' else [7] end
+	set @t_detail = case when '#non'=[8] then '' else [8] end
+	-----------------------------------------------------------------------------------	
+	--解析要計算的種類
+	declare @string nvarchar(max)
+	declare @n int
+	
+	IF OBJECT_ID('tempdb..#item')is not null
+	BEGIN
+		set @cmd = 'drop table #item'
+		EXECUTE sp_executesql @cmd
+	END
+	create table #item(
+		noa nvarchar(20)
+	)
+	set @string = @t_item
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into #item select @string
+			end
+			break
+		end
+		insert into #item select LEFT(@string,@n-1)	
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	-----------------------------------------------------------------------------------
+	declare @tmp table(
+		rr1 int,
+		rr2 int,
+		gno nvarchar(10),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		datea nvarchar(20),
+		custno nvarchar(20),
+		salesno nvarchar(20),
+		uccgano nvarchar(20),
+		uccganame nvarchar(max),
+		productno nvarchar(20),
+		product nvarchar(40),
+		style nvarchar(20),
+		uno nvarchar(30),
+		csize nvarchar(max),
+		class nvarchar(max),
+		spec nvarchar(max),
+		unit nvarchar(20),
+		[weight] float,
+		mount float,
+		price float,
+		total float,
+		sprice float,
+		stotal float,
+		profit float,
+		rate float
+	)
+	declare @tablea nvarchar(20)
+	declare @tableas nvarchar(20)
+	-----------------------------------------------------------------
+	declare @listvcc table(
+		tablea nvarchar(20),
+		tableas nvarchar(20)
+	)
+	insert into @listvcc(tablea,tableas)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'vcc','vccs')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'vcc[0-9][0-9][0-9]'
+	-----------------------------------------------------------------
+	declare cursor_table cursor for
+	select tablea,tableas from @listvcc
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '2',a.noa,a.noq,b.custno,b.salesno,isnull(d.groupano,''),isnull(e.namea,''),a.productno,a.product,a.style,a.uno"+
+		" ,replace(case when len(a.size)>0 then a.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
+		" ,a.class,a.spec"+
+		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
+		" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		" from "+@tableas+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" left join view_uccb c on a.uno=c.uno "+
+		" left join ucc d on a.productno=d.noa"+
+		" left join uccga e on d.groupano=e.noa"+
+		" left join #item f on d.groupano=f.noa"+
+		" where b.noa is not null"+
+		" and isnull(b.typea,'0')='1'"+
+		" and len(isnull(a.uno,''))>0"+
+		" and isnull(b.datea,'') between @t_bdate and @t_edate"+
+		" and isnull(b.custno,'') between @t_bcustno and @t_ecustno"+
+		" and ((len(isnull(d.groupano,''))=0 and exists(select * from #item where len(noa)=0)) or f.noa is not null)"
+		
+		insert into @tmp(gno,noa,noq,custno,salesno,uccgano,uccganame,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal)
+		execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bcustno nvarchar(20),@t_ecustno nvarchar(20)'
+		,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bcustno=@t_bcustno,@t_ecustno=@t_ecustno
+		fetch next from cursor_table
+		into @tablea,@tableas
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @tmp set profit = total-stotal,rate = case when total=0 then 0 else round((total-stotal)/total*100,0) end
+	
+	insert into @tmp(gno,uccgano,uccganame,noa,noq,[weight],mount,total,stotal,profit)
+	select '1',uccgano,uccganame,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp group by uccgano,uccganame
+	
+	insert into @tmp(gno,uccgano,noa,noq,[weight],mount,total,stotal,profit)
+	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp where gno='2'
+	
+	update @tmp set rr1=b.recno,rr2=c.recno
+	from @tmp a
+	left join (select ROW_NUMBER()over(order by total desc)recno,uccgano from @tmp where gno='1') b on a.uccgano=b.uccgano
+	left join (select ROW_NUMBER()over(partition by uccgano order by noa,noq) recno,noa,noq,uccgano from @tmp) c on a.noa=c.noa and a.noq=c.noq and a.uccgano=c.uccgano
+	
+	if(len(@t_detail)=0)
+	begin
+		delete @tmp where gno='2'
+	end
+	else
+	begin
+		update @tmp set gno='4' where gno='1'
+	end
+	
+	update @tmp set gno='5' where profit<0 and gno='1'
+	update @tmp set gno='6' where profit<0 and gno='4'
+	
+	select a.*
+	,uccgano+'.'+uccganame uccga
+	,productno ppno
+	,b.comp
+	,b.nick 
+	,[weight] a1
+	,mount a2
+	,price a3
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a6
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	order by case when rr1 is null then char(255) else ''end,rr1,rr2;
+
+z_anavccst01:--z_anavccst01
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_item nvarchar(max)
+	declare @t_detail nvarchar(max)
+	
+	set @t_bdate = case when '#non'=[1] then '' else [1] end
+	set @t_edate = case when '#non'=[2] then char(255) else [2] end
+	set @t_bcustno = case when '#non'=[3] then '' else [3] end
+	set @t_ecustno = case when '#non'=[4] then char(255) else [4] end
+	set @t_bsssno = case when '#non'=[5] then '' else [5] end
+	set @t_esssno = case when '#non'=[6] then char(255) else [6] end
+	set @t_item = case when '#non'=[7] then '' else [7] end
+	set @t_detail = case when '#non'=[8] then '' else [8] end
+	-----------------------------------------------------------------------------------
+	declare @tmp table(
+		rr1 int,
+		rr2 int,
+		gno nvarchar(10),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		datea nvarchar(20),
+		custno nvarchar(20),
+		salesno nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(40),
+		style nvarchar(20),
+		uno nvarchar(30),
+		csize nvarchar(max),
+		class nvarchar(max),
+		spec nvarchar(max),
+		unit nvarchar(20),
+		[weight] float,
+		mount float,
+		price float,
+		total float,
+		sprice float,
+		stotal float,
+		profit float,
+		rate float
+	)
+	declare @tablea nvarchar(20)
+	declare @tableas nvarchar(20)
+	-----------------------------------------------------------------
+	declare @listvcc table(
+		tablea nvarchar(20),
+		tableas nvarchar(20)
+	)
+	insert into @listvcc(tablea,tableas)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'vcc','vccs')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'vcc[0-9][0-9][0-9]'
+	-----------------------------------------------------------------
+	declare cursor_table cursor for
+	select tablea,tableas from @listvcc
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '2',a.noa,a.noq,b.custno,b.salesno,a.productno,a.product,a.style,a.uno"+
+		" ,replace(case when len(a.size)>0 then a.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
+		" ,a.class,a.spec"+
+		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
+		" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		" from "+@tableas+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" left join view_uccb c on a.uno=c.uno "+
+		" where b.noa is not null"+
+		" and isnull(b.typea,'0')='1'"+
+		" and len(isnull(a.uno,''))>0"+
+		" and isnull(b.datea,'') between @t_bdate and @t_edate"+
+		" and isnull(b.custno,'') between @t_bcustno and @t_ecustno"
+		
+		insert into @tmp(gno,noa,noq,custno,salesno,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal)
+		execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bcustno nvarchar(20),@t_ecustno nvarchar(20)'
+		,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bcustno=@t_bcustno,@t_ecustno=@t_ecustno
+		fetch next from cursor_table
+		into @tablea,@tableas
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @tmp set profit = total-stotal,rate = case when total=0 then 0 else round((total-stotal)/total*100,0) end
+	
+	insert into @tmp(gno,custno,noa,noq,[weight],mount,total,stotal,profit)
+	select '1',custno,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp group by custno
+	
+	insert into @tmp(gno,custno,noa,noq,[weight],mount,total,stotal,profit)
+	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp where gno='2'
+	
+	update @tmp set rr1=b.recno,rr2=c.recno
+	from @tmp a
+	left join (select ROW_NUMBER()over(order by total desc)recno,custno from @tmp where gno='1') b on a.custno=b.custno
+	left join (select ROW_NUMBER()over(partition by custno order by noa,noq) recno,noa,noq,custno from @tmp) c on a.noa=c.noa and a.noq=c.noq and a.custno=c.custno
+	
+	if(len(@t_detail)=0)
+	begin
+		delete @tmp where gno='2'
+	end
+	else
+	begin
+		update @tmp set gno='4' where gno='1'
+	end
+	
+	update @tmp set gno='5' where profit<0 and gno='1'
+	update @tmp set gno='6' where profit<0 and gno='4'
+	
+	select a.*
+	,b.comp
+	,b.nick 
+	,[weight] a1
+	,mount a2
+	,price a3
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a6
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	order by case when rr1 is null then char(255) else ''end,rr1,rr2;
+
+
+z_anavccst1:--z_anavccst1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+declare @t_groupano nvarchar(30)
+set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+declare @tmp table(
+	gno nvarchar(1),
+	rankno int identity(1,1),
+	salesno nvarchar(30),
+	salesname nvarchar(50),
+	mount float,
+	weight float,
+	total float,
+	maori float,
+	perscnt float
+)
+insert into @tmp
+select
+	'0',a.salesno,a.sales,sum(b.mount),sum(b.weight),sum(b.total),sum(b.total-(b.mount*isnull(c.price,0))),0
+from view_vcc[1] a
+left join view_vccs[1] b on a.noa = b.noa
+left join costs[1] c on b.productno = c.productno and left(a.datea,6) = c.mon
+left join view_ucaucc d on b.productno = d.noa
+where isnull(a.salesno,'') != '' and (a.datea between @t_bdate and @t_edate) and
+		  (len(@t_groupano)=0 or d.groupano = @t_groupano)   	    	  
+group by a.salesno,a.sales
+order by sum(b.total) desc,sum(b.mount),sum(b.weight)
+insert into @tmp
+	select '1','','',sum(mount),sum(weight),sum(total),sum(maori),0 from @tmp
+declare @totMoney float
+select @totMoney = (select maori from @tmp where gno = '1')
+update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+select
+	gno,rankno,salesno,salesname,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,maori),1)),4,12)) maori,
+	cast(perscnt as nvarchar) + '%' perscnt
+from @tmp order by rankno;
+---************************************************************************************
+z_anavccst2:--z_anavccst2
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+declare @t_groupano nvarchar(30)
+set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+declare @tmp table(
+	gno nvarchar(1),
+	rankno int identity(1,1),
+	custno nvarchar(30),
+	custs nvarchar(50),
+	mount float,
+	weight float,
+	total float,
+	maori float,
+	perscnt float
+)
+insert into @tmp
+select
+	'0',a.custno,d.comp,sum(b.mount),sum(b.weight),sum(b.total),sum(b.total-(b.mount*isnull(c.price,0))),0
+from view_vcc[1] a
+left join view_vccs[1] b on a.noa = b.noa
+left join costs[1] c on b.productno = c.productno and left(a.datea,6) = c.mon
+left join cust d on a.custno = d.noa
+left join view_ucaucc e on b.productno = d.noa
+where isnull(a.custno,'') != '' and (a.datea between @t_bdate and @t_edate) and
+		  (len(@t_groupano)=0 or e.groupano = @t_groupano)   	    	  
+group by a.custno,d.comp
+order by sum(b.total) desc,sum(b.mount),sum(b.weight)
+insert into @tmp
+	select '1','','',sum(mount),sum(weight),sum(total),sum(maori),0 from @tmp
+declare @totMoney float
+select @totMoney = (select maori from @tmp where gno = '1')
+update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+select
+	gno,rankno,custno,custs,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,maori),1)),4,12)) maori,
+	cast(perscnt as nvarchar) + '%' perscnt
+from @tmp order by rankno;
+---************************************************************************************
+z_anavccst3:--z_anavccst3
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+declare @t_groupano nvarchar(30)
+set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+declare @tmp table(
+	gno nvarchar(1),
+	rankno int identity(1,1),
+	productno nvarchar(30),
+	products nvarchar(50),
+	mount float,
+	weight float,
+	total float,
+	maori float,
+	perscnt float
+)
+insert into @tmp
+select
+	'0',b.productno,b.product,sum(b.mount),sum(b.weight),sum(b.total),sum(b.total-(b.mount*isnull(c.price,0))),0
+from view_vcc[1] a
+left join view_vccs[1] b on a.noa = b.noa
+left join costs[1] c on b.productno = c.productno and left(a.datea,6) = c.mon
+left join view_ucaucc d on b.productno = d.noa
+where isnull(b.productno,'') != '' and (a.datea between @t_bdate and @t_edate) and
+		  (len(@t_groupano)=0 or d.groupano = @t_groupano)   	    	  
+group by b.productno,b.product
+order by sum(b.total) desc,sum(b.mount),sum(b.weight)
+insert into @tmp
+	select '1','','',sum(mount),sum(weight),sum(total),sum(maori),0 from @tmp
+declare @totMoney float
+select @totMoney = (select maori from @tmp where gno = '1')
+update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+select
+	gno,rankno,productno,products,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,maori),1)),4,12)) maori,
+	cast(perscnt as nvarchar) + '%' perscnt
+from @tmp order by rankno;
+---************************************************************************************
