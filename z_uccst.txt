@@ -150,6 +150,7 @@ begin
 end
 declare @tmp table(
 	gno nvarchar(1),
+	idno int identity(0,1),
 	g2 nvarchar(1),
 	sortno int ,
 	datea nvarchar(10),
@@ -210,6 +211,24 @@ else if(@t_orderstatus = '2') ----未受訂
 	delete @tmp where isnull(ordeno,'') != ''
 declare @t_uno nvarchar(max)
 declare @t_count int
+declare @t_idno int
+declare cursor_table cursor for
+	select distinct uno,max(idno) from @tmp where gno='1' group by uno
+open cursor_table
+fetch next from cursor_table
+into @t_uno,@t_idno
+while(@@FETCH_STATUS <> -1)
+begin
+	select @t_count = count(*) from @tmp where uno = @t_uno 
+	if(@t_count = 1)
+		delete @tmp where idno=@t_idno
+	fetch next from cursor_table
+	into @t_uno,@t_idno
+end 
+close cursor_table
+deallocate cursor_table
+
+
 declare cursor_table cursor for
 	select distinct uno,count(*) from @tmp group by uno
 open cursor_table
@@ -241,7 +260,7 @@ select
 	ROW_NUMBER()over(order by g2,productno,csize,uno,sortno) idno,*,@t_title t_title ,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
-from @tmp order by g2,productno,csize,uno,sortno;
+from @tmp order by g2,productno,uno,gno,sortno;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
 z_uccst3A:--z_uccst3A
@@ -316,6 +335,7 @@ begin
 end
 declare @tmp table(
 	gno nvarchar(1),
+	idno int identity(0,1),
 	g2 nvarchar(1),
 	sortno int ,
 	datea nvarchar(10),
@@ -374,8 +394,26 @@ if(@t_orderstatus = '1') ----已受訂
 	delete @tmp where isnull(ordeno,'') = ''
 else if(@t_orderstatus = '2') ----未受訂
 	delete @tmp where isnull(ordeno,'') != ''
+
 declare @t_uno nvarchar(max)
 declare @t_count int
+declare @t_idno int
+declare cursor_table cursor for
+	select distinct uno,max(idno) from @tmp where gno='1' group by uno
+open cursor_table
+fetch next from cursor_table
+into @t_uno,@t_idno
+while(@@FETCH_STATUS <> -1)
+begin
+	select @t_count = count(*) from @tmp where uno = @t_uno 
+	if(@t_count = 1)
+		delete @tmp where idno=@t_idno
+	fetch next from cursor_table
+	into @t_uno,@t_idno
+end 
+close cursor_table
+deallocate cursor_table
+
 declare cursor_table cursor for
 	select distinct uno,count(*) from @tmp group by uno
 open cursor_table
@@ -407,4 +445,4 @@ select
 	ROW_NUMBER()over(order by g2,productno,csize,uno,sortno) idno,*,@t_title t_title ,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
-from @tmp order by storeno,g2,productno,csize,uno,sortno;
+from @tmp order by storeno,g2,productno,uno,gno,sortno;

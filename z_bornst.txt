@@ -47,8 +47,8 @@ insert into @tmp
 	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and a.ordeno + '-' + a.no2 = @t_ordeno) or  (@checkNoq = 0 and a.ordeno = @t_ordeno)))
 			 and isnull(a.ordeno,'') != '' 
 
-insert into @tmp(ordeno,gno)
-	select distinct ordeno,'1' from @tmp
+insert into @tmp(ordeno,gno,mount,weight)
+	select distinct ordeno,'1',sum(mount),sum(weight) from @tmp group by ordeno
 update @tmp set size = replace(size,'~#$','''')
 update @tmp set qhref = qhref+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'
 select
