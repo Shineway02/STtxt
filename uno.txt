@@ -14,6 +14,7 @@ getuno:--getuno
 	set @t_datea = replace(@t_datea,'　','')
 	set @t_style = replace(@t_style,'　','')
 	---------------------------------------------------------------------------------------
+	---------------------------------------------------------------------------------------
 	if not exists(select * from INFORMATION_SCHEMA.TABLES where TABLE_NAME = 'unolist')
 	begin
 		create table unolist(
@@ -160,6 +161,76 @@ getuno:--getuno
 	declare @tablea nvarchar(20)
 	declare cursor_table cursor for
 	select tablea from @listrc2
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select uno,'"+@tablea+"' from "+@tablea+
+		" where len(isnull(uno,''))>0"+
+		" and lower(left(uno,1))!='x'"+
+		" and lower(left(uno,1))!='y'"+
+		" and lower(left(uno,1))!='z'"
+		
+		insert into @curUnoList(uno,tablea)
+		execute sp_executesql @cmd
+		
+		fetch next from cursor_table
+		into @tablea
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
+	declare cursor_table cursor for
+	select tablea from @listina
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select uno,'"+@tablea+"' from "+@tablea+
+		" where len(isnull(uno,''))>0"+
+		" and lower(left(uno,1))!='x'"+
+		" and lower(left(uno,1))!='y'"+
+		" and lower(left(uno,1))!='z'"
+		
+		insert into @curUnoList(uno,tablea)
+		execute sp_executesql @cmd
+		
+		fetch next from cursor_table
+		into @tablea
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select tablea from @listcut
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select bno,'"+@tablea+"' from "+@tablea+
+		" where len(isnull(bno,''))>0"+
+		" and lower(left(bno,1))!='x'"+
+		" and lower(left(bno,1))!='y'"+
+		" and lower(left(bno,1))!='z'"
+		
+		insert into @curUnoList(uno,tablea)
+		execute sp_executesql @cmd
+		
+		fetch next from cursor_table
+		into @tablea
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select tablea from @listcub
 	open cursor_table
 	fetch next from cursor_table
 	into @tablea
