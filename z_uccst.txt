@@ -301,9 +301,17 @@ z_uccst4:--z_uccst4
 	left join (select uno,SUM([weight]) [weight] from @tmp where recno!=0 group by uno) b on a.uno=b.uno
 	where b.uno is not null and recno=0
 	--明細顯示
-	if LEN(@t_detail)>0
+	declare @titlea nvarchar(max)
+	if @t_bdate=@t_edate
+		set @titlea = '日期區間：'+@t_bdate
+	else
 	begin
-		select '1',a.* 
+		set @t_edate = case when @t_edate=char(255) then '' else @t_edate end
+		set @titlea = '日期區間：'+@t_bdate+'&nbsp'+char(59)+'～&nbsp'+char(59)+@t_edate
+	end
+	if LEN(@t_detail)=0
+	begin
+		select '1' gno,a.* ,'' tcomp,@titlea titlea
 		from @tmp a
 		where recno=0
 		order by uno,recno
@@ -313,6 +321,7 @@ z_uccst4:--z_uccst4
 		select case when recno=0 then '2' else '3' end gno 
 		,a.* 
 		,case when len(b.nick)=0 then a.tggno else b.comp end tcomp
+		,@titlea titlea
 		from @tmp a
 		left join tgg b on a.tggno=b.noa
 		order by uno,recno
