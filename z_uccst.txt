@@ -1,3 +1,324 @@
+z_uccst01:--z_uccst01	
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_btggno nvarchar(20)--委外裁剪
+	declare @t_etggno nvarchar(20)--委外裁剪
+	declare @t_detail nvarchar(max)
+	
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then '' else [3] end
+	set @t_btggno = case when '#non'=[24] then '' else [24] end
+	set @t_etggno = case when '#non'=[25] then char(255) else [25] end
+	set @t_detail = case when '#non'=[26] then '' else [26] end
+	---------------------------------------------------------------------
+	declare @listcut table(
+		tablea nvarchar(20),
+		tableas nvarchar(20)
+	)
+	insert into @listcut(tablea,tableas)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'cut','cuts')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'cut[0-9][0-9][0-9]'
+	
+	declare @listcub table(
+		tablea nvarchar(20),
+		tableas nvarchar(20),
+		tableat nvarchar(20),
+		tableau nvarchar(20)
+	)
+	insert into @listcub(tablea,tableas,tableat,tableau)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'cub','cubs')
+	,replace(TABLE_NAME,'cub','cubt')
+	,replace(TABLE_NAME,'cub','cubu')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'cub[0-9][0-9][0-9]'
+	
+	declare @listvcc table(
+		tablea nvarchar(20),
+		tableas nvarchar(20)
+	)
+	insert into @listvcc(tablea,tableas)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'vcc','vccs')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'vcc[0-9][0-9][0-9]'
+	
+	declare @listrc2 table(
+		tablea nvarchar(20),
+		tableas nvarchar(20)
+	)
+	insert into @listrc2(tablea,tableas)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'rc2','rc2s')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'rc2[0-9][0-9][0-9]'
+	
+	declare @listget table(
+		tablea nvarchar(20),
+		tableas nvarchar(20)
+	)
+	insert into @listget(tablea,tableas)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'get','gets')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'get[0-9][0-9][0-9]'
+	
+	declare @listina table(
+		tablea nvarchar(20),
+		tableas nvarchar(20)
+	)
+	insert into @listina(tablea,tableas)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,'ina','inas')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'ina[0-9][0-9][0-9]'
+	---------------------------------------------------------------------
+	declare @tmp table(
+		recno int,
+		typea nvarchar(20),
+		datea nvarchar(10),
+		tablea nvarchar(20),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		uno nvarchar(30),
+		[weight] float,
+		n float,
+		totweight float,
+		memo nvarchar(max),
+		tggno nvarchar(max)
+	)
+	declare @tablea nvarchar(20)
+	declare @tableas nvarchar(20)
+	declare @tableat nvarchar(20)
+	declare @tableau nvarchar(20)
+	
+	--CUT
+	declare cursor_table cursor for
+	select tablea,tableas from @listcut
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '裁剪',1,b.datea,@tableas,a.noa,a.noq,a.bno,a.weight,b.tggno"+
+		" from "+@tableas+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" where b.noa is not null"+
+		" and len(isnull(a.bno,''))>0"+
+		" and (len(isnull(a.xbutt,''))>0 or upper(left(a.bno,1))='X' or upper(left(a.bno,1))='Y' or upper(left(a.bno,1))='Z')"+
+		" and b.datea<=@t_edate"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight],tggno)
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas
+		
+		fetch next from cursor_table
+		into @tablea,@tableas
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	--CUB
+	declare cursor_table cursor for
+	select tablea,tableas,tableat,tableau from @listcub
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas,@tableat,@tableau
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '製管',1,case when len(isnull(a.datea,''))>0 then a.datea else b.datea end"+
+		" ,@tableau,a.noa,a.noq,a.uno,a.weight"+
+		" from "+@tableau+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" where b.noa is not null"+
+		" and len(isnull(a.uno,''))>0"+
+		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
+		" and (case when len(isnull(a.datea,''))>0 then a.datea else b.datea end)<=@t_edate"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableau nvarchar(20)'
+		,@t_edate=@t_edate,@tableau=@tableau
+		
+		fetch next from cursor_table
+		into @tablea,@tableas,@tableat,@tableau
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	--vcc
+	declare cursor_table cursor for
+	select tablea,tableas from @listvcc
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '出貨',-1,b.datea,@tableas,a.noa,a.noq,a.uno,a.weight"+
+		" from "+@tableas+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" where b.noa is not null"+
+		" and len(isnull(a.uno,''))>0"+
+		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
+		" and b.datea<=@t_edate"+
+		" and b.typea='1'"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas
+		
+		fetch next from cursor_table
+		into @tablea,@tableas
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	--rc2
+	declare cursor_table cursor for
+	select tablea,tableas from @listrc2
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '進貨',1,b.datea,@tableas,a.noa,a.noq,a.uno,a.weight"+
+		" from "+@tableas+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" where b.noa is not null"+
+		" and len(isnull(a.uno,''))>0"+
+		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
+		" and b.datea<=@t_edate"+
+		" and b.typea='1'"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas
+		
+		fetch next from cursor_table
+		into @tablea,@tableas
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	--ina
+	declare cursor_table cursor for
+	select tablea,tableas from @listina
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '入庫',1,b.datea,@tableas,a.noa,a.noq,a.uno,a.weight"+
+		" from "+@tableas+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" where b.noa is not null"+
+		" and len(isnull(a.uno,''))>0"+
+		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
+		" and b.datea<=@t_edate"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas
+		
+		fetch next from cursor_table
+		into @tablea,@tableas
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	--get
+	declare cursor_table cursor for
+	select tablea,tableas from @listget
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd =
+		" select '領料',-1,b.datea,@tableas,a.noa,a.noq,a.uno,a.gweight"+
+		" from "+@tableas+" a"+
+		" left join "+@tablea+" b on a.noa=b.noa"+
+		" where b.noa is not null"+
+		" and len(isnull(a.uno,''))>0"+
+		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
+		" and b.datea<=@t_edate"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas
+		
+		fetch next from cursor_table
+		into @tablea,@tableas
+	end
+	close cursor_table
+	deallocate cursor_table
+	---------------------------------------------------------------------
+	update @tmp set recno=b.recno
+	from @tmp a
+	left join (select ROW_NUMBER()over(PARTITION by uno order by datea,tablea,noa,noq) recno,tablea,noa,noq from @tmp) b on a.tablea=b.tablea and a.noa=b.noa and a.noq=b.noq
+	---------------------------------------------------------------------
+	declare @uno nvarchar(30)
+	declare @recno int
+	declare @weight float
+	declare @totweight float
+	declare @n float
+
+	declare cursor_table cursor for
+	select uno,recno,[weight],n from @tmp order by uno,recno
+	open cursor_table
+	fetch next from cursor_table
+	into @uno,@recno,@weight,@n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @recno = 1
+			set @totweight = @weight*@n
+		else
+			set @totweight = @totweight + @weight*@n
+		update @tmp set totweight = @totweight where uno=@uno and recno=@recno
+		fetch next from cursor_table
+		into @uno,@recno,@weight,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	---------------------------------------------------------------------
+	--委外廠商
+	delete @tmp where not(isnull(tggno,'') between @t_btggno and @t_etggno)
+	---------------------------------------------------------------------
+	--結餘
+	insert into @tmp(recno,uno,totweight)
+	select '0',a.uno,a.totweight 
+	from @tmp a 
+	left join (select uno,Max(recno) recno from @tmp group by uno) b on a.uno=b.uno and a.recno=b.recno
+	where b.uno is not null
+	--保留日期區間內的明細
+	delete @tmp where recno!=0 and not(datea between @t_bdate and @t_edate)
+	--本期小計
+	update @tmp set [weight]=b.[weight]
+	from @tmp a
+	left join (select uno,SUM([weight]) [weight] from @tmp where recno!=0 group by uno) b on a.uno=b.uno
+	where b.uno is not null and recno=0
+	--明細顯示
+	if LEN(@t_detail)>0
+	begin
+		select '1',a.* 
+		from @tmp a
+		where recno=0
+		order by uno,recno
+	end
+	else
+	begin
+		select case when recno=0 then '2' else '3' end gno 
+		,a.* 
+		,case when len(b.nick)=0 then a.tggno else b.comp end tcomp
+		from @tmp a
+		left join tgg b on a.tggno=b.noa
+		order by uno,recno
+	end;
+
+
 z_uccst1:--z_uccst1
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
