@@ -182,7 +182,8 @@ declare @tmp table(
 	a_totala float,
 	a_totalus float,
 	a_weight float,
-	a_memo nvarchar(200),
+	a_memo nvarchar(max),
+	a_trantype nvarchar(20),
 	b_productno nvarchar(35),
 	b_no3 nvarchar(10),
 	b_products nvarchar(50),
@@ -206,7 +207,7 @@ insert into @tmp
 		case when isnull(a.post,'') !='' then  a.post + ' - ' + a.addr else a.addr end,
 		case when isnull(a.post2,'') !='' then  a.post2 + ' - ' + a.addr2 else a.addr2 end,
 		a.apv,a.money,a.tax,a.taxtype,a.total,a.totalus,a.weight,
-		a.memo,b.productno,b.no3,b.product,b.class,
+		a.memo,a.trantype,b.productno,b.no3,b.product,b.class,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 		b.unit,b.mount,b.weight,b.price,b.total,b.theory,b.memo,
 		case when isnull(b.no2,'') != '' then b.ordeno +'-'+b.no2 else b.ordeno end,b.enda
@@ -283,7 +284,7 @@ select
 	case when b_total>0 or len(b_products)>0 then ROW_NUMBER()over(partition by a_noa order by pageno,gno,orderno) else null end rr
 	,gno,a_noa,a_stype,a_datea,a_odate,a_cno,a_acomp,a_coin,a_floata,a_contract,a_custno,a_comp
 	,a_paytype,a_sales,a_tel,a_fax,
-	a_kind,a_addressa,a_addressb,a_apv aa,a_memo
+	a_kind,a_addressa,a_addressb,a_apv aa,a_memo,a_trantype a_tt
 	,b_productno ppno,b_no3,b_products ptno,b_class cc,b_size,b_unit uu,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_taxs),1)),4,12)) a_taxs,a_taxtype ttp,
@@ -291,7 +292,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_totalus),1)),4,12)) a_totalus,
 	a_weight ww1,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) mm2,
-	round(b_weight*1000,0) ww2,
+	b_weight ww2,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar) pp1 ,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_theory),1)),4,12)) b_theory,
