@@ -295,5 +295,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar) pp1 ,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_theory),1)),4,12)) b_theory,
-	b_memo,b_ordeno,b_enda ee
-from @tmp order by a_noa desc,pageno,gno,orderno;
+	b_memo,b_ordeno,b_enda ee,b.comptel
+from @tmp a
+left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end comptel from acomp) b on a.a_cno=b.noa
+order by a_noa desc,pageno,gno,orderno;
