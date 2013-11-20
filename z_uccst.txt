@@ -408,6 +408,7 @@ select
 from @tmp order by productno,gno,datea,uno;
 ----------************************************************************************-------------------
 z_uccst2:--z_uccst2
+z_uccst2A:--z_uccst2A
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bproductno nvarchar(10)
@@ -516,8 +517,8 @@ insert into @tmp
 			'ordet' tablea,'1' gno,'1' sortno,a.noa,'' style,
 			'' waste,'1' itype,b.odate,'' storeno,b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
 			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3
-		from ordet[1] a
-		left join orde[1] b on a.noa = b.noa 
+		from view_ordet[1] a
+		left join view_orde[1] b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
 		where c.uno is not null and @t_isordermemo='1' and c.kind='A1'
 	) a
@@ -592,6 +593,7 @@ select
 from @tmp order by g2,productno,uno,gno,sortno;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
+z_uccst3A:--z_uccst3A
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bproductno nvarchar(10)
@@ -700,8 +702,8 @@ insert into @tmp
 			'ordet' tablea,'1' gno,'1' sortno,a.noa,'' style,
 			'' waste,'1' itype,b.odate,'' storeno,b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
 			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3
-		from ordet[1] a
-		left join orde[1] b on a.noa = b.noa 
+		from view_ordet[1] a
+		left join view_orde[1] b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
 		where c.uno is not null and @t_isordermemo='1' and c.kind='A1'
 	) a
