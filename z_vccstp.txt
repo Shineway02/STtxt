@@ -327,7 +327,9 @@ select
 	gno,idno,orderno,pageno,kind,noa,datea,custno,custs,tel,addr,cardeal,carno,memo,stype,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,ordeno,uno,spec,products,csize,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,ordeno
+	,case when len(uno)>11 then '' else uno end uno
+	,spec,products,csize,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((price*1000)-(floor(price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) price,
