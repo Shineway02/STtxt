@@ -40,6 +40,7 @@
 	----------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(10),
+		cno nvarchar(10),
 		noa nvarchar(20),
 		custno nvarchar(20),
 		cust nvarchar(max),
@@ -51,6 +52,7 @@
 		ckind nvarchar(max),
 		paytype nvarchar(20),
 		trantype nvarchar(20),
+		sales nvarchar(90),
 		memo nvarchar(max),
 		mount float,
 		[weight] float,
@@ -65,14 +67,14 @@
 		price decimal(10,3),
 		totals float,
 		size nvarchar(max),
-		memos nvarchar(max) 
+		memos nvarchar(max)
 	)
 	
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
-	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
+	" ,b.cno,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
 	" ,b.tel,b.fax,case when len(isnull(b.addr2,''))>0 then b.addr2 else b.addr end"+
-	" ,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
+	" ,b.odate,b.kind,b.paytype,b.trantype,b.sales,ISNULL(b.memo,'')"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when @t_showtype='1' then a.size "+
 	"		when @t_showtype='2' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)"+
@@ -85,7 +87,7 @@
 	" and a.noa between @t_bno and @t_eno"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,custno,cust,tel,fax,addr,odate,kind,paytype,trantype,memo
+	insert into @tmp(gno,cno,noa,custno,cust,tel,fax,addr,odate,kind,paytype,trantype,sales,memo
 		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_showtype nvarchar(max)'
 	,@t_bno=@t_bno,@t_eno=@t_eno,@t_showtype=@t_showtype
@@ -130,15 +132,15 @@
 	deallocate cursor_table
 
 	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,fax=b.fax,addr=b.addr
-		,odate=b.odate,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
+		,odate=b.odate,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,sales=b.sales,memo=b.memo
 		,mount=c.mount,[weight]=c.[weight],[money]=c.[money]
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight],SUM(isnull(totals,0)) [money] from @tmp group by noa ) c on a.noa=c.noa
 	
-	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	select a.*,b.comptel,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 	from(
-		select gno,noa,no2
+		select gno,cno,noa,no2
 		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 		,b.rrno ttno
 		,noa a01
@@ -150,6 +152,7 @@
 		,odate a07
 		,paytype a08
 		,trantype a09
+		,sales
 		,mount a10
 		,[weight] a11
 		,[money] a12
@@ -168,4 +171,5 @@
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
 	)a
+	left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end comptel from acomp) b on a.cno=b.noa
 	order by a.noa,a.no2;
