@@ -659,3 +659,170 @@ select
 	comp
 from @tmp order by custno,comp,gno;
 ----------********************************************************************----------
+z_vccst10:--z_vccst10
+declare @t_pageline int = 16   --------一頁幾行
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bmon nvarchar(20)
+declare @t_emon nvarchar(20)
+set @t_bmon = case when '#non'=[4] then '' else [4] end
+set @t_emon = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[8] then '' else [8] end
+set @t_ecustno = case when '#non'=[9] then char(255) else [9] end
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	typea nvarchar(10),
+	custno nvarchar(35),
+	custs nvarchar(90),
+	zipcode nvarchar(90),
+	addr nvarchar(max),
+	tel nvarchar(max),
+	datea nvarchar(20),
+	noa nvarchar(30),
+	pno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	b_mount float,
+	b_price float,
+	b_money float,
+	b_tax float,
+	b_total float,
+	a_total float,
+	t_total1 float,
+	t_total2 float,
+	t_total3 float,
+	t_total4 float,
+	t_total5 float,
+	t_total6 float,
+	t_total7 float,
+	t_total8 float,
+	t_total9 float
+)
+
+insert into @tmp
+	select
+		 '0',ROW_NUMBER()over(partition by a.custno,a.comp,c.zip_home,c.addr_home order by a.custno,a.comp,c.zip_home,c.addr_home),1,
+		 (case a.typea when '1' then '出' when '2' then '退' end),a.custno,a.comp,c.zip_home,c.addr_home,a.tel,right(a.datea,5),a.noa,
+		 b.productno,b.product,
+		 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		 b.mount,b.price,b.total,a.tax,0,a.total,0,0,0,isnull((isnull(d.total,0)+isnull(d.tax,0)),0),0,0,0,0,0
+	from view_vcc[1] a
+	left join view_vccs[1] b on (a.noa = b.noa)
+	left join cust c on a.custno = c.noa
+	left join vccbs d on a.invono = d.invono
+	left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
+	where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
+update @tmp set datea = isnull(typea,'') + isnull(datea,'')
+
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+declare @custno nvarchar(30)
+declare @custs nvarchar(90)
+declare @zipcode nvarchar(20)
+declare @addr nvarchar(max)
+declare @tel nvarchar(90)
+declare cursor_table cursor for
+	select custno,custs,count(*),max(orderno) from @tmp group by custno,custs
+open cursor_table
+fetch next from cursor_table
+into @custno,@custs,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @custno,@custs,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare @noa nvarchar(30)
+declare @b_tax float
+declare @t_total4 float
+declare @b_total float
+---------整理BBM資料--------------------------------------------------------------
+declare cursor_table cursor for
+	select distinct noa,idno,b_tax,t_total4,a_total from @tmp order by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@idno,@b_tax,@t_total4,@b_total
+while(@@FETCH_STATUS <> -1)
+begin	
+	update @tmp set b_tax = 0 where noa = @noa
+	update @tmp set b_tax = @b_tax where (noa = @noa) and (idno = @idno)
+	update @tmp set b_total = 0 where noa = @noa
+	update @tmp set b_total = @b_total where (noa = @noa) and (idno = @idno)
+	update @tmp set t_total4 = 0 where noa = @noa
+	update @tmp set t_total4 = @t_total4 where (noa = @noa) and (idno = @idno)
+	fetch next from cursor_table
+	into @noa,@idno,@b_tax,@t_total4,@b_total
+end
+close cursor_table
+deallocate cursor_table
+------------------------------------------------------------------------------
+declare cursor_table cursor for
+	select distinct custno,max(custs),max(zipcode),max(addr),max(tel),max(orderno),pageno,min(idno),count(*) from @tmp group by custno,custs,zipcode,addr,tel,pageno
+open cursor_table
+fetch next from cursor_table
+into @custno,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel)
+				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total4)
+		select '1',(@t_pageline+1),pageno,@custno,@custs,@zipcode,@addr,@tel,sum(b_money),sum(b_tax),sum(t_total4) from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and (pageno=@pageno) group by custno,custs,zipcode,addr,pageno
+	insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel) 
+		select '2',(@t_pageline+2),pageno,@custno,@custs,@zipcode,@addr,@tel from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and pageno=@pageno group by pageno
+	fetch next from cursor_table
+	into @custno,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '1'
+update @tmp set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '1'
+update @tmp set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '1'
+update @tmp set t_total9 = 0 where gno = '1' and (t_total9 <=0)
+update @tmp set csize = replace(csize,'~#$','''')
+select
+	gno,idno,orderno,pageno,typea,custno,custs,zipcode,addr,tel,datea a1,left(noa,7) noa,pno,products a2,csize,
+	b_mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
+	b_money,
+	(case when b_tax = 0 then null else b_tax end) b_tax,
+	(case when b_total = 0 then null else b_total end) b_total, 
+	isnull(t_total1,0) t_total1,
+	isnull(t_total2,0) t_total2,
+	isnull(t_total3,0) t_total3,
+	isnull(t_total4,0) t_total4,
+	isnull(t_total5,0) t_total5,
+	isnull(t_total6,0) t_total6,
+	isnull(t_total7,0) t_total7,
+	isnull(t_total8,0) t_total8,
+	isnull(t_total9,0) t_total9
+from @tmp order by custno,custs,zipcode,addr,pageno,gno,orderno;
+----------********************************************************************----------
