@@ -137,8 +137,48 @@
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight],SUM(isnull(totals,0)) [money] from @tmp group by noa ) c on a.noa=c.noa
+	---------------------------------------
+	declare @tmpx table(
+		recno int,
+		recno2 int,
+		gno nvarchar(10),
+		cno nvarchar(20),
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		rrno int,
+		ttno int,
+		a01 nvarchar(max),
+		a02 nvarchar(max),
+		a03 nvarchar(max),
+		a04 nvarchar(max),
+		a05 nvarchar(max),
+		a06 nvarchar(max),
+		a07 nvarchar(max),
+		a08 nvarchar(max),
+		a09 nvarchar(max),
+		sales nvarchar(30),
+		a10 float,
+		a11 float,
+		a12 float,
+		a13 nvarchar(max),
+		
+		b01 nvarchar(max),
+		b02 nvarchar(max),
+		b03 nvarchar(max),
+		b04 nvarchar(max),
+		b05 float,
+		b06 float,
+		b07 float,
+		b08 float,
+		b09 nvarchar(max),
+		comptel nvarchar(max),
+		pno nvarchar(max)
+	)
 	
-	select a.*,b.comptel,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	
+	insert into @tmpx
+	select ROW_NUMBER()over(partition by a.noa order by a.no2),1
+		,a.*,b.comptel,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 	from(
 		select gno,cno,noa,no2
 		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
@@ -172,4 +212,56 @@
 			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
 	)a
 	left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end comptel from acomp) b on a.cno=b.noa
-	order by a.noa,a.no2;
+	order by a.noa,a.no2
+
+	--管 不顯示重量
+	declare @gno nvarchar(10)
+	declare @recno int
+	declare @recno2 int
+
+	declare cursor_table cursor for
+	select recno,recno2,noa from @tmpx where recno%@t_pageline=1 and recno2=1 
+	open cursor_table
+	fetch next from cursor_table
+	into @recno,@recno2,@noa
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		select top(1) @gno=case when kind='B2' then '6' else '5' end from @tmp where noa=@noa 
+		
+		insert into @tmpx
+		select recno,0,@gno
+			,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,a07,a08,a09,sales,a10,a11,a12,a13
+			,b01,b02,b03,b04,b05,b06,b07,b08,b09,comptel,pno
+		from @tmpx where recno=@recno and recno2=@recno2 and noa=@noa
+		if @gno='6'
+		begin
+			update @tmpx set gno=case when gno='1' then '7' when gno='2' then '8' else gno end where noa=@noa
+		end
+
+		fetch next from cursor_table
+		into @recno,@recno2,@noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select recno,recno2,noa from @tmpx where recno%@t_pageline=0 and recno2=1 
+	open cursor_table
+	fetch next from cursor_table
+	into @recno,@recno2,@noa
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		select top(1) @gno=case when kind='B2' then '6' else '5' end from @tmp where noa=@noa 
+			
+		insert into @tmpx
+		select recno,999,case when @gno='6' then '10' else '9' end
+			,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,a07,a08,a09,sales,a10,a11,a12,a13
+			,b01,b02,b03,b04,b05,b06,b07,b08,b09,comptel,pno
+		from @tmpx where recno=@recno and recno2=@recno2 and noa=@noa
+		fetch next from cursor_table
+		into @recno,@recno2,@noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select * from @tmpx order by noa,recno,recno2;
