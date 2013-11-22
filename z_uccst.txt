@@ -499,7 +499,8 @@ declare @tmp table(
 	mount float,
 	weight float,
 	ordeno nvarchar(50),
-	no2 nvarchar(10)
+	no2 nvarchar(10),
+	sfi nvarchar(max)
 )
 
 insert into @tmp
@@ -508,7 +509,35 @@ insert into @tmp
 		case a.tablea when 'rc2s' then d.uno2 when 'inas' then e.uno2 end,
 		a.productno,a.product,a.class,a.spec,
 		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) csize,
-		a.mount,a.weight,a.ordeno,a.no2
+		a.mount,a.weight,a.ordeno,a.no2,
+		case when (charindex('帶',a.product)>0 or a.style='B') then
+			case 
+				when (a.dime >= 3.6 and a.width >= (3.1416*165.1-a.dime*3.5)) then '6"'
+				when (a.dime < 3.6 and a.width >= (3.1416*164.9-a.dime*3.5)) then '6"'
+				when (a.dime >= 3.6 and a.width >= (3.1416*139.6-a.dime*3.5)) then '5"'
+				when (a.dime < 3.6 and a.width >= (3.1416*139.5-a.dime*3.5)) then '5"'
+				when (a.dime >= 3.25 and a.width >= (3.1416*114.1-a.dime*3.5)) then '4"'
+				when (a.dime < 3.25 and a.width >= (3.1416*113.5-a.dime*3.5)) then '4"'
+				when (a.dime >= 3.25 and a.width >= (3.1416*101.0-a.dime*3.5)) then '3-1/2"'
+				when (a.dime < 3.25 and a.width >= (3.1416*100.7-a.dime*3.5)) then '3-1/2"'
+				when (a.dime >= 3.0 and a.width >= (3.1416*88.8-a.dime*3.5)) then '3"'
+				when (a.dime < 3.0 and a.width >= (3.1416*88.3-a.dime*3.5)) then '3"'
+				when (a.dime >= 3.0 and a.width >= (3.1416*76.0-a.dime*3.5)) then '2-1/2"'
+				when (a.dime < 3.0 and a.width >= (3.1416*75.6-a.dime*3.5)) then '2-1/2"'
+				when (a.dime >= 2.6 and a.width >= (3.1416*60.3-a.dime*3.5)) then '2"'
+				when (a.dime < 2.6 and a.width >= (3.1416*59.9-a.dime*3.5)) then '2"'
+				when (a.dime >= 2.6 and a.width >= (3.1416*48.4-a.dime*3.5)) then '1-1/2"'
+				when (a.dime < 2.6 and a.width >= (3.1416*48.1-a.dime*3.5)) then '1-1/2"'
+				when (a.dime >= 2.45 and a.width >= (3.1416*42.5-a.dime*3.5)) then '1-1/4"'
+				when (a.dime < 2.45 and a.width >= (3.1416*42.2-a.dime*3.5)) then '1-1/4"'
+				when (a.dime >= 2.45 and a.width >= (3.1416*33.8-a.dime*3.5)) then '1"'
+				when (a.dime < 2.45 and a.width >= (3.1416*33.5-a.dime*3.5)) then '1"'
+				when (a.dime >= 2.1 and a.width >= (3.1416*26.9-a.dime*3.5)) then '3/4"'
+				when (a.dime < 2.1 and a.width >= (3.1416*26.7-a.dime*3.5)) then '3/4"'
+				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
+				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
+			end
+		end
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
@@ -592,19 +621,19 @@ if(@t_sortby = 'DATEA')
 	select
 		ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by g2,datea,productno,csize,uno,gno,sortno
 else if(@t_sortby = 'PNO')
 	select
 		ROW_NUMBER()over(order by g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by g2,productno,datea,csize,uno,gno,sortno
 else 
 	select
 		ROW_NUMBER()over(order by g2,csize,productno,datea,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by g2,csize,productno,datea,uno,gno,sortno;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
@@ -700,7 +729,8 @@ declare @tmp table(
 	mount float,
 	weight float,
 	ordeno nvarchar(50),
-	no2 nvarchar(10)
+	no2 nvarchar(10),
+	sfi nvarchar(max)
 )
 
 insert into @tmp
@@ -709,7 +739,35 @@ insert into @tmp
 		case a.tablea when 'rc2s' then d.uno2 when 'inas' then e.uno2 end,
 		a.productno,a.product,a.class,a.spec,
 		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) csize,
-		a.mount,a.weight,a.ordeno,a.no2
+		a.mount,a.weight,a.ordeno,a.no2,
+		case when (charindex('帶',a.product)>0 or a.style='B') then
+			case 
+				when (a.dime >= 3.6 and a.width >= (3.1416*165.1-a.dime*3.5)) then '6"'
+				when (a.dime < 3.6 and a.width >= (3.1416*164.9-a.dime*3.5)) then '6"'
+				when (a.dime >= 3.6 and a.width >= (3.1416*139.6-a.dime*3.5)) then '5"'
+				when (a.dime < 3.6 and a.width >= (3.1416*139.5-a.dime*3.5)) then '5"'
+				when (a.dime >= 3.25 and a.width >= (3.1416*114.1-a.dime*3.5)) then '4"'
+				when (a.dime < 3.25 and a.width >= (3.1416*113.5-a.dime*3.5)) then '4"'
+				when (a.dime >= 3.25 and a.width >= (3.1416*101.0-a.dime*3.5)) then '3-1/2"'
+				when (a.dime < 3.25 and a.width >= (3.1416*100.7-a.dime*3.5)) then '3-1/2"'
+				when (a.dime >= 3.0 and a.width >= (3.1416*88.8-a.dime*3.5)) then '3"'
+				when (a.dime < 3.0 and a.width >= (3.1416*88.3-a.dime*3.5)) then '3"'
+				when (a.dime >= 3.0 and a.width >= (3.1416*76.0-a.dime*3.5)) then '2-1/2"'
+				when (a.dime < 3.0 and a.width >= (3.1416*75.6-a.dime*3.5)) then '2-1/2"'
+				when (a.dime >= 2.6 and a.width >= (3.1416*60.3-a.dime*3.5)) then '2"'
+				when (a.dime < 2.6 and a.width >= (3.1416*59.9-a.dime*3.5)) then '2"'
+				when (a.dime >= 2.6 and a.width >= (3.1416*48.4-a.dime*3.5)) then '1-1/2"'
+				when (a.dime < 2.6 and a.width >= (3.1416*48.1-a.dime*3.5)) then '1-1/2"'
+				when (a.dime >= 2.45 and a.width >= (3.1416*42.5-a.dime*3.5)) then '1-1/4"'
+				when (a.dime < 2.45 and a.width >= (3.1416*42.2-a.dime*3.5)) then '1-1/4"'
+				when (a.dime >= 2.45 and a.width >= (3.1416*33.8-a.dime*3.5)) then '1"'
+				when (a.dime < 2.45 and a.width >= (3.1416*33.5-a.dime*3.5)) then '1"'
+				when (a.dime >= 2.1 and a.width >= (3.1416*26.9-a.dime*3.5)) then '3/4"'
+				when (a.dime < 2.1 and a.width >= (3.1416*26.7-a.dime*3.5)) then '3/4"'
+				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
+				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
+			end
+		end
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
@@ -794,13 +852,13 @@ if(@t_sortby = 'DATEA')
 	select 
 		ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by storeno,g2,datea,productno,csize,uno,gno,sortno
 else if(@t_sortby = 'PNO')
 	select 
 		ROW_NUMBER()over(order by g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by storeno,g2,productno,datea,csize,uno,gno,sortno
 else 
 	select 
