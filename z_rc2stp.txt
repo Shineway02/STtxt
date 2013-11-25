@@ -153,9 +153,9 @@ z_rc2stp1:--z_rc2stp1
 		,ckind a04
 		,mount a05
 		,[weight] a06
-		,[money] a07
-		,[tax] a08
-		,[total] a09
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) a07
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) a08
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a09
 		,memo a10
 		
 		,productno b01
@@ -165,7 +165,7 @@ z_rc2stp1:--z_rc2stp1
 		,mounts b05
 		,weights b06
 		,price b07
-		,totals b08
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) b08
 		,memos b09
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
