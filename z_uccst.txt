@@ -500,7 +500,12 @@ declare @tmp table(
 	weight float,
 	ordeno nvarchar(50),
 	no2 nvarchar(10),
-	sfi nvarchar(max)
+	sfi nvarchar(max),
+	radius float,
+	dime float,
+	width float,
+	lengthb float,
+	kind nvarchar(10)
 )
 
 insert into @tmp
@@ -537,7 +542,7 @@ insert into @tmp
 				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
 				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
 			end
-		end
+		end,a.radius,a.dime,a.width,a.lengthb,a.kind
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
@@ -599,12 +604,13 @@ while(@@FETCH_STATUS <> -1)
 begin
 	if(@t_count >=2)
 	begin
-		insert into @tmp(gno,g2,sortno,datea,uno,csize,productno,mount,weight)
+		insert into @tmp(gno,g2,sortno,datea,uno,csize,productno,mount,weight,radius,dime,width,lengthb,kind)
 			select
 				'2' gno,'0' g2,'2' sortno,datea,uno,csize,productno,
 				sum((case when gno='1' then mount*(-1) else mount end)),
-				sum((case when gno='1' then weight*(-1) else weight end))
-			from @tmp where uno = @t_uno group by uno,csize,datea,productno
+				sum((case when gno='1' then weight*(-1) else weight end)),
+				radius,dime,width,lengthb,kind
+			from @tmp where uno = @t_uno group by uno,kind,csize,radius,dime,width,lengthb,datea,productno
 	end
 	fetch next from cursor_table
 	into @t_uno,@t_count
@@ -629,12 +635,18 @@ else if(@t_sortby = 'PNO')
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by g2,productno,datea,csize,uno,gno,sortno
-else 
+else
 	select
 		ROW_NUMBER()over(order by g2,csize,productno,datea,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
-	from @tmp order by g2,csize,productno,datea,uno,gno,sortno;
+	from @tmp 
+	order by g2,
+	(case substring(kind,0,1) when 'B' then radius else dime end ),
+	(case substring(kind,0,1) when 'B' then width else width end ),
+	(case substring(kind,0,1) when 'B' then dime else lengthb end ),
+	(case substring(kind,0,1) when 'B' then lengthb end ),
+	csize,productno,datea,uno,gno,sortno;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
 z_uccst3A:--z_uccst3A
@@ -730,7 +742,12 @@ declare @tmp table(
 	weight float,
 	ordeno nvarchar(50),
 	no2 nvarchar(10),
-	sfi nvarchar(max)
+	sfi nvarchar(max),
+	radius float,
+	dime float,
+	width float,
+	lengthb float,
+	kind nvarchar(10)
 )
 
 insert into @tmp
@@ -767,7 +784,7 @@ insert into @tmp
 				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
 				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
 			end
-		end
+		end,a.radius,a.dime,a.width,a.lengthb,a.kind
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
@@ -829,12 +846,13 @@ while(@@FETCH_STATUS <> -1)
 begin
 	if(@t_count >=2)
 	begin
-		insert into @tmp(gno,g2,sortno,storeno,uno,csize,datea,productno,mount,weight)
+		insert into @tmp(gno,g2,sortno,storeno,uno,csize,datea,productno,mount,weight,radius,dime,width,lengthb,kind)
 			select
 				'2' gno,'0' g2,'2' sortno,storeno,uno,csize,datea,productno,
 				sum((case when gno='1' then mount*(-1) else mount end)),
-				sum((case when gno='1' then weight*(-1) else weight end))
-			from @tmp where uno = @t_uno group by storeno,uno,csize,datea,productno
+				sum((case when gno='1' then weight*(-1) else weight end)),
+				radius,dime,width,lengthb,kind
+			from @tmp where uno = @t_uno group by storeno,uno,radius,dime,width,lengthb,kind,csize,datea,productno
 	end
 	fetch next from cursor_table
 	into @t_uno,@t_count
@@ -850,19 +868,24 @@ update @tmp set csize = replace(csize,'~#$','''')
 
 if(@t_sortby = 'DATEA')
 	select 
-		ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,
+		ROW_NUMBER()over(order by storeno,g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by storeno,g2,datea,productno,csize,uno,gno,sortno
 else if(@t_sortby = 'PNO')
 	select 
-		ROW_NUMBER()over(order by g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,
+		ROW_NUMBER()over(order by storeno,g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi
 	from @tmp order by storeno,g2,productno,datea,csize,uno,gno,sortno
 else 
 	select 
-		ROW_NUMBER()over(order by g2,csize,datea,productno,uno,sortno) idno,*,@t_title t_title ,
+		ROW_NUMBER()over(order by storeno,g2,csize,datea,productno,uno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2
-	from @tmp order by storeno,g2,csize,datea,productno,uno,gno,sortno;
+	from @tmp order by storeno,g2,
+	(case substring(kind,0,1) when 'B' then radius else dime end ),
+	(case substring(kind,0,1) when 'B' then width else width end ),
+	(case substring(kind,0,1) when 'B' then dime else lengthb end ),
+	(case substring(kind,0,1) when 'B' then lengthb end ),
+	csize,datea,productno,uno,gno,sortno;
