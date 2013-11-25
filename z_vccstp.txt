@@ -177,9 +177,9 @@ z_vccstp1:--z_vccstp1
 		,ckind a06
 		,trantype a07
 		,ctaxtype a08
-		,case when @t_showprice='0' then null else tax end a09
-		,case when @t_showprice='0' then null else [money] end  a10
-		,case when @t_showprice='0' then null else [total] end  a11
+		,case when @t_showprice='0' then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) end a09
+		,case when @t_showprice='0' then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) end  a10
+		,case when @t_showprice='0' then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) end  a11
 		,memo a12
 		
 		,productno b01
@@ -188,8 +188,8 @@ z_vccstp1:--z_vccstp1
 		,unit b04
 		,mounts b05
 		,weights b06
-		,case when @t_showprice='0' then null else price end  b07
-		,case when @t_showprice='0' then null else totals end  b08
+		,case when @t_showprice='0' then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) end  b07
+		,case when @t_showprice='0' then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) end  b08
 		,memos b09
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
