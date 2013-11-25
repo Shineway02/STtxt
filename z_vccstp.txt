@@ -248,17 +248,25 @@ declare @tmp table(
 	
 )
 insert into @tmp
-select
-	'0',
-	ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-	a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post+a.addr,a.cardeal,a.carno,a.memo,
-	a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
-	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-	b.mount,b.weight,b.price,a.trantype
-from view_vcc[1] a
-left join view_vccs[1] b on a.noa = b.noa
-where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
-
+	select
+		'0',
+		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post+a.addr,a.cardeal,a.carno,a.memo,
+		(a.money+a.tranmoney),a.tax,(a.total+a.tranmoney),b.ordeno,b.uno,b.spec,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		b.mount,b.weight,b.price,a.trantype
+	from view_vcc[1] a
+	left join view_vccs[1] b on a.noa = b.noa
+	where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
+insert into @tmp
+	select
+		'0',
+		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post+a.addr,a.cardeal,a.carno,a.memo,
+		(a.money+a.tranmoney),a.tax,(a.total+a.tranmoney),char(255),char(255),char(255),'運費',char(255),
+		1,null,a.tranmoney,a.trantype
+	from view_vcc[1] a
+	where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype) and (tranmoney >0)
 declare @noa nvarchar(30)
 declare @count int
 declare @idno int
