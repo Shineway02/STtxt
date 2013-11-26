@@ -160,6 +160,7 @@ declare @tmpa table(
 	a08 float,--
 	a09 float,--
 	a10 nvarchar(max),
+	datea nvarchar(10),
 	b01 nvarchar(50),
 	b02 nvarchar(50),
 	b03 nvarchar(max),
@@ -189,7 +190,7 @@ insert into @tmpa
 		,tax a08
 		,total a09
 		,memo a10
-		
+		,datea
 		,productno b01
 		,product b02
 		,replace(size,'~#$',"'") b03
@@ -209,7 +210,7 @@ update @tmpa set a05 = b.b05,a06=b.b06,a07=b.b08
 from @tmpa a
 left join (select noa,rrno,sum(b05) b05,sum(b06) b06,sum(b08) b08 from @tmpa group by noa,rrno) b on (a.noa = b.noa) and (b.rrno = a.rrno)
 select
-	gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,
+	gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,datea,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a07),1)),4,12)) a07,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a0a7),1)),4,12)) a0a7,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a08),1)),4,12)) a08,
