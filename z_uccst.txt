@@ -6,13 +6,17 @@ z_uccst4:--z_uccst4
 	declare @t_edate nvarchar(10)
 	declare @t_btggno nvarchar(20)--委外裁剪
 	declare @t_etggno nvarchar(20)--委外裁剪
+	declare @t_bstoreno nvarchar(20)
+	declare @t_estoreno nvarchar(20)
 	declare @t_detail nvarchar(max)
 	
 	set @t_bdate = case when '#non'=[2] then '' else [2] end
 	set @t_edate = case when '#non'=[3] then char(255) else [3] end
 	set @t_btggno = case when '#non'=[24] then '' else [24] end
 	set @t_etggno = case when '#non'=[25] then char(255) else [25] end
-	set @t_detail = case when '#non'=[26] then '' else [26] end
+	set @t_bstoreno = case when '#non'=[29] then '' else [29] end
+	set @t_estoreno = case when '#non'=[30] then char(255) else [30] end
+	set @t_detail = case when '#non'=[31] then '' else [31] end
 	---------------------------------------------------------------------
 	declare @listcut table(
 		tablea nvarchar(20),
@@ -86,6 +90,7 @@ z_uccst4:--z_uccst4
 		noa nvarchar(20),
 		noq nvarchar(10),
 		uno nvarchar(30),
+		storeno nvarchar(20),
 		[weight] float,
 		n float,
 		totweight float,
@@ -106,16 +111,17 @@ z_uccst4:--z_uccst4
 	while(@@FETCH_STATUS <> -1)
 	begin
 		set @cmd =
-		" select '裁剪',1,b.datea,@tableas,a.noa,a.noq,a.bno,a.weight,b.tggno"+
+		" select '裁剪',1,b.datea,@tableas,a.noa,a.noq,a.bno,a.storeno,a.weight,b.tggno"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where b.noa is not null"+
 		" and len(isnull(a.bno,''))>0"+
 		" and (len(isnull(a.xbutt,''))>0 or upper(left(a.bno,1))='X' or upper(left(a.bno,1))='Y' or upper(left(a.bno,1))='Z')"+
-		" and b.datea<=@t_edate"
-		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight],tggno)
-		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
-		,@t_edate=@t_edate,@tableas=@tableas
+		" and b.datea<=@t_edate"+
+		" and isnull(a.storeno,'') between @t_bstoreno and @t_estoreno"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,storeno,[weight],tggno)
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20),@t_bstoreno nvarchar(20),@t_estoreno nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas,@t_bstoreno=@t_bstoreno,@t_estoreno=@t_estoreno
 		
 		fetch next from cursor_table
 		into @tablea,@tableas
@@ -133,16 +139,17 @@ z_uccst4:--z_uccst4
 	begin
 		set @cmd =
 		" select '製管',1,case when len(isnull(a.datea,''))>0 then a.datea else b.datea end"+
-		" ,@tableau,a.noa,a.noq,a.uno,a.weight"+
+		" ,@tableau,a.noa,a.noq,a.uno,a.storeno,a.weight"+
 		" from "+@tableau+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where b.noa is not null"+
 		" and len(isnull(a.uno,''))>0"+
 		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
-		" and (case when len(isnull(a.datea,''))>0 then a.datea else b.datea end)<=@t_edate"
-		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
-		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableau nvarchar(20)'
-		,@t_edate=@t_edate,@tableau=@tableau
+		" and (case when len(isnull(a.datea,''))>0 then a.datea else b.datea end)<=@t_edate"+
+		" and isnull(a.storeno,'') between @t_bstoreno and @t_estoreno"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,storeno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableau nvarchar(20),@t_bstoreno nvarchar(20),@t_estoreno nvarchar(20)'
+		,@t_edate=@t_edate,@tableau=@tableau,@t_bstoreno=@t_bstoreno,@t_estoreno=@t_estoreno
 		
 		fetch next from cursor_table
 		into @tablea,@tableas,@tableat,@tableau
@@ -186,17 +193,18 @@ z_uccst4:--z_uccst4
 	while(@@FETCH_STATUS <> -1)
 	begin
 		set @cmd =
-		" select '進貨',1,b.datea,@tableas,a.noa,a.noq,a.uno,a.weight"+
+		" select '進貨',1,b.datea,@tableas,a.noa,a.noq,a.uno,a.storeno,a.weight"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where b.noa is not null"+
 		" and len(isnull(a.uno,''))>0"+
 		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
 		" and b.datea<=@t_edate"+
-		" and b.typea='1'"
-		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
-		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
-		,@t_edate=@t_edate,@tableas=@tableas
+		" and b.typea='1'"+
+		" and isnull(a.storeno,'') between @t_bstoreno and @t_estoreno"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,storeno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20),@t_bstoreno nvarchar(20),@t_estoreno nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas,@t_bstoreno=@t_bstoreno,@t_estoreno=@t_estoreno
 		
 		fetch next from cursor_table
 		into @tablea,@tableas
@@ -213,16 +221,17 @@ z_uccst4:--z_uccst4
 	while(@@FETCH_STATUS <> -1)
 	begin
 		set @cmd =
-		" select '入庫',1,b.datea,@tableas,a.noa,a.noq,a.uno,a.weight"+
+		" select '入庫',1,b.datea,@tableas,a.noa,a.noq,a.uno,b.storeno,a.weight"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where b.noa is not null"+
 		" and len(isnull(a.uno,''))>0"+
 		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
-		" and b.datea<=@t_edate"
-		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
-		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
-		,@t_edate=@t_edate,@tableas=@tableas
+		" and b.datea<=@t_edate"+
+		" and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno"
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,storeno,[weight])
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20),@t_bstoreno nvarchar(20),@t_estoreno nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas,@t_bstoreno=@t_bstoreno,@t_estoreno=@t_estoreno
 		
 		fetch next from cursor_table
 		into @tablea,@tableas
@@ -311,7 +320,7 @@ z_uccst4:--z_uccst4
 	end
 	if LEN(@t_detail)=0
 	begin
-		select '1' gno,a.* ,'' tcomp,@titlea titlea
+		select '1' gno,a.* ,'' tcomp,'' ss,@titlea titlea
 		from @tmp a
 		where recno=0
 		order by uno,recno
@@ -322,8 +331,10 @@ z_uccst4:--z_uccst4
 		,a.* 
 		,case when len(b.nick)=0 then a.tggno else b.nick end tcomp
 		,@titlea titlea
+		,c.store ss
 		from @tmp a
 		left join tgg b on a.tggno=b.noa
+		left join store c on a.storeno=c.noa
 		order by uno,recno
 	end;
 
