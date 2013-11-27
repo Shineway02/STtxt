@@ -166,7 +166,7 @@ z_uccst4:--z_uccst4
 	while(@@FETCH_STATUS <> -1)
 	begin
 		set @cmd =
-		" select '出貨',-1,b.datea,@tableas,a.noa,a.noq,a.uno,a.weight"+
+		" select '出貨',-1,b.datea,@tableas,a.noa,a.noq,a.uno,a.storeno2,a.weight"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where b.noa is not null"+
@@ -174,7 +174,7 @@ z_uccst4:--z_uccst4
 		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
 		" and b.datea<=@t_edate"+
 		" and b.typea='1'"
-		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,storeno,[weight])
 		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
 		,@t_edate=@t_edate,@tableas=@tableas
 		
@@ -248,14 +248,14 @@ z_uccst4:--z_uccst4
 	while(@@FETCH_STATUS <> -1)
 	begin
 		set @cmd =
-		" select '領料',-1,b.datea,@tableas,a.noa,a.noq,a.uno,a.gweight"+
+		" select '領料',-1,b.datea,@tableas,a.noa,a.noq,a.uno,b.storeno,a.gweight"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where b.noa is not null"+
 		" and len(isnull(a.uno,''))>0"+
 		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
 		" and b.datea<=@t_edate"
-		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,[weight])
+		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,storeno,[weight])
 		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
 		,@t_edate=@t_edate,@tableas=@tableas
 		
