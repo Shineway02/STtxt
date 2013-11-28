@@ -307,7 +307,7 @@ z_uccst4:--z_uccst4
 	--本期小計
 	update @tmp set [weight]=b.[weight]
 	from @tmp a
-	left join (select uno,SUM([weight]) [weight] from @tmp where recno!=0 group by uno) b on a.uno=b.uno
+	left join (select uno,SUM([weight]*n) [weight] from @tmp where recno!=0 group by uno) b on a.uno=b.uno
 	where b.uno is not null and recno=0
 	--明細顯示
 	declare @titlea nvarchar(max)
