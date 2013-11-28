@@ -840,9 +840,9 @@ set @t_emon = case when '#non'=[14] then char(255) else [14] end
 set @t_bcustno = case when '#non'=[5] then '' else [5] end
 set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
 declare @tmp table(
+	orderno int,
 	gno nvarchar(1),
 	idno int identity(0,1),
-	orderno int,
 	pageno int,
 	typea nvarchar(10),
 	custno nvarchar(35),
@@ -874,28 +874,73 @@ declare @tmp table(
 
 insert into @tmp
 	select
-		 '0',ROW_NUMBER()over(partition by a.custno,a.comp,c.zip_home,c.addr_home order by a.custno,a.comp,c.zip_home,c.addr_home,a.datea),1,
-		 (case a.typea when '1' then '出' when '2' then '退' end),a.custno,a.comp,c.zip_home,c.addr_home,a.tel,right(a.datea,5),a.noa,
-		 b.productno,b.product,
-		 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		 b.mount,b.price,b.total,a.tax,0,a.total,0,0,0,isnull((isnull(d.total,0)+isnull(d.tax,0)),0),0,0,0,0,0
-	from view_vcc[10] a
-	left join view_vccs[10] b on (a.noa = b.noa)
-	left join cust c on a.custno = c.noa
-	left join vccbs d on a.invono = d.invono
-	left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
-	where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
-insert into @tmp
-	select
-		 '0',ROW_NUMBER()over(partition by a.custno,a.comp,c.zip_home,c.addr_home order by a.custno,a.comp,c.zip_home,c.addr_home,a.datea),1,
-		 (case a.typea when '1' then '出' when '2' then '退' end),a.custno,a.comp,c.zip_home,c.addr_home,a.tel,right(a.datea,5),a.noa,
-		 null,'運費',null,
-		 null,null,a.tranmoney,a.tax,0,a.total,0,0,0,isnull((isnull(d.total,0)+isnull(d.tax,0)),0),0,0,0,0,0
-	from view_vcc[10] a
-	left join cust c on a.custno = c.noa
-	left join vccbs d on a.invono = d.invono
-	left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
-	where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon) and (a.tranmoney>0)
+		ROW_NUMBER()over(partition by a.custno,a.comp,a.zip_home,a.addr_home order by a.custno,a.comp,a.zip_home,a.addr_home,a.datea),a.*
+	from (
+		select
+			 '0' gno,1 pageno,(case a.typea when '1' then '出' when '2' then '退' end) typea,a.custno,a.comp,c.zip_home,c.addr_home,
+			 a.tel,right(a.datea,5) datea,a.noa,b.productno,b.product,
+			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+			 b.mount,b.price,b.total,a.tax,0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
+			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,isnull(umm_total5_a.paysale,0)+isnull(umm_total5_b.paysale,0) t_total5,0 t_total6,0 t_total7,0 t_total8,0 t_total9
+		from view_vcc[10] a
+		left join view_vccs[10] b on (a.noa = b.noa)
+		left join cust c on a.custno = c.noa
+		left join vccbs d on a.invono = d.invono
+		left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
+		left join (
+			select
+				a.custno,right(b.vccno,6) mon,sum(b.paysale) paysale
+			from umm a
+			left join umms b on a.noa = b.noa
+			where charindex('/',right(b.vccno,6)) = 4
+			group by a.custno,right(b.vccno,6)
+		) umm_total5_a on (a.custno=umm_total5_a.custno) and (a.mon = umm_total5_a.mon) --月結---本期已收
+		left join (
+			select
+				a.custno,b.vccno noa,sum(b.paysale) paysale
+			from umm a
+			left join umms b on a.noa = b.noa
+			where charindex('/',right(b.vccno,6)) != 4
+			group by a.custno,b.vccno
+		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
+
+		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
+		union 
+		select
+			 '0' gno,1 pageno,(case a.typea when '1' then '出' when '2' then '退' end) typea,a.custno,a.comp,c.zip_home,c.addr_home,
+			 a.tel,right(a.datea,5) datea,a.noa,null productno,'運費' product,null size,null mount,null price,a.tranmoney,a.tax,0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
+			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,0 t_total5,0 t_total6,0 t_total7,0 t_total8,0 t_total9
+		from view_vcc[10] a
+		left join cust c on a.custno = c.noa
+		left join vccbs d on a.invono = d.invono
+		left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
+		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon) and (a.tranmoney>0)
+		union
+		select
+			'0' gno,1 pageno,null typea,a.custno,b.comp,b.zip_home,b.addr_home,b.tel,null datea,null noa,null productno,null product,
+			null size,null mount,null price,null money,null tax,null b_total,null a_total,0 t_total1,0 t_total2,0 t_total3,
+			null t_total4,isnull(umm_total5_a.paysale,0)+isnull(umm_total5_b.paysale,0) t_total5,0 t_total6,0 t_total7,0 t_total8,0 t_total9
+		from umm a
+		left join cust b on a.custno = b.noa
+		left join (
+			select
+				a.custno,right(b.vccno,6) mon,sum(b.paysale) paysale
+			from umm a
+			left join umms b on a.noa = b.noa
+			where (charindex('/',right(b.vccno,6)) = 4) and (right(b.vccno,6) between @t_bmon and @t_emon)
+			group by a.custno,right(b.vccno,6)
+		) umm_total5_a on (a.custno=umm_total5_a.custno) --月結---本期已收
+		left join (
+			select
+				a.custno,b.vccno noa,sum(b.paysale) paysale
+			from umm a
+			left join umms b on a.noa = b.noa
+			left join view_vcc[10] c on c.noa=right(b.vccno,6)
+			where (charindex('/',right(b.vccno,6)) != 4) and (c.mon between @t_bmon and @t_emon)
+			group by a.custno,b.vccno
+		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
+		where (a.custno not in((select vcc.custno from view_vcc[10] vcc where not((vcc.custno between @t_bcustno and @t_ecustno)))))
+	) a
 
 declare @a_count int
 declare @idno int
@@ -974,8 +1019,8 @@ begin
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total4)
-		select '1',(@t_pageline+1),pageno,@custno,@custs,@zipcode,@addr,@tel,sum(b_money),sum(b_tax),sum(t_total4) from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and (pageno=@pageno) group by custno,custs,zipcode,addr,pageno
+	insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5)
+		select '1',(@t_pageline+1),pageno,@custno,@custs,@zipcode,@addr,@tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5) from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and (pageno=@pageno) group by custno,custs,zipcode,addr,pageno
 	insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel) 
 		select '2',(@t_pageline+2),pageno,@custno,@custs,@zipcode,@addr,@tel from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and pageno=@pageno group by pageno
 	fetch next from cursor_table
@@ -1009,3 +1054,4 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total9,0)),1)),4,12)) t_total9
 from @tmp order by custno,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
 --********************************************************************************
+
