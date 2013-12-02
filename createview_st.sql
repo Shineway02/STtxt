@@ -1404,6 +1404,7 @@ print 'bbm+bbs+bbt+bbu:'
 			set @cmdaccy = @cmdaccy + CHAR(13)+ space(4)+'union all'+CHAR(13)+space(4)+"select '"+@accy2+"' accy,* from "+@table+'t'+@accy2
 		end
 		set @cmdaccy = "create view view_"+@table+'t'+@accy+ CHAR(13)+"as" + CHAR(13) + @cmdaccy
+		execute sp_executesql @cmdaccy 	
 		--accyu
 		if exists(select * from INFORMATION_SCHEMA.VIEWS where TABLE_NAME='view_'+@table+'u'+@accy)
 		begin
