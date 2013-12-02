@@ -210,7 +210,7 @@ z_vccstp2A:--z_vccstp2A
 	declare @t_pageline int = 6   --------一頁幾行
 	declare @t_showprice nvarchar(10)
 	declare @t_stype nvarchar(30)
-	
+	declare @t_showtype nvarchar(10)
 	set @t_accy = '[1]'
 	set @t_kind = '[8]'
 	set @t_taxtype = '[9]'
@@ -218,6 +218,7 @@ z_vccstp2A:--z_vccstp2A
 	set @t_exnoa = case when '#non' = [11] then CHAR(255) else [11] end
 	set @t_showprice = case when '#non' = [12] then 0 else [12] end
 	set @t_stype = case when '#non'=[13] then '' else [13] end
+	set @t_showtype = case when '#non'=[14] then '0' else [14] end
 declare @tmp table(
 	gno nvarchar(1),
 	idno int identity(0,1),
@@ -254,7 +255,8 @@ insert into @tmp
 		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
 		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post+a.addr,a.cardeal,a.carno,a.memo,
 		a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
-		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) end size,
 		b.mount,b.weight,b.price,a.trantype
 	from view_vcc[1] a
 	left join view_vccs[1] b on a.noa = b.noa
