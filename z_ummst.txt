@@ -853,7 +853,7 @@ insert into @tmp
 			group by a.custno,b.vccno
 		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
 		where (a.custno not in((select vcc.custno from view_vcc[10] vcc where not((vcc.custno between @t_bcustno and @t_ecustno)))))
-	) a
+	) a where a.custno between @t_bcustno and @t_ecustno
 
 declare @a_count int
 declare @idno int
@@ -934,18 +934,21 @@ begin
 			set @orderno = @orderno +1
 		end
 	end
-	if(@pageno != @maxpage)
-		insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,b_mount,b_money,b_tax,b_total)
-			select '1',(@t_pageline+1),@pageno,@custno,@kind,@custs,@zipcode,@addr,@tel,sum(b_mount),sum(b_money),sum(b_tax),max(b_total) from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and (isnull(kind,'')=isnull(@kind,'')) group by kind,custno,custs,zipcode,addr,pageno	
-	insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5)
-		select '2',(@t_pageline+1),@pageno,@custno,@kind,@custs,@zipcode,@addr,@tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5) from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and (isnull(kind,'')=isnull(@kind,'')) group by kind,custno,custs,zipcode,addr,pageno
-	insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel) 
-		select '3',(@t_pageline+2),@pageno,@custno,@kind,@custs,@zipcode,@addr,@tel from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) group by pageno
 	fetch next from cursor_table
 	into @custno,@kind,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count,@maxpage
 end
 close cursor_table
 deallocate cursor_table
+insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,b_mount,b_money,b_tax,b_total)
+	select
+		'1',(max(orderno)+1),pageno,custno,kind,custs,zipcode,addr,tel,sum(b_mount),sum(b_money),sum(b_tax),sum(b_total) 
+	from @tmp a
+	where gno=0 and pageno != (select max(pageno) from @tmp where custno=a.custno)
+	group by kind,custno,custs,zipcode,addr,tel,pageno	
+insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5)
+	select '2',(max(orderno)+2),max(pageno),custno,kind,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5) from @tmp where gno=0 group by kind,custno,custs,zipcode,addr,tel
+insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel) 
+	select '3',(max(orderno)+3),max(pageno),custno,kind,custs,zipcode,addr,tel from @tmp where gno=0 group by custno,kind,custs,zipcode,addr,tel
 update @tmp set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '2'
 update @tmp set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '2'
 update @tmp set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '2'
@@ -953,7 +956,8 @@ update @tmp set t_total9 = 0 where gno = '2' and (t_total9 <=0)
 update @tmp set csize = replace(csize,'~#$','''')
 --update @tmp set datea = isnull(typea,'') + isnull(datea,'')
 select
-	gno,idno,kind,orderno,pageno,typea,custno,custs,zipcode,addr,tel,
+	gno,idno,kind,orderno,pageno,(select max(pageno) from @tmp where a.custno=custno) maxpage
+	,typea,custno,custs,zipcode,addr,tel,
 	 isnull(typea,'') + isnull(datea,'')  a1,noa,pno,products a2,csize,
 	b_mount,case when left(kind,1)='B' then '數量' else '重量' end txmt,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
@@ -969,5 +973,5 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total7,0)),1)),4,12)) t_total7,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total8,0)),1)),4,12)) t_total8,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total9,0)),1)),4,12)) t_total9
-from @tmp order by custno,kind,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
+from @tmp a order by custno,kind,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
 --********************************************************************************
