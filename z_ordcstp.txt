@@ -166,10 +166,10 @@
 		,'付款方式：'+paytype a08
 		,'交運方式：'+trantype a09
 		,mount a10
-		,[weight] a11
-		,[money] a12
-		,tax a13
-		,total a14
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,[weight]),1)),4,12)) a11
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) a12
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) a13
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a14
 		,memo a15
 		,sales a16
 		
@@ -180,9 +180,9 @@
 		,replace(size,'~#$',"'") b05
 		,unit b06
 		,mounts b07
-		,weights b08
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weights),1)),4,12)) b08
 		,price b09
-		,totals b10
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) b10
 		,memos b11
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
@@ -358,7 +358,7 @@ z_ordcstp1:--z_ordcstp1
 		,'付款方式：'+paytype a08
 		,'交運方式：'+trantype a09
 		,mount a10
-		,[weight] a11
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,[weight]),1)),4,12)) a11
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) a12
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) a13
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a14
