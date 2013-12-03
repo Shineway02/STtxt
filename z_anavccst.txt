@@ -101,7 +101,9 @@ z_anavccst02:--z_anavccst02
 		" ,replace(case when len(a.size)>0 then a.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
 		" ,a.class,a.spec"+
 		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
-		" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		--" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		--sprice都是重量
+		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" left join view_uccb c on a.uno=c.uno "+
@@ -154,9 +156,9 @@ z_anavccst02:--z_anavccst02
 	,productno ppno
 	,b.comp
 	,b.nick 
-	,[weight] a1
+	,price a1
 	,mount a2
-	,price a3
+	,[weight] a3
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a6
@@ -237,7 +239,9 @@ z_anavccst01:--z_anavccst01
 		" ,replace(case when len(a.size)>0 then a.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
 		" ,a.class,a.spec"+
 		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
-		" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		--" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		--sprice都是重量
+		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" left join view_uccb c on a.uno=c.uno "+
@@ -284,9 +288,9 @@ z_anavccst01:--z_anavccst01
 	select a.*
 	,b.comp
 	,b.nick 
-	,[weight] a1
+	,price a1
 	,mount a2
-	,price a3
+	,[weight] a3
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a6
