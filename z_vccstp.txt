@@ -340,8 +340,9 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
 	'&nbsp'+CHAR(59)+ordeno ordeno
-	,case when len(uno)>11 then '' else uno end uno
-	,spec,products,csize,cast(mount as nvarchar)+'&nbsp'+CHAR(59) mount,
+	,case when len(uno)>11 then '' else uno end uno,spec,
+	case when charindex(left(uno,1),'XYZ') > 0 then  '廢料' else products end products,
+	csize,cast(mount as nvarchar)+'&nbsp'+CHAR(59) mount,
 	round(weight,0) weight,
 	cast(floor(price) as nvarchar)+'.'+LEFT(CAST((cast(floor((price*100)-(floor(price)*100)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 2), 2) price,
 	case when trantype='自取' then '' else 'v' end aa,
