@@ -1160,7 +1160,7 @@
 print 'bbm+bbs+bbt:'
 	--orde
 	set @table = 'orde'
-	print space(4)+@table
+	print space(4)+@table+'  view_ordesXXX 有不一樣'
 	delete @tmp
 	insert into @tmp(tablea,tableas,tableat,accy)
 	SELECT TABLE_NAME 
@@ -1235,13 +1235,25 @@ print 'bbm+bbs+bbt:'
 		set @accy2 = right('000'+CAST(@accy as int)-1,3)
 		if exists(select * from @tmp where accy=@accy2)
 		begin
-			set @cmdaccy = space(4)+"select '"+@accy2+"' accy,* from "+@table+'s'+@accy2
+			set @cmdaccy = space(4)+"select '"+@accy2+"' accy,a.*,d.nick cust,'' mechno,'' mech,'' tdmount,d.kind kind,d.memo amemo,d.coin acoin,d.floata afloata"
+				+char(13)+space(4)+"from "+@table+"s"+@accy2+" a" 
+				+char(13)+space(4)+"left join cust b on a.custno = b.noa" 
+				+char(13)+space(4)+"left join "+@table+@accy2+" d on a.noa = d.noa" 
 		end
-		set @cmdaccy = @cmdaccy + case when len(@cmdaccy)>0 then CHAR(13)+ space(4)+'union all'+CHAR(13) else '' end +SPACE(4)+"select '"+@accy+"' accy,* from "+@tableas
+		set @cmdaccy = @cmdaccy + case when len(@cmdaccy)>0 then CHAR(13)+ space(4)+'union all'+CHAR(13) else '' end 
+			+space(4)+"select '"+@accy+"' accy,a.*,d.nick cust,'' mechno,'' mech,'' tdmount,d.kind kind,d.memo amemo,d.coin acoin,d.floata afloata"
+			+char(13)+space(4)+"from "+@table+"s"+@accy+" a" 
+			+char(13)+space(4)+"left join cust b on a.custno = b.noa" 
+			+char(13)+space(4)+"left join "+@table+@accy+" d on a.noa = d.noa" 
+		
 		set @accy2 = right('000'+CAST(@accy as int)+1,3)
 		if exists(select * from @tmp where accy=@accy2)
 		begin
-			set @cmdaccy = @cmdaccy + CHAR(13)+ space(4)+'union all'+CHAR(13)+space(4)+"select '"+@accy2+"' accy,* from "+@table+'s'+@accy2
+			set @cmdaccy = @cmdaccy + CHAR(13)+ space(4)+'union all'+CHAR(13)
+				+space(4)+"select '"+@accy2+"' accy,a.*,d.nick cust,'' mechno,'' mech,'' tdmount,d.kind kind,d.memo amemo,d.coin acoin,d.floata afloata"
+				+char(13)+space(4)+"from "+@table+"s"+@accy2+" a" 
+				+char(13)+space(4)+"left join cust b on a.custno = b.noa" 
+				+char(13)+space(4)+"left join "+@table+@accy2+" d on a.noa = d.noa" 
 		end
 		set @cmdaccy = "create view view_"+@table+'s'+@accy+ CHAR(13)+"as" + CHAR(13) + @cmdaccy
 		execute sp_executesql @cmdaccy 
