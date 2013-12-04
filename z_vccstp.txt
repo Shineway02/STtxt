@@ -253,7 +253,7 @@ insert into @tmp
 	select
 		'0',
 		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
 		a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
 		case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) end size,
@@ -265,7 +265,7 @@ insert into @tmp
 	select
 		'0',
 		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
 		a.money,a.tax,a.total,char(255),char(255),char(255),'運費',char(255),
 		null,null,a.tranmoney,a.trantype
 	from view_vcc[1] a
