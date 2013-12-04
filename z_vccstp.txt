@@ -98,7 +98,7 @@ z_vccstp1:--z_vccstp1
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
-	" ,b.tel,b.addr"+
+	" ,b.tel,case when b.addr2!='' then b.addr2 else b.addr end "+
 	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.taxtype,b.tax,b.money,b.total"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
@@ -251,7 +251,7 @@ insert into @tmp
 select
 	'0',
 	ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-	a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post+a.addr,a.cardeal,a.carno,a.memo,
+	a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
 	a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
 	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 	b.mount,b.weight,b.price,a.trantype
