@@ -782,7 +782,7 @@ declare @tmp table(
 	t_total9 float,
 	kind nvarchar(30)
 )
-
+declare @checkUcca int = (select count(*) from ucca)
 insert into @tmp
 	select
 		ROW_NUMBER()over(partition by a.custno,a.comp,a.zip_home,a.addr_home order by a.custno,a.comp,a.zip_home,a.addr_home,a.datea),a.*
@@ -792,7 +792,9 @@ insert into @tmp
 			 a.tel,right(a.datea,5) datea,a.noa,b.noq,b.productno,b.product,
 			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 			 case when left(a.kind,1)='B' then b.mount else b.weight end b_mount,
-			 b.price,b.total,a.tax,0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
+			 b.price,b.total,
+			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
+			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
 			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,isnull(umm_total5_a.paysale,0)+isnull(umm_total5_b.paysale,0) t_total5,
 			 0 t_total6,0 t_total7,0 t_total8,0 t_total9,a.kind
 		from view_vcc[10] a
@@ -820,7 +822,9 @@ insert into @tmp
 		union 
 		select
 			 '0' gno,1 pageno,(case a.typea when '1' then '出' when '2' then '退' end) typea,a.custno,a.comp,c.zip_home,c.addr_home,
-			 a.tel,right(a.datea,5) datea,a.noa,'099' noq,null productno,'運費' product,null size,null mount,null price,a.tranmoney,a.tax,0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
+			 a.tel,right(a.datea,5) datea,a.noa,'099' noq,null productno,'運費' product,null size,null mount,null price,a.tranmoney,
+			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
+			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
 			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,0 t_total5,0 t_total6,0 t_total7,0 t_total8,0 t_total9,a.kind
 		from view_vcc[10] a
 		left join cust c on a.custno = c.noa
@@ -854,7 +858,15 @@ insert into @tmp
 		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
 		where (a.custno not in((select vcc.custno from view_vcc[10] vcc where not((vcc.custno between @t_bcustno and @t_ecustno)))))
 	) a where a.custno between @t_bcustno and @t_ecustno
-
+	
+if(@checkUcca>0)
+begin
+	update @tmp set b_tax=isnull(c.tax,0)
+	from @tmp a
+	left join view_vcc[10] b on a.noa=b.noa
+	outer apply  (select sum(isnull(tax,0))  tax from vcca where noa=b.invono) c
+	where b_tax is not null
+end
 declare @a_count int
 declare @idno int
 declare @k int = 0 ----差幾頁
