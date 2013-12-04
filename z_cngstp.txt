@@ -89,14 +89,18 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,memo) 
-				select '0',(@orderno+1),@pageno,@noa,storno,store,stornno,storin,datea,cardeal,carno,trant,memo from @tmp where idno = @idno 
+			if(@k = @t_pageline -(@a_count%@t_pageline))
+				insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo) 
+					select '3',(@orderno+1),@pageno,@noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo from @tmp where idno = @idno 
+			else
+				insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo) 
+					select '0',(@orderno+1),@pageno,@noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo from @tmp where idno = @idno 
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,mo,weightb,memo) 
-		select '1',(@t_pageline+1),pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,sum(mo),sum(weightb),memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,storno,store,stornno,storin,datea,cardeal,carno,trant,memo,pageno 
+	insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,mo,weightb,tmemo) 
+		select '1',(@t_pageline+1),pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,sum(mo),sum(weightb),tmemo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo,pageno 
 	insert into @tmp(gno,orderno,pageno,noa) 
 		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno
 	fetch next from cursor_table
@@ -104,10 +108,11 @@ begin
 end
 close cursor_table
 deallocate cursor_table
+update @tmp set tmemo = replace(tmemo,'chr(10)',' ')
 select
 	gno,idno,orderno,pageno spage,noa,noq,storno,store,stornno,storin,datea,sto,s,uno,spec,class,product,size,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mo),1)),4,12)) mo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
 	memo,cardeal,carno,trant,tmemo
-from @tmp order by noa desc,pageno,gno,orderno;
+from @tmp order by noa desc,pageno,orderno,gno;
 --********************************************************************************************************************************

@@ -199,6 +199,7 @@ z_vccstp1:--z_vccstp1
 	
 	
 z_vccstp2:--z_vccstp2
+z_vccstp2A:--z_vccstp2A
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
 	declare @t_accy nvarchar(max)
@@ -209,7 +210,7 @@ z_vccstp2:--z_vccstp2
 	declare @t_pageline int = 6   --------一頁幾行
 	declare @t_showprice nvarchar(10)
 	declare @t_stype nvarchar(30)
-	
+	declare @t_showtype nvarchar(10)
 	set @t_accy = '[1]'
 	set @t_kind = '[8]'
 	set @t_taxtype = '[9]'
@@ -217,6 +218,7 @@ z_vccstp2:--z_vccstp2
 	set @t_exnoa = case when '#non' = [11] then CHAR(255) else [11] end
 	set @t_showprice = case when '#non' = [12] then 0 else [12] end
 	set @t_stype = case when '#non'=[13] then '' else [13] end
+	set @t_showtype = case when '#non'=[14] then '0' else [14] end
 declare @tmp table(
 	gno nvarchar(1),
 	idno int identity(0,1),
@@ -248,17 +250,26 @@ declare @tmp table(
 	
 )
 insert into @tmp
-select
-	'0',
-	ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-	a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
-	a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
-	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-	b.mount,b.weight,b.price,a.trantype
-from view_vcc[1] a
-left join view_vccs[1] b on a.noa = b.noa
-where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
-
+	select
+		'0',
+		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
+		a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
+		case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) end size,
+		b.mount,b.weight,b.price,a.trantype
+	from view_vcc[1] a
+	left join view_vccs[1] b on a.noa = b.noa
+	where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
+insert into @tmp
+	select
+		'0',
+		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
+		a.money,a.tax,a.total,char(255),char(255),char(255),'運費',char(255),
+		null,null,a.tranmoney,a.trantype
+	from view_vcc[1] a
+	where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype) and (tranmoney >0)
 declare @noa nvarchar(30)
 declare @count int
 declare @idno int
@@ -329,8 +340,9 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
 	'&nbsp'+CHAR(59)+ordeno ordeno
-	,case when len(uno)>11 then '' else uno end uno
-	,spec,products,csize,cast(mount as nvarchar)+'&nbsp'+CHAR(59) mount,
+	,case when len(uno)>11 then '' else uno end uno,spec,
+	case when charindex(left(uno,1),'XYZ') > 0 then  '廢料' else products end products,
+	csize,cast(mount as nvarchar)+'&nbsp'+CHAR(59) mount,
 	round(weight,0) weight,
 	cast(floor(price) as nvarchar)+'.'+LEFT(CAST((cast(floor((price*100)-(floor(price)*100)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 2), 2) price,
 	case when trantype='自取' then '' else 'v' end aa,

@@ -72,6 +72,7 @@ z_rc2stp1:--z_rc2stp1
 		price decimal(10,3),
 		totals float,
 		size nvarchar(max),
+		spec nvarchar(max),
 		memos nvarchar(max) 
 	)
 	
@@ -81,7 +82,7 @@ z_rc2stp1:--z_rc2stp1
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0)"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
-	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
+	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.spec,a.memo"+
 	" from view_rc2s"+@t_accy+" a"+
 	" left join view_rc2"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
@@ -92,7 +93,7 @@ z_rc2stp1:--z_rc2stp1
 	" order by a.noa,a.no2 "
 	
 	insert into @tmp(gno,noa,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total]
-		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
+		,no2,productno,product,unit,mounts,weights,price,totals,size,spec,memos)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bno nvarchar(20),@t_eno nvarchar(20),@t_btggno nvarchar(20),@t_etggno nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bno=@t_bno,@t_eno=@t_eno,@t_btggno=@t_btggno,@t_etggno=@t_etggno
 	
@@ -141,7 +142,39 @@ z_rc2stp1:--z_rc2stp1
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
-	
+
+declare @tmpa table(
+	gno nvarchar(10),
+	noa nvarchar(90),
+	no2 nvarchar(10),
+	rrno int,
+	ttno int,
+	a01 nvarchar(50),
+	a02 nvarchar(max),
+	a03 nvarchar(max),
+	a04 nvarchar(50),
+	a05 float,
+	a06 float,
+	a07 float,--
+	a0a7 float,--
+	a08 float,--
+	a09 float,--
+	a10 nvarchar(max),
+	datea nvarchar(10),
+	b01 nvarchar(50),
+	b02 nvarchar(50),
+	b03 nvarchar(max),
+	b04 nvarchar(50),
+	b05 float,
+	b06 float,
+	b07 float,
+	b08 float, --
+	b09 nvarchar(max),
+	ba1 nvarchar(20),
+	pno nvarchar(max)
+)
+
+insert into @tmpa
 	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 	from(
 		select gno,noa,no2
@@ -153,11 +186,11 @@ z_rc2stp1:--z_rc2stp1
 		,ckind a04
 		,mount a05
 		,[weight] a06
-		,[money] a07
-		,[tax] a08
-		,[total] a09
+		,money a07,money a0a7
+		,tax a08
+		,total a09
 		,memo a10
-		
+		,datea
 		,productno b01
 		,product b02
 		,replace(size,'~#$',"'") b03
@@ -167,8 +200,21 @@ z_rc2stp1:--z_rc2stp1
 		,price b07
 		,totals b08
 		,memos b09
+		,spec ba1
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
 	)a
-	order by a.noa,a.no2;
+	order by a.noa,a.no2
+update @tmpa set a05 = b.b05,a06=b.b06,a07=b.b08
+from @tmpa a
+left join (select noa,rrno,sum(b05) b05,sum(b06) b06,sum(b08) b08 from @tmpa group by noa,rrno) b on (a.noa = b.noa) and (b.rrno = a.rrno)
+select
+	gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,datea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a07),1)),4,12)) a07,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a0a7),1)),4,12)) a0a7,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a08),1)),4,12)) a08,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a09),1)),4,12)) a09,
+	a10,b01,b02,b03,b04,b05,b06,b07,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b08),1)),4,12)) b08,b09,ba1,pno
+from @tmpa order by noa,no2;

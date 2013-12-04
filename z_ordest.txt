@@ -308,13 +308,63 @@ insert into @tmp
 	select 
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,a.productno,a.product,
 		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,
-		a.weight,a.notv,a.mount
+		a.weight,a.mount,a.notv
 	from view_ordes[1] a
 	left join view_orde[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
-	where (a.mount>0) and (b.odate between @t_bodate and @t_eodate) and
+	where (a.notv>0) and (b.odate between @t_bodate and @t_eodate) and
+		(b.custno between @t_bcustno and @t_ecustno) and 
+		(a.productno between @t_bproductno and @t_eproductno) 
+		and (b.kind='B2') and (a.enda = '0') and (b.enda='0')
+	order by b.custno,a.product,b.noa,b.odate,b.datea
+update @tmp set sizea = replace(sizea,'~#$','''')
+insert into @tmp(gno,weight,mount,notv)
+	select '1',sum(weight),sum(mount),sum(notv) from @tmp
+select
+	gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+	ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
+from @tmp order by gno,ordeno,datea,products;
+--****************************************************************************************************
+z_ordest4:--z_ordest4
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(1),
+	ordeno nvarchar(30),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	custno nvarchar(30),
+	custnick nvarchar(50),
+	productno nvarchar(30),
+	products nvarchar(90),
+	sizea nvarchar(90),
+	weight float,
+	mount float,
+	notv float
+)
+insert into @tmp
+	select 
+		'0',b.noa,a.no2,a.datea,b.custno,c.nick,a.productno,a.product,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,
+		a.weight,a.mount,a.notv
+	from view_ordes[1] a
+	left join view_orde[1] b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	where (a.notv>0) and (b.odate between @t_bodate and @t_eodate) and
 		(b.custno between @t_bcustno and @t_ecustno) and 
 		(a.productno between @t_bproductno and @t_eproductno)
+		and (b.kind !='B2') and (a.enda = '0') and (b.enda='0')
 	order by b.custno,a.product,b.noa,b.odate,b.datea
 update @tmp set sizea = replace(sizea,'~#$','''')
 insert into @tmp(gno,weight,mount,notv)

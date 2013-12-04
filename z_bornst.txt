@@ -28,22 +28,22 @@ declare @tmp table(
 insert into @tmp
 	select '0',b.noa + '-' + a.no2 ordeno,'訂單',b.noa,b.odate,a.productno,a.product,
 	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'ordest'
-	from view_ordes[1] a
-	left join view_orde[1] b on a.noa = b.noa
+	from view_ordes a
+	left join view_orde b on a.noa = b.noa
 	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and b.noa + '-' + a.no2 =@t_ordeno) or  (@checkNoq = 0 and b.noa = @t_ordeno)))
 			 and isnull(b.noa,'') != '' 
 	union all
 	select '0', isnull(a.ordeno,'') + '-' + isnull(a.no2,'') ordeno,'派車單',b.noa,b.datea,a.productno,a.product,
 	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'vccest'
-	from view_vcces[1] a 
-	left join view_vcce[1] b on a.noa = b.noa
+	from view_vcces a 
+	left join view_vcce b on a.noa = b.noa
 	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and b.ordeno + '-' + a.noq = @t_ordeno) or (@checkNoq = 0 and b.ordeno = @t_ordeno)))
 			 and isnull(a.ordeno,'') != '' 
 	union all
 	select '0', isnull(a.ordeno,'') + '-' + isnull(a.no2,'')  ordeno,'出貨單',b.noa,b.datea,a.productno,a.product,
 	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'vccst'
-	from view_vccs[1] a
-	left join view_vcc[1] b on a.noa = b.noa
+	from view_vccs a
+	left join view_vcc b on a.noa = b.noa
 	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and a.ordeno + '-' + a.no2 = @t_ordeno) or  (@checkNoq = 0 and a.ordeno = @t_ordeno)))
 			 and isnull(a.ordeno,'') != '' 
 
