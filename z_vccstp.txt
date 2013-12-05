@@ -82,6 +82,7 @@ z_vccstp1:--z_vccstp1
 		ctaxtype nvarchar(20),
 		tax float,
 		total float,
+		invono nvarchar(max),
 		
 		no2 nvarchar(10),
 		productno nvarchar(20),
@@ -94,13 +95,12 @@ z_vccstp1:--z_vccstp1
 		size nvarchar(max),
 		memos nvarchar(max) 
 	)
-	
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
 	" ,b.tel,case when b.addr2!='' then b.addr2 else b.addr end "+
 	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
-	" ,b.taxtype,b.tax,b.money,b.total"+
+	" ,b.taxtype,b.tax,b.money,b.total,b.invono"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
 	" from view_vccs"+@t_accy+" a"+
@@ -111,10 +111,20 @@ z_vccstp1:--z_vccstp1
 	" and (len(@t_stype)=0 or b.stype=@t_stype)"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total
+	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono
 		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_stype nvarchar(max)'
 	,@t_bno=@t_bno,@t_eno=@t_eno,@t_stype=@t_stype
+	
+	--UCCA有資料代表有使用發票系統
+	--出貨單稅額改抓VCCA
+	if exists(select top 1 * from ucca)
+	begin
+		update @tmp set tax = ISNULL(b.tax,0)
+		from @tmp a
+		left join vcca b on a.invono=b.noa  
+		update @tmp set total = [money]+tax
+	end
 	
 	update @tmp set ckind=b.namea,ctaxtype=c.namea
 	from @tmp a 
