@@ -83,6 +83,7 @@ z_vccstp1:--z_vccstp1
 		tax float,
 		total float,
 		invono nvarchar(max),
+		tranmoney float,
 		
 		no2 nvarchar(10),
 		productno nvarchar(20),
@@ -100,7 +101,7 @@ z_vccstp1:--z_vccstp1
 	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
 	" ,b.tel,case when b.addr2!='' then b.addr2 else b.addr end "+
 	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
-	" ,b.taxtype,b.tax,b.money,b.total,b.invono"+
+	" ,b.taxtype,b.tax,b.money,b.total,b.invono,b.tranmoney"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
 	" from view_vccs"+@t_accy+" a"+
@@ -111,7 +112,7 @@ z_vccstp1:--z_vccstp1
 	" and (len(@t_stype)=0 or b.stype=@t_stype)"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono
+	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono,tranmoney
 		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_stype nvarchar(max)'
 	,@t_bno=@t_bno,@t_eno=@t_eno,@t_stype=@t_stype
@@ -170,6 +171,7 @@ z_vccstp1:--z_vccstp1
 	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,addr=b.addr
 		,datea=b.datea,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
 		,taxtype=b.taxtype,ctaxtype=b.ctaxtype,tax=b.tax,[money]=b.[money],total=b.total
+		,invono=b.invono,tranmoney=b.tranmoney
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	
@@ -191,6 +193,8 @@ z_vccstp1:--z_vccstp1
 		,case when @t_showprice='0' then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) end  a10
 		,case when @t_showprice='0' then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) end  a11
 		,memo a12
+		,case when isnull(tranmoney,0)!=0 then '運&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'費：'else '' end c01
+		,case when isnull(tranmoney,0)!=0 then reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) else '' end c02
 		
 		,productno b01
 		,product b02
