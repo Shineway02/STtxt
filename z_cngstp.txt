@@ -17,7 +17,7 @@ declare @tmp table(
 	storno nvarchar(20),
 	store nvarchar(50),
 	stornno nvarchar(20),
-	storin nvarchar(50),
+	storein nvarchar(50),
 	datea nvarchar(10),
 	sto nvarchar(20),
 	s nvarchar(20),
@@ -36,7 +36,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select '0' gno,ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-	a.noa,b.noq,a.storeno,a.store,a.storinno,a.storin,a.datea,b.storeno,
+	a.noa,b.noq,a.storeno,a.store,a.storeinno,a.storein,a.datea,b.storeno,
 	c.source,b.uno,b.spec,b.class,b.product,
 	dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
 	b.mount,b.weight,b.memo,case when len(d.nick)>0 then d.nick else LEFT(a.cardeal,3) end,
@@ -90,17 +90,17 @@ begin
 		while(@k > 0)
 		begin
 			if(@k = @t_pageline -(@a_count%@t_pageline))
-				insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo) 
-					select '3',(@orderno+1),@pageno,@noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo from @tmp where idno = @idno 
+				insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,tmemo) 
+					select '3',(@orderno+1),@pageno,@noa,storno,store,stornno,storein,datea,cardeal,carno,trant,tmemo from @tmp where idno = @idno 
 			else
-				insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo) 
-					select '0',(@orderno+1),@pageno,@noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo from @tmp where idno = @idno 
+				insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,tmemo) 
+					select '0',(@orderno+1),@pageno,@noa,storno,store,stornno,storein,datea,cardeal,carno,trant,tmemo from @tmp where idno = @idno 
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,mo,weightb,tmemo) 
-		select '1',(@t_pageline+1),pageno,noa,storno,store,stornno,storin,datea,cardeal,carno,trant,sum(mo),sum(weightb),tmemo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,storno,store,stornno,storin,datea,cardeal,carno,trant,tmemo,pageno 
+	insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,mo,weightb,tmemo) 
+		select '1',(@t_pageline+1),pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,sum(mo),sum(weightb),tmemo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,storno,store,stornno,storein,datea,cardeal,carno,trant,tmemo,pageno 
 	insert into @tmp(gno,orderno,pageno,noa) 
 		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno
 	fetch next from cursor_table
@@ -110,7 +110,7 @@ close cursor_table
 deallocate cursor_table
 update @tmp set tmemo = replace(tmemo,'chr(10)',' ')
 select
-	gno,idno,orderno,pageno spage,noa,noq,storno,store,stornno,storin,datea,sto,s,uno,spec,class,product,size,
+	gno,idno,orderno,pageno spage,noa,noq,storno,store,stornno,storein,datea,sto,s,uno,spec,class,product,size,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mo),1)),4,12)) mo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
 	memo,cardeal,carno,trant,tmemo
