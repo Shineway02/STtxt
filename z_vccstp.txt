@@ -249,27 +249,43 @@ declare @tmp table(
 	trantype nvarchar(30)
 	
 )
+declare @checkUcca int = (select count(*) from ucca)
 insert into @tmp
 	select
 		'0',
 		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
-		a.money,a.tax,a.total,b.ordeno,b.uno,b.spec,b.product,
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
+		a.money,
+		case when @checkUcca>0 then 0 else isnull(a.tax,0) end,
+		a.total,b.ordeno,b.uno,b.spec,b.product,
 		case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) end size,
 		b.mount,b.weight,b.price,a.trantype
 	from view_vcc[1] a
 	left join view_vccs[1] b on a.noa = b.noa
+	left join vcca c on a.invono=c.noa
 	where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
 insert into @tmp
 	select
 		'0',
 		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end,a.cardeal,a.carno,a.memo,
-		a.money,a.tax,a.total,char(255),char(255),char(255),'運費',char(255),
+		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
+		a.money,
+		case when @checkUcca>0 then 0 else isnull(a.tax,0) end,
+		a.total,char(255),char(255),char(255),'運費',char(255),
 		null,null,a.tranmoney,a.trantype
 	from view_vcc[1] a
+	left join vcca c on a.invono=c.noa
 	where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype) and (tranmoney >0)
+
+if(@checkUcca>0)
+begin
+	update @tmp set tax=isnull(c.tax,0)
+	from @tmp a
+	left join view_vcc[1] b on a.noa=b.noa
+	outer apply  (select sum(isnull(tax,0))  tax from vcca where noa=b.invono) c
+end
+
 declare @noa nvarchar(30)
 declare @count int
 declare @idno int
@@ -327,7 +343,7 @@ begin
 end
 close cursor_table
 deallocate cursor_table
-update @tmp set total = tax + money where gno = '1'
+update @tmp set total = isnull(tax,0) + isnull(money,0) where gno = '1'
 if(@t_showprice = '0')
 begin
 	update @tmp set tax = null,money = null,total = null,price = null
