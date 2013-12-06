@@ -796,9 +796,9 @@ insert into @tmp
 			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
 			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
 			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,isnull(umm_total5_a.paysale,0)+isnull(umm_total5_b.paysale,0) t_total5,
-			 0 t_total6,0 t_total7,0 t_total8,0 t_total9,a.kind
-		from view_vcc[10] a
-		left join view_vccs[10] b on (a.noa = b.noa)
+			 0 t_total6,0 t_total7,f.t_paysale t_total8,0 t_total9,a.kind
+		from view_vcc a
+		left join view_vccs b on (a.noa = b.noa)
 		left join cust c on a.custno = c.noa
 		left join vccbs d on a.invono = d.invono
 		left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
@@ -818,6 +818,28 @@ insert into @tmp
 			where charindex('/',right(b.vccno,6)) != 4
 			group by a.custno,b.vccno
 		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
+		left join (
+			select
+				a.custno,sum(a.total)-isnull(sum(umm_total5_a.paysale),0)-isnull(sum(umm_total5_b.paysale),0) t_paysale
+			from view_vcc a
+			left join (
+				select
+					a.custno,b.paysale paysale
+				from umm a
+				left join umms b on a.noa = b.noa
+				where (charindex('/',right(b.vccno,6)) = 4) and right(b.vccno,6) < @t_bmon
+			) umm_total5_a on (a.custno=umm_total5_a.custno) --月結---本期已收
+			left join (
+				select
+					a.custno,b.paysale paysale
+				from umm a
+				left join umms b on a.noa = b.noa
+				left join view_vcc c on b.vccno = c.noa
+				where charindex('/',right(b.vccno,6)) != 4 and right(c.mon,6) < @t_bmon
+			) umm_total5_b on (a.custno=umm_total5_b.custno)--單據結---本期已收
+			where a.mon < @t_bmon
+			group by a.custno
+		) f on a.custno = f.custno
 		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
 		union 
 		select
@@ -826,7 +848,7 @@ insert into @tmp
 			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
 			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
 			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,0 t_total5,0 t_total6,0 t_total7,0 t_total8,0 t_total9,a.kind
-		from view_vcc[10] a
+		from view_vcc a
 		left join cust c on a.custno = c.noa
 		left join vccbs d on a.invono = d.invono
 		left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
@@ -852,21 +874,25 @@ insert into @tmp
 				a.custno,b.vccno noa,sum(b.paysale) paysale
 			from umm a
 			left join umms b on a.noa = b.noa
-			left join view_vcc[10] c on c.noa=right(b.vccno,6)
+			left join view_vcc c on c.noa=right(b.vccno,6)
 			where (charindex('/',right(b.vccno,6)) != 4) and (c.mon between @t_bmon and @t_emon)
 			group by a.custno,b.vccno
 		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
-		where (a.custno not in((select vcc.custno from view_vcc[10] vcc where not((vcc.custno between @t_bcustno and @t_ecustno)))))
+		where (a.custno not in((select vcc.custno from view_vcc vcc where not((vcc.custno between @t_bcustno and @t_ecustno)))))
 	) a where a.custno between @t_bcustno and @t_ecustno
 	
 if(@checkUcca>0)
 begin
 	update @tmp set b_tax=isnull(c.tax,0)
 	from @tmp a
-	left join view_vcc[10] b on a.noa=b.noa
+	left join view_vcc b on a.noa=b.noa
 	outer apply  (select sum(isnull(tax,0))  tax from vcca where noa=b.invono) c
 	where b_tax is not null
 end
+
+-----前期餘額
+
+
 declare @a_count int
 declare @idno int
 declare @k int = 0 ----差幾頁
@@ -940,8 +966,8 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel,kind)
-				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel,@kind from @tmp where idno = @idno
+			insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel,kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9) 
+				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel,@kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9 from @tmp where idno = @idno 
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
@@ -957,8 +983,8 @@ insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,b_mount,b
 	from @tmp a
 	where gno=0 and pageno != (select max(pageno) from @tmp where custno=a.custno)
 	group by kind,custno,custs,zipcode,addr,tel,pageno	
-insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5)
-	select '2',(max(orderno)+2),max(pageno),custno,kind,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5) from @tmp where gno=0 group by kind,custno,custs,zipcode,addr,tel
+insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5,t_total8)
+	select '2',(max(orderno)+2),max(pageno),custno,kind,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @tmp where gno=0 group by kind,custno,custs,zipcode,addr,tel
 insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel) 
 	select '3',(max(orderno)+3),max(pageno),custno,kind,custs,zipcode,addr,tel from @tmp where gno=0 group by custno,kind,custs,zipcode,addr,tel
 update @tmp set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '2'
