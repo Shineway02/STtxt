@@ -51,12 +51,11 @@ z_ummst02:--z_ummst02
 		unpay float
 	)
 	
-	
-	
 	insert into @tmp1(custno,mon,[money],tax,total)
 	select custno,mon,SUM(ISNULL([money],0)),SUM(ISNULL([tax],0)),SUM(ISNULL([total],0))
 	from view_vcc
-	where custno between @t_bcustno and @t_ecustno
+	where typea='1'
+	and custno between @t_bcustno and @t_ecustno
 	and mon<=@t_emon
 	group by custno,mon
 	
@@ -81,6 +80,9 @@ z_ummst02:--z_ummst02
 	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
 	where b.noa is not null
 	and ISNULL(a.paysale,0)!=0
+	and case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+		else b.custno end between @t_bcustno and @t_ecustno
 	and case when len(ISNULL(a.vccno,''))=0 then '' 
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
