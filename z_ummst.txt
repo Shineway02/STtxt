@@ -52,10 +52,12 @@ z_ummst02:--z_ummst02
 	)
 	
 	insert into @tmp1(custno,mon,[money],tax,total)
-	select custno,mon,SUM(ISNULL([money],0)),SUM(ISNULL([tax],0)),SUM(ISNULL([total],0))
+	select custno,mon
+	,SUM(case when typea='1' then ISNULL([money],0) else -ISNULL([money],0) end)
+	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end)
+	,SUM(case when typea='1' then ISNULL([total],0) else -ISNULL([total],0) end)
 	from view_vcc
-	where typea='1'
-	and custno between @t_bcustno and @t_ecustno
+	where custno between @t_bcustno and @t_ecustno
 	and mon<=@t_emon
 	group by custno,mon
 	
