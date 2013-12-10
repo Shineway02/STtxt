@@ -1451,8 +1451,11 @@ insert into @tmp
 		select
 			 '0' gno,1 pageno,(case a.typea when '1' then '出' when '2' then '退' end) typea,a.custno,a.comp,c.zip_home,c.addr_home,
 			 a.tel,right(a.datea,5) datea,a.noa,b.noq,b.productno,b.product,
-			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
-			 case when left(a.kind,1)='B' then b.mount else b.weight end b_mount,
+			 case when  (b.style='' and b.dime='') then null else
+				(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) 
+			 end size,
+			 case when  (b.style='' and b.dime='') then null else
+			 	case when left(a.kind,1)='B' then b.mount else b.weight end end b_mount ,
 			 b.price,b.total,
 			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
 			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
@@ -1503,18 +1506,6 @@ insert into @tmp
 		) f on a.custno = f.custno
 		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
 		union 
-		select
-			 '0' gno,1 pageno,(case a.typea when '1' then '出' when '2' then '退' end) typea,a.custno,a.comp,c.zip_home,c.addr_home,
-			 a.tel,right(a.datea,5) datea,a.noa,'099' noq,null productno,'運費' product,null size,null mount,null price,a.tranmoney,
-			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
-			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
-			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,0 t_total5,0 t_total6,0 t_total7,0 t_total8,0 t_total9,a.kind
-		from view_vcc a
-		left join cust c on a.custno = c.noa
-		left join vccbs d on a.invono = d.invono
-		left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
-		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon) and (a.tranmoney>0)
-		union
 		select
 			'0' gno,1 pageno,null typea,a.custno,b.comp,b.zip_home,b.addr_home,b.tel,null datea,null noa,'999' noq,null productno,null product,
 			null size,null mount,null price,null money,null tax,null b_total,null a_total,0 t_total1,0 t_total2,0 t_total3,
