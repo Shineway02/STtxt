@@ -71,7 +71,7 @@ z_ummst03:--z_ummst03
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
 		else isnull(c.mon,'') end
-	
+	delete @tmp3 where not(custno between @t_bcustno and @t_ecustno)
 	--------------------------------------------------------------------------------------------------
 	declare @tmp table(
 		custno nvarchar(20),
