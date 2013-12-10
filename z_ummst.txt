@@ -451,6 +451,7 @@ z_ummst02:--z_ummst02
 	declare @custno nvarchar(20)
 	declare @mon nvarchar(10)
 	declare @money float
+	declare @tax float
 	declare @pay float
 	declare @unpay float
 	
@@ -481,11 +482,11 @@ z_ummst02:--z_ummst02
 		close cursor_table2
 		deallocate cursor_table2
 		
-		select @money=0,@pay=0,@unpay=0
-		select @money=SUM(ISNULL([money],0)),@pay=SUM(ISNULL([paysale],0)) from @tmp4 where custno=@custno and mon between @t_bmon and @t_emon
+		select @money=0,@tax=0,@pay=0,@unpay=0
+		select @money=SUM(ISNULL([money],0)),@tax=SUM(ISNULL([tax],0)),@pay=SUM(ISNULL([paysale],0)) from @tmp4 where custno=@custno and mon between @t_bmon and @t_emon
 		select @unpay=SUM(ISNULL([unpay],0)) from @tmp4 where custno=@custno
 		
-		insert into @tmp5(gno,custno,memo,[money],pay,unpay)values('1',@custno,@cmd,@money,@pay,@unpay)
+		insert into @tmp5(gno,custno,memo,[money],pay,unpay)values('1',@custno,@cmd,@money+@tax,@pay,@unpay)
 	
 		fetch next from cursor_table
 		into @custno
