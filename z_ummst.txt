@@ -1,3 +1,330 @@
+z_ummst03:--z_ummst03 
+	SET QUOTED_IDENTIFIER OFF 
+	declare @cmd nvarchar(max) 
+
+	declare @t_bmon nvarchar(10) 
+	declare @t_emon nvarchar(10) 
+	declare @t_bcustno nvarchar(20) 
+	declare @t_ecustno nvarchar(20) 
+
+	set @t_bmon = case when '#non' = [13] then '' else [13] end
+	set @t_emon = case when '#non' = [14] then CHAR(255) else [14] end
+	set @t_bcustno = case when '#non' = [5] then '' else [5] end
+	set @t_ecustno = case when '#non' = [6] then CHAR(255) else [6] end
+	---------------------------------------------------------------------------------
+	declare @tmp1 table(
+		custno nvarchar(20),
+		mon nvarchar(10),
+		[money] float,
+		bkmoney float,
+		tax float
+	)
+	insert into @tmp1(custno,mon,[money],bkmoney,tax)
+	select custno,mon
+	,SUM(case when typea='1' then ISNULL([money],0) else 0 end)
+	,SUM(case when typea!='1' then ISNULL([money],0) else 0 end)
+	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end)
+	from view_vcc 
+	where custno between @t_bcustno and @t_ecustno
+	and mon <= @t_emon
+	group by custno,mon
+	
+	declare @tmp2 table(
+		custno nvarchar(20),
+		mon nvarchar(10),
+		tax float
+	)
+	insert into @tmp2(custno,mon,tax)
+	select custno,mon,SUM(ISNULL([tax],0))
+	from vcca
+	where custno between @t_bcustno and @t_ecustno
+	and mon <= @t_emon
+	group by custno,mon
+	
+	declare @tmp3 table(
+		custno nvarchar(20),
+		mon nvarchar(10),
+		paysale float 
+	)
+	insert into @tmp3(custno,mon,paysale)
+	select case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+		else b.custno end
+	,case when len(ISNULL(a.vccno,''))=0 then '' 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+		else isnull(c.mon,'') end
+	,SUM(ISNULL(a.paysale,0))
+	from umms a
+	left join umm b on a.noa=b.noa
+	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
+	where b.noa is not null
+	and ISNULL(a.paysale,0)!=0
+	and case when len(ISNULL(a.vccno,''))=0 then '' 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+		else isnull(c.mon,'') end <= @t_emon
+	group by case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+		else b.custno end
+		,case when len(ISNULL(a.vccno,''))=0 then '' 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+		else isnull(c.mon,'') end
+	
+	--------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		custno nvarchar(20),
+		[money] float,
+		bkmoney float,
+		tax float,
+		total float,
+		payed float,
+		unpay float,
+		tot float
+	)
+	insert into @tmp(custno,[money],bkmoney,tax)
+	select custno,SUM(ISNULL([money],0)),SUM(ISNULL([bkmoney],0)),SUM(ISNULL([tax],0))
+	from @tmp1
+	where mon between @t_bmon and @t_emon
+	group by custno
+	
+	---------------------------------------------------------------------------------------
+	update @tmp set tax = ISNULL(a.tax,0)+ISNULL(b.tax,0)
+	from @tmp a
+	right join @tmp2 b on a.custno=b.custno and b.mon between @t_bmon and @t_emon
+	
+	insert into @tmp(custno,[money],bkmoney,tax)
+	select custno,0,0,tax
+	from @tmp2 a
+	where not exists(select * from @tmp where custno=a.custno)
+	and a.mon between @t_bmon and @t_emon
+	----------------------------------------------------------------------------------------
+	update @tmp set total = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)
+	
+	----------------------------------------------------------------------------------------
+	update @tmp set payed=isnull(a.payed,0) + isnull(b.paysale,0)
+	from @tmp a
+	right join @tmp3 b on a.custno=b.custno and b.mon between @t_bmon and @t_emon
+	
+	insert into @tmp(custno,[money],bkmoney,tax,total, payed)
+	select custno,0,0,0,0,paysale
+	from @tmp3 a
+	where not exists(select * from @tmp where custno=a.custno)
+	and a.mon between @t_bmon and @t_emon
+	------------------------------------------------------------------------------------------
+	--unpay
+	
+	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0)
+	from @tmp a
+	right join (select custno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
+		from @tmp1
+		where mon<@t_bmon
+		group by custno) b on a.custno=b.custno
+	
+	insert into @tmp(custno,[money],bkmoney,tax,total,payed,unpay)
+	select a.custno,0,0,0,0,0,a.unpay
+	from (select custno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
+		from @tmp1
+		where mon<@t_bmon
+		group by custno) a
+	where not exists(select * from @tmp where custno=a.custno)
+	and ISNULL(a.unpay,0)!=0
+	
+	
+	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0)
+	from @tmp a
+	right join (select custno ,sum(isnull(tax,0)) unpay
+		from @tmp2
+		where mon<@t_bmon
+		group by custno) b on a.custno=b.custno
+		
+	insert into @tmp(custno,[money],bkmoney,tax,total,payed,unpay)
+	select a.custno,0,0,0,0,0,a.unpay
+	from (select custno ,SUM(isnull(tax,0)) unpay
+		from @tmp2
+		where mon<@t_bmon
+		group by custno) a
+	where not exists(select * from @tmp where custno=a.custno)
+	and ISNULL(a.unpay,0)!=0
+	
+	update @tmp set unpay = ISNULL(a.unpay,0)-ISNULL(b.paysale,0)
+	from @tmp a
+	right join (select custno ,sum(isnull(paysale,0)) paysale
+		from @tmp3
+		where mon<@t_bmon
+		group by custno) b on a.custno=b.custno
+	
+	insert into @tmp(custno,[money],bkmoney,tax,total,payed,unpay)
+	select a.custno,0,0,0,0,0,-a.paysale
+	from (select custno ,sum(isnull(paysale,0)) paysale
+		from @tmp3
+		where mon<@t_bmon
+		group by custno) a
+	where not exists(select * from @tmp where custno=a.custno)
+	and ISNULL(a.paysale,0)!=0
+	------------------------------------------------------------------------------------------
+	update @tmp set tot = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)-ISNULL(payed,0)+ISNULL(unpay,0)
+	
+	declare @linecount int --每頁行數
+	declare @endcount int --總計行數
+	set @linecount = 36
+	set @endcount = 7
+	
+	declare @custno nvarchar(20)
+	declare @money float
+	declare @bkmoney float
+	declare @tax float
+	declare @total float
+	declare @payed float
+	declare @unpay float
+	declare @tot float
+	declare @nn int
+	declare @mm int
+	declare @totpage int
+	
+	declare @result table(
+		gno nvarchar(10),
+		pno int,
+		totpage int,
+		custno nvarchar(20),
+		[money] float,
+		bkmoney float,
+		tax float,
+		total float,
+		payed float,
+		unpay float,
+		tot float,
+		
+		nn int,--出貨單張數
+		
+		typea nvarchar(10),
+		datea nvarchar(10),
+		vccno nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		[weight] float,
+		mount float,
+		price float,
+		moneys float,
+		memo nvarchar(max)
+	)
+	
+	declare cursor_table cursor for
+	select custno,[money],bkmoney,tax,total,payed,unpay,tot from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if exists(select top 1 * from @tmp1 where custno=@custno and mon between @t_bmon and @t_emon)
+		begin
+			insert into @result(gno,pno,custno
+				,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
+			select '1','1',@custno
+			,case when a.typea='1' then '出' else '退' end
+			,a.datea,a.noa,b.productno,b.product,b.unit,b.[weight],b.mount,b.price,b.total
+			from view_vcc a
+			left join view_vccs b on a.noa=b.noa
+			where a.custno=@custno 
+			and a.mon between @t_bmon and @t_emon
+			order by a.datea,a.noa,b.noq
+			
+			insert into @result(gno,pno,custno
+				,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
+			select '1','1',@custno
+			,'運',datea,noa,'','運費','',null,null,null,tranmoney
+			from view_vcc 
+			where custno=@custno 
+			and mon between @t_bmon and @t_emon
+			and isnull(tranmoney,0)!=0
+			
+			insert into @result(gno,pno,custno
+				,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
+			select '2','2',@custno
+			,'稅',datea,noa,'','稅額','',null,null,null,tax
+			from view_vcc 
+			where custno=@custno 
+			and mon between @t_bmon and @t_emon
+			and isnull(tax,0)!=0
+		end
+		if exists(select top 1 * from @tmp2 where custno=@custno and mon between @t_bmon and @t_emon)
+		begin
+			insert into @result(gno,pno,custno
+				,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
+			select '2','2',@custno
+			,'稅'
+			,datea,noa,'稅額','','',0,0,0,tax 
+			from vcca
+			where custno=@custno and mon between @t_bmon and @t_emon 
+		end
+		
+		select @mm = COUNT(1) from @result where custno=@custno
+		if @mm>0 or @money!=0 or @bkmoney !=0 or @tax !=0 or @payed !=0 or @unpay!=0 or @tot!=0
+		begin
+			if(@mm+@endcount)%@linecount != 0
+			begin
+				insert into @result(gno,pno,custno,memo)
+				select '3','3',@custno,'---以下空白---'
+				set @mm = @mm + 1
+				while @linecount-@mm%@linecount!=@endcount
+				begin
+					insert into @result(gno,pno,custno)
+					select '4','4',@custno
+					set @mm = @mm + 1
+				end
+			end
+			
+			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '5','5',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '6','6',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '7','7',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '8','8',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '9','9',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '10','10',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '11','11',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			
+			select @nn = count(1) from (select vccno from @result where custno=@custno and gno='1' group by vccno)a
+			select @totpage = COUNT(1) from @result where custno=@custno
+			update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where custno=@custno
+		end
+		fetch next from cursor_table
+		into @custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select a.* 
+	,(ROW_NUMBER()over(partition by a.custno order by pno)-1)/@linecount+1 pp
+	,a.totpage qq
+	,a.datea dd
+	,a.typea tt
+	,a.unit uu
+	,a.mount a1
+	,a.[weight] a2
+	,a.price a3
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.[moneys]),1)),4,12)) a4
+	,b.comp comp
+	,b.nick nick
+	,b.addr_comp addr
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[money],0)),1)),4,12)) b1
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[bkmoney],0)),1)),4,12)) b2
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[tax],0)),1)),4,12)) b3
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[total],0)),1)),4,12)) b4
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[payed],0)),1)),4,12)) b5
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[unpay],0)),1)),4,12)) b6
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[tot],0)),1)),4,12)) b7
+	from @result a
+	left join cust b on a.custno=b.noa
+	order by a.custno,a.pno;
+
 z_ummst02:--z_ummst02 
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
