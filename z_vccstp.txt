@@ -319,20 +319,6 @@ begin
 
 
 end
-/**
-insert into @tmp
-	select
-		'0',
-		ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-		a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
-		a.money,
-		case when @checkUcca>0 then 0 else isnull(a.tax,0) end,
-		a.total,char(255),char(255),char(255),'運費',char(255),
-		null,null,a.tranmoney,a.trantype
-	from view_vcc[1] a
-	left join vcca c on a.invono=c.noa
-	where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype) and (tranmoney >0)
-**/
 if(@checkUcca>0)
 begin
 	update @tmp set tax=isnull(c.tax,0)
