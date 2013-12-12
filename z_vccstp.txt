@@ -313,6 +313,11 @@ begin
 		group by b.ordeno,b.no2,a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
 					a.memo,a.money,a.tax,a.total,b.spec,b.product,b.size,a.kind,b.dime,b.width,b.lengthb,b.radius,b.style,
 					b.price,a.trantype
+	update a
+		set orderno = (select max(noq) from view_vccs[1] where (a.noa = noa) and product = a.products)
+	from @tmp a
+
+
 end
 /**
 insert into @tmp
