@@ -190,16 +190,16 @@ insert into @result
 		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
 	order by b.productno,gno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
-insert into @result(gno,productno,xproduct,csize,mount,total)
-	select '1',productno,xproduct,csize,sum(mount),sum(total) from @result where gno='0' group by productno,xproduct,csize
+insert into @result(gno,productno,xproduct,csize,mount,weight,total)
+	select '1',productno,xproduct,csize,sum(mount),sum(weight),sum(total) from @result where gno='0' group by productno,xproduct,csize
 select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,csize,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight ,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
 	'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
-	row_number()over(partition by productno,xproduct order by productno,xproduct,gno,datea,noa) idno
-from @result order by productno,xproduct,gno,datea,noa;
+	row_number()over(partition by productno,xproduct,csize order by productno,xproduct,gno,datea,noa) idno
+from @result order by productno,xproduct,csize,gno,idno;
 --***********************************************************************************
 z_rc2st4:	--z_rc2st4
 declare @t_accy nvarchar(10)
