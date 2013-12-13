@@ -123,8 +123,8 @@ insert into @result
 		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
 	order by a.tggno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
-insert into @result(gno,tggno,comp,pcount,mount,total)
-	select '1',tggno,comp,count(pcount),sum(mount),sum(total) from @result where gno='0' group by tggno,comp
+insert into @result(gno,tggno,comp,pcount,mount,weight,total)
+	select '1',tggno,comp,count(pcount),sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp
 select  
 	gno,type,noa,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit,csize
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
