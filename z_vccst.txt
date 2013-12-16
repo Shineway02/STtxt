@@ -550,8 +550,13 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'0',b.salesno,b.sales,left(b.datea,6),a.uno,a.product,a.productno,b.kind,
-		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		'0',b.salesno,b.sales,left(b.datea,6),a.uno,
+		case when charindex(left(a.uno,1),'XYZ') > 0 then '廢料' else a.product end product,
+		case when charindex(left(a.uno,1),'XYZ') > 0 then '' else a.productno end productno,
+		b.kind,
+		case when charindex(left(a.uno,1),'XYZ') > 0 then '' else
+			case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end
+		end csize,
 		a.spec,sum(a.weight),sum(a.mount),e.nick,'vccst'
 	from vccs[1] a
 	left join vcc[1] b on a.noa = b.noa
@@ -566,7 +571,8 @@ insert into @tmp
 		(a.width between @t_bwidth and @t_ewidth) and
 		(a.dime between @t_bdime and @t_edime) and
 		(a.lengthb between @t_blengthb and @t_elengthb) and
-		(b.salesno between @t_bsalesno and @t_esalesno)
+		(b.salesno between @t_bsalesno and @t_esalesno) and
+		(len(ltrim(rtrim(a.uno)))>0)
 	group by b.salesno,b.sales,left(b.datea,6),a.uno,a.product,a.productno,a.size,b.kind,a.dime,a.width,a.lengthb,a.radius,
 				a.spec,e.nick
 insert into @tmp(gno,salesno,sales,datea,amount,aweight)

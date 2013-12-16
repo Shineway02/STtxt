@@ -845,7 +845,7 @@ select custno,SUM(money),mon from (
 select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno 
 ,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
 ,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
-from view_vcc102 aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(kind,4)!='健勞勞退') 
+from view_vcc[10] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon
 group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) ,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
 )tmp where custno between @t_bcustno and @t_ecustno group by custno,mon
 
@@ -869,7 +869,7 @@ select '9',custno,salesno,SUM(money),0,0 from (
 	--vcc 
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
-	from view_vcc[10] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(kind,4)!='健勞勞退') 
+	from view_vcc[10] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) 
 )tmp where custno between @t_bcustno and @t_ecustno group by custno,salesno
 
@@ -880,7 +880,7 @@ select '9',custno,salesno,0,SUM(total),0 from (
 	--vcc 
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0)) total
-	from view_vcc[10] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(kind,4)!='健勞勞退') 
+	from view_vcc[10] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) 
 )tmp where custno between @t_bcustno and @t_ecustno group by custno,salesno
 
@@ -1064,18 +1064,18 @@ declare @tmp table(
 insert into @tmp
 select '0', a.custno
 ,(select nick from cust where noa=a.custno union select namea nick from sss where noa=a.custno)
-,isnull((select SUM(money) from view_vcc102 where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(tax) from view_vcc102 where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when va.typea='1' then 1 else -1 end)*(case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc102 va left join view_vccs102 vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(money) from view_vcc[10] where custno=a.custno and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(tax) from view_vcc[10] where custno=a.custno and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM((case when va.typea='1' then 1 else -1 end)*(case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc[10] va left join view_vccs[10] vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
 ,isnull((select SUM(money) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(money) from view_vcc102 where custno=a.custno and datea between @t_bdate and @t_edate),0)-isnull((select SUM(money) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(tax) from view_vcc102 where custno=a.custno and datea between @t_bdate and @t_edate),0)-isnull((select SUM(tax) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(money) from view_vcc[10] where custno=a.custno and datea between @t_bdate and @t_edate),0)-isnull((select SUM(money) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(tax) from view_vcc[10] where custno=a.custno and datea between @t_bdate and @t_edate),0)-isnull((select SUM(tax) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
 ,isnull((select SUM(vb.mount) from vcca va left join vccas vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc102 va left join view_vccs102 vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
+,isnull((select SUM((case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc[10] va left join view_vccs[10] vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
 -isnull((select SUM(vb.mount) from vcca va left join vccas vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then money else 0 end) from view_vcc102 where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then tax else 0 end) from view_vcc102 where custno=a.custno and datea between @t_bdate and @t_edate),0)
-from view_vcc102 a
+,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then money else 0 end) from view_vcc[10] where custno=a.custno and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then tax else 0 end) from view_vcc[10] where custno=a.custno and datea between @t_bdate and @t_edate),0)
+from view_vcc[10] a
 where a.custno between @t_bcustno and @t_ecustno 
 and a.datea between @t_bdate and @t_edate 
 group by a.custno
