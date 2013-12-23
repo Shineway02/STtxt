@@ -704,29 +704,31 @@ end
 close cursor_table
 deallocate cursor_table
 
-
-declare cursor_table cursor for
-	select distinct uno,count(*) from @tmp group by uno
-open cursor_table
-fetch next from cursor_table
-into @t_uno,@t_count
-while(@@FETCH_STATUS <> -1)
+if(@t_merga = 0)
 begin
-	if(@t_count >=2)
-	begin
-		insert into @tmp(gno,g2,sortno,datea,uno,csize,productno,mount,weight,radius,dime,width,lengthb,kind)
-			select
-				'2' gno,'0' g2,'2' sortno,datea,uno,csize,productno,
-				sum((case when gno='1' then mount*(-1) else mount end)),
-				sum((case when gno='1' then weight*(-1) else weight end)),
-				radius,dime,width,lengthb,kind
-			from @tmp where uno = @t_uno group by uno,kind,csize,radius,dime,width,lengthb,datea,productno
-	end
+	declare cursor_table cursor for
+		select distinct uno,count(*) from @tmp group by uno
+	open cursor_table
 	fetch next from cursor_table
 	into @t_uno,@t_count
-end 
-close cursor_table
-deallocate cursor_table
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if(@t_count >=2)
+		begin
+			insert into @tmp(gno,g2,sortno,datea,uno,csize,productno,mount,weight,radius,dime,width,lengthb,kind)
+				select
+					'2' gno,'0' g2,'2' sortno,datea,uno,csize,productno,
+					sum((case when gno='1' then mount*(-1) else mount end)),
+					sum((case when gno='1' then weight*(-1) else weight end)),
+					radius,dime,width,lengthb,kind
+				from @tmp where uno = @t_uno group by uno,kind,csize,radius,dime,width,lengthb,datea,productno
+		end
+		fetch next from cursor_table
+		into @t_uno,@t_count
+	end 
+	close cursor_table
+	deallocate cursor_table
+end
 insert into @tmp(gno,g2,mount,weight)
 	select '3','1',
 		sum((case when gno='1' then mount*(-1) else mount end)),
@@ -1049,28 +1051,31 @@ end
 close cursor_table
 deallocate cursor_table
 
-declare cursor_table cursor for
-	select distinct uno,count(*) from @tmp group by uno
-open cursor_table
-fetch next from cursor_table
-into @t_uno,@t_count
-while(@@FETCH_STATUS <> -1)
+if(@t_merga = 0)
 begin
-	if(@t_count >=2)
-	begin
-		insert into @tmp(gno,g2,sortno,storeno,uno,csize,datea,productno,mount,weight,radius,dime,width,lengthb,kind)
-			select
-				'2' gno,'0' g2,'2' sortno,storeno,uno,csize,datea,productno,
-				sum((case when gno='1' then mount*(-1) else mount end)),
-				sum((case when gno='1' then weight*(-1) else weight end)),
-				radius,dime,width,lengthb,kind
-			from @tmp where uno = @t_uno group by storeno,uno,radius,dime,width,lengthb,kind,csize,datea,productno
-	end
+	declare cursor_table cursor for
+		select distinct uno,count(*) from @tmp group by uno
+	open cursor_table
 	fetch next from cursor_table
 	into @t_uno,@t_count
-end 
-close cursor_table
-deallocate cursor_table
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if(@t_count >=2)
+		begin
+			insert into @tmp(gno,g2,sortno,storeno,uno,csize,datea,productno,mount,weight,radius,dime,width,lengthb,kind)
+				select
+					'2' gno,'0' g2,'2' sortno,storeno,uno,csize,datea,productno,
+					sum((case when gno='1' then mount*(-1) else mount end)),
+					sum((case when gno='1' then weight*(-1) else weight end)),
+					radius,dime,width,lengthb,kind
+				from @tmp where uno = @t_uno group by storeno,uno,radius,dime,width,lengthb,kind,csize,datea,productno
+		end
+		fetch next from cursor_table
+		into @t_uno,@t_count
+	end 
+	close cursor_table
+	deallocate cursor_table
+end
 insert into @tmp(gno,g2,storeno,mount,weight)
 	select '3','1',storeno,
 		sum((case when gno='1' then mount*(-1) else mount end)),
