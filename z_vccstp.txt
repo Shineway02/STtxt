@@ -281,8 +281,8 @@ begin
 				(case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
 				(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) end )
 			end) size,
-			(case when (b.style='' and b.dime='') then null else b.mount end),
-			(case when (b.style='' and b.dime='') then null else b.weight end),
+			(case when ((b.style='' and b.dime='') and charindex(left(b.uno,1),'XYZ') <= 0 ) then null else b.mount end),
+			(case when ((b.style='' and b.dime='') and charindex(left(b.uno,1),'XYZ') <= 0) then null else b.weight end),
 			b.price,a.trantype
 		from view_vcc[1] a
 		left join view_vccs[1] b on a.noa = b.noa
@@ -303,8 +303,8 @@ begin
 				(case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
 				(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) end )
 			end) size,
-			(case when (b.style='' and b.dime='') then null else sum(b.mount) end),
-			(case when (b.style='' and b.dime='') then null else sum(b.weight) end),
+			(case when ((b.style='' and b.dime='') and charindex(left(b.uno,1),'XYZ') <= 0 ) then null else sum(b.mount) end),
+			(case when ((b.style='' and b.dime='') and charindex(left(b.uno,1),'XYZ') <= 0) then null else sum(b.weight) end),
 			b.price,a.trantype
 		from view_vcc[1] a
 		left join view_vccs[1] b on a.noa = b.noa
@@ -312,7 +312,7 @@ begin
 		where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
 		group by b.ordeno,b.no2,a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
 					a.memo,a.money,a.tax,a.total,b.spec,b.product,b.size,a.kind,b.dime,b.width,b.lengthb,b.radius,b.style,
-					b.price,a.trantype
+					b.price,a.trantype,left(uno,1)
 	update a
 		set orderno = (select max(noq) from view_vccs[1] where (a.noa = noa) and product = a.products)
 	from @tmp a
