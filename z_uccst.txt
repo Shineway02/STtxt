@@ -527,160 +527,129 @@ declare @tmp table(
 	sprice float,
 	memo nvarchar(max)
 )
+insert into @tmp
+	select
+		a.gno,'0' g2,a.sortno,a.datea,f.store,a.custno,c.nick,a.uno,
+		case a.tablea when 'rc2s' then d.uno2 when 'inas' then e.uno2 end,
+		a.productno,a.product,a.class,a.spec,
+		case @t_showtype when '0' then
+			(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
+		when '1' then (case when ltrim(rtrim(a.size)) = '' then 
+			isnull((select noa from beltwidth where width=a.radius)+'*',case when a.radius=0 then '' else cast(a.radius as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else cast(a.width as nvarchar)+'*' end) else cast(a.dime as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (cast(a.dime as nvarchar)+'*') else (cast(a.width as nvarchar)+'*') end)+(case when a.lengthb=0 then 'C' else cast(a.lengthb as nvarchar) end) else ltrim(rtrim(a.size)) end)
+		when '2' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) end csize,
+		a.mount,a.weight,a.ordeno,a.no2,
+		case when (charindex('帶',a.product)>0 or a.style='B') then
+			case 
+				when (a.dime >= 3.6 and a.width >= (3.1416*165.1-a.dime*3.5)) then '6"'
+				when (a.dime < 3.6 and a.width >= (3.1416*164.9-a.dime*3.5)) then '6"'
+				when (a.dime >= 3.6 and a.width >= (3.1416*139.6-a.dime*3.5)) then '5"'
+				when (a.dime < 3.6 and a.width >= (3.1416*139.5-a.dime*3.5)) then '5"'
+				when (a.dime >= 3.25 and a.width >= (3.1416*114.1-a.dime*3.5)) then '4"'
+				when (a.dime < 3.25 and a.width >= (3.1416*113.5-a.dime*3.5)) then '4"'
+				when (a.dime >= 3.25 and a.width >= (3.1416*101.0-a.dime*3.5)) then '3-1/2"'
+				when (a.dime < 3.25 and a.width >= (3.1416*100.7-a.dime*3.5)) then '3-1/2"'
+				when (a.dime >= 3.0 and a.width >= (3.1416*88.8-a.dime*3.5)) then '3"'
+				when (a.dime < 3.0 and a.width >= (3.1416*88.3-a.dime*3.5)) then '3"'
+				when (a.dime >= 3.0 and a.width >= (3.1416*76.0-a.dime*3.5)) then '2-1/2"'
+				when (a.dime < 3.0 and a.width >= (3.1416*75.6-a.dime*3.5)) then '2-1/2"'
+				when (a.dime >= 2.6 and a.width >= (3.1416*60.3-a.dime*3.5)) then '2"'
+				when (a.dime < 2.6 and a.width >= (3.1416*59.9-a.dime*3.5)) then '2"'
+				when (a.dime >= 2.6 and a.width >= (3.1416*48.4-a.dime*3.5)) then '1-1/2"'
+				when (a.dime < 2.6 and a.width >= (3.1416*48.1-a.dime*3.5)) then '1-1/2"'
+				when (a.dime >= 2.45 and a.width >= (3.1416*42.5-a.dime*3.5)) then '1-1/4"'
+				when (a.dime < 2.45 and a.width >= (3.1416*42.2-a.dime*3.5)) then '1-1/4"'
+				when (a.dime >= 2.45 and a.width >= (3.1416*33.8-a.dime*3.5)) then '1"'
+				when (a.dime < 2.45 and a.width >= (3.1416*33.5-a.dime*3.5)) then '1"'
+				when (a.dime >= 2.1 and a.width >= (3.1416*26.9-a.dime*3.5)) then '3/4"'
+				when (a.dime < 2.1 and a.width >= (3.1416*26.7-a.dime*3.5)) then '3/4"'
+				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
+				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
+			end
+		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo
+	from (
+		select
+			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,
+			case when ltrim(rtrim(isnull(c.cngstoreno,''))) = '' then a.storeno else c.cngstoreno end storeno,
+			a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
+			a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice,
+			a.memo
+		from view_uccc a
+		left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
+		left join uccy c on a.uno = c.uno 
+		union
+		select
+			'ordet' tablea,'1' gno,'1' sortno,a.noa,c.style style,
+			'' waste,'1' itype,c.datea,
+			case when ltrim(rtrim(isnull(d.cngstoreno,''))) = '' then c.storeno else d.cngstoreno end storeno,
+			b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
+			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,''
+		from view_ordet a
+		left join view_orde b on a.noa = b.noa 
+		left join view_uccc c on a.uno = c.uno
+		left join uccy d on a.uno = d.uno
+		where c.uno is not null and @t_isordermemo='1'-- and c.kind='A1'
+	) a
+	left join view_ina b on a.tablea='inas' and a.noa=b.noa
+	left join cust c on a.custno = c.noa
+	left join view_rc2s d on (a.tablea='rc2s') and (a.noa = d.noa) and (a.uno=d.uno)
+	left join view_inas e on (a.tablea='inas') and (a.noa = e.noa) and (a.uno=e.uno)
+	left join store f on a.storeno = f.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
+			 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
+			 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
+			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
+			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
+			 (a.storeno between @t_bstoreno and @t_estoreno)
+			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
+			 and (len(@t_stype) = 0 or a.stype=@t_stype)
+	order by a.datea desc
+	
+update @tmp set csize = replace(csize,'X','*')
+declare @idno int
+declare @csize nvarchar(max)
+declare @new_csize nvarchar(max)
+declare @tmpCsizeVal nvarchar(max)
+declare cursor_table cursor for
+	select idno,csize from @tmp
+open cursor_table
+fetch next from cursor_table
+into @idno,@csize
+while(@@FETCH_STATUS <> -1)
+begin
+	set @csize += '*'
+	set @new_csize = ''
+	while(CHARINDEX('*',@csize) > 0)
+	begin
+		set @tmpCsizeVal = left(@csize,charindex('*',@csize)-1)
+		if(isnumeric(@tmpCsizeVal)=1)
+			set @tmpCsizeVal = cast(cast(@tmpCsizeVal as float) as nvarchar)
+		set @new_csize = @new_csize+@tmpCsizeVal+'*'
+		set @csize = RIGHT(@csize,LEN(@csize)-CHARINDEX('*',@csize))
+	end
+	set @new_csize = substring(@new_csize,0,len(@new_csize))
+	update @tmp set csize = @new_csize where idno=@idno
+	fetch next from cursor_table
+	into @idno,@csize
+end 
+close cursor_table
+deallocate cursor_table
 
 if(@t_merga = 1)
 begin
-	insert into @tmp
-		select
-			max(a.gno),'0' g2,max(a.sortno),'',f.store,'','','' uno,'' uno2,
-			a.productno,a.product,a.class,a.spec,
-			case @t_showtype when '0' then
-				(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
-			when '1' then ltrim(rtrim(isnull(a.size,'')))
-			when '2' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) end csize,
-			sum(a.mount),sum(a.weight),'','',
-			case when (charindex('帶',a.product)>0 or a.style='B') then
-				case 
-					when (a.dime >= 3.6 and a.width >= (3.1416*165.1-a.dime*3.5)) then '6"'
-					when (a.dime < 3.6 and a.width >= (3.1416*164.9-a.dime*3.5)) then '6"'
-					when (a.dime >= 3.6 and a.width >= (3.1416*139.6-a.dime*3.5)) then '5"'
-					when (a.dime < 3.6 and a.width >= (3.1416*139.5-a.dime*3.5)) then '5"'
-					when (a.dime >= 3.25 and a.width >= (3.1416*114.1-a.dime*3.5)) then '4"'
-					when (a.dime < 3.25 and a.width >= (3.1416*113.5-a.dime*3.5)) then '4"'
-					when (a.dime >= 3.25 and a.width >= (3.1416*101.0-a.dime*3.5)) then '3-1/2"'
-					when (a.dime < 3.25 and a.width >= (3.1416*100.7-a.dime*3.5)) then '3-1/2"'
-					when (a.dime >= 3.0 and a.width >= (3.1416*88.8-a.dime*3.5)) then '3"'
-					when (a.dime < 3.0 and a.width >= (3.1416*88.3-a.dime*3.5)) then '3"'
-					when (a.dime >= 3.0 and a.width >= (3.1416*76.0-a.dime*3.5)) then '2-1/2"'
-					when (a.dime < 3.0 and a.width >= (3.1416*75.6-a.dime*3.5)) then '2-1/2"'
-					when (a.dime >= 2.6 and a.width >= (3.1416*60.3-a.dime*3.5)) then '2"'
-					when (a.dime < 2.6 and a.width >= (3.1416*59.9-a.dime*3.5)) then '2"'
-					when (a.dime >= 2.6 and a.width >= (3.1416*48.4-a.dime*3.5)) then '1-1/2"'
-					when (a.dime < 2.6 and a.width >= (3.1416*48.1-a.dime*3.5)) then '1-1/2"'
-					when (a.dime >= 2.45 and a.width >= (3.1416*42.5-a.dime*3.5)) then '1-1/4"'
-					when (a.dime < 2.45 and a.width >= (3.1416*42.2-a.dime*3.5)) then '1-1/4"'
-					when (a.dime >= 2.45 and a.width >= (3.1416*33.8-a.dime*3.5)) then '1"'
-					when (a.dime < 2.45 and a.width >= (3.1416*33.5-a.dime*3.5)) then '1"'
-					when (a.dime >= 2.1 and a.width >= (3.1416*26.9-a.dime*3.5)) then '3/4"'
-					when (a.dime < 2.1 and a.width >= (3.1416*26.7-a.dime*3.5)) then '3/4"'
-					when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
-					when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
-				end
-			end,a.radius,a.dime,a.width,a.lengthb,a.kind,0,''	
-		from (
-			select
-				a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,
-				case when ltrim(rtrim(isnull(c.cngstoreno,''))) = '' then a.storeno else c.cngstoreno end storeno,
-				a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
-				a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice
-			from view_uccc a
-			left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
-			left join uccy c on a.uno = c.uno 
-			union
-			select
-				'ordet' tablea,'1' gno,'1' sortno,a.noa,c.style style,
-				'' waste,'1' itype,c.datea,
-				case when ltrim(rtrim(isnull(d.cngstoreno,''))) = '' then c.storeno else d.cngstoreno end storeno,
-				b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
-				a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice
-			from view_ordet a
-			left join view_orde b on a.noa = b.noa 
-			left join view_uccc c on a.uno = c.uno
-			left join uccy d on a.uno = d.uno
-			where c.uno is not null and @t_isordermemo='1'-- and c.kind='A1'
-		) a
-		left join view_ina b on a.tablea='inas' and a.noa=b.noa
-		left join cust c on a.custno = c.noa
-		left join store f on a.storeno = f.noa
-		where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
-				 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
-				 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
-				 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
-				 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
-				 (a.storeno between @t_bstoreno and @t_estoreno)
-				 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
-				 and (len(@t_stype) = 0 or a.stype=@t_stype)
-		group by a.kind,a.size,a.dime,a.width,a.lengthb,a.radius,a.style,
-			a.productno,a.product,a.class,a.spec,f.store
+	update @tmp set gno = '1'
+	update @tmp set datea='',custno='',custs='',uno='',uno2='',ordeno='',no2='',sprice=0,memo='',radius=0,dime=0,width=0,lengthb=0
+	insert into @tmp(
+		gno,g2,sortno,datea,storeno,custno,custs,uno,uno2,productno,products,class,
+		spec,csize,mount,weight,ordeno,no2,sfi,radius,dime,width,lengthb,kind,sprice,memo
+	)
+	select
+		'0',g2,sortno,'',storeno,'','','','',productno,products,
+		class,spec,csize,sum(mount),sum(weight),'','',sfi,radius,dime,width,lengthb,kind,0,''
+	from @tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb
+	delete @tmp where gno='1'
 end
-else
-begin
-	insert into @tmp
-		select
-			a.gno,'0' g2,a.sortno,a.datea,f.store,a.custno,c.nick,a.uno,
-			case a.tablea when 'rc2s' then d.uno2 when 'inas' then e.uno2 end,
-			a.productno,a.product,a.class,a.spec,
-			case @t_showtype when '0' then
-				(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
-			when '1' then ltrim(rtrim(isnull(a.size,'')))
-			when '2' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) end csize,
-			a.mount,a.weight,a.ordeno,a.no2,
-			case when (charindex('帶',a.product)>0 or a.style='B') then
-				case 
-					when (a.dime >= 3.6 and a.width >= (3.1416*165.1-a.dime*3.5)) then '6"'
-					when (a.dime < 3.6 and a.width >= (3.1416*164.9-a.dime*3.5)) then '6"'
-					when (a.dime >= 3.6 and a.width >= (3.1416*139.6-a.dime*3.5)) then '5"'
-					when (a.dime < 3.6 and a.width >= (3.1416*139.5-a.dime*3.5)) then '5"'
-					when (a.dime >= 3.25 and a.width >= (3.1416*114.1-a.dime*3.5)) then '4"'
-					when (a.dime < 3.25 and a.width >= (3.1416*113.5-a.dime*3.5)) then '4"'
-					when (a.dime >= 3.25 and a.width >= (3.1416*101.0-a.dime*3.5)) then '3-1/2"'
-					when (a.dime < 3.25 and a.width >= (3.1416*100.7-a.dime*3.5)) then '3-1/2"'
-					when (a.dime >= 3.0 and a.width >= (3.1416*88.8-a.dime*3.5)) then '3"'
-					when (a.dime < 3.0 and a.width >= (3.1416*88.3-a.dime*3.5)) then '3"'
-					when (a.dime >= 3.0 and a.width >= (3.1416*76.0-a.dime*3.5)) then '2-1/2"'
-					when (a.dime < 3.0 and a.width >= (3.1416*75.6-a.dime*3.5)) then '2-1/2"'
-					when (a.dime >= 2.6 and a.width >= (3.1416*60.3-a.dime*3.5)) then '2"'
-					when (a.dime < 2.6 and a.width >= (3.1416*59.9-a.dime*3.5)) then '2"'
-					when (a.dime >= 2.6 and a.width >= (3.1416*48.4-a.dime*3.5)) then '1-1/2"'
-					when (a.dime < 2.6 and a.width >= (3.1416*48.1-a.dime*3.5)) then '1-1/2"'
-					when (a.dime >= 2.45 and a.width >= (3.1416*42.5-a.dime*3.5)) then '1-1/4"'
-					when (a.dime < 2.45 and a.width >= (3.1416*42.2-a.dime*3.5)) then '1-1/4"'
-					when (a.dime >= 2.45 and a.width >= (3.1416*33.8-a.dime*3.5)) then '1"'
-					when (a.dime < 2.45 and a.width >= (3.1416*33.5-a.dime*3.5)) then '1"'
-					when (a.dime >= 2.1 and a.width >= (3.1416*26.9-a.dime*3.5)) then '3/4"'
-					when (a.dime < 2.1 and a.width >= (3.1416*26.7-a.dime*3.5)) then '3/4"'
-					when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
-					when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
-				end
-			end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo
-		from (
-			select
-				a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,
-				case when ltrim(rtrim(isnull(c.cngstoreno,''))) = '' then a.storeno else c.cngstoreno end storeno,
-				a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
-				a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice,
-				a.memo
-			from view_uccc a
-			left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
-			left join uccy c on a.uno = c.uno 
-			union
-			select
-				'ordet' tablea,'1' gno,'1' sortno,a.noa,c.style style,
-				'' waste,'1' itype,c.datea,
-				case when ltrim(rtrim(isnull(d.cngstoreno,''))) = '' then c.storeno else d.cngstoreno end storeno,
-				b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
-				a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,''
-			from view_ordet a
-			left join view_orde b on a.noa = b.noa 
-			left join view_uccc c on a.uno = c.uno
-			left join uccy d on a.uno = d.uno
-			where c.uno is not null and @t_isordermemo='1'-- and c.kind='A1'
-		) a
-		left join view_ina b on a.tablea='inas' and a.noa=b.noa
-		left join cust c on a.custno = c.noa
-		left join view_rc2s d on (a.tablea='rc2s') and (a.noa = d.noa) and (a.uno=d.uno)
-		left join view_inas e on (a.tablea='inas') and (a.noa = e.noa) and (a.uno=e.uno)
-		left join store f on a.storeno = f.noa
-		where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
-				 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
-				 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
-				 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
-				 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
-				 (a.storeno between @t_bstoreno and @t_estoreno)
-				 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
-				 and (len(@t_stype) = 0 or a.stype=@t_stype)
-		order by a.datea desc
-end
+
+
 if(@t_orderstatus = '1') ----已受訂
 	delete @tmp where isnull(ordeno,'') = ''
 else if(@t_orderstatus = '2') ----未受訂
@@ -750,15 +719,20 @@ else if(@t_sortby = 'PNO')
 	from @tmp order by g2,productno,datea,csize,uno,gno,sortno
 else
 	select
-		ROW_NUMBER()over(order by g2,csize,productno,datea,uno,sortno) idno,*,@t_title t_title ,
+		ROW_NUMBER()over(	order by g2,
+			(case left(kind,1) when 'B' then radius else dime end ),
+			(case left(kind,1) when 'B' then width else width end ),
+			(case left(kind,1) when 'B' then dime else lengthb end ),
+			(case left(kind,1) when 'B' then lengthb end ),
+			csize,productno,datea,uno,gno,sortno) idno,*,@t_title t_title ,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi,memo
 	from @tmp 
 	order by g2,
-	(case substring(kind,0,1) when 'B' then radius else dime end ),
-	(case substring(kind,0,1) when 'B' then width else width end ),
-	(case substring(kind,0,1) when 'B' then dime else lengthb end ),
-	(case substring(kind,0,1) when 'B' then lengthb end ),
+	(case left(kind,1) when 'B' then radius else dime end ),
+	(case left(kind,1) when 'B' then width else width end ),
+	(case left(kind,1) when 'B' then dime else lengthb end ),
+	(case left(kind,1) when 'B' then lengthb end ),
 	csize,productno,datea,uno,gno,sortno;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
@@ -871,18 +845,17 @@ declare @tmp table(
 	sprice float,
 	memo nvarchar(max)
 )
-
-if(@t_merga = '1')
-begin
 insert into @tmp
 	select
-		a.gno,'0' g2,a.sortno,'',f.store,'','','','' uno2,
+		a.gno,'0' g2,a.sortno,a.datea,f.store,a.custno,c.nick,a.uno,
+		case a.tablea when 'rc2s' then d.uno2 when 'inas' then e.uno2 end,
 		a.productno,a.product,a.class,a.spec,
 		case @t_showtype when '0' then
 			(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
-		when '1' then ltrim(rtrim(isnull(a.size,'')))
+		when '1' then (case when ltrim(rtrim(a.size)) = '' then 
+			isnull((select noa from beltwidth where width=a.radius)+'*',case when a.radius=0 then '' else cast(a.radius as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else cast(a.width as nvarchar)+'*' end) else cast(a.dime as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (cast(a.dime as nvarchar)+'*') else (cast(a.width as nvarchar)+'*') end)+(case when a.lengthb=0 then 'C' else cast(a.lengthb as nvarchar) end) else ltrim(rtrim(a.size)) end)
 		when '2' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) end csize,
-		sum(a.mount),sum(a.weight),'','',
+		a.mount,a.weight,a.ordeno,a.no2,
 		case when (charindex('帶',a.product)>0 or a.style='B') then
 			case 
 				when (a.dime >= 3.6 and a.width >= (3.1416*165.1-a.dime*3.5)) then '6"'
@@ -910,13 +883,14 @@ insert into @tmp
 				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
 				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
 			end
-		end,a.radius,a.dime,a.width,a.lengthb,a.kind,0,''
+		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,
 			case when ltrim(rtrim(isnull(c.cngstoreno,''))) = '' then a.storeno else c.cngstoreno end storeno,
 			a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
-			a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice
+			a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice,
+			a.memo
 		from view_uccc a
 		left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
 		left join uccy c on a.uno = c.uno
@@ -926,7 +900,7 @@ insert into @tmp
 			'' waste,'1' itype,c.datea,
 			case when ltrim(rtrim(isnull(d.cngstoreno,''))) = '' then c.storeno else d.cngstoreno end storeno,
 			b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
-			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice
+			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,''
 		from view_ordet a
 		left join view_orde b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
@@ -946,87 +920,54 @@ insert into @tmp
 			 (a.storeno between @t_bstoreno and @t_estoreno)
 			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
 			 and (len(@t_stype) = 0 or a.stype=@t_stype)
-	group by a.gno,a.sortno,a.storeno,f.store,a.kind,a.style,a.size,a.dime,a.width,a.lengthb,a.radius,a.productno,a.product,a.class,a.spec
-	order by a.storeno desc
-end
-else
+	order by a.datea desc
+
+update @tmp set csize = replace(csize,'X','*')
+declare @idno int
+declare @csize nvarchar(max)
+declare @new_csize nvarchar(max)
+declare @tmpCsizeVal nvarchar(max)
+declare cursor_table cursor for
+	select idno,csize from @tmp
+open cursor_table
+fetch next from cursor_table
+into @idno,@csize
+while(@@FETCH_STATUS <> -1)
 begin
-	insert into @tmp
-		select
-			a.gno,'0' g2,a.sortno,a.datea,f.store,a.custno,c.nick,a.uno,
-			case a.tablea when 'rc2s' then d.uno2 when 'inas' then e.uno2 end,
-			a.productno,a.product,a.class,a.spec,
-			case @t_showtype when '0' then
-				(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
-			when '1' then ltrim(rtrim(isnull(a.size,'')))
-			when '2' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) end csize,
-			a.mount,a.weight,a.ordeno,a.no2,
-			case when (charindex('帶',a.product)>0 or a.style='B') then
-				case 
-					when (a.dime >= 3.6 and a.width >= (3.1416*165.1-a.dime*3.5)) then '6"'
-					when (a.dime < 3.6 and a.width >= (3.1416*164.9-a.dime*3.5)) then '6"'
-					when (a.dime >= 3.6 and a.width >= (3.1416*139.6-a.dime*3.5)) then '5"'
-					when (a.dime < 3.6 and a.width >= (3.1416*139.5-a.dime*3.5)) then '5"'
-					when (a.dime >= 3.25 and a.width >= (3.1416*114.1-a.dime*3.5)) then '4"'
-					when (a.dime < 3.25 and a.width >= (3.1416*113.5-a.dime*3.5)) then '4"'
-					when (a.dime >= 3.25 and a.width >= (3.1416*101.0-a.dime*3.5)) then '3-1/2"'
-					when (a.dime < 3.25 and a.width >= (3.1416*100.7-a.dime*3.5)) then '3-1/2"'
-					when (a.dime >= 3.0 and a.width >= (3.1416*88.8-a.dime*3.5)) then '3"'
-					when (a.dime < 3.0 and a.width >= (3.1416*88.3-a.dime*3.5)) then '3"'
-					when (a.dime >= 3.0 and a.width >= (3.1416*76.0-a.dime*3.5)) then '2-1/2"'
-					when (a.dime < 3.0 and a.width >= (3.1416*75.6-a.dime*3.5)) then '2-1/2"'
-					when (a.dime >= 2.6 and a.width >= (3.1416*60.3-a.dime*3.5)) then '2"'
-					when (a.dime < 2.6 and a.width >= (3.1416*59.9-a.dime*3.5)) then '2"'
-					when (a.dime >= 2.6 and a.width >= (3.1416*48.4-a.dime*3.5)) then '1-1/2"'
-					when (a.dime < 2.6 and a.width >= (3.1416*48.1-a.dime*3.5)) then '1-1/2"'
-					when (a.dime >= 2.45 and a.width >= (3.1416*42.5-a.dime*3.5)) then '1-1/4"'
-					when (a.dime < 2.45 and a.width >= (3.1416*42.2-a.dime*3.5)) then '1-1/4"'
-					when (a.dime >= 2.45 and a.width >= (3.1416*33.8-a.dime*3.5)) then '1"'
-					when (a.dime < 2.45 and a.width >= (3.1416*33.5-a.dime*3.5)) then '1"'
-					when (a.dime >= 2.1 and a.width >= (3.1416*26.9-a.dime*3.5)) then '3/4"'
-					when (a.dime < 2.1 and a.width >= (3.1416*26.7-a.dime*3.5)) then '3/4"'
-					when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
-					when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
-				end
-			end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo
-		from (
-			select
-				a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,
-				case when ltrim(rtrim(isnull(c.cngstoreno,''))) = '' then a.storeno else c.cngstoreno end storeno,
-				a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
-				a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice,
-				a.memo
-			from view_uccc a
-			left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
-			left join uccy c on a.uno = c.uno
-			union
-			select
-				'ordet' tablea,'1' gno,'1' sortno,a.noa,c.style  style,
-				'' waste,'1' itype,c.datea,
-				case when ltrim(rtrim(isnull(d.cngstoreno,''))) = '' then c.storeno else d.cngstoreno end storeno,
-				b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
-				a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,''
-			from view_ordet a
-			left join view_orde b on a.noa = b.noa 
-			left join view_uccc c on a.uno = c.uno
-			left join uccy d on a.uno = d.uno
-			where c.uno is not null and @t_isordermemo='1'-- and c.kind='A1'
-		) a
-		left join view_ina b on a.tablea='inas' and a.noa=b.noa
-		left join cust c on a.custno = c.noa
-		left join view_rc2s d on (a.tablea='rc2s') and (a.noa = d.noa) and (a.uno=d.uno)
-		left join view_inas e on (a.tablea='inas') and (a.noa = e.noa) and (a.uno=e.uno)
-		left join store f on a.storeno = f.noa
-		where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
-				 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
-				 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
-				 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
-				 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
-				 (a.storeno between @t_bstoreno and @t_estoreno)
-				 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
-				 and (len(@t_stype) = 0 or a.stype=@t_stype)
-		order by a.datea desc
+	set @csize += '*'
+	set @new_csize = ''
+	while(CHARINDEX('*',@csize) > 0)
+	begin
+		set @tmpCsizeVal = left(@csize,charindex('*',@csize)-1)
+		if(isnumeric(@tmpCsizeVal)=1)
+			set @tmpCsizeVal = cast(cast(@tmpCsizeVal as float) as nvarchar)
+		set @new_csize = @new_csize+@tmpCsizeVal+'*'
+		set @csize = RIGHT(@csize,LEN(@csize)-CHARINDEX('*',@csize))
+	end
+	set @new_csize = substring(@new_csize,0,len(@new_csize))
+	update @tmp set csize = @new_csize where idno=@idno
+	fetch next from cursor_table
+	into @idno,@csize
+end 
+close cursor_table
+deallocate cursor_table
+
+if(@t_merga = 1)
+begin
+	update @tmp set gno = '1'
+	update @tmp set datea='',custno='',custs='',uno='',uno2='',ordeno='',no2='',sprice=0,memo='',radius=0,dime=0,width=0,lengthb=0
+	insert into @tmp(
+		gno,g2,sortno,datea,storeno,custno,custs,uno,uno2,productno,products,class,
+		spec,csize,mount,weight,ordeno,no2,sfi,radius,dime,width,lengthb,kind,sprice,memo
+	)
+	select
+		'0',g2,sortno,'',storeno,'','','','',productno,products,
+		class,spec,csize,sum(mount),sum(weight),'','',sfi,radius,dime,width,lengthb,kind,0,''
+	from @tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb
+	delete @tmp where gno='1'
 end
+
+
 if(@t_orderstatus = '1') ----已受訂
 	delete @tmp where isnull(ordeno,'') = ''
 else if(@t_orderstatus = '2') ----未受訂
@@ -1101,8 +1042,8 @@ else
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
 		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,memo
 	from @tmp order by storeno,g2,
-	(case substring(kind,0,1) when 'B' then radius else dime end ),
-	(case substring(kind,0,1) when 'B' then width else width end ),
-	(case substring(kind,0,1) when 'B' then dime else lengthb end ),
-	(case substring(kind,0,1) when 'B' then lengthb end ),
+	(case left(kind,1) when 'B' then radius else dime end ),
+	(case left(kind,1) when 'B' then width else width end ),
+	(case left(kind,1) when 'B' then dime else lengthb end ),
+	(case left(kind,1) when 'B' then lengthb end ),
 	csize,datea,productno,uno,gno,sortno;
