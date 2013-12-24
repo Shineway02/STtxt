@@ -203,6 +203,7 @@ declare @tmp table(
 	pno nvarchar(35),
 	csize nvarchar(max),
 	spec nvarchar(50),
+	aprice float,
 	amount float,
 	aweight float
 )
@@ -210,7 +211,7 @@ insert into @tmp
 	select
 		'0',b.noa,b.kind,b.datea,c.nick,a.product,a.productno,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.mount,a.weight
+		a.spec,a.price,a.mount,a.weight
 	from vccs[1] a
 	left join vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -229,7 +230,7 @@ insert into @tmp(gno,datea,amount,aweight)
 	select '1',datea,sum(amount),sum(aweight) from @tmp group by datea
 update @tmp set csize = replace(csize,'~#$','''')
 select
-	gno,noa,datea,cust,amount,aweight,row_number()over(partition by datea order by datea desc,gno) idno,
+	gno,noa,datea,cust,aprice,amount,aweight,row_number()over(partition by datea order by datea desc,gno) idno,
 	pno,product,csize,spec,
 	'vccst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
 from @tmp order by datea desc,idno;
@@ -270,6 +271,7 @@ declare @tmp table(
 	pno nvarchar(35),
 	csize nvarchar(max),
 	spec nvarchar(50),
+	aprice float,
 	amount float,
 	aweight float,
 	datea nvarchar(10)
@@ -278,7 +280,7 @@ insert into @tmp
 	select
 		'0',b.noa,b.kind,c.nick,a.product,a.productno,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.mount,a.weight,b.datea
+		a.spec,a.price,a.mount,a.weight,b.datea
 	from vccs[1] a
 	left join vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -297,7 +299,7 @@ insert into @tmp(gno,datea,amount,aweight)
 update @tmp set csize = replace(csize,'~#$','''')
 select
 	gno,noa,cust,amount,aweight,datea,row_number()over(partition by datea order by datea desc,gno) idno,
-	product,pno,csize,spec,
+	product,pno,csize,spec,aprice,
 	'vccst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
 from @tmp order by datea desc,idno;
 ----------********************************************************************----------
