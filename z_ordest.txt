@@ -284,12 +284,15 @@ declare @t_bcustno nvarchar(20)
 declare @t_ecustno nvarchar(20)
 declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
+declare @t_sort nvarchar(30)
 set @t_bodate = case when '#non'=[4] then '' else [4] end
 set @t_eodate = case when '#non'=[5] then char(255) else [5] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_sort = case when '#non'=[16] then '' else [16] end
+set @t_sort = upper(@t_sort)
 declare @tmp table(
 	gno nvarchar(1),
 	ordeno nvarchar(30),
@@ -307,7 +310,11 @@ declare @tmp table(
 insert into @tmp
 	select 
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,a.productno,a.product,
-		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,
+		(case when ltrim(rtrim(a.size)) = '' then 
+			isnull((select noa from beltwidth where width=a.radius)+'*',case when a.radius=0 then '' else cast(a.radius as nvarchar)+'*' end)+
+			(case left(b.kind,1) when 'B' then (case when a.width=0 then '' else cast(a.width as nvarchar)+'*' end) else cast(a.dime as nvarchar)+'*' end)+
+			(case left(b.kind,1) when 'B' then (cast(a.dime as nvarchar)+'*') else (cast(a.width as nvarchar)+'*') end)+
+			(case when a.lengthb=0 then 'C' else cast(a.lengthb as nvarchar) end) else ltrim(rtrim(a.size)) end) sizea,
 		a.weight,a.mount,a.notv
 	from view_ordes[1] a
 	left join view_orde[1] b on a.noa = b.noa
@@ -320,11 +327,24 @@ insert into @tmp
 update @tmp set sizea = replace(sizea,'~#$','''')
 insert into @tmp(gno,weight,mount,notv)
 	select '1',sum(weight),sum(mount),sum(notv) from @tmp
-select
-	gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
-	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-	ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
-from @tmp order by gno,ordeno,datea,products;
+if(@t_sort = 'CUSTNO')
+	select
+		gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		ROW_NUMBER()over(order by gno,custno) idno
+	from @tmp order by gno,custno
+else if(@t_sort = 'SIZEA')
+	select
+		gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		ROW_NUMBER()over(order by gno,sizea) idno
+	from @tmp order by gno,sizea
+else
+	select
+		gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
+	from @tmp order by gno,ordeno,datea,products;
 --****************************************************************************************************
 z_ordest4:--z_ordest4
 declare @t_bodate nvarchar(10)
@@ -333,12 +353,15 @@ declare @t_bcustno nvarchar(20)
 declare @t_ecustno nvarchar(20)
 declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
+declare @t_sort nvarchar(30)
 set @t_bodate = case when '#non'=[4] then '' else [4] end
 set @t_eodate = case when '#non'=[5] then char(255) else [5] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_sort = case when '#non'=[16] then '' else [16] end
+set @t_sort = upper(@t_sort)
 declare @tmp table(
 	gno nvarchar(1),
 	ordeno nvarchar(30),
@@ -369,9 +392,24 @@ insert into @tmp
 update @tmp set sizea = replace(sizea,'~#$','''')
 insert into @tmp(gno,weight,mount,notv)
 	select '1',sum(weight),sum(mount),sum(notv) from @tmp
-select
-	gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
-	'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-	ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
-from @tmp order by gno,ordeno,datea,products;
+
+
+if(@t_sort = 'CUSTNO')
+	select
+		gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		ROW_NUMBER()over(order by gno,custno) idno
+	from @tmp order by gno,custno
+else if(@t_sort = 'SIZEA')
+	select
+		gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		ROW_NUMBER()over(order by gno,sizea) idno
+	from @tmp order by gno,sizea
+else
+	select
+		gno,ordeno,no2,datea,custno,custnick,productno,products,sizea,weight,mount,notv,
+		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
+	from @tmp order by gno,ordeno,datea,products;
 --****************************************************************************************************
