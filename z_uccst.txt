@@ -535,7 +535,11 @@ insert into @tmp
 		case @t_showtype when '0' then
 			(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
 		when '1' then (case when ltrim(rtrim(a.size)) = '' then 
-			isnull((select noa from beltwidth where width=a.radius)+'*',case when a.radius=0 then '' else cast(a.radius as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else cast(a.width as nvarchar)+'*' end) else cast(a.dime as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (cast(a.dime as nvarchar)+'*') else (cast(a.width as nvarchar)+'*') end)+(case when a.lengthb=0 then 'C' else cast(a.lengthb as nvarchar) end) else ltrim(rtrim(a.size)) end)
+			isnull((select noa from beltwidth where width=a.radius)+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
+			(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
+			(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
+			(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
+		else ltrim(rtrim(a.size)) end)
 		when '2' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) end csize,
 		a.mount,a.weight,a.ordeno,a.no2,
 		case when (charindex('帶',a.product)>0 or a.style='B') then
@@ -853,7 +857,11 @@ insert into @tmp
 		case @t_showtype when '0' then
 			(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
 		when '1' then (case when ltrim(rtrim(a.size)) = '' then 
-			isnull((select noa from beltwidth where width=a.radius)+'*',case when a.radius=0 then '' else cast(a.radius as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else cast(a.width as nvarchar)+'*' end) else cast(a.dime as nvarchar)+'*' end)+(case left(a.kind,1) when 'B' then (cast(a.dime as nvarchar)+'*') else (cast(a.width as nvarchar)+'*') end)+(case when a.lengthb=0 then 'C' else cast(a.lengthb as nvarchar) end) else ltrim(rtrim(a.size)) end)
+			isnull((select noa from beltwidth where width=a.radius)+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
+			(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
+			(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
+			(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
+		else ltrim(rtrim(a.size)) end)
 		when '2' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) end csize,
 		a.mount,a.weight,a.ordeno,a.no2,
 		case when (charindex('帶',a.product)>0 or a.style='B') then
