@@ -162,9 +162,12 @@
 	begin
 		set @cmd =
 		" select 1,'rc2s',@accy,a.noa,a.noq,b.datea"+
-		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0),isnull(a.price,0),isnull(a.total,0)"+
+		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
+		" ,isnull(a.price,0)+case when isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0) end"+
+		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
+		" outer apply (select sum(isnull(weight,0)) weight from "+@tableas+" where noa=a.noa and not(lower(left(uno,1))='x' or lower(left(uno,1))='y' or lower(left(uno,1))='z')) c"+
 		" where len(isnull(a.uno,''))>0"+
 		" and isnull(b.typea,'1')='1'"+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
@@ -189,9 +192,12 @@
 	begin
 		set @cmd =
 		" select 1,'inas',@accy,a.noa,a.noq,b.datea"+
-		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0),isnull(a.price,0),isnull(a.total,0)"+
+		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
+		" ,isnull(a.price,0)+case when isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0) end"+
+		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
+		" outer apply (select sum(isnull(weight,0)) weight from "+@tableas+" where noa=a.noa and not(lower(left(uno,1))='x' or lower(left(uno,1))='y' or lower(left(uno,1))='z')) c"+
 		" where len(isnull(a.uno,''))>0 "+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
 		
