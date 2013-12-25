@@ -273,6 +273,7 @@
 	declare @weight float
 	declare @price float
 	declare @isprice float
+	declare @tranmoney float
 	
 	declare @tmpCust table(
 		uno nvarchar(50),
@@ -291,11 +292,11 @@
 		into @tablea,@accy,@noa,@noq,@weight
 		while(@@FETCH_STATUS <> -1)
 		begin
-			select @buno='',@gweight=0
+			select @buno='',@gweight=0,@tranmoney=0
 			set @cmd =
-			" select @buno=uno,@gweight=gweight from cut"+@accy+" where noa=@noa"
-			execute sp_executesql @cmd,N'@noa nvarchar(20),@buno nvarchar(50) output,@gweight float output'
-			,@noa=@noa,@buno=@buno output,@gweight=@gweight output
+			" select @buno=uno,@gweight=gweight,@tranmoney=isnull(tranmoney,0) from cut"+@accy+" where noa=@noa"
+			execute sp_executesql @cmd,N'@noa nvarchar(20),@buno nvarchar(50) output,@gweight float output,@tranmoney float output'
+			,@noa=@noa,@buno=@buno output,@gweight=@gweight output,@tranmoney=@tranmoney output
 			if(len(@buno)=0 or @gweight=0)
 			begin
 				update @tmp set price=0,[money]=0,memo='裁剪單異常' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
@@ -306,7 +307,7 @@
 				select @isprice=isprice,@bweight=[weight],@bmoney=[money] from @tmp where uno=@buno
 				if(@isprice=1)
 				begin
-					set @money = case when @bweight=0 then 0 else round(@bmoney*@weight/@bweight,0)end
+					set @money = @tranmoney + case when @bweight=0 then 0 else round(@bmoney*@weight/@bweight,0)end
 					set @price = case when @weight=0 then 0 else @money/@weight end
 					update @tmp set isprice=1,price=@price,[money]=@money,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
 				end
