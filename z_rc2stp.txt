@@ -62,6 +62,12 @@ z_rc2stp1:--z_rc2stp1
 		[money] float,
 		tax float,
 		total float,
+		cardeal nvarchar(max),
+		carno nvarchar(max),
+		ordcno nvarchar(max),
+		tranprice float,
+		trancost float,
+		
 		
 		no2 nvarchar(10),
 		productno nvarchar(20),
@@ -80,7 +86,7 @@ z_rc2stp1:--z_rc2stp1
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
-	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0)"+
+	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0),b.cardeal,b.carno,b.ordcno,isnull(b.[price],0),isnull(b.[tranmoney],0)"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.spec,a.memo"+
 	" from view_rc2s"+@t_accy+" a"+
@@ -92,7 +98,7 @@ z_rc2stp1:--z_rc2stp1
 	" and isnull(b.tggno,'') between @t_btggno and @t_etggno"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total]
+	insert into @tmp(gno,noa,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total],cardeal,carno,ordcno,tranprice,trancost
 		,no2,productno,product,unit,mounts,weights,price,totals,size,spec,memos)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bno nvarchar(20),@t_eno nvarchar(20),@t_btggno nvarchar(20),@t_etggno nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bno=@t_bno,@t_eno=@t_eno,@t_btggno=@t_btggno,@t_etggno=@t_etggno
@@ -138,7 +144,8 @@ z_rc2stp1:--z_rc2stp1
 
 	update @tmp set tggno=b.tggno,tgg=b.tgg,tel=b.tel,addr=b.addr
 		,datea=b.datea,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
-		,[weight]=c.[weight],[mount]=c.[mount],[money]=b.[money],[tax]=b.[tax],[total]=b.[total]
+		,[weight]=c.[weight],[mount]=c.[mount],[money]=b.[money],[tax]=b.[tax],[total]=b.[total],cardeal=b.cardeal
+		,carno=b.carno,ordcno=b.ordcno,tranprice=b.tranprice,trancost=b.trancost
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
@@ -160,6 +167,14 @@ declare @tmpa table(
 	a08 float,--
 	a09 float,--
 	a10 nvarchar(max),
+	
+	cardeal nvarchar(max),
+	carno nvarchar(max),
+	ordcno nvarchar(max),
+	tranprice float,
+	trancost float,
+	
+	
 	datea nvarchar(10),
 	b01 nvarchar(50),
 	b02 nvarchar(50),
@@ -190,6 +205,12 @@ insert into @tmpa
 		,tax a08
 		,total a09
 		,memo a10
+		,cardeal
+		,carno
+		,ordcno
+		,tranprice
+		,trancost
+
 		,datea
 		,productno b01
 		,product b02
@@ -210,7 +231,7 @@ update @tmpa set a05 = b.b05,a06=b.b06,a07=b.b08
 from @tmpa a
 left join (select noa,rrno,sum(b05) b05,sum(b06) b06,sum(b08) b08 from @tmpa group by noa,rrno) b on (a.noa = b.noa) and (b.rrno = a.rrno)
 select
-	gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,datea,
+	gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,datea,cardeal,carno,ordcno,tranprice,trancost,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a07),1)),4,12)) a07,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a0a7),1)),4,12)) a0a7,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a08),1)),4,12)) a08,
