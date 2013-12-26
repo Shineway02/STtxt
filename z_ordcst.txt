@@ -13,6 +13,19 @@ declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
 declare @t_isproj nvarchar(2)
 declare @t_enda nvarchar(2)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
+
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
 set @t_bodate = case when '#non'=[4] then '' else [4] end
@@ -58,7 +71,8 @@ insert into @tmp
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
-	      (len(@t_enda)=0 or @t_enda=a.enda)
+	      (len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
 	order by a.odate,gno,a.noa,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set csize = replace(csize,'~#$','''')
@@ -87,6 +101,18 @@ declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
 declare @t_isproj nvarchar(1)
 declare @t_enda nvarchar(1)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
 set @t_bodate = case when '#non'=[4] then '' else [4] end
@@ -133,7 +159,8 @@ insert into @tmp
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
-	      (len(@t_enda)=0 or @t_enda=a.enda)
+	      (len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
 	order by a.tggno,gno,a.noa,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set size = replace(size,'~#$','''')
@@ -166,6 +193,18 @@ declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
 declare @t_isproj nvarchar(1)
 declare @t_enda nvarchar(1)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
 set @t_bodate = case when '#non'=[4] then '' else [4] end
@@ -213,7 +252,8 @@ insert into @tmp
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
-	      (len(@t_enda)=0 or @t_enda=a.enda)
+	      (len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
 	order by pno,gno,a.tggno,a.noa,b.no2
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
@@ -246,6 +286,18 @@ declare @t_kind nvarchar(20)
 declare @t_trantype nvarchar(20)
 declare @t_isproj nvarchar(1)
 declare @t_enda nvarchar(1)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
 set @t_bodate = case when '#non'=[4] then '' else [4] end
@@ -293,7 +345,8 @@ insert into @tmp
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
-	      (len(@t_enda)=0 or @t_enda=a.enda)
+	      (len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
 	order by a.noa,gno,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set csize = replace(csize,'~#$','''')
