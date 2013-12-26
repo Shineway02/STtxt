@@ -73,6 +73,7 @@ z_anavccst02:--z_anavccst02
 		total float,
 		sprice float,
 		stotal float,
+		tranmoney float,
 		profit float,
 		rate float
 	)
@@ -98,18 +99,20 @@ z_anavccst02:--z_anavccst02
 	begin
 		set @cmd =
 		" select '2',a.noa,a.noq,b.custno,b.salesno,isnull(d.groupano,''),isnull(e.namea,''),a.productno,a.product,a.style,a.uno"+
-		" ,replace(case when len(a.size)>0 then a.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
+		" ,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
 		" ,a.class,a.spec"+
 		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
 		--" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
 		--sprice都是重量
 		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		" ,case when a.noq=g.noq then isnull(b.tranmoney,0) else 0 end"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" left join view_uccb c on a.uno=c.uno "+
 		" left join ucc d on a.productno=d.noa"+
 		" left join uccga e on d.groupano=e.noa"+
 		" left join #item f on d.groupano=f.noa"+
+		" outer apply (select top 1 noq from "+@tableas+" where noa=a.noa order by noq) g"+
 		" where b.noa is not null"+
 		" and isnull(b.typea,'0')='1'"+
 		" and len(isnull(a.uno,''))>0"+
@@ -117,7 +120,7 @@ z_anavccst02:--z_anavccst02
 		" and isnull(b.custno,'') between @t_bcustno and @t_ecustno"+
 		" and ((len(isnull(d.groupano,''))=0 and exists(select * from #item where len(noa)=0)) or f.noa is not null)"
 		
-		insert into @tmp(gno,noa,noq,custno,salesno,uccgano,uccganame,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal)
+		insert into @tmp(gno,noa,noq,custno,salesno,uccgano,uccganame,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal,tranmoney)
 		execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bcustno nvarchar(20),@t_ecustno nvarchar(20)'
 		,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bcustno=@t_bcustno,@t_ecustno=@t_ecustno
 		fetch next from cursor_table
@@ -126,13 +129,13 @@ z_anavccst02:--z_anavccst02
 	close cursor_table
 	deallocate cursor_table
 	
-	update @tmp set profit = total-stotal,rate = case when total=0 then 0 else round((total-stotal)/total*100,0) end
+	update @tmp set profit = total-stotal-tranmoney,rate = case when total=0 then 0 else round((total-stotal-tranmoney)/total*100,0) end
 	
-	insert into @tmp(gno,uccgano,uccganame,noa,noq,[weight],mount,total,stotal,profit)
-	select '1',uccgano,uccganame,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp group by uccgano,uccganame
+	insert into @tmp(gno,uccgano,uccganame,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
+	select '1',uccgano,uccganame,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from @tmp group by uccgano,uccganame
 	
-	insert into @tmp(gno,uccgano,noa,noq,[weight],mount,total,stotal,profit)
-	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp where gno='2'
+	insert into @tmp(gno,uccgano,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
+	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from @tmp where gno='2'
 	
 	update @tmp set rr1=b.recno,rr2=c.recno
 	from @tmp a
@@ -161,8 +164,9 @@ z_anavccst02:--z_anavccst02
 	,[weight] a3
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a6
-	,case when total=0 then '' else cast(round(profit/total*100,2) as decimal(18,2)) end a7
+	,case when tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) end a6
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a7
+	,case when total=0 then '' else cast(round(profit/total*100,2) as decimal(18,2)) end a8
 	from @tmp a
 	left join cust b on a.custno=b.noa
 	order by case when rr1 is null then char(255) else ''end,rr1,rr2;
@@ -212,6 +216,7 @@ z_anavccst01:--z_anavccst01
 		total float,
 		sprice float,
 		stotal float,
+		tranmoney float,
 		profit float,
 		rate float
 	)
@@ -235,24 +240,27 @@ z_anavccst01:--z_anavccst01
 	into @tablea,@tableas
 	while(@@FETCH_STATUS <> -1)
 	begin
+		--運費都算在第一筆明細中
 		set @cmd =
 		" select '2',a.noa,a.noq,b.custno,b.salesno,a.productno,a.product,a.style,a.uno"+
-		" ,replace(case when len(a.size)>0 then a.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
+		" ,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
 		" ,a.class,a.spec"+
 		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
 		--" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
 		--sprice都是重量
 		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
+		" ,case when a.noq=d.noq then isnull(b.tranmoney,0) else 0 end"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" left join view_uccb c on a.uno=c.uno "+
+		" outer apply (select top 1 noq from "+@tableas+" where noa=a.noa order by noq) d"+
 		" where b.noa is not null"+
 		" and isnull(b.typea,'0')='1'"+
 		" and len(isnull(a.uno,''))>0"+
 		" and isnull(b.datea,'') between @t_bdate and @t_edate"+
 		" and isnull(b.custno,'') between @t_bcustno and @t_ecustno"
 		
-		insert into @tmp(gno,noa,noq,custno,salesno,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal)
+		insert into @tmp(gno,noa,noq,custno,salesno,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal,tranmoney)
 		execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bcustno nvarchar(20),@t_ecustno nvarchar(20)'
 		,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bcustno=@t_bcustno,@t_ecustno=@t_ecustno
 		fetch next from cursor_table
@@ -261,13 +269,13 @@ z_anavccst01:--z_anavccst01
 	close cursor_table
 	deallocate cursor_table
 	
-	update @tmp set profit = total-stotal,rate = case when total=0 then 0 else round((total-stotal)/total*100,0) end
+	update @tmp set profit = total-stotal-tranmoney,rate = case when total=0 then 0 else round((total-stotal-tranmoney)/total*100,0) end
 	
-	insert into @tmp(gno,custno,noa,noq,[weight],mount,total,stotal,profit)
-	select '1',custno,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp group by custno
+	insert into @tmp(gno,custno,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
+	select '1',custno,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from @tmp group by custno
 	
-	insert into @tmp(gno,custno,noa,noq,[weight],mount,total,stotal,profit)
-	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(profit) from @tmp where gno='2'
+	insert into @tmp(gno,custno,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
+	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from @tmp where gno='2'
 	
 	update @tmp set rr1=b.recno,rr2=c.recno
 	from @tmp a
@@ -294,8 +302,9 @@ z_anavccst01:--z_anavccst01
 	,[weight] a3
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a6
-	,case when total=0 then '' else cast(round(profit/total*100,2) as decimal(18,2)) end a7
+	,case when tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) end a6
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a7
+	,case when total=0 then '' else cast(round(profit/total*100,2) as decimal(18,2)) end a8
 	,ghref = 'z_unost?$uno?'
 	from @tmp a
 	left join cust b on a.custno=b.noa
