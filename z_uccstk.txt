@@ -262,7 +262,7 @@
 	deallocate cursor_table
 	-----------------------------------------------------------------------------------
 	--批號不能重覆
-	if exists(select * from @tmp group by uno having COUNT(1)>1)
+	if exists(select uno from @tmp group by uno having COUNT(1)>1)
 	begin
 		print '入庫批號重覆'
 		return
