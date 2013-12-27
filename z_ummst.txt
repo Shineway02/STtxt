@@ -1531,7 +1531,7 @@ insert into @tmp
 			where (charindex('/',right(b.vccno,6)) != 4) and (c.mon between @t_bmon and @t_emon)
 			group by a.custno,b.vccno
 		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
-		where (a.custno not in((select vcc.custno from view_vcc vcc where not((vcc.custno between @t_bcustno and @t_ecustno)))))
+		where (a.custno not in((select vcc.custno from view_vcc vcc where ((vcc.custno between @t_bcustno and @t_ecustno)))))
 	) a where a.custno between @t_bcustno and @t_ecustno
 	
 if(@checkUcca>0)
