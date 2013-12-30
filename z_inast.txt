@@ -63,7 +63,7 @@ begin
 end
 close cursor_table
 deallocate cursor_table
-update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+----update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
 declare cursor_table cursor for
 	select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
 open cursor_table
@@ -77,8 +77,12 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,noa)
-				select '0',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
+			if(@k = @t_pageline -(@a_count%@t_pageline))
+				insert into @tmp(gno,orderno,pageno,noa)
+					select '3',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
+			else
+				insert into @tmp(gno,orderno,pageno,noa)
+					select '0',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
@@ -94,7 +98,7 @@ close cursor_table
 deallocate cursor_table
 update @tmp set size = replace(size,'~#$','''')
 update @tmp set itype= case itype when '1' then '買賣' when '2' then '代工' when '3' then '寄庫' end
-select * from @tmp order by noa desc,pageno,gno,orderno;
+select * from @tmp order by noa desc,pageno,orderno,gno;
 --*******************************************************************************************************************
 z_inast2:--z_inast2
 declare @t_accy nvarchar(20)

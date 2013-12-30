@@ -381,3 +381,65 @@ z_ordcstp1:--z_ordcstp1
 			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
 	)a
 	order by a.noa,a.no2;
+--------------------**************************************----------------------------
+z_ordcstp3A:--z_ordcstp3A
+z_ordcstp3B:--z_ordcstp3B
+declare @t_kind nvarchar(20)
+declare @t_xnoa nvarchar(35)
+declare @t_xno2 nvarchar(10)
+set @t_kind = case when '#non' = [7] then '' else [7] end
+set @t_xnoa = case when '#non' = [5] then '' else [5] end
+set @t_xno2 = case when '#non' = [6] then '' else [6] end
+set @t_xnoa = ltrim(rtrim(@t_xnoa))
+set @t_xno2 = ltrim(rtrim(@t_xno2))
+
+declare @tmp table(
+	gno nvarchar(10),
+	tablea nvarchar(50),
+	tablename nvarchar(max),
+	destnoa nvarchar(35),
+	destno2 nvarchar(10),
+	ordcnoa nvarchar(35),
+	ordcno2 nvarchar(10),
+	datea nvarchar(10),
+	storeno nvarchar(35),
+	stores nvarchar(90),
+	productno nvarchar(90),
+	products nvarchar(90),
+	csize nvarchar(max),
+	mount float,
+	price float,
+	weight float,
+	uno nvarchar(max),
+	memo nvarchar(max)
+)
+if(@t_kind = '1')
+begin
+	insert into @tmp
+		select
+			'0','bccin','資材入庫',b.noa,b.noq,b.ordcno,b.no2,a.datea,a.storeno,c.store,b.bccno,b.bccname,
+			'' csize,b.mount,b.price,0,b.uno,b.memo
+		from bccin a
+		left join bccins b on a.noa = b.noa
+		left join store c on a.storeno = c.noa
+		where (@t_xnoa='' and @t_xno2='') or (b.ordcno=@t_xnoa and b.no2=@t_xno2) or (b.ordcno=@t_xnoa and @t_xno2='')
+end
+else
+begin
+	insert into @tmp
+		select
+			'0','rc2','進貨單',b.noa,b.noq,b.ordeno,b.no2,a.datea,b.storeno,c.store,b.productno,b.product,
+			case when ltrim(rtrim(isnull(b.size,''))) = '' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else ltrim(rtrim(isnull(b.size,''))) end,
+			b.mount,b.price,b.weight,b.uno,b.memo
+		from view_rc2 a
+		left join view_rc2s b on a.noa = b.noa
+		left join store c on b.storeno = c.noa
+		where (@t_xnoa='' and @t_xno2='') or (b.ordeno=@t_xnoa and b.no2=@t_xno2) or (b.ordeno=@t_xnoa and @t_xno2='')
+end
+insert into @tmp(gno,ordcnoa,mount,weight)
+	select '1',ordcnoa,sum(mount),sum(weight) from @tmp where gno='0' group by ordcnoa
+select
+	gno,tablename,
+	destnoa+'-'+destno2 destnoa,ordcnoa,ordcno2,	datea,storeno,stores,
+	productno pno,products,csize,mount,price,weight,uno,memo
+from @tmp order by ordcnoa,gno,datea desc,ordcno2,destnoa,destno2;
