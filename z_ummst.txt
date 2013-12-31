@@ -1409,7 +1409,164 @@ set @t_bmon = case when '#non'=[13] then '' else [13] end
 set @t_emon = case when '#non'=[14] then char(255) else [14] end
 set @t_bcustno = case when '#non'=[5] then '' else [5] end
 set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
-declare @tmp table(
+
+----------******************---------------------------------
+	declare @tmp1 table(
+		custno nvarchar(20),
+		mon nvarchar(10),
+		[money] float,
+		bkmoney float,
+		tax float
+	)
+	insert into @tmp1(custno,mon,[money],bkmoney,tax)
+	select custno,mon
+	,SUM(case when typea='1' then ISNULL([money],0) else 0 end)
+	,SUM(case when typea!='1' then ISNULL([money],0) else 0 end)
+	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end)
+	from view_vcc 
+	where custno between @t_bcustno and @t_ecustno
+	and mon <= @t_emon
+	group by custno,mon
+	
+	declare @tmp2 table(
+		custno nvarchar(20),
+		mon nvarchar(10),
+		tax float
+	)
+	insert into @tmp2(custno,mon,tax)
+	select custno,mon,SUM(ISNULL([tax],0))
+	from vcca
+	where custno between @t_bcustno and @t_ecustno
+	and mon <= @t_emon
+	group by custno,mon
+	
+	declare @tmp3 table(
+		custno nvarchar(20),
+		mon nvarchar(10),
+		paysale float 
+	)
+	insert into @tmp3(custno,mon,paysale)
+	select case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+		else b.custno end
+	,case when len(ISNULL(a.vccno,''))=0 then '' 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+		else isnull(c.mon,'') end
+	,SUM(ISNULL(a.paysale,0))
+	from umms a
+	left join umm b on a.noa=b.noa
+	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
+	where b.noa is not null
+	and ISNULL(a.paysale,0)!=0
+	and case when len(ISNULL(a.vccno,''))=0 then '' 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+		else isnull(c.mon,'') end <= @t_emon
+	group by case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+		else b.custno end
+		,case when len(ISNULL(a.vccno,''))=0 then '' 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+		else isnull(c.mon,'') end
+	delete @tmp3 where not(custno between @t_bcustno and @t_ecustno)
+	--------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		custno nvarchar(20),
+		[money] float,
+		bkmoney float,
+		tax float,
+		total float,
+		payed float,
+		unpay float,
+		tot float
+	)
+	insert into @tmp(custno,[money],bkmoney,tax)
+	select custno,SUM(ISNULL([money],0)),SUM(ISNULL([bkmoney],0)),SUM(ISNULL([tax],0))
+	from @tmp1
+	where mon between @t_bmon and @t_emon
+	group by custno
+	
+	---------------------------------------------------------------------------------------
+	update @tmp set tax = ISNULL(a.tax,0)+ISNULL(b.tax,0)
+	from @tmp a
+	right join @tmp2 b on a.custno=b.custno and b.mon between @t_bmon and @t_emon
+	
+	insert into @tmp(custno,[money],bkmoney,tax)
+	select custno,0,0,tax
+	from @tmp2 a
+	where not exists(select * from @tmp where custno=a.custno)
+	and a.mon between @t_bmon and @t_emon
+	----------------------------------------------------------------------------------------
+	update @tmp set total = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)
+	
+	----------------------------------------------------------------------------------------
+	update @tmp set payed=isnull(a.payed,0) + isnull(b.paysale,0)
+	from @tmp a
+	right join @tmp3 b on a.custno=b.custno and b.mon between @t_bmon and @t_emon
+	
+	insert into @tmp(custno,[money],bkmoney,tax,total, payed)
+	select custno,0,0,0,0,paysale
+	from @tmp3 a
+	where not exists(select * from @tmp where custno=a.custno)
+	and a.mon between @t_bmon and @t_emon
+	------------------------------------------------------------------------------------------
+	--unpay
+	
+	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0)
+	from @tmp a
+	right join (select custno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
+		from @tmp1
+		where mon<@t_bmon
+		group by custno) b on a.custno=b.custno
+	
+	insert into @tmp(custno,[money],bkmoney,tax,total,payed,unpay)
+	select a.custno,0,0,0,0,0,a.unpay
+	from (select custno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
+		from @tmp1
+		where mon<@t_bmon
+		group by custno) a
+	where not exists(select * from @tmp where custno=a.custno)
+	and ISNULL(a.unpay,0)!=0
+	
+	
+	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0)
+	from @tmp a
+	right join (select custno ,sum(isnull(tax,0)) unpay
+		from @tmp2
+		where mon<@t_bmon
+		group by custno) b on a.custno=b.custno
+		
+	insert into @tmp(custno,[money],bkmoney,tax,total,payed,unpay)
+	select a.custno,0,0,0,0,0,a.unpay
+	from (select custno ,SUM(isnull(tax,0)) unpay
+		from @tmp2
+		where mon<@t_bmon
+		group by custno) a
+	where not exists(select * from @tmp where custno=a.custno)
+	and ISNULL(a.unpay,0)!=0
+	
+	update @tmp set unpay = ISNULL(a.unpay,0)-ISNULL(b.paysale,0)
+	from @tmp a
+	right join (select custno ,sum(isnull(paysale,0)) paysale
+		from @tmp3
+		where mon<@t_bmon
+		group by custno) b on a.custno=b.custno
+	
+	insert into @tmp(custno,[money],bkmoney,tax,total,payed,unpay)
+	select a.custno,0,0,0,0,0,-a.paysale
+	from (select custno ,sum(isnull(paysale,0)) paysale
+		from @tmp3
+		where mon<@t_bmon
+		group by custno) a
+	where not exists(select * from @tmp where custno=a.custno)
+	and ISNULL(a.paysale,0)!=0
+	------------------------------------------------------------------------------------------
+	update @tmp set tot = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)-ISNULL(payed,0)+ISNULL(unpay,0)
+----------------------******************-----------------------------
+
+declare @result table(
 	orderno int,
 	gno nvarchar(1),
 	idno int identity(0,1),
@@ -1444,7 +1601,7 @@ declare @tmp table(
 	kind nvarchar(30)
 )
 declare @checkUcca int = (select count(*) from ucca)
-insert into @tmp
+insert into @result
 	select
 		ROW_NUMBER()over(partition by a.custno,a.comp,a.zip_home,a.addr_home order by a.custno,a.comp,a.zip_home,a.addr_home,a.datea),a.*
 	from (
@@ -1460,84 +1617,21 @@ insert into @tmp
 			 b.price,b.total,
 			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
 			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
-			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,isnull(umm_total5_a.paysale,0)+isnull(umm_total5_b.paysale,0) t_total5,
-			 0 t_total6,0 t_total7,f.t_paysale t_total8,0 t_total9,a.kind
+			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,f.payed t_total5,
+			 0 t_total6,0 t_total7,f.unpay t_total8,0 t_total9,a.kind
 		from view_vcc a
 		left join view_vccs b on (a.noa = b.noa)
 		left join cust c on a.custno = c.noa
 		left join vccbs d on a.invono = d.invono
 		left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
-		left join (
-			select
-				a.custno,right(b.vccno,6) mon,sum(b.paysale) paysale
-			from umm a
-			left join umms b on a.noa = b.noa
-			where charindex('/',right(b.vccno,6)) = 4
-			group by a.custno,right(b.vccno,6)
-		) umm_total5_a on (a.custno=umm_total5_a.custno) and (a.mon = umm_total5_a.mon) --月結---本期已收
-		left join (
-			select
-				a.custno,b.vccno noa,sum(b.paysale) paysale
-			from umm a
-			left join umms b on a.noa = b.noa
-			where charindex('/',right(b.vccno,6)) != 4
-			group by a.custno,b.vccno
-		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
-		left join (
-			select
-				a.custno,sum(a.total)-isnull(sum(umm_total5_a.paysale),0)-isnull(sum(umm_total5_b.paysale),0) t_paysale
-			from view_vcc a
-			left join (
-				select
-					a.custno,b.paysale paysale
-				from umm a
-				left join umms b on a.noa = b.noa
-				where (charindex('/',right(b.vccno,6)) = 4) and right(b.vccno,6) < @t_bmon
-			) umm_total5_a on (a.custno=umm_total5_a.custno) --月結---本期已收
-			left join (
-				select
-					a.custno,b.paysale paysale
-				from umm a
-				left join umms b on a.noa = b.noa
-				left join view_vcc c on b.vccno = c.noa
-				where charindex('/',right(b.vccno,6)) != 4 and right(c.mon,6) < @t_bmon
-			) umm_total5_b on (a.custno=umm_total5_b.custno)--單據結---本期已收
-			where a.mon < @t_bmon
-			group by a.custno
-		) f on a.custno = f.custno
+		outer apply(select * from @tmp where custno=a.custno) f
 		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
-		union 
-		select
-			'0' gno,1 pageno,null typea,a.custno,b.comp,b.zip_home,b.addr_home,b.tel,null datea,null noa,'999' noq,null productno,null product,
-			null size,null mount,null price,null money,null tax,null b_total,null a_total,0 t_total1,0 t_total2,0 t_total3,
-			null t_total4,isnull(umm_total5_a.paysale,0)+isnull(umm_total5_b.paysale,0) t_total5,0 t_total6,0 t_total7,
-			0 t_total8,0 t_total9,'' kind
-		from umm a
-		left join cust b on a.custno = b.noa
-		left join (
-			select
-				a.custno,right(b.vccno,6) mon,sum(b.paysale) paysale
-			from umm a
-			left join umms b on a.noa = b.noa
-			where (charindex('/',right(b.vccno,6)) = 4) and (right(b.vccno,6) between @t_bmon and @t_emon)
-			group by a.custno,right(b.vccno,6)
-		) umm_total5_a on (a.custno=umm_total5_a.custno) --月結---本期已收
-		left join (
-			select
-				a.custno,b.vccno noa,sum(b.paysale) paysale
-			from umm a
-			left join umms b on a.noa = b.noa
-			left join view_vcc c on c.noa=right(b.vccno,6)
-			where (charindex('/',right(b.vccno,6)) != 4) and (c.mon between @t_bmon and @t_emon)
-			group by a.custno,b.vccno
-		) umm_total5_b on (a.custno=umm_total5_b.custno) and (a.noa = umm_total5_b.noa) --單據結---本期已收
-		where (a.custno not in((select vcc.custno from view_vcc vcc where ((vcc.custno between @t_bcustno and @t_ecustno)))))
 	) a where a.custno between @t_bcustno and @t_ecustno
 	
 if(@checkUcca>0)
 begin
-	update @tmp set b_tax=isnull(c.tax,0)
-	from @tmp a
+	update @result set b_tax=isnull(c.tax,0)
+	from @result a
 	left join view_vcc b on a.noa=b.noa
 	outer apply  (select sum(isnull(tax,0))  tax from vcca where noa=b.invono) c
 	where b_tax is not null
@@ -1559,7 +1653,7 @@ declare @addr nvarchar(max)
 declare @tel nvarchar(90)
 declare @kind nvarchar(50)
 declare cursor_table cursor for
-	select custno,custs,count(*),max(orderno) from @tmp group by custno,custs
+	select custno,custs,count(*),max(orderno) from @result group by custno,custs
 open cursor_table
 fetch next from cursor_table
 into @custno,@custs,@a_count,@orderno
@@ -1570,7 +1664,7 @@ begin
 		set @k = CEILING((cast(@a_count as float)/@t_pageline))
 		while(@k > 0)
 		begin
-			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			update @result set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
 			set @k -=1
 		end
 	end
@@ -1579,7 +1673,7 @@ begin
 end
 close cursor_table
 deallocate cursor_table
-update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+update @result set orderno = orderno-((pageno-1)*@t_pageline)
 
 declare @noa nvarchar(30)
 declare @b_tax float
@@ -1587,18 +1681,18 @@ declare @t_total4 float
 declare @b_total float
 ---------整理BBM資料--------------------------------------------------------------
 declare cursor_table cursor for
-	select distinct noa,idno,b_tax,t_total4,a_total from @tmp where products !='運費' order by noa
+	select distinct noa,idno,b_tax,t_total4,a_total from @result where products !='運費' order by noa
 open cursor_table
 fetch next from cursor_table
 into @noa,@idno,@b_tax,@t_total4,@b_total
 while(@@FETCH_STATUS <> -1)
 begin	
-	update @tmp set b_tax = 0 where noa = @noa
-	update @tmp set b_tax = @b_tax where (noa = @noa) and (idno = @idno)
-	update @tmp set b_total = 0 where noa = @noa
-	update @tmp set b_total = @b_total where (noa = @noa) and (idno = @idno)
-	update @tmp set t_total4 = 0 where noa = @noa
-	update @tmp set t_total4 = @t_total4 where (noa = @noa) and (idno = @idno)
+	update @result set b_tax = 0 where noa = @noa
+	update @result set b_tax = @b_tax where (noa = @noa) and (idno = @idno)
+	update @result set b_total = 0 where noa = @noa
+	update @result set b_total = @b_total where (noa = @noa) and (idno = @idno)
+	update @result set t_total4 = 0 where noa = @noa
+	update @result set t_total4 = @t_total4 where (noa = @noa) and (idno = @idno)
 	fetch next from cursor_table
 	into @noa,@idno,@b_tax,@t_total4,@b_total
 end
@@ -1607,7 +1701,7 @@ deallocate cursor_table
 ------------------------------------------------------------------------------
 declare @maxpage int
 declare cursor_table cursor for
-	select distinct custno,kind,max(custs),max(zipcode),max(addr),max(tel),max(orderno),pageno,min(idno),count(*),max(pageno) from @tmp group by custno,kind,custs,zipcode,addr,tel,pageno
+	select distinct custno,kind,max(custs),max(zipcode),max(addr),max(tel),max(orderno),pageno,min(idno),count(*),max(pageno) from @result group by custno,kind,custs,zipcode,addr,tel,pageno
 open cursor_table
 fetch next from cursor_table
 into @custno,@kind ,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count,@maxpage
@@ -1619,8 +1713,8 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel,kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9) 
-				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel,@kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9 from @tmp where idno = @idno 
+			insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel,kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9) 
+				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel,@kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9 from @result where idno = @idno 
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
@@ -1630,24 +1724,24 @@ begin
 end
 close cursor_table
 deallocate cursor_table
-insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,b_mount,b_money,b_tax,b_total)
+insert into @result(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,b_mount,b_money,b_tax,b_total)
 	select
 		'1',(max(orderno)+1),pageno,custno,kind,custs,zipcode,addr,tel,sum(b_mount),sum(b_money),sum(b_tax),sum(b_total) 
-	from @tmp a
-	where gno=0 and pageno != (select max(pageno) from @tmp where custno=a.custno)
+	from @result a
+	where gno=0 and pageno != (select max(pageno) from @result where custno=a.custno)
 	group by kind,custno,custs,zipcode,addr,tel,pageno	
-insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5,t_total8)
-	select '2',(max(orderno)+2),max(pageno),custno,kind,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @tmp where gno=0 group by kind,custno,custs,zipcode,addr,tel
-insert into @tmp(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel) 
-	select '3',(max(orderno)+3),max(pageno),custno,kind,custs,zipcode,addr,tel from @tmp where gno=0 group by custno,kind,custs,zipcode,addr,tel
-update @tmp set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '2'
-update @tmp set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '2'
-update @tmp set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '2'
-update @tmp set t_total9 = 0 where gno = '2' and (t_total9 <=0)
-update @tmp set csize = replace(csize,'~#$','''')
---update @tmp set datea = isnull(typea,'') + isnull(datea,'')
+insert into @result(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5,t_total8)
+	select '2',(max(orderno)+2),max(pageno),custno,kind,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @result where gno=0 group by kind,custno,custs,zipcode,addr,tel
+insert into @result(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel) 
+	select '3',(max(orderno)+3),max(pageno),custno,kind,custs,zipcode,addr,tel from @result where gno=0 group by custno,kind,custs,zipcode,addr,tel
+update @result set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '2'
+update @result set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '2'
+update @result set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '2'
+update @result set t_total9 = 0 where gno = '2' and (t_total9 <=0)
+update @result set csize = replace(csize,'~#$','''')
+--update @result set datea = isnull(typea,'') + isnull(datea,'')
 select
-	gno,idno,kind,orderno,pageno,(select max(pageno) from @tmp where a.custno=custno) maxpage
+	gno,idno,kind,orderno,pageno,(select max(pageno) from @result where a.custno=custno) maxpage
 	,typea,custno,custs,zipcode,addr,tel,
 	 isnull(typea,'') + isnull(datea,'')  a1,noa,pno,products a2,csize,
 	b_mount,case when left(kind,1)='B' then '數量' else '重量' end txmt,
@@ -1664,5 +1758,5 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total7,0)),1)),4,12)) t_total7,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total8,0)),1)),4,12)) t_total8,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total9,0)),1)),4,12)) t_total9
-from @tmp a order by custno,kind,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
+from @result a order by custno,kind,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
 --********************************************************************************
