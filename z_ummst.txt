@@ -1612,7 +1612,7 @@ insert into @result
 			 case when  (b.style='' and b.dime='') then null else
 				(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) 
 			 end size,
-			 case when  (b.style='' and b.dime='') then null else
+			 case when  (b.style='' and b.dime='' and not(charindex(left(b.uno,1),'XYZ') > 0)) then null else
 			 	case when left(a.kind,1)='B' then b.mount else b.weight end end b_mount ,
 			 b.price,b.total,
 			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
