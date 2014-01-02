@@ -385,7 +385,6 @@
 	update @tmp set price = case when isnull(d.price,0)!=0 then d.price 
 							when isnull(c.price,0)!=0 then c.price
 							else a.price end
-					,memo= CAST(a.price as nvarchar)+'_'+CAST(c.price as nvarchar)+'_'+CAST(d.price as nvarchar)
 	from @tmp a  
 	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style) c
 	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style and price>=c.price) d
