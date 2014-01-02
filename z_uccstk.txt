@@ -144,7 +144,9 @@
 		[weight] float,
 		price float,
 		[money] float,
-		memo nvarchar(max)
+		memo nvarchar(max),
+		productno nvarchar(20),
+		style nvarchar(20)
 	)
 	declare @tablea nvarchar(20)
 	declare @tableas nvarchar(20)
@@ -374,6 +376,21 @@
 		deallocate cursor_table
 		set @n = @n - 1
 	end
+	----------------------------------------------------------------------------------
+	--重新入庫,單價無法計算,因為單價異常的改取平均
+	update @tmp set productno= b.productno,style=b.style
+	from @tmp a
+	left join view_uccb b on a.uno=b.uno  
+
+	update @tmp set price = case when isnull(d.price,0)!=0 then d.price 
+							when isnull(c.price,0)!=0 then c.price
+							else a.price end
+					,memo= CAST(a.price as nvarchar)+'_'+CAST(c.price as nvarchar)+'_'+CAST(d.price as nvarchar)
+	from @tmp a  
+	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style) c
+	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style and price>=c.price) d
+	where (a.style='1' or a.style='2' or a.style='3') and a.price<c.price*0.7 
+	----------------------------------------------------------------------------------
 	----------------------------------------------------------------------------------
 	--更新CUTS,CUBU SPRICE
 	declare cursor_table cursor for
