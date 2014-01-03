@@ -102,8 +102,13 @@ z_vccstp1:--z_vccstp1
 	" ,b.tel,case when b.addr2!='' then b.addr2 else b.addr end "+
 	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.taxtype,b.tax,b.money,b.total,b.invono,b.tranmoney"+
-	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
-	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
+	" ,a.no2,a.productno,a.product,a.unit"+
+	" ,case when len(uno)=0 then null else a.mount end"+
+	" ,case when len(uno)=0 then null else a.[weight] end"+
+	" ,case when len(uno)=0 then null else a.price end"+
+	" ,a.total"+
+	" ,case when len(uno)=0 then '' when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end"+
+	" ,a.memo"+
 	" from view_vccs"+@t_accy+" a"+
 	" left join view_vcc"+@t_accy+" b on a.noa = b.noa"+
 	" left join cust c on b.custno = c.noa"+
