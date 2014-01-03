@@ -57,13 +57,15 @@ declare @tmp table(
 	price float,
 	ptotal float,
 	e nvarchar(10),
-	a nvarchar(10)
+	a nvarchar(10),
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg,
 		   b.productno pno,b.product pname,b.spec,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
-		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a
+		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
+		   'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where 
@@ -80,10 +82,10 @@ insert into @tmp(gno,odate,pmount,pweight,ptotal)
 	select '1',left(odate,6),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0' group by left(odate,6)
 insert into @tmp(gno,odate,pmount,pweight,ptotal)
 	select '2',char(255),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0'
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
 	gno,noa,no2,datea,odate,tggno,left(comp,4) comp,pno,pname,spec,csize,pmount,pweight,price,ptotal,e,a,
-	row_number()over(partition by left(odate,6) order by left(odate,6),gno,noa,no2) idno,
-	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+	row_number()over(partition by left(odate,6) order by left(odate,6),gno,noa,no2) idno,qhref
 from @tmp order by left(odate,6),gno,noa,no2;
 --****************************************************************************************************
 z_ordcst2a:--z_ordcst2a
@@ -146,13 +148,15 @@ declare @tmp table(
 	e nvarchar(10),
 	a nvarchar(10),
 	notv float,
-	noptotal float
+	noptotal float,
+	qhref nvarchar(max)
 )	
 insert into @tmp
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
 		   b.spec,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
-		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv, b.notv*b.price noptotal
+		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv, b.notv*b.price noptotal,
+		   'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
@@ -166,6 +170,7 @@ update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set size = replace(size,'~#$','''')
 insert into @tmp(gno,tggno,comp,pmount,pweight,ptotal,noptotal)
 	select '1',tggno,comp,sum(pmount),sum(pweight),sum(ptotal),sum(noptotal) from @tmp group by tggno,comp
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
 	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
@@ -174,8 +179,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
-	row_number()over(partition by tggno,comp order by tggno,comp,gno,odate,noa,no2) idno,
-	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+	row_number()over(partition by tggno,comp order by tggno,comp,gno,odate,noa,no2) idno,qhref
 from @tmp order by tggno,comp,gno,odate,noa,no2;
 --****************************************************************************************************
 z_ordcst2b:--z_ordcst2b
@@ -238,14 +242,16 @@ declare @tmp table(
 	e nvarchar(10),
 	a nvarchar(10),
 	notv float,
-	noptotal float
+	noptotal float,
+	qhref nvarchar(max)
 )	
 insert into @tmp
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, left(a.tgg,4), b.productno pno,b.product pname,
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 			b.mount pmount, b.weight pweight,
-			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv,b.notv*b.price noptotal
+			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv,b.notv*b.price noptotal,
+			'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
@@ -257,6 +263,7 @@ insert into @tmp
 	order by pno,gno,a.tggno,a.noa,b.no2
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 insert into @tmp(gno,pno,pname,pmount,pweight,ptotal,notv,noptotal)
 	select '1',pno,pname,sum(pmount),sum(pweight),sum(ptotal),sum(notv),sum(noptotal) from @tmp group by pno,pname
 select
@@ -267,8 +274,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
-	row_number()over(partition by pno,pname order by pno,pname,gno,odate,noa,no2) idno,
-	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+	row_number()over(partition by pno,pname order by pno,pname,gno,odate,noa,no2) idno,qhref
 from @tmp order by pno,pname,gno,odate,noa,no2;
 --****************************************************************************************************
 z_ordcst2c:--z_ordcst2c
@@ -331,14 +337,15 @@ declare @tmp table(
 	e nvarchar(10),
 	a nvarchar(10),
 	notv float,
-	noptotal float
+	noptotal float,
+	qhref nvarchar(max)
 )	
 insert into @tmp
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname,
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 			b.mount, b.weight,b.price,
-			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), b.notv, b.notv*b.price noptotal
+			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), b.notv, b.notv*b.price noptotal,'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
@@ -354,6 +361,7 @@ insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
 	select '1',noa,sum(pmount),sum(pweight),sum(notv),sum(noptotal) from @tmp where gno='0' group by noa
 insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
 	select '2',null,sum(pmount),sum(pweight),sum(notv),sum(noptotal) from @tmp where gno='0'
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
 	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
@@ -362,6 +370,5 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
-	row_number()over(partition by noa order by noa desc,gno,no2,datea) idno,
-	'ordcst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+	row_number()over(partition by noa order by noa desc,gno,no2,datea) idno,qhref
 from @tmp order by noa desc,gno,no2,datea;

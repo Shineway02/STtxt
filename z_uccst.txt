@@ -525,7 +525,8 @@ declare @tmp table(
 	lengthb float,
 	kind nvarchar(10),
 	sprice float,
-	memo nvarchar(max)
+	memo nvarchar(max),
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select
@@ -569,13 +570,13 @@ insert into @tmp
 				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
 				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
 			end
-		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo
+		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo,'ordest'+a.accy
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,
 			a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
 			a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice,
-			a.memo
+			a.memo,a.accy
 		from view_uccc a
 		left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
 		left join uccy c on a.uno = c.uno 
@@ -584,7 +585,7 @@ insert into @tmp
 			'ordet' tablea,'1' gno,'1' sortno,a.noa,c.style style,
 			'' waste,'1' itype,c.datea,c.storeno,
 			b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
-			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,''
+			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,'',a.accy
 		from view_ordet a
 		left join view_orde b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
@@ -642,12 +643,12 @@ begin
 	update @tmp set datea='',custno='',custs='',uno='',uno2='',ordeno='',no2='',sprice=0,memo='',radius=0,dime=0,width=0,lengthb=0
 	insert into @tmp(
 		gno,g2,sortno,datea,storeno,custno,custs,uno,uno2,productno,products,class,
-		spec,csize,mount,weight,ordeno,no2,sfi,radius,dime,width,lengthb,kind,sprice,memo
+		spec,csize,mount,weight,ordeno,no2,sfi,radius,dime,width,lengthb,kind,sprice,memo,qhref
 	)
 	select
 		'0',g2,sortno,'',storeno,'','','','',productno,products,
-		class,spec,csize,sum(mount),sum(weight),'','',sfi,radius,dime,width,lengthb,kind,0,''
-	from @tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb
+		class,spec,csize,sum(mount),sum(weight),'','',sfi,radius,dime,width,lengthb,kind,0,'',qhref
+	from @tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb,qhref
 	delete @tmp where gno='1'
 end
 
@@ -707,17 +708,17 @@ insert into @tmp(gno,g2,mount,weight)
 	from @tmp where gno <=1
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set sprice = null where @t_showprice = 0
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
+
 if(@t_sortby = 'DATEA')
 	select
-		ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi,memo
+		ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
 	from @tmp order by g2,datea,productno,csize,uno,gno,sortno
 else if(@t_sortby = 'PNO')
 	select
-		ROW_NUMBER()over(order by g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi,memo
+		ROW_NUMBER()over(order by g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
 	from @tmp order by g2,productno,datea,csize,uno,gno,sortno
 else
 	select
@@ -726,9 +727,8 @@ else
 			(case left(kind,1) when 'B' then width else width end ),
 			(case left(kind,1) when 'B' then dime else lengthb end ),
 			(case left(kind,1) when 'B' then lengthb end ),
-			csize,productno,datea,uno,gno,sortno) idno,*,@t_title t_title ,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi,memo
+			csize,productno,datea,uno,gno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
 	from @tmp 
 	order by g2,
 	(case left(kind,1) when 'B' then radius else dime end ),
@@ -845,7 +845,8 @@ declare @tmp table(
 	lengthb float,
 	kind nvarchar(10),
 	sprice float,
-	memo nvarchar(max)
+	memo nvarchar(max),
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select
@@ -889,13 +890,13 @@ insert into @tmp
 				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
 				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
 			end
-		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo
+		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo,'ordest'+a.accy
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,
 			a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
 			a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice,
-			a.memo
+			a.memo,a.accy
 		from view_uccc a
 		left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
 		left join uccy c on a.uno = c.uno
@@ -904,7 +905,7 @@ insert into @tmp
 			'ordet' tablea,'1' gno,'1' sortno,a.noa,c.style  style,
 			'' waste,'1' itype,c.datea,c.storeno,
 			b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
-			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,''
+			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,'',a.accy
 		from view_ordet a
 		left join view_orde b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
@@ -962,12 +963,12 @@ begin
 	update @tmp set datea='',custno='',custs='',uno='',uno2='',ordeno='',no2='',sprice=0,memo='',radius=0,dime=0,width=0,lengthb=0
 	insert into @tmp(
 		gno,g2,sortno,datea,storeno,custno,custs,uno,uno2,productno,products,class,
-		spec,csize,mount,weight,ordeno,no2,sfi,radius,dime,width,lengthb,kind,sprice,memo
+		spec,csize,mount,weight,ordeno,no2,sfi,radius,dime,width,lengthb,kind,sprice,memo,qhref
 	)
 	select
 		'0',g2,sortno,'',storeno,'','','','',productno,products,
-		class,spec,csize,sum(mount),sum(weight),'','',sfi,radius,dime,width,lengthb,kind,0,''
-	from @tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb
+		class,spec,csize,sum(mount),sum(weight),'','',sfi,radius,dime,width,lengthb,kind,0,'',qhref
+	from @tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb,qhref
 	delete @tmp where gno='1'
 end
 
@@ -1028,23 +1029,21 @@ insert into @tmp(gno,g2,storeno,mount,weight)
 	from @tmp where gno <=1 group by storeno
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set sprice = null where @t_showprice = 0
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
 if(@t_sortby = 'DATEA')
 	select 
-		ROW_NUMBER()over(order by storeno,g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi,memo
+		ROW_NUMBER()over(order by storeno,g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
 	from @tmp order by storeno,g2,datea,productno,csize,uno,gno,sortno
 else if(@t_sortby = 'PNO')
 	select 
-		ROW_NUMBER()over(order by storeno,g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,sfi,memo
+		ROW_NUMBER()over(order by storeno,g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
 	from @tmp order by storeno,g2,productno,datea,csize,uno,gno,sortno
 else 
 	select 
-		ROW_NUMBER()over(order by storeno,g2,csize,datea,productno,uno,sortno) idno,*,@t_title t_title ,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' ghref,uno2 u2,memo
+		ROW_NUMBER()over(order by storeno,g2,csize,datea,productno,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,memo
 	from @tmp order by storeno,g2,
 	(case left(kind,1) when 'B' then radius else dime end ),
 	(case left(kind,1) when 'B' then width else width end ),

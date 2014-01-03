@@ -141,14 +141,15 @@ declare @tmp table(
 		csize nvarchar(50),
 		mount float,
 		weight float,
-		memo nvarchar(max)
+		memo nvarchar(max),
+		qhref nvarchar(max)
 )
 insert into @tmp
 	select '0' gno,a.noa,b.noq,a.typea,a.datea,c.nick,b.uno,b.productno,b.product,b.unit,b.spec,
 	dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
-	b.mount,b.weight,b.memo
-	from view_get[1] a
-	left join view_gets[1] b on a.noa = b.noa
+	b.mount,b.weight,b.memo,'getst'+a.accy
+	from view_get a
+	left join view_gets b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
 	where  (LEN(@t_itype)= 0 or @t_itype = a.typea) and
 	(a.datea between @t_bdate and @t_edate ) and
@@ -157,10 +158,10 @@ insert into @tmp
 insert into @tmp(gno,mount,weight)
 	select '1' gno,SUM(mount),SUM(weight) from @tmp
 update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select 
 	gno,noa,noq,typea,datea,comp,uno,pno,product,unit,spec,csize,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,memo,
-	'getst?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,memo,qhref
 from @tmp;
 --***********************************************************************************************************************

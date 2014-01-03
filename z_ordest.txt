@@ -42,14 +42,15 @@ declare @tmp table(
 	mount float,
 	weight float,
 	price float,
-	total float
+	total float,
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select
 		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
 		a.custno,c.nick,b.productno,b.product,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		b.unit,b.mount,b.weight,b.price,b.total
+		b.unit,b.mount,b.weight,b.price,b.total,'ordest'+a.accy
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -64,10 +65,10 @@ insert into @tmp(gno,odate,mount,weight,total)
 	select '1',left(odate,6),sum(mount),sum(weight),sum(total) from @tmp group by left(odate,6)
 insert into @tmp(gno,odate,mount,weight,total)
 	select '2',char(255),sum(mount),sum(weight),sum(total) from @tmp
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
 	gno,odate,e,noa,no2,custno,comp,productno,products,csize,unit,mount,weight,price,total,
-	row_number()over(partition by left(odate,6) order by left(odate,6),gno) idno,
-	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+	row_number()over(partition by left(odate,6) order by left(odate,6),gno) idno,qhref
 from @tmp order by left(odate,6),gno;
 --*****************************************************************************************
 z_ordest2a:--z_ordest2a
@@ -115,13 +116,14 @@ declare @tmp table(
 	notv float,
 	price float,
 	nototal float,
-	e nvarchar(10)
+	e nvarchar(10),
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select
 		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -133,9 +135,9 @@ insert into @tmp
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,custno,comp,weight,mount,notv,nototal)
 	select '1',custno,comp,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by custno,comp
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
-	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,
-	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
 	row_number()over(partition by custno,comp order by custno,comp,gno,noa) idno
 from @tmp order by custno,comp,gno,noa;
 --****************************************************************************************************
@@ -184,13 +186,14 @@ declare @tmp table(
 	notv float,
 	price float,
 	nototal float,
-	e nvarchar(10)
+	e nvarchar(10),
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select
 		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -202,9 +205,9 @@ insert into @tmp
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,productno,products,weight,mount,notv,nototal)
 	select '1',productno,products,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by productno,products
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
-	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,
-	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
 	row_number()over(partition by productno,products order by productno,products,gno,noa) idno
 from @tmp order by productno,products,gno,noa;
 --****************************************************************************************************
@@ -253,13 +256,14 @@ declare @tmp table(
 	notv float,
 	price float,
 	nototal float,
-	e nvarchar(10)
+	e nvarchar(10),
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select
 		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end)
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
 	from view_orde[1] a
 	left join view_ordes[1] b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -271,9 +275,10 @@ insert into @tmp
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,noa,weight,mount,notv,nototal)
 	select '1',noa,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by noa
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
 select
-	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,
-	'ordest?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
 	row_number()over(partition by noa order by noa,gno,no2) idno
 from @tmp order by noa,gno,no2;
 --****************************************************************************************************
@@ -306,7 +311,8 @@ declare @tmp table(
 	sizea nvarchar(90),
 	weight float,
 	mount float,
-	notv float
+	notv float,
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select 
@@ -317,7 +323,7 @@ insert into @tmp
 			(case left(b.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
 			(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
 		else ltrim(rtrim(a.size)) end) sizea,
-		a.weight,a.mount,a.notv
+		a.weight,a.mount,a.notv,'ordest'+a.accy
 	from view_ordes a
 	left join view_orde b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -353,22 +359,21 @@ insert into @tmp(gno,style,productno,sizea,mount,notv) -------這裡的notv是�
 	where gno='0' group by a.style,a.productno,a.sizea,isnull(b.emount,0)
 insert into @tmp(gno,weight,mount,notv)
 	select '2',sum(weight),sum(mount),sum(notv) from @tmp where gno='0'
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
+
 if(@t_sort = 'CUSTNO')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
 		ROW_NUMBER()over(order by gno,custno) idno
 	from @tmp order by gno,custno
 else if(@t_sort = 'SIZEA')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
 		ROW_NUMBER()over(order by gno,sizea) idno
 	from @tmp order by gno,sizea
 else
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
 		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
 	from @tmp order by gno,ordeno,datea,products;
 --****************************************************************************************************
@@ -401,13 +406,14 @@ declare @tmp table(
 	sizea nvarchar(90),
 	weight float,
 	mount float,
-	notv float
+	notv float,
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select 
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
 		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,
-		a.weight,a.mount,a.notv
+		a.weight,a.mount,a.notv,'ordest'+a.accy
 	from view_ordes[1] a
 	left join view_orde[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -443,22 +449,21 @@ insert into @tmp(gno,style,productno,sizea,weight,notv) -------這裡的notv是�
 	where gno='0' group by a.style,a.productno,a.sizea,isnull(b.eweight,0)
 insert into @tmp(gno,weight,mount,notv)
 	select '2',sum(weight),sum(mount),sum(notv) from @tmp where gno='0'
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
+
 if(@t_sort = 'CUSTNO')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
 		ROW_NUMBER()over(order by gno,custno) idno
 	from @tmp order by gno,custno
 else if(@t_sort = 'SIZEA')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
 		ROW_NUMBER()over(order by gno,sizea) idno
 	from @tmp order by gno,sizea
 else
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,
-		'ordest?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?' qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
 		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
 	from @tmp order by gno,ordeno,datea,products;
 --****************************************************************************************************

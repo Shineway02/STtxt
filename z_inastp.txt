@@ -130,24 +130,27 @@ declare @tmp table(
 	weightb float,
 	price float,
 	moneys float,
-	title nvarchar(20)
+	title nvarchar(20),
+	qhref nvarchar(max)
 )
 insert into @tmp
-select '0' gno,a.noa,b.noq,a.datea,a.typea,a.itype,left(a.comp,4),c.source,b.uno,b.spec,c.class,b.productno,b.product,
-(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-b.mount,b.weight,c.price,b.weight*c.price,
-case when len(@t_typea)=0 then '全部' else a.typea end
-from ina[1] a
-left join inas[1] b on a.noa = b.noa
-left join uccb c on b.uno = c.noa
-where (LEN(@t_typea) = 0 or @t_typea = a.typea) and
-(LEN(@t_itype) = 0 or @t_itype = a.itype) and
-(isnull(a.datea,'') between @t_bdate and @t_edate)
+	select
+		'0' gno,a.noa,b.noq,a.datea,a.typea,a.itype,left(a.comp,4),c.source,b.uno,b.spec,c.class,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		b.mount,b.weight,c.price,b.weight*c.price,
+		case when len(@t_typea)=0 then '全部' else a.typea end,'inast'+a.accy
+	from view_ina[1] a
+	left join view_inas[1] b on a.noa = b.noa
+	left join uccb c on b.uno = c.noa
+	where (LEN(@t_typea) = 0 or @t_typea = a.typea) and
+	(LEN(@t_itype) = 0 or @t_itype = a.itype) and
+	(isnull(a.datea,'') between @t_bdate and @t_edate)
 
 insert into @tmp(gno,mount,weightb,moneys)
 select '1',SUM(mount),SUM(weightb),SUM(moneys) from @tmp
 update @tmp set size = replace(size,'~#$','''')
 update @tmp set itype= case itype when '1' then '買賣' when '2' then '代工' when '3' then '寄庫' end
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
-	*,'inast?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+	*
 from @tmp;

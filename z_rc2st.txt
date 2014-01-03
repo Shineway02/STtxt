@@ -37,14 +37,15 @@ declare @tmp table(
 	weight float,
 	price float,
 	total float,
-	csize nvarchar(max)
+	csize nvarchar(max),
+	qhref nvarchar(max)
 )
 insert into @tmp
 	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) type, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit, 
 		   b.mount, b.weight, b.price, b.total,
-		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
-	from rc2s[1] b
-	left join rc2[1] a on a.noa = b.noa
+		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
+	from view_rc2s[1] b
+	left join view_rc2[1] a on a.noa = b.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end)  between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
@@ -56,14 +57,14 @@ insert into @tmp(gno,datea,mount,total)
 	select '1',datea,sum(mount),sum(total) from @tmp where gno='0' group by datea
 insert into @tmp(gno,datea,mount,total)
 	select '2',left(datea,6),sum(mount),sum(total) from @tmp where gno='0' group by left(datea,6)
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 select gno, noa, noq, type, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4) comp, productno, xproduct,unit,csize
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
 ,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price 
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
-,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno
-,'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref
+,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno,qhref
 from @tmp order by datea desc,gno,noa,noq;
 --***********************************************************************************
 z_rc2st2:--z_rc2st2
@@ -106,15 +107,16 @@ declare @result table(
 	price float,
 	total float,
 	pcount int,
-	csize nvarchar(max)
+	csize nvarchar(max),
+	qhref nvarchar(max)
 )
 insert into @result
 	select '0' gno, (case when a.typea='2' then '退' else '進' end), a.noa, a.datea, 
 		   a.tggno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit, 
 	       b.mount, b.weight, b.price, b.total, 0 pcount,
-	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
-	from rc2s[1] b
-	left join rc2[1] a on a.noa = b.noa
+	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
+	from view_rc2s[1] b
+	left join view_rc2[1] a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
@@ -125,14 +127,14 @@ insert into @result
 update @result set csize = replace(csize,'~#$','''')
 insert into @result(gno,tggno,comp,pcount,mount,weight,total)
 	select '1',tggno,comp,count(pcount),sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp
+update @result set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select  
 	gno,type,noa,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit,csize
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pcount),1)),0,30)) pcount,
-	'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pcount),1)),0,30)) pcount,qhref,
 	row_number()over(partition by tggno,comp order by tggno,gno,datea,noa) idno
 from @result order by tggno,gno,datea,noa;
 --***********************************************************************************
@@ -173,15 +175,16 @@ declare @result table(
 	weight float,
 	price float,
 	total float,
-	csize nvarchar(max)
+	csize nvarchar(max),
+	qhref nvarchar(max)
 )
 insert into @result
 	select '0' gno, (case when a.typea='2' then '退' else '進' end), a.noa,a.datea, 
 		   a.tggno, isnull(c.comp,''), b.productno, b.product, b.unit, 
 	       b.mount, b.weight, b.price, b.total,
-	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
-	from rc2s[1] b
-	left join rc2[1] a on a.noa = b.noa
+	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
+	from view_rc2s[1] b
+	left join view_rc2[1] a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
@@ -192,16 +195,16 @@ insert into @result
 update @result set csize = replace(csize,'~#$','''')
 insert into @result(gno,productno,xproduct,csize,mount,weight,total)
 	select '1',productno,xproduct,csize,sum(mount),sum(weight),sum(total) from @result where gno='0' group by productno,xproduct,csize
+update @result set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,csize,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight ,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
-	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
-	'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,qhref,
 	row_number()over(partition by productno,xproduct,csize order by productno,xproduct,gno,datea,noa) idno
 from @result order by productno,xproduct,csize,gno,idno;
 --***********************************************************************************
-z_rc2st4:	--z_rc2st4
+z_rc2st4:--z_rc2st4
 declare @t_accy nvarchar(10)
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
@@ -239,14 +242,15 @@ declare @result table(
 	price float,
 	total float,
 	memo nvarchar(max),
-	csize nvarchar(max)
+	csize nvarchar(max),
+	qhref nvarchar(max)
 )
 insert into @result
 	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.datea,a.tggno,
 			 isnull(c.comp,''), b.productno, b.product, b.unit,b.mount, b.weight, b.price, b.total,a.memo,
-			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
-	from rc2s[1] b
-	left join rc2[1] a on a.noa = b.noa
+			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
+	from view_rc2s[1] b
+	left join view_rc2[1] a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
@@ -259,12 +263,12 @@ insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
 	select '1',tggno,comp,productno,xproduct,sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp,productno,xproduct
 insert into @result(gno,tggno,comp,productno,mount,weight,total)
 	select '2',tggno,comp,char(255),sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp
+update @result set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct, unit,csize,
 		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
 		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
 		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price ,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
-		'rc2st?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' qhref,
+		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,qhref,
 		row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno
 from @result order by tggno,productno,gno,datea;
 --***********************************************************************************
