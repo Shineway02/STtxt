@@ -710,6 +710,16 @@ update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set sprice = null where @t_showprice = 0
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
 
+if(@t_isordermemo='1')
+begin
+	insert into @tmp(gno,g2,mount,weight)
+		select '4','2',sum(mount),sum(weight)
+		from @tmp where gno =1
+	insert into @tmp(gno,g2,mount,weight)
+		select '5','3',sum(mount),sum(weight)
+		from @tmp where gno =2
+end
+
 if(@t_sortby = 'DATEA')
 	select
 		ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
@@ -1027,6 +1037,23 @@ insert into @tmp(gno,g2,storeno,mount,weight)
 		sum((case when gno='1' then mount*(-1) else mount end)),
 		sum((case when gno='1' then weight*(-1) else weight end))
 	from @tmp where gno <=1 group by storeno
+
+if(@t_isordermemo='1')
+begin
+	insert into @tmp(gno,g2,storeno,mount,weight)
+		select
+			'4','2',storeno,isnull(b.mount,0),isnull(b.weight,0)
+		from @tmp a
+		outer apply(select sum(mount) mount,sum(weight) weight from @tmp where (gno='1') and storeno=a.storeno) b
+		group by a.storeno,b.mount,b.weight
+	insert into @tmp(gno,g2,storeno,mount,weight)
+		select
+			'5','3',storeno,isnull(b.mount,0),isnull(b.weight,0)
+		from @tmp a
+		outer apply(select sum(mount) mount,sum(weight) weight from @tmp where (gno='2') and storeno=a.storeno) b
+		group by a.storeno,b.mount,b.weight
+end
+
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set sprice = null where @t_showprice = 0
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
