@@ -318,7 +318,7 @@ insert into @tmp
 	select 
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
 		(case when ltrim(rtrim(a.size)) = '' then 
-			isnull((select noa from beltwidth where width=a.radius)+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
+			isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
 			(case left(b.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
 			(case left(b.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
 			(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
@@ -344,7 +344,7 @@ insert into @tmp(gno,style,productno,sizea,mount,notv) -------這裡的notv是�
 		from (
 			select
 				(case when ltrim(rtrim(a.size)) = '' then 
-					isnull((select noa from beltwidth where width=a.radius)+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
+					isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
 					(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
 					(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
 					(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
@@ -434,7 +434,7 @@ insert into @tmp(gno,style,productno,sizea,weight,notv) -------這裡的notv是�
 		from (
 			select
 				(case when ltrim(rtrim(a.size)) = '' then 
-					isnull((select noa from beltwidth where width=a.radius)+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
+					isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
 					(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
 					(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
 					(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)

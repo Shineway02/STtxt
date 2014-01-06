@@ -536,7 +536,7 @@ insert into @tmp
 		case @t_showtype when '0' then
 			(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
 		when '1' then (case when ltrim(rtrim(a.size)) = '' then 
-			isnull((select noa from beltwidth where width=a.radius)+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
+			isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
 			(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
 			(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
 			(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
@@ -866,7 +866,7 @@ insert into @tmp
 		case @t_showtype when '0' then
 			(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end)
 		when '1' then (case when ltrim(rtrim(a.size)) = '' then 
-			isnull((select noa from beltwidth where width=a.radius)+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
+			isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
 			(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
 			(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
 			(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
