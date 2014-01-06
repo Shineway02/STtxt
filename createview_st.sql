@@ -23,6 +23,100 @@
 	
 	--¦³¦~«×
 	print 'bbm+bbs:'
+	--workd
+	set @table = 'workd'
+	print space(4)+@table
+	delete @tmp
+	insert into @tmp(tablea,tableas,accy)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,@table,@table+'s')
+	,replace(TABLE_NAME,@table,'')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like @table+'[0-9][0-9][0-9]'
+	
+	if exists(select * from INFORMATION_SCHEMA.VIEWS where TABLE_NAME='view_'+@table)
+	begin
+		set @cmd = "drop view view_"+@table
+		execute sp_executesql @cmd
+	end
+	set @cmd = ''
+	if exists(select * from INFORMATION_SCHEMA.VIEWS where TABLE_NAME='view_'+@table+'s')
+	begin
+		set @cmds = "drop view view_"+@table+'s'
+		execute sp_executesql @cmds
+	end
+	set @cmds = ''
+	
+	declare cursor_table cursor for
+	select tablea,tableas,accy from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas,@accy
+	while(@@FETCH_STATUS <> -1)
+	begin
+		--
+		set @cmd = @cmd + case when LEN(@cmd)=0 then '' else CHAR(13)+ space(4)+'union all'+CHAR(13) end
+			+ space(4)+"select '"+@accy+"' accy,* from "+@tablea
+		--s
+		set @cmds = @cmds + case when LEN(@cmds)=0 then '' else CHAR(13)+ space(4)+'union all'+CHAR(13) end
+			+ space(4)+"select '"+@accy+"' accy,* from "+@tableas
+		--accy
+		if exists(select * from INFORMATION_SCHEMA.VIEWS where TABLE_NAME='view_'+@table+@accy)
+		begin
+			set @cmdaccy = "drop view view_"+@table+@accy
+			execute sp_executesql @cmdaccy
+		end
+		set @cmdaccy = ''
+		set @accy2 = right('000'+CAST(@accy as int)-1,3)
+		if exists(select * from @tmp where accy=@accy2)
+		begin
+			set @cmdaccy = space(4)+"select '"+@accy2+"' accy,* from "+@table+@accy2
+		end
+		set @cmdaccy = @cmdaccy + case when len(@cmdaccy)>0 then CHAR(13)+ space(4)+'union all'+CHAR(13) else '' end +SPACE(4)+"select '"+@accy+"' accy,* from "+@tablea
+		set @accy2 = right('000'+CAST(@accy as int)+1,3)
+		if exists(select * from @tmp where accy=@accy2)
+		begin
+			set @cmdaccy = @cmdaccy + CHAR(13)+ space(4)+'union all'+CHAR(13)+space(4)+"select '"+@accy2+"' accy,* from "+@table+@accy2
+		end
+		set @cmdaccy = "create view view_"+@table+@accy+ CHAR(13)+"as" + CHAR(13) + @cmdaccy	
+		execute sp_executesql @cmdaccy 
+		--accys
+		if exists(select * from INFORMATION_SCHEMA.VIEWS where TABLE_NAME='view_'+@table+'s'+@accy)
+		begin
+			set @cmdaccy = "drop view view_"+@table+'s'+@accy
+			execute sp_executesql @cmdaccy
+		end
+		set @cmdaccy = ''
+		set @accy2 = right('000'+CAST(@accy as int)-1,3)
+		if exists(select * from @tmp where accy=@accy2)
+		begin
+			set @cmdaccy = space(4)+"select '"+@accy2+"' accy,* from "+@table+'s'+@accy2
+		end
+		set @cmdaccy = @cmdaccy + case when len(@cmdaccy)>0 then CHAR(13)+ space(4)+'union all'+CHAR(13) else '' end +SPACE(4)+"select '"+@accy+"' accy,* from "+@tableas
+		set @accy2 = right('000'+CAST(@accy as int)+1,3)
+		if exists(select * from @tmp where accy=@accy2)
+		begin
+			set @cmdaccy = @cmdaccy + CHAR(13)+ space(4)+'union all'+CHAR(13)+space(4)+"select '"+@accy2+"' accy,* from "+@table+'s'+@accy2
+		end
+		set @cmdaccy = "create view view_"+@table+'s'+@accy+ CHAR(13)+"as" + CHAR(13) + @cmdaccy
+		execute sp_executesql @cmdaccy 
+			
+		fetch next from cursor_table
+		into @tablea,@tableas,@accy
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	if LEN(@cmd)>0
+	begin
+		set @cmd = "create view view_"+@table+ CHAR(13)+"as" + CHAR(13) + @cmd
+		execute sp_executesql @cmd
+	end
+	if LEN(@cmds)>0
+	begin
+		set @cmds = "create view view_"+@table+'s'+ CHAR(13)+"as" + CHAR(13) + @cmds
+		execute sp_executesql @cmds
+	end
 	--cng
 	set @table = 'cng'
 	print space(4)+@table
