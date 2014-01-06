@@ -319,7 +319,7 @@ begin
 					a.memo,a.money,a.tax,a.total,b.spec,b.product,b.size,a.kind,b.dime,b.width,b.lengthb,b.radius,b.style,
 					b.price,a.trantype,left(uno,1)
 	update a
-		set orderno = (select max(noq) from view_vccs[1] where (a.noa = noa) and product = a.products)
+		set orderno = isnull((select max(noq) from view_vccs[1] where (a.noa = noa) and product = a.products),1)
 	from @tmp a
 end
 if(@checkUcca>0)
