@@ -381,13 +381,13 @@
 	update @tmp set productno= b.productno,style=b.style
 	from @tmp a
 	left join view_uccb b on a.uno=b.uno  
-
-	update @tmp set price = case when isnull(d.price,0)!=0 then d.price 
+	update @tmp set price = case when a.price>=isnull(d.price,0)*0.8 then a.price
+							when isnull(d.price,0)!=0 then d.price 
 							when isnull(c.price,0)!=0 then c.price
 							else a.price end
 	from @tmp a  
 	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style) c
-	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style and price>=c.price) d
+	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style and price>=c.price*0.7) d
 	where (a.style='1' or a.style='2' or a.style='3') and a.price<c.price*0.7 
 	----------------------------------------------------------------------------------
 	----------------------------------------------------------------------------------
