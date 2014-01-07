@@ -1,3 +1,136 @@
+z_vccstp03:--z_vccstp03	
+	declare @t_bdate nvarchar(20)
+	declare @t_edate nvarchar(20)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_productno nvarchar(20)
+	declare @t_style nvarchar(max)
+	declare @t_option03 nvarchar(max)
+	
+	set @t_bdate = case when '#non' = [16] then '' else [16] end
+	set @t_edate = case when '#non' = [17] then CHAR(255) else [17] end
+	set @t_bcustno = case when '#non' = [18] then '' else [18] end
+	set @t_ecustno = case when '#non' = [19] then CHAR(255) else [19] end
+	set @t_productno = case when '#non' = [20] then '' else [20] end
+	set @t_style = case when '#non' = [21] then '' else [21] end
+	set @t_option03 = case when '#non' = [22] then '' else [22] end
+	---------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		accy nvarchar(10),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		custno nvarchar(20),
+		nick nvarchar(20),
+		uno nvarchar(20),
+		style nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(40),
+		mount float,
+		[weight] float,
+		vccsize nvarchar(max),
+		
+		uccbstyle nvarchar(10),
+		uccbproductno nvarchar(20),
+		uccbproduct nvarchar(40),
+		uccbsize nvarchar(max)
+	)
+	
+	insert into @tmp(accy,noa,noq,custno,nick,uno,style,productno,product,mount,[weight],vccsize
+		,uccbstyle,uccbproductno,uccbproduct,uccbsize)
+	select a.accy,a.noa,a.noq,b.custno,c.nick,a.uno,a.style,a.productno,a.product,a.mount,a.[weight]
+	,dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
+	,d.style,d.productno,d.product
+	,dbo.csize(b.kind,d.dime,d.width,d.lengthb,d.radius)
+	--,replace(case when len(a.size)>0 then a.size else dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) end,'X','*')
+	--,replace(case when len(d.size)>0 then d.size else dbo.csize(b.kind,d.dime,d.width,d.lengthb,d.radius) end,'X','*')
+	from view_vccs a
+	left join view_vcc b on a.noa=b.noa
+	left join cust c on b.custno=c.noa
+	left join view_uccb d on a.uno=d.uno
+	where len(a.uno)>0
+	and upper(left(a.uno,1))!='X'
+	and upper(left(a.uno,1))!='Y'
+	and upper(left(a.uno,1))!='Z'
+	and b.datea between @t_bdate and @t_edate
+	and b.custno between @t_bcustno and @t_ecustno
+	and (len(@t_productno)=0 or a.productno=@t_productno)  
+	and (len(@t_style)=0 or CHARINDEX(d.style,@t_style)>0)
+	
+	------------------------------------------------------------------------------------
+	update @tmp set gno='1' where vccsize=uccbsize
+	------------------------------------------------------------------------------------
+	declare @gno nvarchar(10)
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(10)
+	declare @vccsize nvarchar(max)
+	declare @uccbsize nvarchar(max)
+	
+	declare @a1 nvarchar(max)
+	declare @a2 nvarchar(max)
+	
+	declare @b1 nvarchar(max)
+	declare @b2 nvarchar(max)
+	
+	declare cursor_table cursor for
+	select noa,noq,vccsize,uccbsize from @tmp where gno is null
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@noq,@vccsize,@uccbsize
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		set @gno = '1'	
+		set @a1 = @vccsize
+		set @b1 = @uccbsize
+		while(1=1)
+		begin
+			if(len(@a1)<=0 or LEN(@b1)<=0)
+				break
+			
+			set @a2 = SUBSTRING(@a1,1,case when CHARINDEX('*',@a1)=0 then len(@a1) else CHARINDEX('*',@a1)-1 end)
+			if(CHARINDEX('*',@a1)>0)
+				set @a1 = substring(@a1,LEN(@a2)+2,LEN(@a1)-LEN(@a2)-1)
+			else 
+				set @a1 = ''
+			
+			set @b2 = SUBSTRING(@b1,1,case when CHARINDEX('*',@b1)=0 then len(@b1) else CHARINDEX('*',@b1)-1 end)
+			if(CHARINDEX('*',@b1)>0)
+				set @b1 = substring(@b1,LEN(@b2)+2,LEN(@b1)-LEN(@b2)-1)
+			else 
+				set @b1 = ''
+			
+			set @a2 = case when @a2 like '%.[0-9]' then @a2+'0' when @a2 like '%.[0-9][0-9]' then @a2 when @a2 like '%' then @a2+'.00' else @a2 end
+			set @b2 = case when @b2 like '%.[0-9]' then @b2+'0' when @b2 like '%.[0-9][0-9]' then @b2 when @b2 like '%' then @b2+'.00' else @b2 end
+
+			if(@a2!=@b2 and @gno='1')
+				set @gno = '2'
+		end
+		update @tmp set gno=@gno where noa=@noa and noq=@noq
+	
+		fetch next from cursor_table
+		into @noa,@noq,@vccsize,@uccbsize
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare @titlea nvarchar(max)
+	set @titlea = case when len(@t_bdate)>0 and @t_edate!=char(255) then '日期區間： '+@t_bdate+' ~ '+@t_edate+''
+						when @t_bdate=@t_edate then '日期區間： '+@t_bdate
+						else '' end
+						
+	if(len(@t_option03)>0)
+	begin
+		insert into @tmp(gno,mount,[weight])
+		select '3',sum(isnull(mount,0)),sum(isnull([weight],0)) from @tmp where gno!='1' 
+		select @titlea titlea,* from @tmp where gno!='1'  
+	end
+	else
+	begin
+		insert into @tmp(gno,mount,[weight])
+		select '3',sum(isnull(mount,0)),sum(isnull([weight],0)) from @tmp
+		select @titlea titlea,* from @tmp
+	end	;
+	
 z_vccstp1:--z_vccstp1
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
