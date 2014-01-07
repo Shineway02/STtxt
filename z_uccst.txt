@@ -730,6 +730,11 @@ else if(@t_sortby = 'PNO')
 		ROW_NUMBER()over(order by g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 		qhref ghref,uno2 u2,sfi,memo
 	from @tmp order by g2,productno,datea,csize,uno,gno,sortno
+else if(@t_sortby = 'DIME')
+	select
+		ROW_NUMBER()over(order by g2,dime,radius,width,lengthb,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
+	from @tmp order by g2,dime,radius,width,lengthb,datea,csize,uno,gno,sortno
 else
 	select
 		ROW_NUMBER()over(	order by g2,
@@ -1068,6 +1073,11 @@ else if(@t_sortby = 'PNO')
 		ROW_NUMBER()over(order by storeno,g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 		qhref ghref,uno2 u2,sfi,memo
 	from @tmp order by storeno,g2,productno,datea,csize,uno,gno,sortno
+else if(@t_sortby = 'DIME')
+	select 
+		ROW_NUMBER()over(order by storeno,g2,dime,radius,width,lengthb,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
+	from @tmp order by storeno,g2,dime,radius,width,lengthb,datea,csize,uno,gno,sortno
 else 
 	select 
 		ROW_NUMBER()over(order by storeno,g2,csize,datea,productno,uno,sortno) idno,*,@t_title t_title ,qhref,
