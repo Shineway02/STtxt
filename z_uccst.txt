@@ -590,7 +590,8 @@ insert into @tmp
 		left join view_orde b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
 		left join uccy d on a.uno = d.uno
-		where c.uno is not null and @t_isordermemo='1'-- and c.kind='A1'
+		outer apply(select top 1 enda from view_ordes where (noa=a.noa) and (no2=a.no3)) e
+		where (c.uno is not null) and (@t_isordermemo='1') and (isnull(e.enda,0)=0) -- and c.kind='A1'
 	) a
 	left join view_ina b on a.tablea='inas' and a.noa=b.noa
 	left join cust c on a.custno = c.noa
@@ -925,7 +926,8 @@ insert into @tmp
 		left join view_orde b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
 		left join uccy d on a.uno = d.uno
-		where c.uno is not null and @t_isordermemo='1'-- and c.kind='A1'
+		outer apply(select top 1 enda from view_ordes where (noa=a.noa) and (no2=a.no3)) e
+		where (c.uno is not null) and (@t_isordermemo='1') and (isnull(e.enda,0)=0)-- and c.kind='A1'
 	) a
 	left join view_ina b on a.tablea='inas' and a.noa=b.noa
 	left join cust c on a.custno = c.noa
