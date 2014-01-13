@@ -20,6 +20,35 @@
 		tableau nvarchar(20),
 		accy nvarchar(20)
 	)
+	print 'acc:'
+	set @table = 'acc'
+	print space(4)+@table
+	delete @tmp
+	insert into @tmp(tablea,accy)
+	SELECT TABLE_NAME 
+	,replace(TABLE_NAME,@table,'')
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like @table+'[0-9][0-9][0-9]_1'
+	
+	declare cursor_table cursor for
+	select tablea,accy from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@accy
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if exists(select * from INFORMATION_SCHEMA.VIEWS where TABLE_NAME='view_'+@tablea)
+		begin
+			set @cmd = "drop view view_"+@tablea
+			execute sp_executesql @cmd
+		end
+		set @cmd = "create view view_"+@tablea+" as select * from "+@tablea+" where len(ISNULL(acc1,''))=5"
+		execute sp_executesql @cmd
+		fetch next from cursor_table
+		into @tablea,@accy
+	end
+	close cursor_table
+	deallocate cursor_table
 	
 	--¦³¦~«×
 	print 'bbm+bbs:'
