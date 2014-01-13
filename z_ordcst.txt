@@ -131,6 +131,7 @@ set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[1
 set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
 declare @tmp table(
 	gno nvarchar(1),
+	kind nvarchar(15),
 	noa nvarchar(30),
 	no2 nvarchar(10),
 	datea nvarchar(10),
@@ -147,18 +148,24 @@ declare @tmp table(
 	ptotal float,
 	e nvarchar(10),
 	a nvarchar(10),
-	notv float,
+	notva float,
+	notvb float,
 	noptotal float,
 	qhref nvarchar(max)
 )	
 insert into @tmp
-	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
+	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
 		   b.spec,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
-		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv, b.notv*b.price noptotal,
+		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
+		   case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
+		   case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
+		   b.notv*b.price noptotal,
 		   'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
+	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
+	outer apply(select sum(bccins.mount) mount,0 weight from bccins bccins where (bccins.ordcno=b.noa) and (b.no2=bccins.no2)) d
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
@@ -168,17 +175,20 @@ insert into @tmp
 	order by a.tggno,gno,a.noa,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set size = replace(size,'~#$','''')
-insert into @tmp(gno,tggno,comp,pmount,pweight,ptotal,noptotal)
-	select '1',tggno,comp,sum(pmount),sum(pweight),sum(ptotal),sum(noptotal) from @tmp group by tggno,comp
+update @tmp set notva=0 where (notva<=0)
+update @tmp set notvb=0 where (notvb<=0)
+insert into @tmp(gno,tggno,comp,pmount,pweight,ptotal,noptotal,notva,notvb)
+	select '1',tggno,comp,sum(pmount),sum(pweight),sum(ptotal),sum(noptotal),sum(notva),sum(notvb) from @tmp group by tggno,comp
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
 	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pweight),1)),4,12)) pweight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,18)) pmount,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pweight),1)),4,18)) pweight,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,floor(price)),1)),4,18))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,ptotal),1)),4,18)) ptotal,e,a,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notva),1)),4,18)) notva,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notvb),1)),4,18)) notvb,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,noptotal),1)),4,18)) noptotal,
 	row_number()over(partition by tggno,comp order by tggno,comp,gno,odate,noa,no2) idno,qhref
 from @tmp order by tggno,comp,gno,odate,noa,no2;
 --****************************************************************************************************
@@ -225,6 +235,7 @@ set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[1
 set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
 declare @tmp table(
 	gno nvarchar(1),
+	kind nvarchar(15),
 	noa nvarchar(30),
 	no2 nvarchar(10),
 	datea nvarchar(10),
@@ -241,19 +252,25 @@ declare @tmp table(
 	ptotal float,
 	e nvarchar(10),
 	a nvarchar(10),
-	notv float,
+	notva float,
+	notvb float,
 	noptotal float,
 	qhref nvarchar(max)
 )	
 insert into @tmp
-	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, left(a.tgg,4), b.productno pno,b.product pname,
+	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, left(a.tgg,4), b.productno pno,b.product pname,
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 			b.mount pmount, b.weight pweight,
-			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a, b.notv,b.notv*b.price noptotal,
+			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
+		    case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
+		    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
+			b.notv*b.price noptotal,
 			'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
+	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
+	outer apply(select sum(bccins.mount) mount,0 weight from bccins bccins where (bccins.ordcno=b.noa) and (b.no2=bccins.no2)) d
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
@@ -263,17 +280,20 @@ insert into @tmp
 	order by pno,gno,a.tggno,a.noa,b.no2
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+update @tmp set notva=0 where (notva<=0)
+update @tmp set notvb=0 where (notvb<=0)
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 insert into @tmp(gno,pno,pname,pmount,pweight,ptotal,notv,noptotal)
 	select '1',pno,pname,sum(pmount),sum(pweight),sum(ptotal),sum(notv),sum(noptotal) from @tmp group by pno,pname
 select
 	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pweight),1)),4,12)) pweight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,18)) pmount,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pweight),1)),4,18)) pweight,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,floor(price)),1)),4,18))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,ptotal),1)),4,18)) ptotal,e,a,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notva),1)),4,18)) notva,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notvb),1)),4,18)) notvb,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,noptotal),1)),4,18)) noptotal,
 	row_number()over(partition by pno,pname order by pno,pname,gno,odate,noa,no2) idno,qhref
 from @tmp order by pno,pname,gno,odate,noa,no2;
 --****************************************************************************************************
@@ -320,6 +340,7 @@ set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[1
 set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
 declare @tmp table(
 	gno nvarchar(1),
+	kind nvarchar(15),
 	noa nvarchar(15),
 	no2 nvarchar(3),
 	datea nvarchar(10),
@@ -336,18 +357,24 @@ declare @tmp table(
 	ptotal float,
 	e nvarchar(10),
 	a nvarchar(10),
-	notv float,
+	notva float,
+	notvb float,
 	noptotal float,
 	qhref nvarchar(max)
 )	
 insert into @tmp
-	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname,
+	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname,
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 			b.mount, b.weight,b.price,
-			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), b.notv, b.notv*b.price noptotal,'ordcst'+b.accy
+			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), 
+	 	    case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
+	  	    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
+			b.notv*b.price noptotal,'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
+	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
+	outer apply(select sum(bccins.mount) mount,0 weight from bccins bccins where (bccins.ordcno=b.noa) and (b.no2=bccins.no2)) d
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
@@ -357,6 +384,8 @@ insert into @tmp
 	order by a.noa,gno,b.no2
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set notva=0 where (notva<=0)
+update @tmp set notvb=0 where (notvb<=0)
 insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
 	select '1',noa,sum(pmount),sum(pweight),sum(notv),sum(noptotal) from @tmp where gno='0' group by noa
 insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
@@ -364,11 +393,12 @@ insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
 	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount),1)),4,12)) pmount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pweight),1)),4,12)) pweight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ptotal),1)),4,12)) ptotal,e,a,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,notv),1)),4,12)) notv,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,noptotal),1)),4,12)) noptotal,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,18)) pmount,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pweight),1)),4,18)) pweight,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,floor(price)),1)),4,18))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,ptotal),1)),4,18)) ptotal,e,a,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notva),1)),4,18)) notva,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notvb),1)),4,18)) notvb,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,noptotal),1)),4,18)) noptotal,
 	row_number()over(partition by noa order by noa desc,gno,no2,datea) idno,qhref
 from @tmp order by noa desc,gno,no2,datea;
