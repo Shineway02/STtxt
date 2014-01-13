@@ -165,7 +165,7 @@
 		set @cmd =
 		" select 1,'rc2s',@accy,a.noa,a.noq,b.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
-		" ,isnull(a.price,0)+case when isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0) end"+
+		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
 		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
@@ -195,7 +195,7 @@
 		set @cmd =
 		" select 1,'inas',@accy,a.noa,a.noq,b.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
-		" ,isnull(a.price,0)+case when isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0) end"+
+		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
 		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
