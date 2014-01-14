@@ -155,13 +155,14 @@ declare @tmp table(
 )	
 insert into @tmp
 	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
-		   b.spec,
-		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
-		   b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
-		   case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
-		   case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
-		   b.notv*b.price noptotal,
-		   'ordcst'+b.accy
+			b.spec,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+			b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
+			case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
+			case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
+			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
+				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
+			'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
@@ -265,7 +266,8 @@ insert into @tmp
 			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
 		    case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
 		    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
-			b.notv*b.price noptotal,
+			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
+				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
 			'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
@@ -283,8 +285,8 @@ update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set notva=0 where (notva<=0)
 update @tmp set notvb=0 where (notvb<=0)
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-insert into @tmp(gno,pno,pname,pmount,pweight,ptotal,notv,noptotal)
-	select '1',pno,pname,sum(pmount),sum(pweight),sum(ptotal),sum(notv),sum(noptotal) from @tmp group by pno,pname
+insert into @tmp(gno,pno,pname,pmount,pweight,ptotal,notva,notvb,noptotal)
+	select '1',pno,pname,sum(pmount),sum(pweight),sum(ptotal),sum(notva),sum(notvb),sum(noptotal) from @tmp group by pno,pname
 select
 	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,18)) pmount,
@@ -370,7 +372,9 @@ insert into @tmp
 			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), 
 	 	    case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
 	  	    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
-			b.notv*b.price noptotal,'ordcst'+b.accy
+			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
+				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
+			'ordcst'+b.accy
 	from view_ordcs[1] b
 	left join view_ordc[1] a on a.noa=b.noa
 	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
@@ -386,10 +390,10 @@ update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set notva=0 where (notva<=0)
 update @tmp set notvb=0 where (notvb<=0)
-insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
-	select '1',noa,sum(pmount),sum(pweight),sum(notv),sum(noptotal) from @tmp where gno='0' group by noa
-insert into @tmp(gno,noa,pmount,pweight,notv,noptotal)
-	select '2',null,sum(pmount),sum(pweight),sum(notv),sum(noptotal) from @tmp where gno='0'
+insert into @tmp(gno,noa,pmount,pweight,notva,notvb,noptotal)
+	select '1',noa,sum(pmount),sum(pweight),sum(notva),sum(notvb),sum(noptotal) from @tmp where gno='0' group by noa
+insert into @tmp(gno,noa,pmount,pweight,notva,notvb,noptotal)
+	select '2',null,sum(pmount),sum(pweight),sum(notva),sum(notvb),sum(noptotal) from @tmp where gno='0'
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
 	gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
