@@ -607,12 +607,60 @@ insert into @tmp
 			 and (len(@t_itype) = 0 or a.itype=@t_itype) and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
 			 and (len(@t_stype) = 0 or a.stype=@t_stype)
 	order by a.datea desc
-	
-update @tmp set csize = replace(csize,'X','*')
 declare @idno int
 declare @csize nvarchar(max)
 declare @new_csize nvarchar(max)
 declare @tmpCsizeVal nvarchar(max)
+declare @uno2 nvarchar(max)
+declare @t_uno nvarchar(max)
+--------尋找原批號 <<Start>>
+declare cursor_table cursor for
+	select idno,uno,uno2 from @tmp where (left(kind,1) != 'B') and (ltrim(rtrim(isnull(uno2,''))) = '')
+open cursor_table
+fetch next from cursor_table
+into @idno,@t_uno,@uno2
+while(@@FETCH_STATUS <> -1)
+begin
+	declare @SearchUno nvarchar(90) = @t_uno
+	while(1=1)
+	begin
+		if((select count(*) from view_rc2s a left join view_rc2 b on a.noa = b.noa where a.uno = @SearchUno) >0)
+		begin
+			set @uno2 = (select top 1 a.uno2 from view_rc2s a left join view_rc2 b on a.noa = b.noa where a.uno = @SearchUno)
+			update @tmp set uno2 = @uno2 where idno=@idno
+			break
+		end
+		else if((select count(*) from view_inas a left join view_ina b on a.noa = b.noa  where a.uno = @SearchUno) >0)
+		begin
+			set @uno2 = (select top 1 a.uno2 from view_inas a left join view_ina b on a.noa = b.noa  where a.uno = @SearchUno)
+			update @tmp set uno2 = @uno2 where idno=@idno
+			break
+		end
+		else
+		begin
+			if((select count(*) from view_cuts a where a.bno = @SearchUno) >0)
+			begin
+				set @SearchUno = (select top 1 b.uno from view_cuts a left join view_cut b on a.noa = b.noa where a.bno = @SearchUno)
+			end
+			else if((select count(*) from view_cubu a where a.uno = @SearchUno) >0)
+			begin
+				set @SearchUno = (
+					select top 1 b.uno from view_cubu a left join view_cubt b on a.noa = b.noa where (a.uno = @SearchUno) and (left(a.uno,len(a.uno)-3) = b.uno)
+				)
+			end
+			else
+				break
+		end
+	end
+	fetch next from cursor_table
+	into @idno,@t_uno,@uno2
+end 
+close cursor_table
+deallocate cursor_table
+--------尋找原批號 <<End>>
+
+update @tmp set csize = replace(csize,'X','*')
+
 declare cursor_table cursor for
 	select idno,csize from @tmp
 open cursor_table
@@ -658,7 +706,6 @@ if(@t_orderstatus = '1') ----已受訂
 	delete @tmp where isnull(ordeno,'') = ''
 else if(@t_orderstatus = '2') ----未受訂
 	delete @tmp where isnull(ordeno,'') != ''
-declare @t_uno nvarchar(max)
 declare @t_count int
 declare @t_idno int
 declare cursor_table cursor for
@@ -944,11 +991,58 @@ insert into @tmp
 			 and (len(@t_stype) = 0 or a.stype=@t_stype)
 	order by a.datea desc
 
-update @tmp set csize = replace(csize,'X','*')
 declare @idno int
 declare @csize nvarchar(max)
 declare @new_csize nvarchar(max)
 declare @tmpCsizeVal nvarchar(max)
+declare @uno2 nvarchar(max)
+declare @t_uno nvarchar(max)
+--------尋找原批號 <<Start>>
+declare cursor_table cursor for
+	select idno,uno,uno2 from @tmp where (left(kind,1) != 'B') and (ltrim(rtrim(isnull(uno2,''))) = '')
+open cursor_table
+fetch next from cursor_table
+into @idno,@t_uno,@uno2
+while(@@FETCH_STATUS <> -1)
+begin
+	declare @SearchUno nvarchar(90) = @t_uno
+	while(1=1)
+	begin
+		if((select count(*) from view_rc2s a left join view_rc2 b on a.noa = b.noa where a.uno = @SearchUno) >0)
+		begin
+			set @uno2 = (select top 1 a.uno2 from view_rc2s a left join view_rc2 b on a.noa = b.noa where a.uno = @SearchUno)
+			update @tmp set uno2 = @uno2 where idno=@idno
+			break
+		end
+		else if((select count(*) from view_inas a left join view_ina b on a.noa = b.noa  where a.uno = @SearchUno) >0)
+		begin
+			set @uno2 = (select top 1 a.uno2 from view_inas a left join view_ina b on a.noa = b.noa  where a.uno = @SearchUno)
+			update @tmp set uno2 = @uno2 where idno=@idno
+			break
+		end
+		else
+		begin
+			if((select count(*) from view_cuts a where a.bno = @SearchUno) >0)
+			begin
+				set @SearchUno = (select top 1 b.uno from view_cuts a left join view_cut b on a.noa = b.noa where a.bno = @SearchUno)
+			end
+			else if((select count(*) from view_cubu a where a.uno = @SearchUno) >0)
+			begin
+				set @SearchUno = (
+					select top 1 b.uno from view_cubu a left join view_cubt b on a.noa = b.noa where (a.uno = @SearchUno) and (left(a.uno,len(a.uno)-3) = b.uno)
+				)
+			end
+			else
+				break
+		end
+	end
+	fetch next from cursor_table
+	into @idno,@t_uno,@uno2
+end 
+close cursor_table
+deallocate cursor_table
+--------尋找原批號 <<End>>
+update @tmp set csize = replace(csize,'X','*')
 declare cursor_table cursor for
 	select idno,csize from @tmp
 open cursor_table
@@ -995,7 +1089,6 @@ if(@t_orderstatus = '1') ----已受訂
 else if(@t_orderstatus = '2') ----未受訂
 	delete @tmp where isnull(ordeno,'') != ''
 
-declare @t_uno nvarchar(max)
 declare @t_count int
 declare @t_idno int
 declare cursor_table cursor for
