@@ -318,7 +318,7 @@ z_ummst03:--z_ummst03
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[tot],0)),1)),4,12)) b7
 	from @result a
 	left join cust b on a.custno=b.noa
-	order by a.custno,a.pno;
+	order by a.custno,case when len(isnull(a.vccno,''))=0 then 2 else 1 end,isnull(a.vccno,''),a.pno;
 
 z_ummst02:--z_ummst02 
 	SET QUOTED_IDENTIFIER OFF 
