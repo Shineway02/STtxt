@@ -185,6 +185,94 @@ select
 from @tmp a
 order by a.salesno,a.saless,a.gno,a.productno;
 ---************************************************************************************
+z_vcc_uu3:--z_vcc_uu3
+declare @t_datea nvarchar(10)
+set @t_datea = [17]
+declare @tmp table(
+	gno nvarchar(10),
+	orderby int,
+	salesno nvarchar(35),
+	saless nvarchar(90),
+	custno nvarchar(35),
+	custs nvarchar(90),
+	productno nvarchar(35),
+	products nvarchar(max),
+	datea nvarchar(10),
+	noa nvarchar(35),
+	typea nvarchar(10),
+	unit nvarchar(10),
+	mount float,
+	price float,
+	totala float,
+	totalb float,
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',0,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,a.datea,a.noa,a.typea,
+		b.unit,b.mount,b.price,b.total,0,'vcc_uu'+a.accy
+	from view_vcc a
+	left join view_vccs b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where a.datea=@t_datea
+	order by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,a.datea,a.noa,a.typea
+update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
+insert into @tmp
+	select
+		'1',0,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
+		sum(mount),null price,sum(totala),0,'' qhref
+	from @tmp a
+	group by a.salesno,a.saless
+update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
+update @tmp set typea = (case typea when '1' then '出' when '2' then '退' else typea end)
+update @tmp set qhref = 	case when len(isnull(qhref,''))>0 then substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+right(qhref,3) else '' end
+------------------找出本月有交易紀錄的業務
+insert into @tmp
+	select
+		'2',2,a.salesno,a.sales,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
+		sum(case a.typea when '2' then a.total*(-1) else a.total end), ------當月迄今銷貨金額
+		0,------當月迄今收款金額
+		sum(case when a.datea=@t_datea then (case a.typea when '2' then a.total*(-1) else a.total end) else 0 end),------當日銷貨金額
+		0,------當日收款金額
+		''------qhref
+	from view_vcc a
+	where (left(a.datea,6)=left(@t_datea,6)) and (a.datea<=@t_datea)
+	group by a.salesno,a.sales
+update a
+	set price = b.money,totalb=c.money
+from @tmp a
+outer apply(
+	select
+		sum(us.money) money
+	from umms us
+	left join umm um on us.noa=um.noa
+	left join view_vcc vcc on us.vccno=vcc.noa
+	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
+	where (left(um.datea,6)=left(@t_datea,6)) and (um.datea<=@t_datea) and
+	(((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or ((charindex('-',us.vccno)>0) and a.salesno=cust.salesno))
+) b
+outer apply(
+	select
+		sum(us.money) money
+	from umms us
+	left join umm um on us.noa=um.noa
+	left join view_vcc vcc on us.vccno=vcc.noa
+	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
+	where (um.datea=@t_datea) and
+	(((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or ((charindex('-',us.vccno)>0) and a.salesno=cust.salesno))
+) c
+insert into @tmp(gno,orderby)
+	select distinct '3',1 from @tmp where gno='2'
+select
+	a.gno,a.orderby,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+	a.datea,a.noa,a.typea,a.unit,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.price),1)),4,12)) price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.totala),1)),4,12)) totala,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.totalb),1)),4,12)) totalb,a.qhref
+from @tmp a
+order by a.orderby,a.salesno,a.saless,a.gno;
+---************************************************************************************
 z_vcc_uu4:--z_vcc_uu4
 declare @t_datea nvarchar(10)
 declare @t_stype nvarchar(max)
@@ -239,90 +327,10 @@ insert into @tmp(gno,orderby)
 	where gno='1'
 update @tmp set stype=(select top 1 namea from @stypeList where stype=noa)
 select
-	gno,orderby,datea,stype,custno,custs,productno,products,mount,free,salesno,saless
+	gno,orderby,datea,stype,custno,custs,productno,products,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,free),1)),4,12)) free,
+	salesno,saless
 from @tmp
 order by orderby,gno,datea,typea,custno,productno;
 ---************************************************************************************
-z_vcc_uu3:--z_vcc_uu3
-declare @t_datea nvarchar(10)
-set @t_datea = [17]
-declare @tmp table(
-	gno nvarchar(10),
-	orderby int,
-	salesno nvarchar(35),
-	saless nvarchar(90),
-	custno nvarchar(35),
-	custs nvarchar(90),
-	productno nvarchar(35),
-	products nvarchar(max),
-	datea nvarchar(10),
-	noa nvarchar(35),
-	typea nvarchar(10),
-	unit nvarchar(10),
-	mount float,
-	price float,
-	totala float,
-	totalb float,
-	qhref nvarchar(max)
-)
-insert into @tmp
-	select
-		'0',0,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,a.datea,a.noa,a.typea,
-		b.unit,b.mount,b.price,b.total,0,'vcc_uu'+a.accy
-	from view_vcc a
-	left join view_vccs b on a.noa = b.noa
-	left join cust c on a.custno = c.noa
-	where a.datea=@t_datea
-	order by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,a.datea,a.noa,a.typea
-update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
-insert into @tmp
-	select
-		'1',0,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
-		sum(mount),null price,sum(totala),0,'' qhref
-	from @tmp a
-	group by a.salesno,a.saless
-update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
-update @tmp set typea = (case typea when '1' then '出' when '2' then '退' else typea end)
-update @tmp set qhref = 	case when len(isnull(qhref,''))>0 then substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+right(qhref,3) else '' end
-------------------找出本月有交易紀錄的業務
-insert into @tmp
-	select
-		'2',2,a.salesno,a.sales,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
-		sum(a.total), ------當月迄今銷貨金額
-		0,------當月迄今收款金額
-		sum(case when a.datea=@t_datea then a.total else 0 end),------當日銷貨金額
-		0,------當日收款金額
-		''------qhref
-	from view_vcc a
-	where (left(a.datea,6)=left(@t_datea,6)) and (a.datea<=@t_datea)
-	group by a.salesno,a.sales
-update a
-	set price = b.money,totalb=c.money
-from @tmp a
-outer apply(
-	select
-		sum(us.money) money
-	from umms us
-	left join umm um on us.noa=um.noa
-	left join view_vcc vcc on us.vccno=vcc.noa
-	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
-	where (left(um.datea,6)=left(@t_datea,6)) and (um.datea<=@t_datea) and
-	(((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or ((charindex('-',us.vccno)>0) and a.salesno=cust.noa))
-) b
-outer apply(
-	select
-		sum(us.money) money
-	from umms us
-	left join umm um on us.noa=um.noa
-	left join view_vcc vcc on us.vccno=vcc.noa
-	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
-	where (um.datea=@t_datea) and
-	(((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or ((charindex('-',us.vccno)>0) and a.salesno=cust.noa))
-) c
-insert into @tmp(gno,orderby)
-	select distinct '3',1 from @tmp where gno='2'
-select
-	a.gno,a.orderby,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
-	a.datea,a.noa,a.typea,a.unit,a.mount,a.price,a.totala,a.totalb,a.qhref
-from @tmp a
-order by a.orderby,a.salesno,a.saless,a.gno;
