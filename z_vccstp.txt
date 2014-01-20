@@ -197,6 +197,7 @@ z_vccstp1:--z_vccstp1
 	----------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(10),
+		ctype nvarchar(10),
 		noa nvarchar(20),
 		custno nvarchar(20),
 		cust nvarchar(max),
@@ -231,6 +232,7 @@ z_vccstp1:--z_vccstp1
 	)
 	set @cmd =
 	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
+	" ,case when b.typea='2' then '退貨' else '出貨' end"+
 	" ,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
 	" ,b.tel,case when b.addr2!='' then b.addr2 else b.addr end "+
 	" ,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
@@ -250,7 +252,7 @@ z_vccstp1:--z_vccstp1
 	" and (len(@t_stype)=0 or b.stype=@t_stype)"+
 	" order by a.noa,a.no2 "
 	
-	insert into @tmp(gno,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono,tranmoney
+	insert into @tmp(gno,ctype,noa,custno,cust,tel,addr,datea,kind,paytype,trantype,memo,taxtype,tax,[money],total,invono,tranmoney
 		,no2,productno,product,unit,mounts,weights,price,totals,size,memos)
 	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_stype nvarchar(max)'
 	,@t_bno=@t_bno,@t_eno=@t_eno,@t_stype=@t_stype
@@ -306,7 +308,7 @@ z_vccstp1:--z_vccstp1
 	close cursor_table
 	deallocate cursor_table
 
-	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,addr=b.addr
+	update @tmp set ctype=b.ctype,custno=b.custno,cust=b.cust,tel=b.tel,addr=b.addr
 		,datea=b.datea,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
 		,taxtype=b.taxtype,ctaxtype=b.ctaxtype,tax=b.tax,[money]=b.[money],total=b.total
 		,invono=b.invono,tranmoney=b.tranmoney
@@ -317,6 +319,9 @@ z_vccstp1:--z_vccstp1
 	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 	from(
 		select gno,noa,no2
+		,ctype+'單' cc1
+		,ctype+'日期：' cc2
+		,ctype+'單號：' cc3
 		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
 		,b.rrno ttno
 		,datea a01
