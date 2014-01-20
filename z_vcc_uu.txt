@@ -1,0 +1,186 @@
+z_vcc_uu1:--z_vcc_uu1
+declare @t_year nvarchar(10)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+set @t_year = [16]
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(10),
+	salesno nvarchar(35),
+	saless nvarchar(90),
+	custno nvarchar(35),
+	custs nvarchar(90),
+	productno nvarchar(90),
+	products nvarchar(max),
+	m01 float,
+	m02 float,
+	m03 float,
+	m04 float,
+	m05 float,
+	m06 float,
+	m07 float,
+	m08 float,
+	m09 float,
+	m10 float,
+	m11 float,
+	m12 float,
+	total float
+)
+insert into @tmp
+	select
+		'99',a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
+		case when substring(a.datea,5,2)='01' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='02' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum(b.mount) else 0 end,
+		0 total
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa
+	left join cust c on a.custno = c.noa
+	where (left(a.datea,3) = @t_year) and 
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno)			 
+	group by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,substring(a.datea,5,2)
+insert into @tmp
+	select
+		'0',a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),0
+	from @tmp a
+	group by a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
+delete @tmp where gno='99'
+update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
+insert into @tmp
+	select
+		'1',a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
+		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total)
+	from @tmp a
+	group by a.salesno,a.saless
+select
+	a.gno,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+	case when a.m01=0 then null else a.m01 end m01,
+	case when a.m02=0 then null else a.m02 end m02,
+	case when a.m03=0 then null else a.m03 end m03,
+	case when a.m04=0 then null else a.m04 end m04,
+	case when a.m05=0 then null else a.m05 end m05,
+	case when a.m06=0 then null else a.m06 end m06,
+	case when a.m07=0 then null else a.m07 end m07,
+	case when a.m08=0 then null else a.m08 end m08,
+	case when a.m09=0 then null else a.m09 end m09,
+	case when a.m10=0 then null else a.m10 end m10,
+	case when a.m11=0 then null else a.m11 end m11,
+	case when a.m12=0 then null else a.m12 end m12,
+	a.total
+from @tmp a
+order by a.salesno,a.saless,a.gno,a.productno;
+---************************************************************************************
+z_vcc_uu2:--z_vcc_uu2
+declare @t_year nvarchar(10)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+set @t_year = [16]
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(10),
+	salesno nvarchar(35),
+	saless nvarchar(90),
+	productno nvarchar(90),
+	products nvarchar(max),
+	m01 float,
+	m02 float,
+	m03 float,
+	m04 float,
+	m05 float,
+	m06 float,
+	m07 float,
+	m08 float,
+	m09 float,
+	m10 float,
+	m11 float,
+	m12 float,
+	total float
+)
+insert into @tmp
+	select
+		'99',a.salesno,a.sales,b.productno,b.product,
+		case when substring(a.datea,5,2)='01' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='02' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum(b.mount) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum(b.mount) else 0 end,
+		0 total
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa
+	where (left(a.datea,3) = @t_year) and 
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno)			 
+	group by a.salesno,a.sales,b.productno,b.product,substring(a.datea,5,2)
+insert into @tmp
+	select
+		'0',a.salesno,a.saless,a.productno,a.products,
+		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),0
+	from @tmp a
+	group by a.salesno,a.saless,a.productno,a.products
+delete @tmp where gno='99'
+update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
+insert into @tmp
+	select
+		'1',a.salesno,a.saless,'' productno,'' products,
+		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total)
+	from @tmp a
+	group by a.salesno,a.saless
+select
+	a.gno,a.salesno,a.saless,a.productno,a.products,
+	case when a.m01=0 then null else a.m01 end m01,
+	case when a.m02=0 then null else a.m02 end m02,
+	case when a.m03=0 then null else a.m03 end m03,
+	case when a.m04=0 then null else a.m04 end m04,
+	case when a.m05=0 then null else a.m05 end m05,
+	case when a.m06=0 then null else a.m06 end m06,
+	case when a.m07=0 then null else a.m07 end m07,
+	case when a.m08=0 then null else a.m08 end m08,
+	case when a.m09=0 then null else a.m09 end m09,
+	case when a.m10=0 then null else a.m10 end m10,
+	case when a.m11=0 then null else a.m11 end m11,
+	case when a.m12=0 then null else a.m12 end m12,
+	a.total
+from @tmp a
+order by a.salesno,a.saless,a.gno,a.productno;

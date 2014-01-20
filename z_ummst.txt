@@ -1606,7 +1606,7 @@ insert into @result
 		ROW_NUMBER()over(partition by a.custno,a.comp,a.zip_home,a.addr_home order by a.custno,a.comp,a.zip_home,a.addr_home,a.datea),a.*
 	from (
 		select
-			 '0' gno,1 pageno,(case a.typea when '1' then '出' when '2' then '退' end) typea,a.custno,a.comp,c.zip_home,c.addr_home,
+			 '0' gno,1 pageno,a.typea typea,a.custno,a.comp,c.zip_home,c.addr_home,
 			 a.tel,right(a.datea,5) datea,a.noa,b.noq,b.productno,
 			 case when charindex(left(b.uno,1),'XYZ') > 0 then  '廢料' else b.product end product,
 			 case when  (b.style='' and b.dime='') then null else
@@ -1627,7 +1627,7 @@ insert into @result
 		outer apply(select * from @tmp where custno=a.custno) f
 		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
 	) a where a.custno between @t_bcustno and @t_ecustno
-	
+update @result set b_mount=b_mount*(-1),b_price=b_price*(-1),b_money=b_money*(-1),b_tax=b_tax*(-1),a_total=a_total*(-1) where typea='2'
 if(@checkUcca>0)
 begin
 	update @result set b_tax=isnull(c.tax,0)
@@ -1740,6 +1740,8 @@ update @result set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - 
 update @result set t_total9 = 0 where gno = '2' and (t_total9 <=0)
 update @result set csize = replace(csize,'~#$','''')
 --update @result set datea = isnull(typea,'') + isnull(datea,'')
+update @result set b_mount=b_mount*(-1),b_price=b_price*(-1),b_money=b_money*(-1),b_tax=b_tax*(-1),a_total=a_total*(-1),b_total=b_total*(-1) where typea='2'
+update @result set typea = (case typea when '1' then '出' when '2' then '退' end)
 select
 	gno,idno,kind,orderno,pageno,(select max(pageno) from @result where a.custno=custno) maxpage
 	,typea,custno,custs,zipcode,addr,tel,
