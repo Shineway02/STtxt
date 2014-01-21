@@ -6,13 +6,19 @@ declare @t_bcustno nvarchar(35)
 declare @t_ecustno nvarchar(35)
 declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
-set @t_year = [16]
+declare @t_xstype nvarchar(30)
+declare @t_xgroupano nvarchar(30)
+declare @t_xsalesgroup nvarchar(max)
+set @t_year = [12]
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
 set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_xstype = case when '#non'=[3] then '' else [3] end
+set @t_xgroupano = case when '#non'=[4] then '' else [4] end
+set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
 declare @tmp table(
 	gno nvarchar(10),
 	salesno nvarchar(35),
@@ -54,10 +60,15 @@ insert into @tmp
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
 	left join cust c on a.custno = c.noa
+	left join ucc d on b.productno=d.noa
+	left join sss e on a.salesno=e.noa
 	where (left(a.datea,3) = @t_year) and 
 			 (a.custno between @t_bcustno and @t_ecustno) and
 			 (b.productno between @t_bproductno and @t_eproductno) and
-			 (a.salesno between @t_bsalesno and @t_esalesno)			 
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 	group by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,substring(a.datea,5,2)
 insert into @tmp
 	select
@@ -101,13 +112,19 @@ declare @t_bcustno nvarchar(35)
 declare @t_ecustno nvarchar(35)
 declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
-set @t_year = [16]
+declare @t_xstype nvarchar(30)
+declare @t_xgroupano nvarchar(30)
+declare @t_xsalesgroup nvarchar(max)
+set @t_year = [12]
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
 set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_xstype = case when '#non'=[3] then '' else [3] end
+set @t_xgroupano = case when '#non'=[4] then '' else [4] end
+set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
 declare @tmp table(
 	gno nvarchar(10),
 	salesno nvarchar(35),
@@ -146,10 +163,16 @@ insert into @tmp
 		0 total
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
+	left join cust c on a.custno = c.noa
+	left join ucc d on b.productno=d.noa
+	left join sss e on a.salesno=e.noa
 	where (left(a.datea,3) = @t_year) and 
 			 (a.custno between @t_bcustno and @t_ecustno) and
 			 (b.productno between @t_bproductno and @t_eproductno) and
-			 (a.salesno between @t_bsalesno and @t_esalesno)			 
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 	group by a.salesno,a.sales,b.productno,b.product,substring(a.datea,5,2)
 insert into @tmp
 	select
@@ -187,7 +210,26 @@ order by a.salesno,a.saless,a.gno,a.productno;
 ---************************************************************************************
 z_vcc_uu3:--z_vcc_uu3
 declare @t_datea nvarchar(10)
-set @t_datea = [17]
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+declare @t_xstype nvarchar(30)
+declare @t_xgroupano nvarchar(30)
+declare @t_xsalesgroup nvarchar(max)
+set @t_datea = case when '#non'=[18] then '' else [18] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_xstype = case when '#non'=[3] then '' else [3] end
+set @t_xgroupano = case when '#non'=[4] then '' else [4] end
+set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+
 declare @tmp table(
 	gno nvarchar(10),
 	orderby int,
@@ -214,7 +256,15 @@ insert into @tmp
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
-	where a.datea=@t_datea
+	left join ucc d on b.productno=d.noa
+	left join sss e on a.salesno=e.noa
+	where (a.datea = @t_datea) and 
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 	order by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,a.datea,a.noa,a.typea
 update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
 insert into @tmp
@@ -277,8 +327,26 @@ z_vcc_uu4:--z_vcc_uu4
 declare @t_datea nvarchar(10)
 declare @t_stype nvarchar(max)
 declare @t_split_Tmp nvarchar(max)
-set @t_datea = [17]
-set @t_stype = '[18]'
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+declare @t_xstype nvarchar(30)
+declare @t_xgroupano nvarchar(30)
+declare @t_xsalesgroup nvarchar(max)
+set @t_datea = case when '#non'=[18] then '' else [18] end
+set @t_stype = case when '#non'='[2]' then '' else '[2]' end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_xstype = case when '#non'=[3] then '' else [3] end
+set @t_xgroupano = case when '#non'=[4] then '' else [4] end
+set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
 declare @stypeList table(
 	noa nvarchar(30),
 	namea nvarchar(90)
@@ -312,7 +380,15 @@ insert into @tmp
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
-	where a.datea = @t_datea
+	left join ucc d on b.productno=d.noa
+	left join sss e on a.salesno=e.noa
+	where (a.datea = @t_datea) and 
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 insert into @tmp
 	select
 		'1',2,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
@@ -320,7 +396,17 @@ insert into @tmp
 		sum(case when (a.typea='2') and (a.datea = @t_datea) then a.total else 0 end),
 		a.salesno,a.sales
 	from view_vcc a
-	where left(a.datea,6)=left(@t_datea,6)
+	left join view_vccs b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	left join ucc d on b.productno=d.noa
+	left join sss e on a.salesno=e.noa
+	where left(a.datea,6)=left(@t_datea,6) and 
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 	group by a.salesno,a.sales
 insert into @tmp(gno,orderby)
 	select distinct '2',1 from @tmp
@@ -340,9 +426,27 @@ declare @t_year nvarchar(10)
 declare @t_stype nvarchar(max)
 declare @t_split_Tmp nvarchar(max)
 declare @t_getWeekmon nvarchar(10)
-set @t_week = [19]
-set @t_year = [16]
-set @t_stype = '[18]'
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+declare @t_xstype nvarchar(30)
+declare @t_xgroupano nvarchar(30)
+declare @t_xsalesgroup nvarchar(max)
+set @t_week = case when '#non'=[13] then '01' else [13] end
+set @t_year = case when '#non'=[12] then '01' else [12] end
+set @t_stype = case when '#non'='[2]' then '' else '[2]' end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_xstype = case when '#non'=[3] then '' else [3] end
+set @t_xgroupano = case when '#non'=[4] then '' else [4] end
+set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
 declare @stypeList table(
 	noa nvarchar(30),
 	namea nvarchar(90)
@@ -380,7 +484,16 @@ insert into @tmp
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
-	where (left(a.datea,3)=@t_year) and (datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))=cast(@t_week as int))
+	left join ucc d on b.productno=d.noa
+	left join sss e on a.salesno=e.noa
+	where (left(a.datea,3)=@t_year) and
+			 (datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))=cast(@t_week as int)) and
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 insert into @tmp
 	select
 		'1',2,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
@@ -390,7 +503,17 @@ insert into @tmp
 				 (case when a.typea='1' then a.total else a.total*(-1) end) else 0 end),0,
 		a.salesno,a.sales,cast(@t_week as int)
 	from view_vcc a
-	where (left(a.datea,6)=@t_getWeekmon)
+	left join view_vccs b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	left join ucc d on b.productno=d.noa
+	left join sss e on a.salesno=e.noa
+	where (left(a.datea,6)=@t_getWeekmon) and
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 	group by a.salesno,a.sales
 insert into @tmp(gno,orderby,weekname)
 	select distinct '2',1,cast(@t_week as int) from @tmp
@@ -414,9 +537,27 @@ declare @t_stype nvarchar(max)
 declare @t_split_Tmp nvarchar(max)
 declare @t_bmon nvarchar(10)
 declare @t_emon nvarchar(10)
-set @t_bmon = [4]
-set @t_emon = [5]
-set @t_stype = '[18]' 
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+declare @t_xstype nvarchar(30)
+declare @t_xgroupano nvarchar(30)
+declare @t_xsalesgroup nvarchar(max)
+set @t_bmon = case when '#non'=[14] then '' else [14] end
+set @t_emon = case when '#non'=[15] then char(255) else [15] end
+set @t_stype = case when '#non'='[2]' then '' else '[2]' end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_xstype = case when '#non'=[3] then '' else [3] end
+set @t_xgroupano = case when '#non'=[4] then '' else [4] end
+set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
 declare @stypeList table(
 	noa nvarchar(30),
 	namea nvarchar(90)
@@ -429,7 +570,6 @@ begin
 		select LEFT(@t_split_Tmp,CHARINDEX('@',@t_split_Tmp)-1),right(@t_split_Tmp,len(@t_split_Tmp)-CHARINDEX('@',@t_split_Tmp))
 	set @t_stype = RIGHT(@t_stype,LEN(@t_stype)-CHARINDEX(',',@t_stype))
 end
-
 declare @tmp table(
 	gno nvarchar(10),
 	datea nvarchar(10),
