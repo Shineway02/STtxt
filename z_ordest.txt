@@ -312,18 +312,17 @@ declare @tmp table(
 	weight float,
 	mount float,
 	notv float,
+	nweightv float,
+	stkmount float,
 	qhref nvarchar(max)
 )
 insert into @tmp
 	select 
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
 		(case when ltrim(rtrim(a.size)) = '' then 
-			isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
-			(case left(b.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
-			(case left(b.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
-			(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
+			dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
 		else ltrim(rtrim(a.size)) end) sizea,
-		a.weight,a.mount,a.notv,'ordest'+a.accy
+		a.weight,a.mount,a.notv,0,0,'ordest'+a.accy
 	from view_ordes a
 	left join view_orde b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -334,9 +333,10 @@ insert into @tmp
 		and (b.kind='B2') and (a.enda = '0') and (b.enda='0')
 	order by b.custno,a.product,b.noa,b.odate,b.datea
 update @tmp set sizea = replace(sizea,'~#$','''')
-insert into @tmp(gno,style,productno,sizea,mount,notv) -------這裡的notv是庫存數量
+update @tmp set nweightv = round((weight/mount)*notv,0)
+insert into @tmp(gno,style,productno,sizea,mount,weight,notv) -------這裡的notv是庫存數量
 	select
-		'1',a.style,a.productno,a.sizea,sum(a.notv),isnull(b.emount,0)
+		'2',a.style,a.productno,a.sizea,sum(a.notv),isnull(b.eweight,0),isnull(b.emount,0)
 	from @tmp a
 	left join (
 		select 
@@ -344,10 +344,7 @@ insert into @tmp(gno,style,productno,sizea,mount,notv) -------這裡的notv是�
 		from (
 			select
 				(case when ltrim(rtrim(a.size)) = '' then 
-					isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
-					(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
-					(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
-					(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
+					dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
 				else ltrim(rtrim(a.size)) end) csize,b.product style,a.productno,
 				emount,eweight
 			from view_uccc a
@@ -356,24 +353,28 @@ insert into @tmp(gno,style,productno,sizea,mount,notv) -------這裡的notv是�
 		) h
 		group by h.csize,h.style,h.productno
 	) b on (a.sizea = b.csize) and (a.style = b.style) and (a.productno = b.productno)
-	where gno='0' group by a.style,a.productno,a.sizea,isnull(b.emount,0)
-insert into @tmp(gno,weight,mount,notv)
-	select '2',sum(weight),sum(mount),sum(notv) from @tmp where gno='0'
+	where gno='0' group by a.style,a.productno,a.sizea,isnull(b.emount,0),isnull(b.eweight,0)
+update a
+	set stkmount = b.notv
+from @tmp a
+outer apply(select top 1 notv from @tmp where (a.sizea=sizea) and (a.productno=productno) and (gno='2')) b	
+insert into @tmp(gno,weight,mount,notv,nweightv,stkmount)
+	select '1',sum(weight),sum(mount),sum(notv),sum(nweightv),sum(stkmount) from @tmp where gno='0'
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
 
 if(@t_sort = 'CUSTNO')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,nweightv,qhref,stkmount,
 		ROW_NUMBER()over(order by gno,custno) idno
 	from @tmp order by gno,custno
 else if(@t_sort = 'SIZEA')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,nweightv,qhref,stkmount,
 		ROW_NUMBER()over(order by gno,sizea) idno
 	from @tmp order by gno,sizea
 else
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,nweightv,qhref,stkmount,
 		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
 	from @tmp order by gno,ordeno,datea,products;
 --****************************************************************************************************
@@ -434,10 +435,7 @@ insert into @tmp(gno,style,productno,sizea,weight,notv) -------這裡的notv是�
 		from (
 			select
 				(case when ltrim(rtrim(a.size)) = '' then 
-					isnull((select noa from beltwidth where (a.radius between bwidth and ewidth))+'*',(case when (a.radius=0) then '' else cast(a.radius as nvarchar)+'*' end))+
-					(case left(a.kind,1) when 'B' then (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) else (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) end)+
-					(case left(a.kind,1) when 'B' then (case when a.dime=0 then '' else (cast(a.dime as nvarchar)+'*') end) else (case when a.width=0 then '' else (cast(a.width as nvarchar)+'*') end) end)+
-					(case when (a.lengthb=0) then 'C' else (cast(a.lengthb as nvarchar)) end)
+					dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
 				else ltrim(rtrim(a.size)) end) csize,b.product style,a.productno,
 				emount,eweight
 			from view_uccc a

@@ -334,3 +334,78 @@ select
 from @tmp
 order by orderby,gno,datea,typea,custno,productno;
 ---************************************************************************************
+z_vcc_uu5:--z_vcc_uu5
+declare @t_week nvarchar(10)
+declare @t_year nvarchar(10)
+declare @t_stype nvarchar(max)
+declare @t_split_Tmp nvarchar(max)
+declare @t_getWeekmon nvarchar(10)
+set @t_week = [19]
+set @t_year = [16]
+set @t_stype = '[18]'
+declare @stypeList table(
+	noa nvarchar(30),
+	namea nvarchar(90)
+)
+set @t_stype += ','
+while(CHARINDEX(',',@t_stype) > 0)
+begin
+	set @t_split_Tmp = LEFT(@t_stype,CHARINDEX(',',@t_stype)-1)
+	insert into @stypeList 
+		select LEFT(@t_split_Tmp,CHARINDEX('@',@t_split_Tmp)-1),right(@t_split_Tmp,len(@t_split_Tmp)-CHARINDEX('@',@t_split_Tmp))
+	set @t_stype = RIGHT(@t_stype,LEN(@t_stype)-CHARINDEX(',',@t_stype))
+end
+declare @tmp table(
+	gno nvarchar(10),
+	orderby int,
+	datea nvarchar(10),
+	typea nvarchar(15),
+	stype nvarchar(20),
+	custno nvarchar(35),
+	custs nvarchar(90),
+	productno nvarchar(35),
+	products nvarchar(max),
+	mount float,
+	free float,
+	total float,
+	salesno nvarchar(35),
+	saless nvarchar(max),
+	weekname nvarchar(max)
+)
+set @t_getWeekmon = (select top 1 left(a.datea,6) from view_vcc a where (left(a.datea,3)=@t_year) and (datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))=cast(@t_week as int)))
+insert into @tmp
+	select
+		'0',0,a.datea,a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.mount,b.width,b.total,a.salesno,a.sales,
+		datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))
+	from view_vcc a
+	left join view_vccs b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where (left(a.datea,3)=@t_year) and (datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))=cast(@t_week as int))
+insert into @tmp
+	select
+		'1',2,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
+		sum(case when a.typea='1' then a.total else a.total*(-1) end) money,
+		sum(
+			case when datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))=cast(@t_week as int) then
+				 (case when a.typea='1' then a.total else a.total*(-1) end) else 0 end),0,
+		a.salesno,a.sales,cast(@t_week as int)
+	from view_vcc a
+	where (left(a.datea,6)=@t_getWeekmon)
+	group by a.salesno,a.sales
+insert into @tmp(gno,orderby,weekname)
+	select distinct '2',1,cast(@t_week as int) from @tmp
+	where gno='1'
+insert into @tmp(gno,orderby,mount,free,weekname)
+	select '3',3,sum(mount),sum(free),cast(@t_week as int) from @tmp
+	where gno='1'
+update @tmp set stype=(select top 1 namea from @stypeList where stype=noa)
+update @tmp set weekname = @t_year + 'W' + RIGHT(REPLICATE('0', 2) + CAST(weekname as NVARCHAR),2)
+select
+	gno,orderby,datea,stype,custno,custs,productno,products,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,free),1)),4,12)) free,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
+	salesno,saless,weekname
+from @tmp
+order by orderby,gno,datea,typea,custno,productno;
+---************************************************************************************
