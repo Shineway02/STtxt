@@ -1,104 +1,118 @@
 ﻿z_inastp1:--z_inastp1
-declare @t_bnoa nvarchar(20)
-declare @t_enoa nvarchar(20)
-declare @t_pageline int = 20   --------一頁幾行
-set @t_bnoa = case when '#non' = [6] then '' else [6] end
-set @t_enoa = case when '#non' = [7] then CHAR(255) else [7] end
-declare @tmp table(
-	gno nvarchar(1),
-	idno int identity(0,1),
-	orderno int,
-	pageno int,
-	noa nvarchar(30),
-	datea nvarchar(10),
-	custno nvarchar(30),
-	comp nvarchar(90),
-	itype nvarchar(10),
-	uno nvarchar(50),
-	class nvarchar(20),
-	pno nvarchar(30),
-	product nvarchar(90),
-	size nvarchar(max),
-	spec nvarchar(50),
-	unit nvarchar(12),
-	mount float,
-	weightb float,
-	memo nvarchar(max)
-)
-insert into @tmp
-	select '0' gno,ROW_NUMBER()over(partition by a.noa order by a.noa),
-	0,a.noa,a.datea,a.tggno,left(a.comp,4),a.itype,b.uno,b.class,b.productno,b.product,
-	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-	b.spec,b.unit,b.mount,b.weight,b.memo
-	from ina[1] a
-	left join inas[1] b on a.noa = b.noa
-	where a.noa between @t_bnoa and @t_enoa
-
-declare @a_noa nvarchar(30)
-declare @a_count int
-declare @idno int
-declare @k int = 0 ----差幾頁
-declare @pageCount int
-declare @orderno int
-declare @pageno int
-
-declare cursor_table cursor for
-	select noa,count(*),max(orderno) from @tmp group by noa
-open cursor_table
-fetch next from cursor_table
-into @a_noa,@a_count,@orderno
-while(@@FETCH_STATUS <> -1)
-begin		
-	if(@a_count > @t_pageline)
+	declare @t_bnoa nvarchar(20)
+	declare @t_enoa nvarchar(20)
+	declare @t_itype nvarchar(max)
+	declare @t_pagecount int = 14   --------一頁幾行
+	set @t_bnoa = case when '#non' = [6] then '' else [6] end
+	set @t_enoa = case when '#non' = [7] then CHAR(255) else [7] end
+	set @t_itype = case when '#non' = '[8]' then '' else '[8]' end
+------------------------------------------------------------------------------------------------
+	declare @string nvarchar(max),@noa nvarchar(max),@namea nvarchar(max)
+	declare @itype table(
+		noa nvarchar(20),
+		namea nvarchar(20)
+	)
+	while CHARINDEX('@',@t_itype)>0
 	begin
-		set @k = CEILING((cast(@a_count as float)/@t_pageline))
-		while(@k > 0)
+		if charindex(',',@t_itype)>0
 		begin
-			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
-			set @k -=1
+			set @string = LEFT(@t_itype,charindex(',',@t_itype)-1)
+			set @t_itype = RIGHT(@t_itype,LEN(@t_itype)-len(@string)-1)
 		end
-	end
-	fetch next from cursor_table
-	into @a_noa,@a_count,@orderno
-end
-close cursor_table
-deallocate cursor_table
-----update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
-declare cursor_table cursor for
-	select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
-open cursor_table
-fetch next from cursor_table
-into @a_noa,@orderno,@pageno,@idno,@a_count
-while(@@FETCH_STATUS <> -1)
-begin		
-	set @k = @t_pageline -(@a_count%@t_pageline)
-	set @pageCount = @a_count/@t_pageline
-	if(@k < @t_pageline and (@pageCount =0))
-	begin
-		while(@k > 0)
+		else
 		begin
-			if(@k = @t_pageline -(@a_count%@t_pageline))
-				insert into @tmp(gno,orderno,pageno,noa)
-					select '3',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
-			else
-				insert into @tmp(gno,orderno,pageno,noa)
-					select '0',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
-			set @k = @k-1
-			set @orderno = @orderno +1
+			set @string = @t_itype
+			set @t_itype = ''
 		end
+		set @noa = left(@string,CHARindex('@',@string)-1)
+		set @namea = RIGHT(@string,LEN(@string)-len(@noa)-1)
+		insert into @itype(noa,namea)values(@noa,@namea)
 	end
-	insert into @tmp(gno,orderno,pageno,noa,mount,weightb)
-		select '1',(@t_pageline+1),pageno,noa,sum(mount),sum(weightb) from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
-	insert into @tmp(gno,orderno,pageno,noa) 
-		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+	--------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		tggno nvarchar(20),
+		tgg nvarchar(40),
+		custno nvarchar(20),
+		cust nvarchar(40),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		itype nvarchar(20),
+		typea nvarchar(20),
+		memo nvarchar(max),
+		
+		uno nvarchar(30),
+		productno nvarchar(20),
+		class nvarchar(20),
+		product nvarchar(40),
+		spec nvarchar(40),
+		size nvarchar(40),
+		unit nvarchar(20),
+		mount float,
+		[weight] float,
+		memos nvarchar(max)
+	)
+		--批號	品號	等級	品名	規格	尺寸	單位	數量	重量	備註
+	insert into @tmp(gno,pno,tggno,custno,noa,datea,itype,typea,memo
+		,uno,productno,class,product,spec,size,unit,mount,[weight],memos)
+		select '1','1',a.tggno,a.custno,a.noa,a.datea
+		,c.namea
+		,a.typea
+		,a.memo
+		,b.uno,b.productno,b.class,b.product,b.spec
+		,case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end
+		,b.unit,b.mount,b.[weight],b.memo
+		
+		from view_ina a
+		left join view_inas b on a.accy=b.accy and a.noa = b.noa
+		left join @itype c on a.itype=c.noa
+		where a.noa between @t_bnoa and @t_enoa
+	-------------------------------------------------------------------
+	declare @n int
+	
+	insert into @tmp(gno,pno,noa)
+	select '2','3',noa from @tmp group by noa
+	insert into @tmp(gno,pno,noa)
+	select '3','4',noa from @tmp group by noa
+	insert into @tmp(gno,pno,noa)
+	select '4','5',noa from @tmp group by noa
+
+	declare cursor_table cursor for
+		select noa,count(1) from @tmp group by noa
+	open cursor_table
 	fetch next from cursor_table
-	into @a_noa,@orderno,@pageno,@idno,@a_count
-end
-close cursor_table
-deallocate cursor_table
-update @tmp set size = replace(size,'~#$','''')
-update @tmp set itype= case itype when '1' then '買賣' when '2' then '代工' when '3' then '寄庫' end
-select * from @tmp order by noa desc,pageno,orderno,gno;
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while @n%@t_pagecount!=0
+		begin
+			insert into @tmp(gno,pno,noa)values('5','2',@noa)
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	update @tmp set tggno=b.tggno,tgg=d.nick,custno=b.custno,cust=e.nick
+	,datea=b.datea,itype=b.itype,typea=b.typea,memo=b.memo
+	,mount=case when a.gno='1' then a.mount when a.gno!='5' then c.mount else null end
+	,[weight]=case when a.gno='1' then a.[weight] when a.gno!='5' then c.[weight] else null end
+	from @tmp a
+	left join (select top 1 * from @tmp where gno='1') b on a.noa=b.noa 
+	left join (select noa,SUM(mount) mount,SUM([weight]) [weight] from @tmp group by noa) c on a.noa=c.noa
+	left join tgg d on b.tggno=d.noa
+	left join cust e on b.custno=e.noa
+	
+	select * 
+	,class a1
+	,product a2
+	,memos b1
+	,case when len(ISNULL(tggno,'')+ISNULL(tgg,''))>0 then '廠&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'商：' else '客&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'戶：' end xx1
+	,case when len(ISNULL(tggno,'')+ISNULL(tgg,''))>0 then ISNULL(tggno,'')+'&nbsp'+CHAR(59)+ISNULL(tgg,'') else ISNULL(custno,'')+'&nbsp'+CHAR(59)+ISNULL(cust,'') end xx2
+	from @tmp order by noa,pno;
 --*******************************************************************************************************************
 z_inastp2:--z_inastp2
 declare @t_accy nvarchar(20)
