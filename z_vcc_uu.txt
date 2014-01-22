@@ -598,9 +598,15 @@ insert into @tmp
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno=c.noa
 	left join ucc d on d.noa=b.productno
-	left join uccgb e on d.groupbno=e.noa
 	left join @stypeList f on a.stype=f.noa
-	where (left(a.datea,6) between @t_bmon and @t_emon)
+	left join sss e on a.salesno=e.noa
+	where (left(a.datea,6) between @t_bmon and @t_emon) and
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
 	order by a.datea
 select
 	a.gno,a.datea,a.typea,a.stype,a.custno,a.custs,a.invono,
@@ -609,3 +615,156 @@ select
 	a.salesno,a.saless
 from @tmp a
 order by a.datea;
+---************************************************************************************
+z_vcc_uu7:--z_vcc_uu7
+declare @t_mon nvarchar(10)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+declare @t_xstype nvarchar(30)
+declare @t_xgroupano nvarchar(30)
+declare @t_xsalesgroup nvarchar(max)
+set @t_mon = case when '#non'=[19] then '' else [19] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_xstype = case when '#non'=[3] then '' else [3] end
+set @t_xgroupano = case when '#non'=[4] then '' else [4] end
+set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+declare @weeklist table(
+	idno int identity(1,1),
+	bdatea nvarchar(10),
+	edatea nvarchar(10),
+	weekend nvarchar(10)
+)
+declare @i int = 0
+declare @lastWeekend int=0
+declare @v_bdatea nvarchar(10) = ''
+declare @thisdate nvarchar(15)
+declare @thisWeekend int
+while(@i <= 32)
+begin
+	set @thisdate =cast(left(@t_mon,3)+1911 as nvarchar)+right(@t_mon,3)+'/'+RIGHT(REPLICATE('0', 2) + CAST(@i as NVARCHAR), 2)
+	if(isdate(@thisdate)=1)
+	begin
+		if(@v_bdatea='') set @v_bdatea = @thisdate
+		set @thisWeekend = datename(week,@thisdate)
+		if(@lastWeekend=0)
+			set @lastWeekend= @thisWeekend
+		else
+		begin
+			if(@lastWeekend != @thisWeekend)
+			begin
+				insert into @weeklist 
+					select
+						 cast(left(@v_bdatea,4)-1911 as nvarchar)+right(@v_bdatea,6),
+						@t_mon+'/'+RIGHT(REPLICATE('0', 2) + CAST(@i-1 as NVARCHAR), 2),
+						RIGHT(REPLICATE('0', 2) + CAST(@thisWeekend-1 as NVARCHAR), 2)
+				set @lastWeekend= @thisWeekend
+				set @v_bdatea = @thisdate
+			end
+		end
+	end
+	else if(isdate(@thisdate)=0 and @v_bdatea!='')
+	begin
+		insert into @weeklist 
+			select
+				 cast(left(@v_bdatea,4)-1911 as nvarchar)+right(@v_bdatea,6),
+				@t_mon+'/'+RIGHT(REPLICATE('0', 2) + CAST(@i-1 as NVARCHAR), 2),
+				RIGHT(REPLICATE('0', 2) + CAST(datename(week,@v_bdatea) as NVARCHAR), 2)
+		break
+	end
+	set @i = @i +1
+end
+declare @tmp table(
+	gno nvarchar(10),
+	salesno nvarchar(50),
+	saless nvarchar(90),
+	productno nvarchar(50),
+	products nvarchar(max),
+	wk01_mount float,
+	wk02_mount float,
+	wk03_mount float,
+	wk04_mount float,
+	wk05_mount float,
+	total_mount float,
+	wk01_money float,
+	wk02_money float,
+	wk03_money float,
+	wk04_money float,
+	wk05_money float,
+	total_money float,
+	wkn01 nvarchar(10),
+	wkn02 nvarchar(10),
+	wkn03 nvarchar(10),
+	wkn04 nvarchar(10),
+	wkn05 nvarchar(10)
+)
+insert into @tmp
+	select
+		'99' gno,a.salesno,a.sales,b.productno,b.product,
+		case when c.idno=1 then b.mount else null end,
+		case when c.idno=2 then b.mount else null end,
+		case when c.idno=3 then b.mount else null end,
+		case when c.idno=4 then b.mount else null end,
+		case when c.idno=5 then b.mount else null end,
+		0 total_mount,
+		case when c.idno=1 then b.total else null end,
+		case when c.idno=2 then b.total else null end,
+		case when c.idno=3 then b.total else null end,
+		case when c.idno=4 then b.total else null end,
+		case when c.idno=5 then b.total else null end,	
+		0 total_money,
+		'' wkn01,'' wkn02,'' wkn03,'' wkn04,'' wkn05
+	from view_vcc a
+	left join view_vccs b on a.noa = b.noa
+	left join ucc d on d.noa=b.productno
+	left join sss e on a.salesno=e.noa
+	outer apply(select top 1 * from @weeklist where a.datea between bdatea and edatea) c
+	where exists(select top 1 * from @weeklist where a.datea between bdatea and edatea) and
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and
+			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
+			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+insert into @tmp
+	select
+		'0',a.salesno,a.saless,a.productno,a.products,
+		sum(wk01_mount),sum(wk02_mount),sum(wk03_mount),sum(wk04_mount),sum(wk05_mount),0,
+		sum(wk01_money),sum(wk02_money),sum(wk03_money),sum(wk04_money),sum(wk05_money),0,		
+		'','','','',''
+	from @tmp a
+	group by a.salesno,a.saless,a.productno,a.products
+delete @tmp where gno='99'
+update @tmp set total_mount = isnull(wk01_mount,0)+isnull(wk02_mount,0)+isnull(wk03_mount,0)+isnull(wk04_mount,0)+isnull(wk05_mount,0)
+update @tmp set total_money = isnull(wk01_money,0)+isnull(wk02_money,0)+isnull(wk03_money,0)+isnull(wk04_money,0)+isnull(wk05_money,0)
+update @tmp
+	set wkn01=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=1),
+	wkn02=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=2),
+	wkn03=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=3),
+	wkn04=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=4),
+	wkn05=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=5)
+select
+	a.gno,a.salesno,a.saless,a.productno,a.products,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk01_mount),1)),4,12)) wk01_m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk02_mount),1)),4,12)) wk02_m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk03_mount),1)),4,12)) wk03_m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk04_mount),1)),4,12)) wk04_m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk05_mount),1)),4,12)) wk05_m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total_mount),1)),4,12)) total_m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk01_money),1)),4,12)) wk01_y,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk02_money),1)),4,12)) wk02_y,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk03_money),1)),4,12)) wk03_y,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk04_money),1)),4,12)) wk04_y,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk05_money),1)),4,12)) wk05_y,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total_money),1)),4,12)) total_y,
+	wkn01,wkn02,wkn03,wkn04,wkn05
+from @tmp a
+order by a.salesno,a.saless,a.productno,a.products;
