@@ -1,0 +1,110 @@
+z_umm_uu1:--z_umm_uu1
+declare @t_bmon nvarchar(10)
+declare @t_emon nvarchar(10)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_partno nvarchar(50)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_xsalesgroup nvarchar(max)
+set @t_bmon = case when '#non'=[3] then '' else [3] end
+set @t_emon = case when '#non'=[4] then char(255) else [4] end
+set @t_bcustno = case when '#non'=[5] then '' else [5] end
+set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
+set @t_partno = case when '#non'=[7] then '' else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_xsalesgroup = case when '#non'=[10] then '' else [10] end
+
+declare @tmp table(
+	gno nvarchar(10),
+	noa nvarchar(50),
+	noq nvarchar(10),
+	salesno nvarchar(50),
+	saless nvarchar(90),
+	custno nvarchar(90),
+	custs nvarchar(max),
+	datea nvarchar(10),
+	money float,
+	memo nvarchar(max),
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0' gno,um.noa,us.noq,
+		case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end,
+		case when (charindex('-',us.vccno)>0) then cust.sales else vcc.sales end,
+		um.custno,um.comp,um.datea,us.money,us.vccno,'umm'
+	from umm um
+	left join umms us on um.noa=us.noa
+	left join view_vcc vcc on (us.vccno=vcc.noa)
+	left join cust cust on (left(um.datea,3)='') and (charindex('-',us.vccno)>0)
+	left join sss sss on ((charindex('-',us.vccno)>0) and (cust.salesno=sss.noa)) or ((charindex('-',us.vccno)<=0) and (vcc.salesno=sss.noa))
+	where (isnull(rtrim(ltrim(us.vccno)),'') != '') and
+			 (left(um.datea,6) between @t_bmon and @t_emon) and
+			 (um.custno between @t_bcustno and @t_ecustno) and
+			 ((len(@t_partno)=0) or (sss.partno = @t_partno)) and
+			 (isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno) and
+			 ((len(@t_xsalesgroup)=0) or @t_xsalesgroup=sss.salesgroup)
+	order by um.datea
+update @tmp set qhref = qhref+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'
+insert into @tmp(gno,money)
+	select '1',sum(money) from @tmp
+select
+	a.gno,a.noa,a.noq,a.salesno,a.saless,a.custno,a.custs,a.datea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.money),1)),4,12)) money,
+	a.memo,a.qhref
+from @tmp a order by a.gno,a.datea,a.salesno,a.saless,a.custno;
+--------------------------------------------------------**********************
+z_umm_uu2:--z_umm_uu2
+declare @t_bmon nvarchar(10)
+declare @t_emon nvarchar(10)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_partno nvarchar(50)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_xsalesgroup nvarchar(max)
+set @t_bmon = case when '#non'=[3] then '' else [3] end
+set @t_emon = case when '#non'=[4] then char(255) else [4] end
+set @t_bcustno = case when '#non'=[5] then '' else [5] end
+set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
+set @t_partno = case when '#non'=[7] then '' else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_xsalesgroup = case when '#non'=[10] then '' else [10] end
+
+declare @tmp table(
+	gno nvarchar(10),
+	salesno nvarchar(50),
+	saless nvarchar(90),
+	custno nvarchar(90),
+	custs nvarchar(max),
+	datea nvarchar(10),
+	money float
+)
+insert into @tmp
+	select
+		'0' gno,
+		case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end,
+		case when (charindex('-',us.vccno)>0) then cust.sales else vcc.sales end,
+		um.custno,um.comp,um.datea,sum(us.money)
+	from umm um
+	left join umms us on um.noa=us.noa
+	left join view_vcc vcc on (us.vccno=vcc.noa)
+	left join cust cust on (left(um.datea,3)='') and (charindex('-',us.vccno)>0)
+	left join sss sss on ((charindex('-',us.vccno)>0) and (cust.salesno=sss.noa)) or ((charindex('-',us.vccno)<=0) and (vcc.salesno=sss.noa))
+	where (isnull(rtrim(ltrim(us.vccno)),'') != '') and
+			 (left(um.datea,6) between @t_bmon and @t_emon) and
+			 (um.custno between @t_bcustno and @t_ecustno) and
+			 ((len(@t_partno)=0) or (sss.partno = @t_partno)) and
+			 (isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno) and
+			 ((len(@t_xsalesgroup)=0) or @t_xsalesgroup=sss.salesgroup)
+	group by (case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),
+				(case when (charindex('-',us.vccno)>0) then cust.sales else vcc.sales end),um.datea,um.custno,um.comp
+insert into @tmp(gno,money)
+	select '1',sum(money) from @tmp
+select
+	a.gno,a.salesno,a.saless,a.custno,a.custs,a.datea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.money),1)),4,12)) money
+from @tmp a order by gno,salesno,saless,a.datea,custno;

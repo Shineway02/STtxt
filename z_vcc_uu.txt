@@ -298,7 +298,7 @@ outer apply(
 	left join umm um on us.noa=um.noa
 	left join view_vcc vcc on us.vccno=vcc.noa
 	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
-	where (left(um.datea,6)=left(@t_datea,6)) and (um.datea<=@t_datea) and
+	where (left(um.datea,6)=left(@t_datea,6)) and (um.datea<=@t_datea) and (isnull(us.vccno,'') != '') and
 	(((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or ((charindex('-',us.vccno)>0) and a.salesno=cust.salesno))
 ) b
 outer apply(
@@ -308,7 +308,7 @@ outer apply(
 	left join umm um on us.noa=um.noa
 	left join view_vcc vcc on us.vccno=vcc.noa
 	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
-	where (um.datea=@t_datea) and
+	where (um.datea=@t_datea) and (isnull(us.vccno,'') != '') and
 	(((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or ((charindex('-',us.vccno)>0) and a.salesno=cust.salesno))
 ) c
 where a.gno='2'
