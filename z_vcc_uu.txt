@@ -592,7 +592,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'0' gno,a.datea,a.typea,f.namea,a.custno,c.nick,a.invono,e.noa,e.namea,
+		'0' gno,a.datea,a.typea,f.namea,a.custno,c.nick,a.invono,e.noa,g.namea,
 		b.productno,b.product,b.mount,b.width,b.price,b.total,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
@@ -600,6 +600,7 @@ insert into @tmp
 	left join ucc d on d.noa=b.productno
 	left join @stypeList f on a.stype=f.noa
 	left join sss e on a.salesno=e.noa
+	left join uccgb g on g.noa=d.groupbno
 	where (left(a.datea,6) between @t_bmon and @t_emon) and
 			 (a.custno between @t_bcustno and @t_ecustno) and
 			 (b.productno between @t_bproductno and @t_eproductno) and
