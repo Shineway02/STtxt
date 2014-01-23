@@ -9,6 +9,8 @@ declare @t_eproductno nvarchar(90)
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
+declare @t_xshowvalue nvarchar(10)
+declare @t_xpartno nvarchar(30)
 set @t_year = [12]
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
 set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
@@ -19,8 +21,12 @@ set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+set @t_xshowvalue = case when '#non'=[20] then '' else [20] end
+set @t_xpartno = case when '#non'=[21] then '' else [21] end
 declare @tmp table(
 	gno nvarchar(10),
+	showmemo nvarchar(90),
+	orderby int,
 	salesno nvarchar(35),
 	saless nvarchar(90),
 	custno nvarchar(35),
@@ -39,23 +45,49 @@ declare @tmp table(
 	m10 float,
 	m11 float,
 	m12 float,
-	total float
+	total float,
+	t01 float,
+	t02 float,
+	t03 float,
+	t04 float,
+	t05 float,
+	t06 float,
+	t07 float,
+	t08 float,
+	t09 float,
+	t10 float,
+	t11 float,
+	t12 float,
+	motal float
 )
 insert into @tmp
 	select
-		'99',a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
-		case when substring(a.datea,5,2)='01' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='02' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='03' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='04' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='05' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='06' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='07' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='08' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='09' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='10' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='11' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='12' then sum(b.mount) else 0 end,
+		'99','Source',0,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
+		case when substring(a.datea,5,2)='01' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='02' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='03' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='04' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='05' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='06' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='07' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='08' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='09' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='10' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='11' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='12' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		0 total,
+		case when substring(a.datea,5,2)='01' then sum(b.total) end,
+		case when substring(a.datea,5,2)='02' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum(b.total) else 0 end,
 		0 total
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
@@ -68,41 +100,90 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	group by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,substring(a.datea,5,2)
 insert into @tmp
 	select
-		'0',a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
-		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
-		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),0
+		'0',case when @t_xshowvalue='2' then '金額' else '數量' end,0,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+		sum(isnull(a.m01,0)),sum(isnull(a.m02,0)),sum(isnull(a.m03,0)),sum(isnull(a.m04,0)),sum(isnull(a.m05,0)),sum(isnull(a.m06,0)),
+		sum(isnull(a.m07,0)),sum(isnull(a.m08,0)),sum(isnull(a.m09,0)),sum(isnull(a.m10,0)),sum(isnull(a.m11,0)),sum(isnull(a.m12,0)),0,
+		sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
+		sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
 	from @tmp a
+	where gno='99'
 	group by a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
+if(@t_xshowvalue='3')
+begin
+	insert into @tmp
+		select
+			'0','金額',1,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+			sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
+			sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0,
+			sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
+			sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
+		from @tmp a
+		where gno='99'
+		group by a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
+end
 delete @tmp where gno='99'
 update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
+update @tmp set motal = t01+t02+t03+t04+t05+t06+t07+t08+t09+t10+t11+t12
 insert into @tmp
 	select
-		'1',a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
+		'1',case when @t_xshowvalue='2' then '金額' else '數量' end,2,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
 		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
-		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total)
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
+		sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
+		sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
 	from @tmp a
+	where gno='0' and orderby=0
 	group by a.salesno,a.saless
+if(@t_xshowvalue='3')
+begin
+	insert into @tmp
+		select
+			'1','金額',3,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
+			sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+			sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
+			sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
+			sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
+		from @tmp a
+		where gno='0' and orderby=1
+		group by a.salesno,a.saless
+end
+insert into @tmp(gno,orderby,salesno,saless)
+	select '2',4,a.salesno,a.saless from @tmp a group by a.salesno,a.saless
 select
-	a.gno,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
-	case when a.m01=0 then null else a.m01 end m01,
-	case when a.m02=0 then null else a.m02 end m02,
-	case when a.m03=0 then null else a.m03 end m03,
-	case when a.m04=0 then null else a.m04 end m04,
-	case when a.m05=0 then null else a.m05 end m05,
-	case when a.m06=0 then null else a.m06 end m06,
-	case when a.m07=0 then null else a.m07 end m07,
-	case when a.m08=0 then null else a.m08 end m08,
-	case when a.m09=0 then null else a.m09 end m09,
-	case when a.m10=0 then null else a.m10 end m10,
-	case when a.m11=0 then null else a.m11 end m11,
-	case when a.m12=0 then null else a.m12 end m12,
-	a.total
+	a.gno,a.showmemo smo,a.orderby,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m01),1)),4,12)) end m01,
+	case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m02),1)),4,12)) end m02,
+	case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m03),1)),4,12)) end m03,
+	case when a.m04=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m04),1)),4,12)) end m04,
+	case when a.m05=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m05),1)),4,12)) end m05,
+	case when a.m06=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m06),1)),4,12)) end m06,
+	case when a.m07=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m07),1)),4,12)) end m07,
+	case when a.m08=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m08),1)),4,12)) end m08,
+	case when a.m09=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m09),1)),4,12)) end m09,
+	case when a.m10=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m10),1)),4,12)) end m10,
+	case when a.m11=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m11),1)),4,12)) end m11,
+	case when a.m12=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m12),1)),4,12)) end m12,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
+	case when a.t01=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t01),1)),4,12)) end t01,
+	case when a.t02=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t02),1)),4,12)) end t02,
+	case when a.t03=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t03),1)),4,12)) end t03,
+	case when a.t04=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t04),1)),4,12)) end t04,
+	case when a.t05=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t05),1)),4,12)) end t05,
+	case when a.t06=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t06),1)),4,12)) end t06,
+	case when a.t07=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t07),1)),4,12)) end t07,
+	case when a.t08=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t08),1)),4,12)) end t08,
+	case when a.t09=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t09),1)),4,12)) end t09,
+	case when a.t10=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t10),1)),4,12)) end t10,
+	case when a.t11=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t11),1)),4,12)) end t11,
+	case when a.t12=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t12),1)),4,12)) end t12,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.motal),1)),4,12)) motal
 from @tmp a
-order by a.salesno,a.saless,a.gno,a.productno;
+order by a.salesno,a.saless,gno,a.custno,a.custs,a.productno,a.orderby;
 ---************************************************************************************
 z_vcc_uu2:--z_vcc_uu2
 declare @t_year nvarchar(10)
@@ -115,6 +196,8 @@ declare @t_eproductno nvarchar(90)
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
+declare @t_xshowvalue nvarchar(10)
+declare @t_xpartno nvarchar(30)
 set @t_year = [12]
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
 set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
@@ -125,8 +208,12 @@ set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+set @t_xshowvalue = case when '#non'=[20] then '' else [20] end
+set @t_xpartno = case when '#non'=[21] then '' else [21] end
 declare @tmp table(
 	gno nvarchar(10),
+	showmemo nvarchar(90),
+	orderby int,
 	salesno nvarchar(35),
 	saless nvarchar(90),
 	productno nvarchar(90),
@@ -143,23 +230,49 @@ declare @tmp table(
 	m10 float,
 	m11 float,
 	m12 float,
-	total float
+	total float,
+	t01 float,
+	t02 float,
+	t03 float,
+	t04 float,
+	t05 float,
+	t06 float,
+	t07 float,
+	t08 float,
+	t09 float,
+	t10 float,
+	t11 float,
+	t12 float,
+	motal float
 )
 insert into @tmp
 	select
-		'99',a.salesno,a.sales,b.productno,b.product,
-		case when substring(a.datea,5,2)='01' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='02' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='03' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='04' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='05' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='06' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='07' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='08' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='09' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='10' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='11' then sum(b.mount) else 0 end,
-		case when substring(a.datea,5,2)='12' then sum(b.mount) else 0 end,
+		'99','Source',0,a.salesno,a.sales,b.productno,b.product,
+		case when substring(a.datea,5,2)='01' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='02' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='03' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='04' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='05' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='06' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='07' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='08' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='09' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='10' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='11' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(a.datea,5,2)='12' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		0 total,
+		case when substring(a.datea,5,2)='01' then sum(b.total) end,
+		case when substring(a.datea,5,2)='02' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum(b.total) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum(b.total) else 0 end,
 		0 total
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
@@ -172,41 +285,91 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	group by a.salesno,a.sales,b.productno,b.product,substring(a.datea,5,2)
 insert into @tmp
 	select
-		'0',a.salesno,a.saless,a.productno,a.products,
-		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
-		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),0
+		'0',case when @t_xshowvalue='2' then '金額' else '數量' end,0,a.salesno,a.saless,a.productno,a.products,
+		sum(isnull(a.m01,0)),sum(isnull(a.m02,0)),sum(isnull(a.m03,0)),sum(isnull(a.m04,0)),sum(isnull(a.m05,0)),sum(isnull(a.m06,0)),
+		sum(isnull(a.m07,0)),sum(isnull(a.m08,0)),sum(isnull(a.m09,0)),sum(isnull(a.m10,0)),sum(isnull(a.m11,0)),sum(isnull(a.m12,0)),0,
+		sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
+		sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
 	from @tmp a
+	where gno='99'
 	group by a.salesno,a.saless,a.productno,a.products
+	
+if(@t_xshowvalue='3')
+begin
+		insert into @tmp
+			select
+				'0','金額',0,a.salesno,a.saless,a.productno,a.products,
+				sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
+				sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0,
+				sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
+				sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
+			from @tmp a
+			where gno='99'
+			group by a.salesno,a.saless,a.productno,a.products
+end
 delete @tmp where gno='99'
 update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
+update @tmp set motal = t01+t02+t03+t04+t05+t06+t07+t08+t09+t10+t11+t12
 insert into @tmp
 	select
-		'1',a.salesno,a.saless,'' productno,'' products,
+		'1',case when @t_xshowvalue='2' then '金額' else '數量' end,2,a.salesno,a.saless,'' productno,'' products,
 		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
-		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total)
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
+		sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
+		sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
 	from @tmp a
+	where gno='0' and orderby=0
 	group by a.salesno,a.saless
+if(@t_xshowvalue='3')
+begin
+insert into @tmp
+		select
+			'1','金額',3,a.salesno,a.saless,'' productno,'' products,
+			sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+			sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
+			sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
+			sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
+		from @tmp a
+		where gno='0' and orderby=1
+		group by a.salesno,a.saless
+end
+insert into @tmp(gno,orderby,salesno,saless)
+	select '2',4,a.salesno,a.saless from @tmp a group by a.salesno,a.saless
 select
-	a.gno,a.salesno,a.saless,a.productno,a.products,
-	case when a.m01=0 then null else a.m01 end m01,
-	case when a.m02=0 then null else a.m02 end m02,
-	case when a.m03=0 then null else a.m03 end m03,
-	case when a.m04=0 then null else a.m04 end m04,
-	case when a.m05=0 then null else a.m05 end m05,
-	case when a.m06=0 then null else a.m06 end m06,
-	case when a.m07=0 then null else a.m07 end m07,
-	case when a.m08=0 then null else a.m08 end m08,
-	case when a.m09=0 then null else a.m09 end m09,
-	case when a.m10=0 then null else a.m10 end m10,
-	case when a.m11=0 then null else a.m11 end m11,
-	case when a.m12=0 then null else a.m12 end m12,
-	a.total
+	a.gno,a.salesno,a.saless,a.productno,a.products,a.showmemo smo,
+	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m01),1)),4,12)) end m01,
+	case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m02),1)),4,12)) end m02,
+	case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m03),1)),4,12)) end m03,
+	case when a.m04=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m04),1)),4,12)) end m04,
+	case when a.m05=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m05),1)),4,12)) end m05,
+	case when a.m06=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m06),1)),4,12)) end m06,
+	case when a.m07=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m07),1)),4,12)) end m07,
+	case when a.m08=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m08),1)),4,12)) end m08,
+	case when a.m09=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m09),1)),4,12)) end m09,
+	case when a.m10=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m10),1)),4,12)) end m10,
+	case when a.m11=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m11),1)),4,12)) end m11,
+	case when a.m12=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m12),1)),4,12)) end m12,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
+	case when a.t01=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t01),1)),4,12)) end t01,
+	case when a.t02=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t02),1)),4,12)) end t02,
+	case when a.t03=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t03),1)),4,12)) end t03,
+	case when a.t04=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t04),1)),4,12)) end t04,
+	case when a.t05=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t05),1)),4,12)) end t05,
+	case when a.t06=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t06),1)),4,12)) end t06,
+	case when a.t07=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t07),1)),4,12)) end t07,
+	case when a.t08=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t08),1)),4,12)) end t08,
+	case when a.t09=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t09),1)),4,12)) end t09,
+	case when a.t10=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t10),1)),4,12)) end t10,
+	case when a.t11=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t11),1)),4,12)) end t11,
+	case when a.t12=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t12),1)),4,12)) end t12,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.motal),1)),4,12)) motal
 from @tmp a
-order by a.salesno,a.saless,a.gno,a.productno;
+order by a.salesno,a.saless,gno,a.productno,a.orderby;
 ---************************************************************************************
 z_vcc_uu3:--z_vcc_uu3
 declare @t_datea nvarchar(10)
@@ -219,6 +382,7 @@ declare @t_eproductno nvarchar(90)
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
+declare @t_xpartno nvarchar(30)
 set @t_datea = case when '#non'=[18] then '' else [18] end
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
 set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
@@ -229,7 +393,7 @@ set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
-
+set @t_xpartno = case when '#non'=[21] then '' else [21] end
 declare @tmp table(
 	gno nvarchar(10),
 	orderby int,
@@ -264,7 +428,8 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	order by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,a.datea,a.noa,a.typea
 update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
 insert into @tmp
@@ -337,6 +502,7 @@ declare @t_eproductno nvarchar(90)
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
+declare @t_xpartno nvarchar(30)
 set @t_datea = case when '#non'=[18] then '' else [18] end
 set @t_stype = case when '#non'='[2]' then '' else '[2]' end
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
@@ -348,6 +514,7 @@ set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+set @t_xpartno = case when '#non'=[21] then '' else [21] end
 declare @stypeList table(
 	noa nvarchar(30),
 	namea nvarchar(90)
@@ -389,7 +556,8 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 insert into @tmp
 	select
 		'1',2,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
@@ -407,7 +575,8 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	group by a.salesno,a.sales
 insert into @tmp(gno,orderby)
 	select distinct '2',1 from @tmp
@@ -436,6 +605,7 @@ declare @t_eproductno nvarchar(90)
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
+declare @t_xpartno nvarchar(30)
 set @t_week = case when '#non'=[13] then '01' else [13] end
 set @t_year = case when '#non'=[12] then '01' else [12] end
 set @t_stype = case when '#non'='[2]' then '' else '[2]' end
@@ -448,6 +618,7 @@ set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+set @t_xpartno = case when '#non'=[21] then '' else [21] end
 declare @stypeList table(
 	noa nvarchar(30),
 	namea nvarchar(90)
@@ -494,7 +665,8 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 insert into @tmp
 	select
 		'1',2,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
@@ -514,7 +686,8 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	group by a.salesno,a.sales
 insert into @tmp(gno,orderby,weekname)
 	select distinct '2',1,cast(@t_week as int) from @tmp
@@ -547,6 +720,7 @@ declare @t_eproductno nvarchar(90)
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
+declare @t_xpartno nvarchar(30)
 set @t_bmon = case when '#non'=[14] then '' else [14] end
 set @t_emon = case when '#non'=[15] then char(255) else [15] end
 set @t_stype = case when '#non'='[2]' then '' else '[2]' end
@@ -559,6 +733,7 @@ set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+set @t_xpartno = case when '#non'=[21] then '' else [21] end
 declare @stypeList table(
 	noa nvarchar(30),
 	namea nvarchar(90)
@@ -607,7 +782,8 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	order by a.datea
 select
 	a.gno,a.datea,a.typea,a.stype,a.custno,a.custs,a.invono,
@@ -628,6 +804,7 @@ declare @t_eproductno nvarchar(90)
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
+declare @t_xpartno nvarchar(30)
 set @t_mon = case when '#non'=[19] then '' else [19] end
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
 set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
@@ -638,6 +815,7 @@ set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
+set @t_xpartno = case when '#non'=[21] then '' else [21] end
 declare @weeklist table(
 	idno int identity(1,1),
 	bdatea nvarchar(10),
@@ -734,7 +912,8 @@ insert into @tmp
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
 			 (len(@t_xstype)=0 or a.stype=@t_xstype) and
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
-			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup)
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 insert into @tmp
 	select
 		'0',a.salesno,a.saless,a.productno,a.products,
