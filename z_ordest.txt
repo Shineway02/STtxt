@@ -309,6 +309,7 @@ declare @tmp table(
 	productno nvarchar(30),
 	products nvarchar(90),
 	sizea nvarchar(90),
+	dime float,
 	weight float,
 	mount float,
 	notv float,
@@ -321,7 +322,7 @@ insert into @tmp
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
 		(case when ltrim(rtrim(a.size)) = '' then 
 			dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
-		else ltrim(rtrim(a.size)) end) sizea,
+		else ltrim(rtrim(a.size)) end) sizea,a.dime,
 		a.weight,a.mount,a.notv,0,0,'ordest'+a.accy
 	from view_ordes a
 	left join view_orde b on a.noa = b.noa
@@ -372,6 +373,11 @@ else if(@t_sort = 'SIZEA')
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,nweightv,qhref,stkmount,
 		ROW_NUMBER()over(order by gno,sizea) idno
 	from @tmp order by gno,sizea
+else if(@t_sort = 'DIME')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,nweightv,qhref,stkmount,
+		ROW_NUMBER()over(order by gno,dime,sizea) idno
+	from @tmp order by gno,dime,sizea
 else
 	select
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,nweightv,qhref,stkmount,
@@ -405,6 +411,7 @@ declare @tmp table(
 	productno nvarchar(30),
 	products nvarchar(90),
 	sizea nvarchar(90),
+	dime float,
 	weight float,
 	mount float,
 	notv float,
@@ -413,7 +420,7 @@ declare @tmp table(
 insert into @tmp
 	select 
 		'0',b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
-		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,a.dime,
 		a.weight,a.mount,a.notv,'ordest'+a.accy
 	from view_ordes[1] a
 	left join view_orde[1] b on a.noa = b.noa
@@ -459,6 +466,11 @@ else if(@t_sort = 'SIZEA')
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
 		ROW_NUMBER()over(order by gno,sizea) idno
 	from @tmp order by gno,sizea
+else if(@t_sort = 'DIME')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
+		ROW_NUMBER()over(order by gno,dime,sizea) idno
+	from @tmp order by gno,dime,sizea
 else
 	select
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,weight,mount,notv,qhref,
