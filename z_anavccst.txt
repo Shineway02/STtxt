@@ -105,14 +105,14 @@ z_anavccst02:--z_anavccst02
 		--" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
 		--sprice都是重量
 		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
-		" ,case when a.noq=g.noq then isnull(b.tranmoney,0) else 0 end"+
+		" ,case when g.[weight]=0 then -99999 else round(b.tranmoney*a.[weight]/g.[weight],0) end"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" left join view_uccb c on a.uno=c.uno "+
 		" left join ucc d on a.productno=d.noa"+
 		" left join uccga e on d.groupano=e.noa"+
 		" left join #item f on d.groupano=f.noa"+
-		" outer apply (select top 1 noq from "+@tableas+" where noa=a.noa order by noq) g"+
+		" outer apply (select sum(isnull([weight],0)) [weight] from "+@tableas+" where noa=a.noa and dime!=0) g"+
 		" where b.noa is not null"+
 		" and isnull(b.typea,'0')='1'"+
 		" and len(isnull(a.uno,''))>0"+
@@ -240,20 +240,18 @@ z_anavccst01:--z_anavccst01
 	into @tablea,@tableas
 	while(@@FETCH_STATUS <> -1)
 	begin
-		--運費都算在第一筆明細中
+		--運費都平均分攤
 		set @cmd =
 		" select '2',a.noa,a.noq,b.custno,b.salesno,a.productno,a.product,a.style,a.uno"+
 		" ,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
 		" ,a.class,a.spec"+
 		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
-		--" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
-		--sprice都是重量
 		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
-		" ,case when a.noq=d.noq then isnull(b.tranmoney,0) else 0 end"+
+		" ,case when d.[weight]=0 then -99999 else round(b.tranmoney*a.[weight]/d.[weight],0) end"+
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" left join view_uccb c on a.uno=c.uno "+
-		" outer apply (select top 1 noq from "+@tableas+" where noa=a.noa order by noq) d"+
+		" outer apply (select sum(isnull([weight],0)) [weight] from "+@tableas+" where noa=a.noa and dime!=0) d"+
 		" where b.noa is not null"+
 		" and isnull(b.typea,'0')='1'"+
 		" and len(isnull(a.uno,''))>0"+
@@ -295,6 +293,7 @@ z_anavccst01:--z_anavccst01
 	update @tmp set gno='6' where profit<0 and gno='4'
 	
 	select a.*
+	,product pro
 	,b.comp
 	,b.nick 
 	,price a1
