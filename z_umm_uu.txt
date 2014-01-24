@@ -34,11 +34,11 @@ insert into @tmp
 		'0' gno,um.noa,us.noq,
 		case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end,
 		case when (charindex('-',us.vccno)>0) then cust.sales else vcc.sales end,
-		um.custno,um.comp,um.datea,us.money,us.vccno,'umm'
+		cust.noa,cust.nick,um.datea,us.money,us.vccno,'umm'
 	from umm um
 	left join umms us on um.noa=us.noa
 	left join view_vcc vcc on (us.vccno=vcc.noa)
-	left join cust cust on (left(um.datea,3)='') and (charindex('-',us.vccno)>0)
+	left join cust cust on (cust.noa=substring(us.vccno,0,charindex('-',us.vccno))) or (vcc.custno=cust.noa)
 	left join sss sss on ((charindex('-',us.vccno)>0) and (cust.salesno=sss.noa)) or ((charindex('-',us.vccno)<=0) and (vcc.salesno=sss.noa))
 	where (isnull(rtrim(ltrim(us.vccno)),'') != '') and
 			 (left(um.datea,6) between @t_bmon and @t_emon) and
@@ -88,11 +88,11 @@ insert into @tmp
 		'0' gno,
 		case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end,
 		case when (charindex('-',us.vccno)>0) then cust.sales else vcc.sales end,
-		um.custno,um.comp,um.datea,sum(us.money)
+		cust.noa,cust.nick,um.datea,sum(us.money)
 	from umm um
 	left join umms us on um.noa=us.noa
 	left join view_vcc vcc on (us.vccno=vcc.noa)
-	left join cust cust on (left(um.datea,3)='') and (charindex('-',us.vccno)>0)
+	left join cust cust on (cust.noa=substring(us.vccno,0,charindex('-',us.vccno))) or (vcc.custno=cust.noa)
 	left join sss sss on ((charindex('-',us.vccno)>0) and (cust.salesno=sss.noa)) or ((charindex('-',us.vccno)<=0) and (vcc.salesno=sss.noa))
 	where (isnull(rtrim(ltrim(us.vccno)),'') != '') and
 			 (left(um.datea,6) between @t_bmon and @t_emon) and
@@ -101,7 +101,7 @@ insert into @tmp
 			 (isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno) and
 			 ((len(@t_xsalesgroup)=0) or @t_xsalesgroup=sss.salesgroup)
 	group by (case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),
-				(case when (charindex('-',us.vccno)>0) then cust.sales else vcc.sales end),um.datea,um.custno,um.comp
+				(case when (charindex('-',us.vccno)>0) then cust.sales else vcc.sales end),um.datea,cust.noa,cust.nick
 insert into @tmp(gno,money)
 	select '1',sum(money) from @tmp
 select
