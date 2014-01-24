@@ -1,32 +1,36 @@
 z_vcc_uu1:--z_vcc_uu1
 declare @t_year nvarchar(10)
-declare @t_bsalesno nvarchar(35)
-declare @t_esalesno nvarchar(35)
-declare @t_bcustno nvarchar(35)
-declare @t_ecustno nvarchar(35)
-declare @t_bproductno nvarchar(90)
-declare @t_eproductno nvarchar(90)
+set @t_year = [17]
+---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
 declare @t_xsalesgroup nvarchar(max)
-declare @t_xshowvalue nvarchar(10)
-declare @t_xpartno nvarchar(30)
+declare @t_xgroupbno nvarchar(30)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
 declare @t_btggno nvarchar(90)
 declare @t_etggno nvarchar(90)
-set @t_year = [12]
-set @t_bsalesno = case when '#non'=[8] then '' else [8] end
-set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
-set @t_bcustno = case when '#non'=[6] then '' else [6] end
-set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
-set @t_bproductno = case when '#non'=[10] then '' else [10] end
-set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @t_xpartno nvarchar(30)
+declare @t_xshowvalue nvarchar(10)
 set @t_xstype = case when '#non'=[3] then '' else [3] end
 set @t_xgroupano = case when '#non'=[4] then '' else [4] end
 set @t_xsalesgroup = case when '#non'=[5] then '' else [5] end
-set @t_xshowvalue = case when '#non'=[20] then '' else [20] end
-set @t_xpartno = case when '#non'=[21] then '' else [21] end
-set @t_btggno = case when '#non'=[22] then '' else [22] end
-set @t_etggno = case when '#non'=[23] then char(255) else [23] end
+set @t_xgroupbno = case when '#non'=[6] then '' else [6] end
+set @t_bcustno = case when '#non'=[7] then '' else [7] end
+set @t_ecustno = case when '#non'=[8] then char(255) else [8] end
+set @t_bsalesno = case when '#non'=[9] then '' else [9] end
+set @t_esalesno = case when '#non'=[10] then char(255) else [10] end
+set @t_bproductno = case when '#non'=[11] then '' else [11] end
+set @t_eproductno = case when '#non'=[12] then char(255) else [12] end
+set @t_btggno = case when '#non'=[13] then '' else [13] end
+set @t_etggno = case when '#non'=[14] then char(255) else [14] end
+set @t_xpartno = case when '#non'=[15] then '' else [15] end
+set @t_xshowvalue = case when '#non'=[16] then '' else [16] end
+----------------------------------------------------------*
 declare @tmp table(
 	gno nvarchar(10),
 	showmemo nvarchar(90),
@@ -106,7 +110,8 @@ insert into @tmp
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
-			 (d.tggno between @t_btggno and @t_etggno)
+			 (d.tggno between @t_btggno and @t_etggno) and
+			 (len(@t_xgroupbno)=0 or d.groupbno=@t_xgroupbno)
 	group by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,substring(a.datea,5,2)
 insert into @tmp
 	select
