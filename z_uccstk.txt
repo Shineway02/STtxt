@@ -146,6 +146,7 @@
 		price2 float,
 		cutprice float,
 		[money] float,
+		money2 float,
 		memo nvarchar(max),
 		productno nvarchar(20),
 		style nvarchar(20)
@@ -170,14 +171,16 @@
 		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
 		" ,isnull(a.price,0)"+
 		" ,isnull(a.total,0)"+
+		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
+		" ,a.productno"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
 		" outer apply (select sum(isnull(weight,0)) weight from "+@tableas+" where noa=a.noa and not(lower(left(uno,1))='x' or lower(left(uno,1))='y' or lower(left(uno,1))='z')) c"+
 		" where len(isnull(a.uno,''))>0"+
 		" and isnull(b.typea,'1')='1'"+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,price2,[money],memo)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,price2,[money],money2,memo,productno)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -201,13 +204,15 @@
 		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
 		" ,isnull(a.price,0)"+
 		" ,isnull(a.total,0)"+
+		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
+		" ,a.productno"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
 		" outer apply (select sum(isnull(weight,0)) weight from "+@tableas+" where noa=a.noa and not(lower(left(uno,1))='x' or lower(left(uno,1))='y' or lower(left(uno,1))='z')) c"+
 		" where len(isnull(a.uno,''))>0 "+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,price2,[money],memo)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,price2,[money],money2,memo,productno)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -228,11 +233,12 @@
 		" select 0,'cuts',@accy,a.noa,a.noq,b.datea"+
 		" ,a.bno,isnull(a.mount,0),isnull(a.[wprice],0),isnull(a.[weight],0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
+		" ,a.productno"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
 		" where len(isnull(a.bno,''))>0 and len(isnull(a.waste,''))=0"+
 		" and not(lower(left(a.bno,1))='x' or lower(left(a.bno,1))='y' or lower(left(a.bno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,cutprice,[weight],memo)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,cutprice,[weight],memo,productno)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -253,12 +259,13 @@
 		" select 0,'cubu',@accy,a.noa,a.noq,a.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
+		" ,a.productno"+
 		" from "+@tableau+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where len(isnull(a.uno,''))>0"+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],memo)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],memo,productno)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -290,9 +297,11 @@
 	declare @bmoney2 float
 	declare @money2 float
 	declare @price2 float
+	declare @productno nvarchar(20)
 	
 	declare @tmpCust table(
 		uno nvarchar(50),
+		productno nvarchar(20),
 		gweight float,
 		isprice int,
 		[money] float,
@@ -328,7 +337,7 @@
 					set @money2 = case when @bweight=0 then 0 else round(@bmoney2*@weight/@bweight,0)end
 					set @price = case when @weight=0 then 0 else @money/@weight end
 					set @price2 = case when @weight=0 then 0 else @money2/@weight end
-					update @tmp set isprice=1,price=@price+ISNULL(cutprice,0),price2=@price2,[money]=@money,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
+					update @tmp set isprice=1,price=@price+ISNULL(cutprice,0),price2=@price2,[money]=@money,money2=@money2,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
 				end
 			end
 			fetch next from cursor_table
@@ -339,23 +348,25 @@
 		
 		---CUB
 		declare cursor_table cursor for
-		select tablea,accy,noa,noq,[weight] from @tmp where isprice=0 and tablea='cubu'
+		select tablea,accy,noa,noq,[weight],productno from @tmp where isprice=0 and tablea='cubu'
 		open cursor_table
 		fetch next from cursor_table
-		into @tablea,@accy,@noa,@noq,@weight
+		into @tablea,@accy,@noa,@noq,@weight,@productno
 		while(@@FETCH_STATUS <> -1)
 		begin
 			if exists(select * from @tmp where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq and isprice=0)
 			begin	
 				delete @tmpCust	
 				set @cmd =
-				" select uno,gweight from cubt"+@accy+" where noa=@noa and gweight>0"
-				insert into @tmpCust(uno,gweight)
-				execute sp_executesql @cmd,N'@noa nvarchar(20)',@noa=@noa
+				" select a.uno,b.productno,a.gweight from cubt"+@accy+" a "
+				+" left join view_uccb b on a.uno=b.uno"
+				+" where a.noa=@noa and b.productno=@productno and a.gweight>0"
+				insert into @tmpCust(uno,productno,gweight)
+				execute sp_executesql @cmd,N'@noa nvarchar(20),@productno nvarchar(20)',@noa=@noa,@productno=@productno
 				
 				update @tmpCust set isprice=ISNULL(b.isprice,0)
 					,[money]=case when ISNULL(b.[weight],0)=0 then 0 else isnull(a.gweight,0)/ISNULL(b.[weight],0)*isnull(b.[money],0) end
-					,[money2]=case when ISNULL(b.[weight],0)=0 then 0 else isnull(a.gweight,0)/ISNULL(b.[weight],0)*round(isnull(b.[money],0)*round(b.[weight],0),0) end
+					,[money2]=case when ISNULL(b.[weight],0)=0 then 0 else isnull(a.gweight,0)/ISNULL(b.[weight],0)*isnull(b.[money2],0) end
 				from @tmpCust a
 				left join @tmp b on a.uno=b.uno
 				
@@ -364,26 +375,27 @@
 					if exists(select * from @tmpCust)
 					begin
 						select @bweight=0,@bmoney=0,@weight=0
-						select @bweight=sum(gweight),@bmoney=SUM([money]),@bmoney2=SUM([money2]) from @tmpCust
-						select @weight=sum([weight])from @tmp where tablea=@tablea and accy=@accy and noa=@noa
+						select @bweight=sum(gweight),@bmoney=SUM([money]),@bmoney2=SUM([money2]) from @tmpCust where productno=@productno
+						select @weight=sum([weight])from @tmp where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno
 						--製管的成本攤提,用CUBU的產出重量,不用CUBT的領料重
 						--同張CUB一起更新
 						update @tmp set isprice=1
 						,[money]=case when @weight=0 then 0 else ROUND([weight]/@weight*@bmoney,0)end
+						,[money2]=case when @weight=0 then 0 else ROUND([weight]/@weight*@bmoney2,0)end
 						,price =case when @weight=0 or [weight]=0 then 0 else Round(ROUND([weight]/@weight*@bmoney,0)/[weight],4) end
 						,price2 =case when @weight=0 or [weight]=0 then 0 else Round(ROUND([weight]/@weight*@bmoney2,0)/[weight],4) end
 						,memo='' 
-						where tablea=@tablea and accy=@accy and noa=@noa
+						where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno
 					end
 					else
 					begin
-						update @tmp set isprice=1,price=0,[money]=0
-						where tablea=@tablea and accy=@accy and noa=@noa
+						update @tmp set isprice=1,price=0,[money]=0,money2=0
+						where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno
 					end
 				end
 			end
 			fetch next from cursor_table
-			into @tablea,@accy,@noa,@noq,@weight
+			into @tablea,@accy,@noa,@noq,@weight,@productno
 		end
 		close cursor_table
 		deallocate cursor_table
@@ -753,7 +765,7 @@
 	declare @lengthb float
 	declare @radius float
 	declare @size nvarchar(max)
-	declare @productno nvarchar(max)
+	--declare @productno nvarchar(max)
 	declare @product nvarchar(max)
 	declare @class nvarchar(max)
 	declare @style nvarchar(10)
