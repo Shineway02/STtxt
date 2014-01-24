@@ -143,6 +143,8 @@
 		mount float,
 		[weight] float,
 		price float,
+		price2 float,
+		cutprice float,
 		[money] float,
 		memo nvarchar(max),
 		productno nvarchar(20),
@@ -166,6 +168,7 @@
 		" select 1,'rc2s',@accy,a.noa,a.noq,b.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
 		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
+		" ,isnull(a.price,0)"+
 		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
@@ -174,7 +177,7 @@
 		" and isnull(b.typea,'1')='1'"+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,[money],memo)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,price2,[money],memo)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -196,6 +199,7 @@
 		" select 1,'inas',@accy,a.noa,a.noq,b.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
 		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
+		" ,isnull(a.price,0)"+
 		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
@@ -203,7 +207,7 @@
 		" where len(isnull(a.uno,''))>0 "+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,[money],memo)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],price,price2,[money],memo)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -222,13 +226,13 @@
 	begin
 		set @cmd =
 		" select 0,'cuts',@accy,a.noa,a.noq,b.datea"+
-		" ,a.bno,isnull(a.mount,0),isnull(a.[weight],0)"+
+		" ,a.bno,isnull(a.mount,0),isnull(a.[wprice],0),isnull(a.[weight],0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
 		" where len(isnull(a.bno,''))>0 and len(isnull(a.waste,''))=0"+
 		" and not(lower(left(a.bno,1))='x' or lower(left(a.bno,1))='y' or lower(left(a.bno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],memo)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,cutprice,[weight],memo)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -283,11 +287,16 @@
 	declare @isprice float
 	declare @tranmoney float
 	
+	declare @bmoney2 float
+	declare @money2 float
+	declare @price2 float
+	
 	declare @tmpCust table(
 		uno nvarchar(50),
 		gweight float,
 		isprice int,
-		[money] float
+		[money] float,
+		money2 float
 	)
 	update @tmp set memo='製程步驟大於'+CAST(@n as nvarchar)+'，無法找到成本金額。' where isprice=0 and len(isnull(memo,''))=0
 	while @n>0
@@ -312,12 +321,14 @@
 			else
 			begin
 				select @isprice=0,@bweight=0,@bmoney=0
-				select @isprice=isprice,@bweight=[weight],@bmoney=[money] from @tmp where uno=@buno
+				select @isprice=isprice,@bweight=[weight],@bmoney=[money],@bmoney2=ROUND([weight]*ISNULL(price2,0),0) from @tmp where uno=@buno
 				if(@isprice=1)
 				begin
 					set @money = @tranmoney + case when @bweight=0 then 0 else round(@bmoney*@weight/@bweight,0)end
+					set @money2 = case when @bweight=0 then 0 else round(@bmoney2*@weight/@bweight,0)end
 					set @price = case when @weight=0 then 0 else @money/@weight end
-					update @tmp set isprice=1,price=@price,[money]=@money,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
+					set @price2 = case when @weight=0 then 0 else @money2/@weight end
+					update @tmp set isprice=1,price=@price+ISNULL(cutprice,0),price2=@price2,[money]=@money,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
 				end
 			end
 			fetch next from cursor_table
@@ -344,6 +355,7 @@
 				
 				update @tmpCust set isprice=ISNULL(b.isprice,0)
 					,[money]=case when ISNULL(b.[weight],0)=0 then 0 else isnull(a.gweight,0)/ISNULL(b.[weight],0)*isnull(b.[money],0) end
+					,[money2]=case when ISNULL(b.[weight],0)=0 then 0 else isnull(a.gweight,0)/ISNULL(b.[weight],0)*round(isnull(b.[money],0)*round(b.[weight],0),0) end
 				from @tmpCust a
 				left join @tmp b on a.uno=b.uno
 				
@@ -352,13 +364,14 @@
 					if exists(select * from @tmpCust)
 					begin
 						select @bweight=0,@bmoney=0,@weight=0
-						select @bweight=sum(gweight),@bmoney=SUM([money]) from @tmpCust
+						select @bweight=sum(gweight),@bmoney=SUM([money]),@bmoney2=SUM([money2]) from @tmpCust
 						select @weight=sum([weight])from @tmp where tablea=@tablea and accy=@accy and noa=@noa
 						--製管的成本攤提,用CUBU的產出重量,不用CUBT的領料重
 						--同張CUB一起更新
 						update @tmp set isprice=1
 						,[money]=case when @weight=0 then 0 else ROUND([weight]/@weight*@bmoney,0)end
 						,price =case when @weight=0 or [weight]=0 then 0 else Round(ROUND([weight]/@weight*@bmoney,0)/[weight],4) end
+						,price2 =case when @weight=0 or [weight]=0 then 0 else Round(ROUND([weight]/@weight*@bmoney2,0)/[weight],4) end
 						,memo='' 
 						where tablea=@tablea and accy=@accy and noa=@noa
 					end
@@ -393,20 +406,20 @@
 	----------------------------------------------------------------------------------
 	--更新CUTS,CUBU SPRICE
 	declare cursor_table cursor for
-	select tablea,accy,noa,noq,price from @tmp where tablea='cubu' or tablea='cuts' or tablea='inas' or tablea='rc2s' 
+	select tablea,accy,noa,noq,price,price2 from @tmp where tablea='cubu' or tablea='cuts' or tablea='inas' or tablea='rc2s' 
 	open cursor_table
 	fetch next from cursor_table
-	into @tablea,@accy,@noa,@noq,@price
+	into @tablea,@accy,@noa,@noq,@price,@price2
 	while(@@FETCH_STATUS <> -1)
 	begin
 		set @cmd = 
-		" update "+@tablea+@accy+" set sprice=@price"+
+		" update "+@tablea+@accy+" set sprice=@price,sprice2=@price2"+
 		" where noa=@noa and noq=@noq"
-		execute sp_executesql @cmd,N'@noa nvarchar(20),@noq nvarchar(10),@price float'
-		,@noa=@noa,@noq=@noq,@price=@price
+		execute sp_executesql @cmd,N'@noa nvarchar(20),@noq nvarchar(10),@price float,@price2 float'
+		,@noa=@noa,@noq=@noq,@price=@price,@price2=@price2
 		
 		fetch next from cursor_table
-		into @tablea,@accy,@noa,@noq,@price
+		into @tablea,@accy,@noa,@noq,@price,@price2
 	end
 	close cursor_table
 	deallocate cursor_table
