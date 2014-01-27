@@ -303,7 +303,7 @@ z_anavccst01:--z_anavccst01
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
 	,case when tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) end a6
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a7
-	,case when total=0 then '' else cast(round(profit/total*100,2) as decimal(18,2)) end a8
+	,case when isnull(total,0)=0  then null else cast(round(isnull(profit,0)/isnull(total,0)*100,2) as decimal(20,2)) end a8
 	,ghref = 'z_unost?$uno?'
 	from @tmp a
 	left join cust b on a.custno=b.noa
