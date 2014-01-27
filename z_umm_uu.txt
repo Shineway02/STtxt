@@ -62,7 +62,8 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.money),1)),4,12)) money,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.paysale),1)),4,12)) paysale, 
 	a.memo,a.qhref
-from @tmp a order by a.gno,a.datea,a.salesno,a.saless,a.custno;
+from @tmp a left join sss b on a.salesno=b.noa 
+order by a.gno,a.datea,isnull(b.salesgroup,''),a.salesno,a.saless,a.custno;
 --------------------------------------------------------**********************
 z_umm_uu2:--z_umm_uu2
 declare @t_bmon nvarchar(10)
@@ -120,4 +121,5 @@ select
 	a.gno,a.salesno,a.saless,a.custno,a.custs,a.datea,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.money),1)),4,12)) money,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.paysale),1)),4,12)) paysale 
-from @tmp a order by gno,salesno,saless,a.datea,custno;
+from @tmp a left join sss b on a.salesno=b.noa  
+order by gno,isnull(b.salesgroup,''),salesno,saless,a.datea,custno;
