@@ -1,0 +1,85 @@
+﻿z_uselab1:--z_uselab1
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+set @t_bcustno = case when '#non'= [2] then '' else  [2] end
+set @t_ecustno = case when '#non'= [3] then char(255) else [3] end
+select 
+	'0' gno,a.noa,a.comp,
+	SUBSTRING(a.zip_home,1,1) z1,
+	SUBSTRING(a.zip_home,2,1) z2,
+	SUBSTRING(a.zip_home,3,1) z3,
+	SUBSTRING(a.zip_home,4,1) z4,
+	SUBSTRING(a.zip_home,5,1) z5,
+	a.addr_home addr
+from cust a where (a.noa between @t_bcustno and @t_ecustno) order by noa;
+---------********************************************************-----------
+z_uselab2:--z_uselab2
+declare @t_bsmon nvarchar(10)
+declare @t_esmon nvarchar(10)
+set @t_bsmon = case when '#non' = [3] then '' else [3] end
+set @t_esmon = case when '#non' = [4] then '' else [4] end
+
+declare @tmpa table( 
+	gno nvarchar(1), 
+	custno nvarchar(20), 
+	comp nvarchar(50), 
+	money float, 
+	total float, 
+	payed float,
+	addr nvarchar(max), 
+	zipcode nvarchar(15)
+) 
+
+--前期
+insert into @tmpa (gno,custno,money,total,payed)
+select '9',custno,SUM(money),0,0 from (
+	--vcc 
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money 
+	from view_vcc[1] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(kind,4)!='健勞勞退') 
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) 
+)tmp group by custno
+
+--本期
+
+insert into @tmpa (gno,custno,money,total,payed)
+select '9',custno,0,SUM(total),0 from (
+	--vcc 
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0)) total
+	from view_vcc[1] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(kind,4)!='健勞勞退') 
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) 
+)tmp group by custno
+
+--本期已付
+insert into @tmpa (gno,custno,money,total,payed)
+select '9',custno,0,0,SUM(payed) from (
+	--vcc 
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*payed,0))
+	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6) between @t_bsmon and @t_esmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) payed 
+	from view_vcc[1] aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(kind,4)!='健勞勞退') 
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
+)tmp group by custno
+
+insert into @tmpa (gno,custno,money,total,payed)
+select '0',custno,SUM(money),SUM(total),SUM(payed) from @tmpa group by custno
+
+delete @tmpa where gno='9'
+
+delete @tmpa where money=0 and total=0 and payed=0 
+
+update @tmpa
+set comp=(select top 1 nick from (select nick from cust where noa=custno union select namea from carOwner where noa=custno union select namea from sss where noa=custno)tmp)
+,addr=(select top 1 addr_home from ((select addr_home from cust where noa=custno union select addr_home from carOwner where noa=custno union select addr_home from sss where noa=custno))tmp)
+,zipcode=(select top 1 zip_home from ((select zip_home from cust where noa=custno union select zip_home from carOwner where noa=custno union select '' from sss where noa=custno))tmp)
+
+select 
+'0' gno,a.custno,a.comp, 
+SUBSTRING(a.zipcode,1,1) z1, 
+SUBSTRING(a.zipcode,2,1) z2, 
+SUBSTRING(a.zipcode,3,1) z3, 
+SUBSTRING(a.zipcode,4,1) z4, 
+SUBSTRING(a.zipcode,5,1) z5, 
+a.addr 
+from @tmpa a where isnull((money+total-payed),0) > 0 ;
