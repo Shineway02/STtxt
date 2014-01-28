@@ -35,6 +35,7 @@ declare @tmp table(
 	gno nvarchar(10),
 	showmemo nvarchar(90),
 	orderby int,
+	salesgroup nvarchar(50),
 	salesno nvarchar(35),
 	saless nvarchar(90),
 	custno nvarchar(35),
@@ -70,7 +71,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'99','Source',0,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
+		'99','Source',0,e.salesgroup,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
 		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
 		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
 		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
@@ -112,60 +113,60 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
-	group by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
+	group by e.salesgroup,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
 insert into @tmp
 	select
-		'0',case when @t_xshowvalue='2' then '金額' else '數量' end,0,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+		'0',case when @t_xshowvalue='2' then '金額' else '數量' end,0,a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
 		sum(isnull(a.m01,0)),sum(isnull(a.m02,0)),sum(isnull(a.m03,0)),sum(isnull(a.m04,0)),sum(isnull(a.m05,0)),sum(isnull(a.m06,0)),
 		sum(isnull(a.m07,0)),sum(isnull(a.m08,0)),sum(isnull(a.m09,0)),sum(isnull(a.m10,0)),sum(isnull(a.m11,0)),sum(isnull(a.m12,0)),0,
 		sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
 		sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
 	from @tmp a
 	where gno='99'
-	group by a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
+	group by a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
 if(@t_xshowvalue='3')
 begin
 	insert into @tmp
 		select
-			'0','金額',1,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+			'0','金額',1,a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
 			sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
 			sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0,
 			sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
 			sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
 		from @tmp a
 		where gno='99'
-		group by a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
+		group by a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
 end
 delete @tmp where gno='99'
 update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
 update @tmp set motal = t01+t02+t03+t04+t05+t06+t07+t08+t09+t10+t11+t12
 insert into @tmp
 	select
-		'1',case when @t_xshowvalue='2' then '金額' else '數量' end,2,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
+		'1',case when @t_xshowvalue='2' then '金額' else '數量' end,2,a.salesgroup,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
 		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
 		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
 		sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
 		sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
 	from @tmp a
 	where gno='0' and orderby=0
-	group by a.salesno,a.saless
+	group by a.salesgroup,a.salesno,a.saless
 if(@t_xshowvalue='3')
 begin
 	insert into @tmp
 		select
-			'1','金額',3,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
+			'1','金額',3,a.salesgroup,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
 			sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
 			sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
 			sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
 			sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
 		from @tmp a
 		where gno='0' and orderby=1
-		group by a.salesno,a.saless
+		group by a.salesgroup,a.salesno,a.saless
 end
-insert into @tmp(gno,orderby,salesno,saless)
-	select '2',4,a.salesno,a.saless from @tmp a group by a.salesno,a.saless
+insert into @tmp(gno,orderby,salesgroup,salesno,saless)
+	select '2',4,a.salesgroup,a.salesno,a.saless from @tmp a group by a.salesgroup,a.salesno,a.saless
 select
-	a.gno,a.showmemo smo,a.orderby,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+	a.gno,a.showmemo smo,a.orderby,a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
 	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m01),1)),4,12)) end m01,
 	case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m02),1)),4,12)) end m02,
 	case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m03),1)),4,12)) end m03,
@@ -193,7 +194,7 @@ select
 	case when a.t12=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t12),1)),4,12)) end t12,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.motal),1)),4,12)) motal
 from @tmp a
-order by a.salesno,a.saless,gno,a.custno,a.custs,a.productno,a.orderby;
+order by a.salesgroup,a.salesno,a.saless,gno,a.custno,a.custs,a.productno,a.orderby;
 ---************************************************************************************
 z_vcc_uu2:--z_vcc_uu2
 declare @t_year nvarchar(10)
@@ -232,6 +233,7 @@ declare @tmp table(
 	gno nvarchar(10),
 	showmemo nvarchar(90),
 	orderby int,
+	salesgroup nvarchar(50),
 	salesno nvarchar(35),
 	saless nvarchar(90),
 	productno nvarchar(90),
@@ -265,7 +267,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'99','Source',0,a.salesno,a.sales,b.productno,b.product,
+		'99','Source',0,e.salesgroup,a.salesno,a.sales,b.productno,b.product,
 		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
 		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
 		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
@@ -307,61 +309,61 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
-	group by a.salesno,a.sales,b.productno,b.product,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
+	group by e.salesgroup,a.salesno,a.sales,b.productno,b.product,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
 insert into @tmp
 	select
-		'0',case when @t_xshowvalue='2' then '金額' else '數量' end,0,a.salesno,a.saless,a.productno,a.products,
+		'0',case when @t_xshowvalue='2' then '金額' else '數量' end,0,a.salesgroup,a.salesno,a.saless,a.productno,a.products,
 		sum(isnull(a.m01,0)),sum(isnull(a.m02,0)),sum(isnull(a.m03,0)),sum(isnull(a.m04,0)),sum(isnull(a.m05,0)),sum(isnull(a.m06,0)),
 		sum(isnull(a.m07,0)),sum(isnull(a.m08,0)),sum(isnull(a.m09,0)),sum(isnull(a.m10,0)),sum(isnull(a.m11,0)),sum(isnull(a.m12,0)),0,
 		sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
 		sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
 	from @tmp a
 	where gno='99'
-	group by a.salesno,a.saless,a.productno,a.products
+	group by a.salesgroup,a.salesno,a.saless,a.productno,a.products
 	
 if(@t_xshowvalue='3')
 begin
 		insert into @tmp
 			select
-				'0','金額',1,a.salesno,a.saless,a.productno,a.products,
+				'0','金額',1,a.salesgroup,a.salesno,a.saless,a.productno,a.products,
 				sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
 				sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0,
 				sum(isnull(a.t01,0)),sum(isnull(a.t02,0)),sum(isnull(a.t03,0)),sum(isnull(a.t04,0)),sum(isnull(a.t05,0)),sum(isnull(a.t06,0)),
 				sum(isnull(a.t07,0)),sum(isnull(a.t08,0)),sum(isnull(a.t09,0)),sum(isnull(a.t10,0)),sum(isnull(a.t11,0)),sum(isnull(a.t12,0)),0
 			from @tmp a
 			where gno='99'
-			group by a.salesno,a.saless,a.productno,a.products
+			group by a.salesgroup,a.salesno,a.saless,a.productno,a.products
 end
 delete @tmp where gno='99'
 update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
 update @tmp set motal = t01+t02+t03+t04+t05+t06+t07+t08+t09+t10+t11+t12
 insert into @tmp
 	select
-		'1',case when @t_xshowvalue='2' then '金額' else '數量' end,2,a.salesno,a.saless,'' productno,'' products,
+		'1',case when @t_xshowvalue='2' then '金額' else '數量' end,2,a.salesgroup,a.salesno,a.saless,'' productno,'' products,
 		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
 		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
 		sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
 		sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
 	from @tmp a
 	where gno='0' and orderby=0
-	group by a.salesno,a.saless
+	group by a.salesgroup,a.salesno,a.saless
 if(@t_xshowvalue='3')
 begin
 insert into @tmp
 		select
-			'1','金額',3,a.salesno,a.saless,'' productno,'' products,
+			'1','金額',3,a.salesgroup,a.salesno,a.saless,'' productno,'' products,
 			sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
 			sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
 			sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06),
 			sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.motal)
 		from @tmp a
 		where gno='0' and orderby=1
-		group by a.salesno,a.saless
+		group by a.salesgroup,a.salesno,a.saless
 end
-insert into @tmp(gno,orderby,salesno,saless)
-	select '2',4,a.salesno,a.saless from @tmp a group by a.salesno,a.saless
+insert into @tmp(gno,orderby,salesgroup,salesno,saless)
+	select '2',4,a.salesgroup,a.salesno,a.saless from @tmp a group by a.salesgroup,a.salesno,a.saless
 select
-	a.gno,a.salesno,a.saless,a.productno,a.products,a.showmemo smo,
+	a.gno,a.salesgroup,a.salesno,a.saless,a.productno,a.products,a.showmemo smo,
 	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m01),1)),4,12)) end m01,
 	case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m02),1)),4,12)) end m02,
 	case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m03),1)),4,12)) end m03,
@@ -389,7 +391,7 @@ select
 	case when a.t12=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.t12),1)),4,12)) end t12,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.motal),1)),4,12)) motal
 from @tmp a
-order by a.salesno,a.saless,gno,a.productno,a.orderby;
+order by a.salesgroup,a.salesno,a.saless,gno,a.productno,a.orderby;
 ---************************************************************************************
 z_vcc_uu3:--z_vcc_uu3
 declare @t_datea nvarchar(10)
@@ -428,6 +430,7 @@ declare @tmp table(
 	pageno int,
 	orderby int,
 	order2 int,
+	salesgroup nvarchar(50),
 	salesno nvarchar(35),
 	saless nvarchar(90),
 	custno nvarchar(35),
@@ -446,7 +449,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		case when a.typea='2' then '8' else '2' end,0,1,0,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
+		case when a.typea='2' then '8' else '2' end,0,1,0,e.salesgroup,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
 		case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,
 		a.noa,a.typea,
 		b.unit,b.mount,b.price,b.total,0,'vcc_uu'+a.accy
@@ -465,31 +468,32 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
-	order by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
+	order by e.salesgroup,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
 				(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
 				a.noa,a.typea
 update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
 insert into @tmp
 	select
-		'3',0,1,1,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
+		'3',0,1,1,a.salesgroup,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
 		sum(mount),null price,sum(totala),0,'' qhref
 	from @tmp a
-	group by a.salesno,a.saless
+	group by a.salesgroup,a.salesno,a.saless
 update @tmp set mount=mount*(-1),totala=totala*(-1) where typea='2'
 update @tmp set typea = (case typea when '1' then '出' when '2' then '退' else typea end)
 update @tmp set ghref = 	case when len(isnull(ghref,''))>0 then substring(ghref,0,len(ghref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+right(ghref,3) else '' end
 ------------------找出本月有交易紀錄的業務
 insert into @tmp
 	select
-		'6',0,1,0,a.salesno,a.sales,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
+		'6',0,1,0,e.salesgroup,a.salesno,a.sales,'' custno,'' custs,'' productno,'' products,'' datea,'' noa,'' typea,'' unit,
 		sum(case a.typea when '2' then a.total*(-1) else a.total end), ------當月迄今銷貨金額
 		0,------當月迄今收款金額
 		sum(case when a.datea=@t_datea then (case a.typea when '2' then a.total*(-1) else a.total end) else 0 end),------當日銷貨金額
 		0,------當日收款金額
 		''------qhref
 	from view_vcc a
+	left join sss e on a.salesno=e.noa
 	where (left(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,6)=left(@t_datea,6)) and ((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)<=@t_datea)
-	group by a.salesno,a.sales
+	group by e.salesgroup,a.salesno,a.sales
 update a
 	set price = b.money,totalb=c.money
 from @tmp a
@@ -542,7 +546,7 @@ select @t_newTableCount = count(*) from @tmp where gno='6'
 if(@t_bbsCount > 0)
 begin
 	declare cursor_table cursor for
-		select idno from @tmp where (gno='2' or gno='3' or gno='8') order by salesno,saless,gno
+		select idno from @tmp where (gno='2' or gno='3' or gno='8') order by salesgroup,salesno,saless,gno
 	open cursor_table
 	fetch next from cursor_table
 	into @t_idno
@@ -601,14 +605,14 @@ begin
 end
 --**處理分頁 <<End>>
 select
-	a.gno,a.pageno,a.orderby,a.order2,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
+	a.gno,a.pageno,a.orderby,a.order2,a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
 	a.datea,a.noa,a.typea,a.unit,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.price),1)),4,12)) price,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.totala),1)),4,12)) totala,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.totalb),1)),4,12)) totalb,a.ghref
 from @tmp a
-order by a.pageno,a.orderby,a.salesno,a.saless,a.order2,a.gno;
+order by a.pageno,a.orderby,a.salesgroup,a.salesno,a.saless,a.order2,a.gno;
 ---************************************************************************************
 z_vcc_uu4:--z_vcc_uu4
 declare @t_mon nvarchar(10)
@@ -688,6 +692,7 @@ begin
 end
 declare @tmp table(
 	gno nvarchar(10),
+	salesgroup nvarchar(50),
 	salesno nvarchar(50),
 	saless nvarchar(90),
 	productno nvarchar(50),
@@ -712,7 +717,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'99' gno,a.salesno,a.sales,b.productno,b.product,
+		'99' gno,e.salesgroup,a.salesno,a.sales,b.productno,b.product,
 		case when c.idno=1 then b.mount else null end,
 		case when c.idno=2 then b.mount else null end,
 		case when c.idno=3 then b.mount else null end,
@@ -743,12 +748,12 @@ insert into @tmp
 			 (d.tggno between @t_btggno and @t_etggno)
 insert into @tmp
 	select
-		'0',a.salesno,a.saless,a.productno,a.products,
+		'0',a.salesgroup,a.salesno,a.saless,a.productno,a.products,
 		sum(wk01_mount),sum(wk02_mount),sum(wk03_mount),sum(wk04_mount),sum(wk05_mount),0,
 		sum(wk01_money),sum(wk02_money),sum(wk03_money),sum(wk04_money),sum(wk05_money),0,		
 		'','','','',''
 	from @tmp a
-	group by a.salesno,a.saless,a.productno,a.products
+	group by a.salesgroup,a.salesno,a.saless,a.productno,a.products
 delete @tmp where gno='99'
 update @tmp set total_mount = isnull(wk01_mount,0)+isnull(wk02_mount,0)+isnull(wk03_mount,0)+isnull(wk04_mount,0)+isnull(wk05_mount,0)
 update @tmp set total_money = isnull(wk01_money,0)+isnull(wk02_money,0)+isnull(wk03_money,0)+isnull(wk04_money,0)+isnull(wk05_money,0)
@@ -759,7 +764,7 @@ update @tmp
 	wkn04=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=4),
 	wkn05=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=5)
 select
-	a.gno,a.salesno,a.saless,a.productno,a.products,
+	a.gno,a.salesgroup,a.salesno,a.saless,a.productno,a.products,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk01_mount),1)),4,12)) wk01_m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk02_mount),1)),4,12)) wk02_m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk03_mount),1)),4,12)) wk03_m,
@@ -774,7 +779,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total_money),1)),4,12)) total_y,
 	wkn01,wkn02,wkn03,wkn04,wkn05
 from @tmp a
-order by a.salesno,a.saless,a.productno,a.products;
+order by a.salesgroup,a.salesno,a.saless,a.productno,a.products;
 ---************************************************************************************
 z_vcc_uu5:--z_vcc_uu5
 declare @t_stype nvarchar(max)
@@ -840,13 +845,14 @@ declare @tmp table(
 	free float,
 	price float,
 	total float,
+	salesgroup nvarchar(50),
 	salesno nvarchar(50),
 	saless nvarchar(90)
 )
 insert into @tmp
 	select
 		'0' gno,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),a.typea,f.namea,a.custno,c.nick,a.invono,e.noa,g.namea,
-		b.productno,b.product,b.mount,b.width,b.price,b.total,a.salesno,a.sales
+		b.productno,b.product,b.mount,b.width,b.price,b.total,e.salesgroup,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno=c.noa
@@ -864,7 +870,7 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
-	order by a.datea
+	order by (case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
 insert into @tmp(gno,mount,free,total)
 	select
 		'1',sum(a.mount),sum(a.free),sum(a.total)
@@ -873,9 +879,9 @@ select
 	a.gno,a.datea,a.typea,a.stype,a.custno,a.custs,a.invono,
 	a.groupbno,a.groupbs,a.productno,a.products,a.mount,a.free,a.price,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
-	a.salesno,a.saless
+	a.salesgroup,a.salesno,a.saless
 from @tmp a
-order by a.gno,a.datea;
+order by a.gno,a.datea,a.salesgroup,a.salesno;
 ---************************************************************************************
 z_vcc_uu6:--z_vcc_uu6
 declare @t_datea nvarchar(10)
@@ -939,13 +945,14 @@ declare @tmp table(
 	mount float,
 	free float,
 	total float,
+	salesgroup nvarchar(50),
 	salesno nvarchar(35),
 	saless nvarchar(max)
 )
 insert into @tmp
 	select
 		case when a.typea='2' then '8' else '2' end,0,1,0,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
-		a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.mount,b.width,b.total,a.salesno,a.sales
+		a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.mount,b.width,b.total,e.salesgroup,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -966,7 +973,7 @@ insert into @tmp
 		'6',0,1,1,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
 		sum(case when a.typea='1' then a.total else a.total*(-1) end) money,
 		sum(case when (a.typea='2') and (a.datea = @t_datea) then a.total else 0 end),0,
-		a.salesno,a.sales
+		e.salesgroup,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -980,7 +987,7 @@ insert into @tmp
 			 (len(@t_xgroupano)=0 or d.groupano=@t_xgroupano) and
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
-	group by a.salesno,a.sales
+	group by e.salesgroup,a.salesno,a.sales
 --**處理分頁 <<Start>>
 ------gno=1->標題,2=表身內容,3=小計,4=表身換頁,5=小表標題,6=小表表身,7=小表換頁,8=退貨
 ----------------------------------------------------------*
@@ -999,7 +1006,7 @@ select @t_newTableCount = count(*) from @tmp where gno='6'
 if(@t_bbsCount > 0)
 begin
 	declare cursor_table cursor for
-		select idno from @tmp where (gno='2' or gno='3' or gno='8') order by salesno,saless,gno
+		select idno from @tmp where (gno='2' or gno='3' or gno='8') order by salesgroup,salesno,saless,gno
 	open cursor_table
 	fetch next from cursor_table
 	into @t_idno
@@ -1063,9 +1070,9 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.free),1)),4,12)) free,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
-	a.salesno,a.saless
+	a.salesgroup,a.salesno,a.saless
 from @tmp a
-order by a.pageno,a.orderby,a.datea,a.typea,a.custno,a.productno,a.order2,a.gno;
+order by a.pageno,a.orderby,a.datea,a.salesgroup,a.salesno,a.saless,a.typea,a.custno,a.productno,a.order2,a.gno;
 ---************************************************************************************
 z_vcc_uu7:--z_vcc_uu7
 declare @t_week nvarchar(10)
@@ -1132,6 +1139,7 @@ declare @tmp table(
 	mount float,
 	free float,
 	total float,
+	salesgroup nvarchar(50),
 	salesno nvarchar(35),
 	saless nvarchar(max),
 	weekname nvarchar(max)
@@ -1139,7 +1147,8 @@ declare @tmp table(
 set @t_getWeekmon = (select top 1 left(a.datea,6) from view_vcc a where (left(a.datea,3)=@t_year) and (datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))=cast(@t_week as int)))
 insert into @tmp
 	select
-		case when a.typea='2' then '8' else '2' end,0,1,0,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.mount,b.width,b.total,a.salesno,a.sales,
+		case when a.typea='2' then '8' else '2' end,0,1,0,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
+		a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.mount,b.width,b.total,e.salesgroup,a.salesno,a.sales,
 		datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
@@ -1164,7 +1173,7 @@ insert into @tmp
 		sum(
 			case when datename(week,cast(left((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),3)+1911 as nvarchar)+right((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),6))=cast(@t_week as int) then
 				 (case when a.typea='1' then a.total else a.total*(-1) end) else 0 end),0,
-		a.salesno,a.sales,cast(@t_week as int)
+		e.salesgroup,a.salesno,a.sales,cast(@t_week as int)
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -1180,7 +1189,7 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
-	group by a.salesno,a.sales
+	group by e.salesgroup,a.salesno,a.sales
 if(exists(select top 1 * from @tmp where gno='6'))
 begin
 	insert into @tmp(gno,pageno,orderby,order2,mount,free,weekname)
@@ -1270,9 +1279,9 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.free),1)),4,12)) free,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
-	a.salesno,a.saless,a.weekname
+	a.salesgroup,a.salesno,a.saless,a.weekname
 from @tmp a
-order by a.pageno,a.orderby,datea,typea,custno,productno,a.order2,a.gno;
+order by a.pageno,a.orderby,datea,typea,a.salesgroup,a.salesno,custno,productno,a.order2,a.gno;
 ---************************************************************************************
 z_vcc_uu8:--z_vcc_uu8
 declare @t_mon nvarchar(10) 
@@ -1358,6 +1367,7 @@ declare @tmp table(
 	pageno int,
 	orderby int,
 	order2 int,
+	salesgroup nvarchar(50),
 	salesno nvarchar(50),
 	saless nvarchar(90),
 	productno nvarchar(50),
@@ -1382,7 +1392,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'99' gno,0,0,0,a.salesno,a.sales,b.productno,b.product,
+		'99' gno,0,0,0,e.salesgroup,a.salesno,a.sales,b.productno,b.product,
 		case when c.idno=1 then b.mount else null end,
 		case when c.idno=2 then b.mount else null end,
 		case when c.idno=3 then b.mount else null end,
@@ -1413,28 +1423,27 @@ insert into @tmp
 			 (d.tggno between @t_btggno and @t_etggno)
 insert into @tmp
 	select
-		'2',0,1,0,a.salesno,a.saless,a.productno,a.products,
+		'2',0,1,0,a.salesgroup,a.salesno,a.saless,a.productno,a.products,
 		sum(wk01_mount),sum(wk02_mount),sum(wk03_mount),sum(wk04_mount),sum(wk05_mount),0,
 		sum(wk01_money),sum(wk02_money),sum(wk03_money),sum(wk04_money),sum(wk05_money),0,		
 		'','','','',''
 	from @tmp a
-	group by a.salesno,a.saless,a.productno,a.products
+	group by a.salesgroup,a.salesno,a.saless,a.productno,a.products
 delete @tmp where gno='99'
 update @tmp set total_mount = isnull(wk01_mount,0)+isnull(wk02_mount,0)+isnull(wk03_mount,0)+isnull(wk04_mount,0)+isnull(wk05_mount,0)
 update @tmp set total_money = isnull(wk01_money,0)+isnull(wk02_money,0)+isnull(wk03_money,0)+isnull(wk04_money,0)+isnull(wk05_money,0)
-
-
-insert into @tmp(gno,pageno,orderby,order2,salesno,saless,wk01_money,wk02_money,wk03_money,wk04_money)
+insert into @tmp(gno,pageno,orderby,order2,salesgroup,salesno,saless,wk01_money,wk02_money,wk03_money,wk04_money)
 	select
-		'6',0,1,1,a.salesno,a.sales,
+		'6',0,1,1,e.salesgroup,a.salesno,a.sales,
 		sum(case a.typea when '2' then a.total*(-1) else a.total end), ------當月迄今銷貨金額
 		0,------當月迄今收款金額
 		sum(case when b.weekend=@t_week then (case a.typea when '2' then a.total*(-1) else a.total end) else 0 end),------當周銷貨金額
 		0------當周收款金額
 	from view_vcc a
 	left join @weeklist b on (case when len(isnull(a.kind,''))=9 then a.kind else a.datea end) between b.bdatea and b.edatea
+	left join sss e on a.salesno=e.noa
 	where left((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),6) = left((select top 1 bdatea from @weeklist),6)
-	group by a.salesno,a.sales
+	group by e.salesgroup,a.salesno,a.sales
 update a
 	set wk02_money = b.money,wk04_money=c.money
 from @tmp a
@@ -1555,7 +1564,7 @@ update @tmp
 	wkn04=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=4),
 	wkn05=left(@t_mon,3)+'w'+(select top 1 weekend from @weeklist where idno=5)
 select
-	a.gno,a.salesno,a.saless,a.productno,a.products,
+	a.gno,a.salesgroup,a.salesno,a.saless,a.productno,a.products,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk01_mount),1)),4,12)) wk01_m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk02_mount),1)),4,12)) wk02_m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wk03_mount),1)),4,12)) wk03_m,
@@ -1570,7 +1579,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total_money),1)),4,12)) total_y,
 	wkn01,wkn02,wkn03,wkn04,wkn05
 from @tmp a
-order by a.pageno,a.orderby,a.salesno,a.saless,a.productno,a.products,a.order2,a.gno;
+order by a.pageno,a.orderby,a.salesgroup,a.salesno,a.saless,a.productno,a.products,a.order2,a.gno;
 ---************************************************************************************
 z_vcc_uu9:--z_vcc_uu9
 declare @t_bdatea nvarchar(35)
@@ -1618,12 +1627,15 @@ declare @tmp table(
 	discount float,
 	price float,
 	total float,
+	salesgroup nvarchar(50),
 	salesno nvarchar(35),
 	saless nvarchar(90)
 )
 insert into @tmp
 	select
-		'0',(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),a.custno,c.nick,e.namea,b.productno,b.product,b.lengthb,b.width,b.dime,b.price,b.total,a.salesno,a.sales
+		'0',(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
+		a.custno,c.nick,e.namea,b.productno,b.product,b.lengthb,b.width,b.dime,b.price,b.total,
+		f.salesgroup,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
 	left join cust c on a.custno = c.noa
@@ -1648,6 +1660,6 @@ select
 	a.discount,
 	a.price,
 	a.total,
-	a.salesno,a.saless
+	a.salesgroup,a.salesno,a.saless
 from @tmp a
-order by a.datea;
+order by a.datea,a.salesgroup,a.salesno,a.saless;
