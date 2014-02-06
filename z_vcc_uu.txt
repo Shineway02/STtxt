@@ -492,7 +492,10 @@ insert into @tmp
 		''------qhref
 	from view_vcc a
 	left join sss e on a.salesno=e.noa
-	where (left(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,6)=left(@t_datea,6)) and ((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)<=@t_datea)
+	where (left(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,6)=left(@t_datea,6)) and 
+			 ((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)<=@t_datea) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	group by e.salesgroup,a.salesno,a.sales
 update a
 	set price = b.money,totalb=c.money
@@ -1442,7 +1445,9 @@ insert into @tmp(gno,pageno,orderby,order2,salesgroup,salesno,saless,wk01_money,
 	from view_vcc a
 	left join @weeklist b on (case when len(isnull(a.kind,''))=9 then a.kind else a.datea end) between b.bdatea and b.edatea
 	left join sss e on a.salesno=e.noa
-	where left((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),6) = left((select top 1 bdatea from @weeklist),6)
+	where left((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),6) = left((select top 1 bdatea from @weeklist),6) and
+			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)			 
 	group by e.salesgroup,a.salesno,a.sales
 update a
 	set wk02_money = b.money,wk04_money=c.money
