@@ -462,13 +462,14 @@ declare @tmp table(
 		welfare int,
 		ch_health int,
 		total4 int,
-		total5 int
+		total5 int,
+		memo nvarchar(MAX)
 )
 insert into @tmp
 select '0' gno,b.sno,b.namea,c.indate,c.ft_date,b.daymoney,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special,
 b.bo_oth,b.total1,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
 b.addmoney,b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5,
-b.welfare,b.ch_health,b.total4,b.total5
+b.welfare,b.ch_health,b.total4,b.total5,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on b.sno = c.noa
@@ -512,7 +513,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,welfare),1)),4,12))
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ch_health),1)),4,12)) ch_health,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '日薪') worker
+(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '日薪') worker,memo
 from @tmp;
 ----------------------------------------------------------------------------------------------
 z_salary6:--z_salary6
@@ -574,7 +575,8 @@ declare @tmp table(
 	minusitem nvarchar(max), 
 	plusmemo nvarchar(max), 
 	minusmemo nvarchar(max), 
-	bomemo nvarchar(max) 
+	bomemo nvarchar(max),
+	memo nvarchar(MAX)
 ) 
 insert into @tmp 
 select '0' gno, a.noa,b.noq,b.sno,b.namea,c.indate,c.ft_date,b.money,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special, 
@@ -585,7 +587,7 @@ b.welfare,b.ch_health,b.total4,b.total5,a.monkind,a.mon,isnull(b.minus,0),isnull
 (select minusitem from (select sssno,STUFF((select ','+T4.item from salchg T2 left join salchgitem T4 on T2.minusitem=T4.noa where T2.sssno=T1.sssno and mon=@t_xmon FOR XML PATH('')),1,1,'')minusitem from salchg T1 where mon=@t_xmon group by sssno) T3 where b.sno=sssno), 
 (select plusmemo from (select sssno,STUFF((select ','+T2.memo from salchg T2 where plusitem!='' and minusitem='' and T2.sssno=T1.sssno and mon=@t_xmon FOR XML PATH('')),1,1,'')plusmemo from salchg T1 where mon=@t_xmon group by sssno) T3 where b.sno=sssno), 
 (select minusmemo from (select sssno,STUFF((select ','+T2.memo from salchg T2 where plusitem='' and minusitem!='' and T2.sssno=T1.sssno and mon=@t_xmon FOR XML PATH('')),1,1,'')minusmemo from salchg T1 where mon=@t_xmon group by sssno) T3 where b.sno=sssno), 
-(select top 1 memo from saladjust where noa=b.sno order by noq desc) 
+(select top 1 memo from saladjust where noa=b.sno order by noq desc),b.memo
 from salary a 
 left join salarys b on a.noa = b.noa 
 left join sss c on b.sno = c.noa 
@@ -631,7 +633,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus, 
 (select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國') worker 
-,plusmemo,minusmemo
+,plusmemo,minusmemo,memo
 from @tmp;
 ---------------------------------------------------------------------------------------
 z_salary7:--z_salary7
@@ -690,7 +692,8 @@ declare @tmp table(
 		total5 int,
 		ch_labor2 int,
 		chla_comp int,
-		chla_self int
+		chla_self int,
+		memo nvarchar(MAX)
 )
 insert into @tmp
 select '0' gno, a.noa,b.noq,b.sno,b.namea,c.indate,b.money,b.bo_admin,b.bo_traffic,b.bo_special,
@@ -698,7 +701,7 @@ b.bo_oth,b.total1,b.ch_labor1,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_bo
 b.tax_other,b.total2,b.addh2_1,b.addh2_2,b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*1.33*addh46_1 + b.ostand*1.66*addh46_2),0),
 b.addh100,ROUND((b.ostand*b.addh100),0),
 b.tax_other2,b.meals,a.total3,b.borrow,b.ch_labor,b.chgcash,b.tax6,b.stay_tax,b.tax12,b.tax18,
-b.welfare,b.stay_money,b.ch_health,isnull(b.hplus2,0),b.total4,b.total5,b.ch_labor2,b.ch_labor_comp,b.ch_labor_self
+b.welfare,b.stay_money,b.ch_health,isnull(b.hplus2,0),b.total4,b.total5,b.ch_labor2,b.ch_labor_comp,b.ch_labor_self,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on b.sno = c.noa
@@ -750,7 +753,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ch_labor2),1)),4,12)) ch_labor2,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla_comp),1)),4,12)) chla_comp,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla_self),1)),4,12)) chla_self,
-(select worker from salary where @t_xmon = mon and person = '外勞') worker
+(select worker from salary where @t_xmon = mon and person = '外勞') worker,memo
 from @tmp;
 --------------------------------------------------------------------------------------------------
 z_salary8:--z_salary8(dc)
