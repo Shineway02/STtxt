@@ -353,7 +353,8 @@ insert into @tmp(gno,style,productno,sizea,mount,weight,notv) -------這裡的no
 				emount,eweight
 			from view_uccc a
 			left join style b on a.style=b.noa
-			where a.kind ='B2'
+			left join view_cub c on a.tablea='cubu' and a.noa=c.noa
+			where (a.kind ='B2') and ((a.tablea != 'cubu') or ((a.tablea = 'cubu') and c.typea = 4))
 		) h
 		group by h.csize,h.style,h.productno
 	) b on (a.sizea = b.csize) and (a.style = b.style) and (a.productno = b.productno)
