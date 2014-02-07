@@ -502,7 +502,7 @@ update a
 from @tmp a
 outer apply(
 	select
-		sum(us.money) money
+		sum(us.paysale) money
 	from umms us
 	left join umm um on us.noa=um.noa
 	left join view_vcc vcc on us.vccno=vcc.noa
@@ -513,11 +513,13 @@ outer apply(
 		((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or 
 		((charindex('-',us.vccno)>0) and a.salesno=cust.salesno) or
 		((isnull(us.vccno,'') = '') and a.salesno=custm.salesno)
-	)
+	) and 
+	(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno)  
+
 ) b
 outer apply(
 	select
-		sum(us.money) money
+		sum(us.paysale) money
 	from umms us
 	left join umm um on us.noa=um.noa
 	left join view_vcc vcc on us.vccno=vcc.noa
@@ -528,7 +530,9 @@ outer apply(
 		((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or 
 		((charindex('-',us.vccno)>0) and a.salesno=cust.salesno) or
 		((isnull(us.vccno,'') = '') and a.salesno=custm.salesno)
-	)
+	) and 
+	(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno)  
+
 ) c
 where a.gno='6'
 --**處理分頁 <<Start>>
@@ -1172,10 +1176,10 @@ insert into @tmp
 insert into @tmp
 	select
 		'6',0,1,0,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
-		sum(case when a.typea='1' then a.total else a.total*(-1) end) money,
+		sum(case when a.typea='1' then b.total else b.total*(-1) end) money,
 		sum(
 			case when datename(week,cast(left((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),3)+1911 as nvarchar)+right((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),6))=cast(@t_week as int) then
-				 (case when a.typea='1' then a.total else a.total*(-1) end) else 0 end),0,
+				 (case when a.typea='1' then b.total else b.total*(-1) end) else 0 end),0,
 		e.salesgroup,a.salesno,a.sales,cast(@t_week as int)
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
