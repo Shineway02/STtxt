@@ -1673,11 +1673,11 @@ insert into @tmp(gno,productno,products,mount,free,discount,total)
 select
 	a.gno,a.datea,a.custno,a.custs,a.groupb,a.productno,
 	a.products,
-	a.mount,
-	a.free,
-	a.discount,
-	a.price,
-	a.total,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.free),1)),4,12)) free,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.discount),1)),4,12)) discount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(a.price)),1)),4,12))+'.'+cast(ceiling((a.price-floor(a.price))*power(10,3)) as nvarchar) price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
 	a.salesgroup,a.salesno,a.saless
 from @tmp a
 order by a.productno,a.products,a.gno,a.datea,a.salesgroup,a.salesno,a.saless;
