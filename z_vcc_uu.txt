@@ -1661,6 +1661,15 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or f.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or f.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+insert into @tmp(gno,productno,products,mount,free,discount,total)
+	select
+		'1',productno,products,sum(mount),sum(free),sum(discount),sum(total)
+	from @tmp where gno = '0'
+	group by productno,products
+insert into @tmp(gno,productno,products,mount,free,discount,total)
+	select
+		'2',char(255),char(255),sum(mount),sum(free),sum(discount),sum(total)
+	from @tmp where gno = '0'
 select
 	a.gno,a.datea,a.custno,a.custs,a.groupb,a.productno,
 	a.products,
@@ -1671,4 +1680,4 @@ select
 	a.total,
 	a.salesgroup,a.salesno,a.saless
 from @tmp a
-order by a.datea,a.salesgroup,a.salesno,a.saless;
+order by a.productno,a.products,a.gno,a.datea,a.salesgroup,a.salesno,a.saless;
