@@ -89,6 +89,7 @@ select
 from @tmp order by left(odate,6),gno,noa,no2;
 --****************************************************************************************************
 z_ordcst2a:--z_ordcst2a
+--鋼捲  重量差10%以內當結案
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bodate nvarchar(10)
@@ -171,13 +172,17 @@ insert into @tmp
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
-	      (len(@t_enda)=0 or @t_enda=a.enda) and
+	     -- (len(@t_enda)=0 or @t_enda=a.enda) and
 		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
 	order by a.tggno,gno,a.noa,b.no2
-update @tmp set e = (case when e='1' then 'Y' else 'N' end)
-update @tmp set size = replace(size,'~#$','''')
-update @tmp set notva=0 where (notva<=0)
-update @tmp set notvb=0 where (notvb<=0)
+	
+	update @tmp set e = case when e='1' then '1' when kind='A1' and notvb<=pweight*0.1 then '1' else '0' end  
+	delete @tmp where not((len(@t_enda)=0 or @t_enda=e))
+	update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+	update @tmp set size = replace(size,'~#$','''')
+	update @tmp set notva=0 where (notva<=0)
+	update @tmp set notvb=0 where (notvb<=0)
+	
 insert into @tmp(gno,tggno,comp,pmount,pweight,ptotal,noptotal,notva,notvb)
 	select '1',tggno,comp,sum(pmount),sum(pweight),sum(ptotal),sum(noptotal),sum(notva),sum(notvb) from @tmp group by tggno,comp
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
@@ -194,6 +199,7 @@ select
 from @tmp order by tggno,comp,gno,odate,noa,no2;
 --****************************************************************************************************
 z_ordcst2b:--z_ordcst2b
+--鋼捲  重量差10%以內當結案
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bodate nvarchar(10)
@@ -277,9 +283,12 @@ insert into @tmp
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
-	      (len(@t_enda)=0 or @t_enda=a.enda) and
+	     -- (len(@t_enda)=0 or @t_enda=a.enda) and
 		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
 	order by pno,gno,a.tggno,a.noa,b.no2
+	
+	update @tmp set e = case when e='1' then '1' when kind='A1' and notvb<=pweight*0.1 then '1' else '0' end  
+	delete @tmp where not((len(@t_enda)=0 or @t_enda=e))
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set notva=0 where (notva<=0)
@@ -300,6 +309,7 @@ select
 from @tmp order by pno,pname,gno,odate,noa,no2;
 --****************************************************************************************************
 z_ordcst2c:--z_ordcst2c
+--鋼捲  重量差10%以內當結案
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bodate nvarchar(10)
@@ -383,9 +393,12 @@ insert into @tmp
 	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
-	      (len(@t_enda)=0 or @t_enda=a.enda) and
+	      --(len(@t_enda)=0 or @t_enda=a.enda) and
 		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
 	order by a.noa,gno,b.no2
+	
+	update @tmp set e = case when e='1' then '1' when kind='A1' and notvb<=pweight*0.1 then '1' else '0' end  
+	delete @tmp where not((len(@t_enda)=0 or @t_enda=e))
 update @tmp set e = (case when e='1' then 'Y' else 'N' end)
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set notva=0 where (notva<=0)

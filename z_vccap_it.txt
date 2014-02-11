@@ -58,14 +58,14 @@ insert into @tmp
 	left join cust d on a.buyerno=d.noa
 	where (a.taxtype != '6') and (a.noa=@t_noa)
 update a  
-	set money1 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),1,1) as int)+1,1),
-	money2 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),2,1) as int)+1,1),
-	money3 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),3,1) as int)+1,1),
-	money4 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),4,1) as int)+1,1),
-	money5 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),5,1) as int)+1,1),
-	money6 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),6,1) as int)+1,1),
-	money7 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),7,1) as int)+1,1),
-	money8 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + CAST(totmoney as NVARCHAR), 8),8,1) as int)+1,1)
+	set money1 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),1,1) as int)+1,1),
+	money2 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),2,1) as int)+1,1),
+	money3 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),3,1) as int)+1,1),
+	money4 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),4,1) as int)+1,1),
+	money5 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),5,1) as int)+1,1),
+	money6 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),6,1) as int)+1,1),
+	money7 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),7,1) as int)+1,1),
+	money8 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),8,1) as int)+1,1)
 from @tmp a
 ------------gno->1=字斷行,2=空白行,3=銷售額合計,4=營業稅,5=總計,6=總計新台幣,7=跳頁
 declare @idno nvarchar(max)
@@ -192,24 +192,42 @@ deallocate cursor_table
 ------------插入空白行<<End>>-------------
 ------------插入下方合計欄<<Start>>------------
 declare cursor_table cursor for
-	select noa,datea,max(pageno),min(idno) from @tmp group by noa,datea
+	select noa,datea,pageno,min(idno) from @tmp group by noa,datea,pageno
 open cursor_table
 fetch next from cursor_table
 into @noa,@datea,@pageno,@idno
 while(@@FETCH_STATUS <> -1)
 begin
-	---------銷售額合計
-	insert into @tmp(gno,noa,datea,pageno,pageorder,total)
-		select '3',@noa,@datea,@pageno,9001,totpmoney from @tmp where idno=@idno
-	---------營業稅合計
-	insert into @tmp(gno,noa,datea,pageno,pageorder,taxtype1,taxtype2,taxtype3,total)
-		select '4',@noa,@datea,@pageno,9002,taxtype1,taxtype2,taxtype3,taxmoney from @tmp where idno=@idno
-	---------總計
-	insert into @tmp(gno,noa,datea,pageno,pageorder,total)
-		select '5',@noa,@datea,@pageno,9003,totmoney from @tmp where idno=@idno
-	---------總計新台幣
-	insert into @tmp(gno,noa,datea,pageno,pageorder,money1,money2,money3,money4,money5,money6,money7,money8)
-		select '6',@noa,@datea,@pageno,9004,money1,money2,money3,money4,money5,money6,money7,money8 from @tmp where idno=@idno
+	if(@pageno=(select max(pageno) from @tmp where (noa=@noa) and (datea=@datea) group by noa,datea))
+	begin
+		---------銷售額合計
+		insert into @tmp(gno,noa,datea,pageno,pageorder,total)
+			select '3',@noa,@datea,@pageno,9001,totpmoney from @tmp where idno=@idno
+		---------營業稅合計
+		insert into @tmp(gno,noa,datea,pageno,pageorder,taxtype1,taxtype2,taxtype3,total)
+			select '4',@noa,@datea,@pageno,9002,taxtype1,taxtype2,taxtype3,taxmoney from @tmp where idno=@idno
+		---------總計
+		insert into @tmp(gno,noa,datea,pageno,pageorder,total)
+			select '5',@noa,@datea,@pageno,9003,totmoney from @tmp where idno=@idno
+		---------總計新台幣
+		insert into @tmp(gno,noa,datea,pageno,pageorder,money1,money2,money3,money4,money5,money6,money7,money8)
+			select '6',@noa,@datea,@pageno,9004,money1,money2,money3,money4,money5,money6,money7,money8 from @tmp where idno=@idno
+	end
+	else
+	begin
+		---------銷售額合計
+		insert into @tmp(gno,noa,datea,pageno,pageorder,total)
+			select '3',@noa,@datea,@pageno,9001,null from @tmp where idno=@idno
+		---------營業稅合計
+		insert into @tmp(gno,noa,datea,pageno,pageorder,taxtype1,taxtype2,taxtype3,total)
+			select '4',@noa,@datea,@pageno,9002,null,null,null,null from @tmp where idno=@idno
+		---------總計
+		insert into @tmp(gno,noa,datea,pageno,pageorder,total)
+			select '5',@noa,@datea,@pageno,9003,null from @tmp where idno=@idno
+		---------總計新台幣
+		insert into @tmp(gno,noa,datea,pageno,pageorder,money1,money2,money3,money4,money5,money6,money7,money8)
+			select '6',@noa,@datea,@pageno,9004,null,null,null,null,null,null,null,null from @tmp where idno=@idno
+	end
 	fetch next from cursor_table
 	into @noa,@datea,@pageno,@idno
 end
