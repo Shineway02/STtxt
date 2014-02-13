@@ -165,11 +165,15 @@ declare @tmp table(
 )
 
 insert into @tmp
-	select '0',d.noa,d.odate,c.custno,d.postname,d.comp,f.namea
+	select '0',case when isnull(d.noa,'')!='' then d.noa else c.noa end
+	,case when isnull(d.noa,'')!='' then d.odate else c.datea end
+	,case when isnull(d.noa,'')!='' then d.custno else c.custno end
+	,case when isnull(d.noa,'')!='' then d.postname else c.invono end
+	,case when isnull(d.noa,'')!='' then d.comp else c.comp end,f.namea
 	,b.productno,b.product,(case when c.typea='1' then 1 else -1 end)*b.lengthb,b.width,b.dime,b.price
 	,(case when c.typea='1' then 1 else -1 end)*b.total
 	,round(b.total*a.paysale/c.total,0)
-	,'orde_uu?noa=$noa?'+d.accy
+	,case when isnull(d.noa,'')!='' then 'orde_uu?noa=$noa?'+d.accy else 'vcc_uu?noa=$noa?'+c.accy end 
 	,case when ISNULL(c.salesno,'')!='' then c.salesno else cust.salesno end
 	,case when ISNULL(c.salesno,'')!='' then c.sales else cust.sales end
 	from umm um left join umms a on um.noa=a.noa left join view_vccs b on a.vccno=b.noa 
@@ -179,7 +183,7 @@ insert into @tmp
 	left join uccgb f on e.groupbno=f.noa
 	left join cust cust on (cust.noa=substring(a.vccno,0,charindex('-',a.vccno))) or (c.custno=cust.noa) or (um.custno=cust.noa)
 	left join sss sss on ((charindex('-',a.vccno)>0) and (cust.salesno=sss.noa)) or ((charindex('-',a.vccno)<=0) and (c.salesno=sss.noa))
-	where a.vccno!='' and d.noa!=''
+	where a.vccno!='' --and d.noa!=''
 	and (left(um.datea,6) between @t_bmon and @t_emon) 
 	and (c.custno between @t_bcustno and @t_ecustno)
 	and((len(@t_partno)=0) or (sss.partno = @t_partno)) 
