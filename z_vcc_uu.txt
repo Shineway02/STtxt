@@ -959,7 +959,7 @@ declare @tmp table(
 insert into @tmp
 	select
 		case when a.typea='2' then '8' else '2' end,0,1,0,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
-		a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.mount,b.width,b.total,e.salesgroup,a.salesno,a.sales
+		a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.lengthb,b.width,b.total,e.salesgroup,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
@@ -1155,7 +1155,7 @@ set @t_getWeekmon = (select top 1 left(a.datea,6) from view_vcc a where (left(a.
 insert into @tmp
 	select
 		case when a.typea='2' then '8' else '2' end,0,1,0,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
-		a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.mount,b.width,b.total,e.salesgroup,a.salesno,a.sales,
+		a.typea,a.stype,a.custno,c.nick,b.productno,b.product,b.lengthb,b.width,b.total,e.salesgroup,a.salesno,a.sales,
 		datename(week,cast(left(a.datea,3)+1911 as nvarchar)+right(a.datea,6))
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
