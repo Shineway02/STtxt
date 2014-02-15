@@ -318,7 +318,9 @@ declare @tmp table(
 	notv float,
 	nweightv float,
 	stkmount float,
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	isordeed float,
+	unordeed float
 )
 insert into @tmp
 	select 
@@ -326,7 +328,7 @@ insert into @tmp
 		(case when ltrim(rtrim(a.size)) = '' then 
 			dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
 		else ltrim(rtrim(a.size)) end) sizea,a.spec,a.class,a.dime,
-		a.price,a.weight,a.mount,a.notv,0,0,'ordest'+a.accy
+		a.price,a.weight,a.mount,a.notv,0,0,'ordest'+a.accy,0,0
 	from view_ordes a
 	left join view_orde b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -338,6 +340,30 @@ insert into @tmp
 	order by b.custno,a.product,b.noa,b.odate,b.datea
 update @tmp set sizea = replace(sizea,'~#$','''')
 update @tmp set nweightv = round((weight/mount)*notv,0)
+
+update tmp
+	set tmp.isordeed = isnull(b.mount,0)
+from @tmp tmp
+outer apply(
+	select
+		isnull(d.custno,'') custno,a.uno,sum(a.mount) mount,a.productno,
+		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) sizea
+	from view_ordet a
+	left join view_orde b on a.noa=b.noa
+	left join view_ordes c on (a.noa=c.noa) and (a.no3=c.no2)
+	outer apply(
+		select top 1 ina.custno from view_ina ina left join view_inas inas on (ina.noa=inas.noa) where inas.uno=a.uno
+	) d
+	where (c.notv>0) and (b.odate between @t_bodate and @t_eodate) and
+			 (b.custno between @t_bcustno and @t_ecustno) and 
+			 (c.productno between @t_bproductno and @t_eproductno) and 
+			 (b.kind='B2') and (c.enda = '0') and (b.enda='0') and
+			 (
+				(len(isnull(d.custno,''))=0 and (dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)=tmp.sizea) and (tmp.productno=a.productno)) or
+				(isnull(d.custno,'')=tmp.custno and (dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)=tmp.sizea) and (tmp.productno=a.productno))
+			)
+	group by d.custno,a.uno,a.productno,b.kind,dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
+) b
 insert into @tmp(gno,style,productno,sizea,mount,weight,notv) -------這裡的notv是庫存數量
 	select
 		'2',a.style,a.productno,a.sizea,sum(a.notv),isnull(b.eweight,0),isnull(b.emount,0)
@@ -363,28 +389,33 @@ update a
 	set stkmount = b.notv
 from @tmp a
 outer apply(select top 1 notv from @tmp where (a.sizea=sizea) and (a.productno=productno) and (gno='2')) b	
+update @tmp set unordeed = isnull(stkmount,0)-isnull(isordeed,0)
 insert into @tmp(gno,weight,mount,notv,nweightv,stkmount)
 	select '1',sum(weight),sum(mount),sum(notv),sum(nweightv),sum(stkmount) from @tmp where gno='0'
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
 
 if(@t_sort = 'CUSTNO')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,nweightv,qhref,stkmount,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,isordeed,unordeed,
 		ROW_NUMBER()over(order by gno,custno) idno
 	from @tmp order by gno,custno
 else if(@t_sort = 'SIZEA')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,nweightv,qhref,stkmount,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,isordeed,unordeed,
 		ROW_NUMBER()over(order by gno,sizea) idno
 	from @tmp order by gno,sizea
 else if(@t_sort = 'DIME')
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,nweightv,qhref,stkmount,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,isordeed,unordeed,
 		ROW_NUMBER()over(order by gno,dime,sizea) idno
 	from @tmp order by gno,dime,sizea
 else
 	select
-		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,nweightv,qhref,stkmount,
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,isordeed,unordeed,
 		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
 	from @tmp order by gno,ordeno,datea,products;
 --****************************************************************************************************
