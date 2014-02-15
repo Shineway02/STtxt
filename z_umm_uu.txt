@@ -37,7 +37,7 @@ insert into @tmp
 	case when ISNULL(vcc.salesno,'')!='' then vcc.sales else cust.sales end, 
 	(case when isnull(cust.noa,'')='' then um.custno else cust.noa end),
 	(case when isnull(cust.nick,'')='' then um.comp else cust.nick end),
-	um.datea,us.money,us.paysale-us.chgs,us.vccno,'umm' 
+	um.datea,us.money,us.paysale,us.vccno,'umm' 
 	from umm um 
 	left join umms us on um.noa=us.noa 
 	left join view_vcc vcc on (us.vccno=vcc.noa) 
@@ -98,7 +98,7 @@ insert into @tmp
 select '0' gno, 
 case when ISNULL(vcc.salesno,'')!='' then vcc.salesno else cust.salesno end, 
 case when ISNULL(vcc.salesno,'')!='' then vcc.sales else cust.sales end, 
-cust.noa,cust.nick,um.datea,sum(us.money) ,SUM(us.paysale-us.chgs)
+cust.noa,cust.nick,um.datea,sum(us.money) ,SUM(us.paysale)
 from umm um 
 left join umms us on um.noa=us.noa 
 left join view_vcc vcc on (us.vccno=vcc.noa) 
@@ -166,13 +166,14 @@ declare @tmp table(
 
 insert into @tmp
 	select '0',case when isnull(d.noa,'')!='' then d.noa else c.noa end
-	,case when isnull(d.noa,'')!='' then d.odate else c.datea end
+	--,case when isnull(d.noa,'')!='' then d.odate else c.datea end
+	,a.datea
 	,case when isnull(d.noa,'')!='' then d.custno else c.custno end
 	,case when isnull(d.noa,'')!='' then d.postname else c.invono end
 	,case when isnull(d.noa,'')!='' then d.comp else c.comp end,f.namea
 	,b.productno,b.product,(case when c.typea='1' then 1 else -1 end)*b.lengthb,b.width,b.dime,b.price
 	,(case when c.typea='1' then 1 else -1 end)*b.total
-	,round(b.total*a.paysale/c.total,0)
+	,b.total*a.paysale/c.total
 	,case when isnull(d.noa,'')!='' then 'orde_uu?noa=$noa?'+d.accy else 'vcc_uu?noa=$noa?'+c.accy end 
 	,case when ISNULL(c.salesno,'')!='' then c.salesno else cust.salesno end
 	,case when ISNULL(c.salesno,'')!='' then c.sales else cust.sales end
