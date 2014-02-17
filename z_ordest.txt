@@ -346,7 +346,7 @@ update tmp
 from @tmp tmp
 outer apply(
 	select
-		isnull(d.custno,'') custno,a.uno,sum(a.mount) mount,a.productno,
+		isnull(d.custno,'') custno,a.uno,sum(a.mount)-isnull(e.mount,0) mount,a.productno,
 		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) sizea
 	from view_ordet a
 	left join view_orde b on a.noa=b.noa
@@ -354,6 +354,9 @@ outer apply(
 	outer apply(
 		select top 1 ina.custno from view_ina ina left join view_inas inas on (ina.noa=inas.noa) where inas.uno=a.uno
 	) d
+	outer apply(
+		select sum(case when vcc.typea='2' then vccs.mount*(-1) else vccs.mount end) mount from view_vcc vcc left join view_vccs vccs on vcc.noa=vccs.noa where (a.noa=vccs.ordeno) and (a.uno=vccs.uno)
+	) e
 	where (c.notv>0) and (b.odate between @t_bodate and @t_eodate) and
 			 (b.custno between @t_bcustno and @t_ecustno) and 
 			 (c.productno between @t_bproductno and @t_eproductno) and 
@@ -362,7 +365,7 @@ outer apply(
 				(len(isnull(d.custno,''))=0 and (dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)=tmp.sizea) and (tmp.productno=a.productno)) or
 				(isnull(d.custno,'')=tmp.custno and (dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)=tmp.sizea) and (tmp.productno=a.productno))
 			)
-	group by d.custno,a.uno,a.productno,b.kind,dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
+	group by d.custno,a.uno,a.productno,b.kind,dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius),e.mount
 ) b
 insert into @tmp(gno,style,productno,sizea,mount,weight,notv) -------這裡的notv是庫存數量
 	select
