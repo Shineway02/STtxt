@@ -72,31 +72,31 @@ declare @tmp table(
 insert into @tmp
 	select
 		'99','Source',0,e.salesgroup,a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
 		0 total,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then sum(b.total) end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then sum(b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then sum((case when a.typea='1' then 1 else -1 end)*b.total) end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
 		0 total
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
@@ -268,31 +268,31 @@ declare @tmp table(
 insert into @tmp
 	select
 		'99','Source',0,e.salesgroup,a.salesno,a.sales,b.productno,b.product,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then (case @t_xshowvalue when '2' then sum(b.total) else sum(b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then (case @t_xshowvalue when '2' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else sum((case when a.typea='1' then 1 else -1 end)*b.mount) end) else 0 end,
 		0 total,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then sum(b.total) end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then sum(b.total) else 0 end,
-		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then sum(b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='01' then sum((case when a.typea='1' then 1 else -1 end)*b.total) end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='02' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='03' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='04' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='05' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='06' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='07' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='08' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='09' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='10' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='11' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
+		case when substring(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,5,2)='12' then sum((case when a.typea='1' then 1 else -1 end)*b.total) else 0 end,
 		0 total
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
@@ -725,17 +725,17 @@ declare @tmp table(
 insert into @tmp
 	select
 		'99' gno,e.salesgroup,a.salesno,a.sales,b.productno,b.product,
-		case when c.idno=1 then b.mount else null end,
-		case when c.idno=2 then b.mount else null end,
-		case when c.idno=3 then b.mount else null end,
-		case when c.idno=4 then b.mount else null end,
-		case when c.idno=5 then b.mount else null end,
+		case when c.idno=1 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=2 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=3 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=4 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=5 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
 		0 total_mount,
-		case when c.idno=1 then b.total else null end,
-		case when c.idno=2 then b.total else null end,
-		case when c.idno=3 then b.total else null end,
-		case when c.idno=4 then b.total else null end,
-		case when c.idno=5 then b.total else null end,	
+		case when c.idno=1 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=2 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=3 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=4 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=5 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,	
 		0 total_money,
 		'' wkn01,'' wkn02,'' wkn03,'' wkn04,'' wkn05
 	from view_vcc a
@@ -859,7 +859,11 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0' gno,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),a.typea,f.namea,a.custno,c.nick,a.invono,e.noa,g.namea,
-		b.productno,b.product,b.lengthb,b.width,b.price,b.total,e.salesgroup,a.salesno,a.sales
+		b.productno,b.product
+		,(case when a.typea='1' then 1 else -1 end)*b.lengthb
+		,(case when a.typea='1' then 1 else -1 end)*b.width
+		,b.price
+		,(case when a.typea='1' then 1 else -1 end)*b.total,e.salesgroup,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
 	left join cust c on a.custno=c.noa
@@ -1400,17 +1404,17 @@ declare @tmp table(
 insert into @tmp
 	select
 		'99' gno,0,0,0,e.salesgroup,a.salesno,a.sales,b.productno,b.product,
-		case when c.idno=1 then b.mount else null end,
-		case when c.idno=2 then b.mount else null end,
-		case when c.idno=3 then b.mount else null end,
-		case when c.idno=4 then b.mount else null end,
-		case when c.idno=5 then b.mount else null end,
+		case when c.idno=1 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=2 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=3 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=4 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
+		case when c.idno=5 then (case when a.typea='1' then 1 else -1 end)*b.mount else null end,
 		0 total_mount,
-		case when c.idno=1 then b.total else null end,
-		case when c.idno=2 then b.total else null end,
-		case when c.idno=3 then b.total else null end,
-		case when c.idno=4 then b.total else null end,
-		case when c.idno=5 then b.total else null end,	
+		case when c.idno=1 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=2 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=3 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=4 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,
+		case when c.idno=5 then (case when a.typea='1' then 1 else -1 end)*b.total else null end,	
 		0 total_money,
 		'' wkn01,'' wkn02,'' wkn03,'' wkn04,'' wkn05
 	from view_vcc a
@@ -1643,7 +1647,12 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0',(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
-		a.custno,c.nick,e.namea,b.productno,b.product,b.lengthb,b.width,b.dime,b.price,b.total,
+		a.custno,c.nick,e.namea,b.productno,b.product
+		,(case when a.typea='1' then 1 else -1 end)*b.lengthb
+		,(case when a.typea='1' then 1 else -1 end)*b.width
+		,(case when a.typea='1' then 1 else -1 end)*b.dime
+		,b.price
+		,(case when a.typea='1' then 1 else -1 end)*b.total,
 		f.salesgroup,a.salesno,a.sales
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
