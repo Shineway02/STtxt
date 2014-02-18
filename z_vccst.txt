@@ -38,7 +38,7 @@ declare @tmp table(
 	productno nvarchar(35),
 	akind nvarchar(15),
 	csize nvarchar(max),
-	spec nvarchar(50),
+	spec nvarchar(max),
 	amount float,
 	aweight float,
 	aprice float,
@@ -120,7 +120,7 @@ declare @tmp table(
 	pno nvarchar(35),
 	akind nvarchar(15),
 	csize nvarchar(max),
-	spec nvarchar(50),
+	spec nvarchar(max),
 	style nvarchar(20),
 	aweight float,
 	amount float,
@@ -202,7 +202,7 @@ declare @tmp table(
 	product nvarchar(90),
 	pno nvarchar(35),
 	csize nvarchar(max),
-	spec nvarchar(50),
+	spec nvarchar(max),
 	aprice float,
 	amount float,
 	aweight float,
@@ -272,7 +272,7 @@ declare @tmp table(
 	product nvarchar(90),
 	pno nvarchar(35),
 	csize nvarchar(max),
-	spec nvarchar(50),
+	spec nvarchar(max),
 	aprice float,
 	amount float,
 	aweight float,
@@ -387,7 +387,7 @@ declare @tmp table(
 	source nvarchar(15),
 	pno nvarchar(35),
 	product nvarchar(90),
-	spec nvarchar(30),
+	spec nvarchar(max),
 	csize nvarchar(max),
 	mount float,
 	weight float,
@@ -464,7 +464,7 @@ declare @tmp table(
 	pno nvarchar(35),
 	akind nvarchar(15),
 	csize nvarchar(max),
-	spec nvarchar(50),
+	spec nvarchar(max),
 	style nvarchar(20),
 	aweight float,
 	amount float,
@@ -548,7 +548,7 @@ declare @tmp table(
 	pno nvarchar(35),
 	akind nvarchar(15),
 	csize nvarchar(max),
-	spec nvarchar(50),
+	spec nvarchar(max),
 	aweight float,
 	amount float,
 	comp nvarchar(90),
@@ -628,20 +628,22 @@ declare @tmp table(
 	pno nvarchar(90),
 	akind nvarchar(15),
 	csize nvarchar(max),
-	spec nvarchar(90),
+	spec nvarchar(max),
 	aweight float,
 	amount float,
 	custno nvarchar(35),
 	comp nvarchar(max),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	aprice float,
+	tranprice float
 )
 insert into @tmp
 	select
 		'0',a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,sum(a.weight),sum(a.mount),b.custno,c.nick,'vccst'
-	from vccs[1] a
-	left join vcc[1] b on a.noa = b.noa
+		a.spec,a.weight,a.mount,b.custno,c.nick,'vccst',a.price,b.price
+	from view_vccs a
+	left join view_vcc b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
 	where
 		(/*(b.kind = 'A1' or b.kind = 'A4') and */(b.typea = '1')) and 
@@ -652,8 +654,6 @@ insert into @tmp
 		(a.width between @t_bwidth and @t_ewidth) and
 		(a.dime between @t_bdime and @t_edime) and
 		(a.lengthb between @t_blengthb and @t_elengthb)
-	group by b.custno,c.nick,a.uno,a.product,a.productno,a.size,b.kind,a.dime,a.width,a.lengthb,a.radius,
-				a.spec
 insert into @tmp(gno,custno,comp,amount,aweight)
 	select '1',custno,comp,sum(amount),sum(aweight) from @tmp where gno='0' group by custno,comp
 insert into @tmp(gno,custno,comp,amount,aweight)
@@ -661,7 +661,7 @@ insert into @tmp(gno,custno,comp,amount,aweight)
 update @tmp set csize = replace(csize,'~#$','''')
 select
 	gno,uno,ROW_NUMBER()over(partition by custno,comp order by custno,comp,gno) idno,
-	product,pno,csize,spec,custno,
+	product,pno,csize,spec,custno,aprice,tranprice,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
 	comp
