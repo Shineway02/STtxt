@@ -300,6 +300,7 @@ set @t_sort = case when '#non'=[16] then '' else [16] end
 set @t_sort = upper(@t_sort)
 declare @tmp table(
 	gno nvarchar(1),
+	orderby int,
 	ordeno nvarchar(30),
 	no2 nvarchar(10),
 	datea nvarchar(10),
@@ -322,7 +323,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select 
-		'0',b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
+		'0',0,b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
 		(case when ltrim(rtrim(a.size)) = '' then 
 			dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
 		else ltrim(rtrim(a.size)) end) sizea,a.spec,a.class,a.dime,
@@ -364,10 +365,14 @@ update a
 from @tmp a
 outer apply(select top 1 notv from @tmp where (a.sizea=sizea) and (a.productno=productno) and (gno='2')) b	
 
-insert into @tmp(gno,style,productno,sizea,mount,notv)
+insert into @tmp(gno,weight,mount,notv,nweightv,stkmount)
+	select '1',sum(weight),sum(mount),sum(notv),sum(nweightv),sum(stkmount) from @tmp where gno='0'
+
+insert into @tmp(gno,orderby,style,productno,products,sizea,stkmount)
 	select
-		'3',e.product,a.productno,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius),
-		isnull(c.mount,0)-isnull(d.mount,0) mount,a.emount-(isnull(c.mount,0)-isnull(d.mount,0))
+		'0',1,e.noa,a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius),
+		--isnull(c.mount,0)-isnull(d.mount,0) mount,
+		sum(a.emount-(isnull(c.mount,0)-isnull(d.mount,0)))
 	from view_uccc a 
 	left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
 	outer apply(
@@ -387,36 +392,34 @@ insert into @tmp(gno,style,productno,sizea,mount,notv)
 	) d
 	left join style e on a.style=e.noa
 	where (a.kind ='B2') and ((a.tablea != 'cubu') or ((a.tablea = 'cubu') and b.typea = 4))
-
-
-insert into @tmp(gno,weight,mount,notv,nweightv,stkmount)
-	select '1',sum(weight),sum(mount),sum(notv),sum(nweightv),sum(stkmount) from @tmp where gno='0'
+	group by e.noa,a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
+	order by a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
 
 if(@t_sort = 'CUSTNO')
 	select
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
 		mount,notv,nweightv,qhref,stkmount,
-		ROW_NUMBER()over(order by gno,custno) idno
-	from @tmp order by gno,custno
+		ROW_NUMBER()over(order by gno,orderby,custno) idno
+	from @tmp order by gno,orderby,custno
 else if(@t_sort = 'SIZEA')
 	select
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
 		mount,notv,nweightv,qhref,stkmount,
-		ROW_NUMBER()over(order by gno,sizea) idno
-	from @tmp order by gno,sizea
+		ROW_NUMBER()over(order by gno,orderby,sizea) idno
+	from @tmp order by gno,orderby,sizea
 else if(@t_sort = 'DIME')
 	select
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
 		mount,notv,nweightv,qhref,stkmount,
-		ROW_NUMBER()over(order by gno,dime,sizea) idno
-	from @tmp order by gno,dime,sizea
+		ROW_NUMBER()over(order by gno,orderby,dime,sizea) idno
+	from @tmp order by gno,orderby,dime,sizea
 else
 	select
 		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
 		mount,notv,nweightv,qhref,stkmount,
-		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
-	from @tmp order by gno,ordeno,datea,products;
+		ROW_NUMBER()over(order by gno,orderby,ordeno,datea,products) idno
+	from @tmp order by gno,orderby,ordeno,datea,products;
 --****************************************************************************************************
 z_ordest4:--z_ordest4
 declare @t_bodate nvarchar(10)
