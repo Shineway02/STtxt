@@ -370,30 +370,23 @@ insert into @tmp(gno,weight,mount,notv,nweightv,stkmount)
 
 insert into @tmp(gno,orderby,style,productno,products,sizea,stkmount)
 	select
-		'0',1,e.noa,a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius),
-		--isnull(c.mount,0)-isnull(d.mount,0) mount,
-		sum(a.emount-(isnull(c.mount,0)-isnull(d.mount,0)))
-	from view_uccc a 
-	left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
-	outer apply(
-		select
-			ordet.uno,sum(ordet.mount) mount
-		from view_ordet ordet
-		left join view_orde orde on orde.noa=ordet.noa
-		where a.uno=ordet.uno
-		group by ordet.uno
-	) c
-	outer apply(
-		select
-			sum(case when vcc.typea='2' then vccs.mount*(-1) else vccs.mount end) mount
-		from view_vcc vcc
-		left join view_vccs vccs on vcc.noa=vccs.noa
-		where c.uno=vccs.uno
-	) d
-	left join style e on a.style=e.noa
-	where (a.kind ='B2') and ((a.tablea != 'cubu') or ((a.tablea = 'cubu') and b.typea = 4))
-	group by e.noa,a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
-	order by a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
+		'0',1,a.style,a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius),
+		sum(a.emount)
+	from view_uccc a
+	group by a.style,a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
+update a
+	set stkmount = isnull(stkmount,0)-isnull(b.mount,0)
+from @tmp a
+outer apply(
+	select
+		sum(ordes.notv) mount
+	from view_orde orde
+	left join view_ordes ordes on ordes.noa=orde.noa
+	where (ordes.enda='0') and (orde.enda='0') and (orde.kind='B2') and 
+			 (a.sizea=dbo.csize(orde.kind,ordes.dime,ordes.width,ordes.lengthb,ordes.radius))
+) b
+where (a.gno='0') and (orderby=1) and ((isnull(stkmount,0)-isnull(b.mount,0)) != 0)
+
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
 
 if(@t_sort = 'CUSTNO')
