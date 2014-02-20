@@ -1451,7 +1451,7 @@ cast(rate as nvarchar(10))+'%' rate,memo
 from @tmp order by gno,partno,jobno;
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-z_salary12:--z_salary12(dc)
+z_salary12:--z_salary12
 declare @t_year nvarchar(20) 
 declare @t_bsssno nvarchar(20) 
 declare @t_esssno nvarchar(20) 
@@ -1460,9 +1460,9 @@ set @t_year = case when '#non' = [11] then '' else [11] end
 set @t_bsssno = case when '#non' = [4] then '' else [4] end
 set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
 
-
 create table #tmpa( 
-	gno nvarchar(1), 
+	gno nvarchar(1),  
+	recno int,
 	title nvarchar(20),
 	sssno nvarchar(20), 
 	namea nvarchar(20), 
@@ -1482,37 +1482,43 @@ create table #tmpa(
 ) 
 --a,b,c,d,e,f,g,h,i->都是1~12月欄位 
 declare @list table( 
-[namea] nvarchar(20), 
-[list] nvarchar(MAX) 
+	recno int, 
+	[namea] nvarchar(20), 
+	[list] nvarchar(MAX) 
 ) 
+
 --插入要計算的欄位名稱 
-insert into @list (namea,list) values('底薪','b.money') 
-insert into @list (namea,list) values('主管津貼','b.bo_admin') 
-insert into @list (namea,list) values('交通津貼','b.bo_traffic') 
-insert into @list (namea,list) values('工作津貼','b.bo_special') 
-insert into @list (namea,list) values('其他津貼','b.bo_oth')
-insert into @list (namea,list) values('其他加項','b.plus') 
-insert into @list (namea,list) values('小計','b.total1') 
-insert into @list (namea,list) values('扣薪時數','b.mi_saliday') 
-insert into @list (namea,list) values('扣薪金額','b.mi_total') 
-insert into @list (namea,list) values('全勤','b.bo_full') 
-insert into @list (namea,list) values('應稅其他','b.tax_other') 
-insert into @list (namea,list) values('給付總額','b.total2') 
-insert into @list (namea,list) values('加班費','b.addmoney') 
-insert into @list (namea,list) values('免稅其他','b.tax_other2') 
-insert into @list (namea,list) values('應領總額','b.total3') 
-insert into @list (namea,list) values('借支','b.borrow') 
-insert into @list (namea,list) values('勞保費','b.ch_labor') 
-insert into @list (namea,list) values('勞退公司提繳','b.ch_labor_comp') 
-insert into @list (namea,list) values('勞退個人提繳','b.ch_labor_self') 
-insert into @list (namea,list) values('健保費','b.ch_health') 
-insert into @list (namea,list) values('福利金','b.welfare') 
-insert into @list (namea,list) values('其他扣款','b.minus') 
-insert into @list (namea,list) values('應扣總額','b.total4') 
-insert into @list (namea,list) values('實發金額','b.total5') 
+insert into @list (recno,namea,list) values(1,'底薪','b.money') 
+insert into @list (recno,namea,list) values(2,'主管津貼','b.bo_admin') 
+insert into @list (recno,namea,list) values(3,'交通津貼','b.bo_traffic') 
+insert into @list (recno,namea,list) values(4,'工作津貼','b.bo_special') 
+insert into @list (recno,namea,list) values(5,'其他津貼','b.bo_oth')
+insert into @list (recno,namea,list) values(6,'其他加項','b.plus') 
+insert into @list (recno,namea,list) values(7,'小計','b.total1') 
+insert into @list (recno,namea,list) values(8,'扣薪時數','b.mi_saliday') 
+insert into @list (recno,namea,list) values(9,'扣薪金額','b.mi_total') 
+insert into @list (recno,namea,list) values(10,'全勤','b.bo_full') 
+insert into @list (recno,namea,list) values(11,'應稅其他','b.tax_other') 
+insert into @list (recno,namea,list) values(12,'給付總額','b.total2') 
+insert into @list (recno,namea,list) values(13,'加班費','b.addmoney') 
+insert into @list (recno,namea,list) values(14,'免稅其他','b.tax_other2') 
+insert into @list (recno,namea,list) values(15,'伙食費','b.meals') 
+insert into @list (recno,namea,list) values(16,'應領總額','b.total3') 
+insert into @list (recno,namea,list) values(17,'借支','b.borrow') 
+insert into @list (recno,namea,list) values(18,'勞保費','b.ch_labor') 
+insert into @list (recno,namea,list) values(19,'勞退個人提繳','b.ch_labor_self') 
+insert into @list (recno,namea,list) values(20,'健保費','b.ch_health')
+insert into @list (recno,namea,list) values(21,'二代健保費','b.hplus2')
+insert into @list (recno,namea,list) values(22,'所得稅5%','b.tax5')  
+insert into @list (recno,namea,list) values(23,'所得稅','b.tax') 
+insert into @list (recno,namea,list) values(24,'福利金','b.welfare') 
+insert into @list (recno,namea,list) values(25,'其他扣款','b.minus') 
+insert into @list (recno,namea,list) values(26,'應扣總額','b.total4') 
+insert into @list (recno,namea,list) values(27,'實發金額','b.total5') 
 
 declare @lists nvarchar(MAX) 
 declare @namea nvarchar(20) 
+declare @recno int
 declare @cmd nvarchar(max) 
 
 declare @sssno nvarchar(20)
@@ -1520,6 +1526,7 @@ declare @sssnamea nvarchar(20)
 
 declare sss_table cursor for 
 select noa,namea from sss where noa between @t_bsssno and @t_esssno
+and (noa in (select sno from salarys where left(mon,3)=@t_year))
 open sss_table 
 fetch next from sss_table 
 into @sssno,@sssnamea
@@ -1527,30 +1534,30 @@ while(@@FETCH_STATUS <> -1)
 begin 
 
 	declare cursor_table cursor for 
-	select namea,list from @list 
+	select namea,list,recno from @list 
 	open cursor_table 
 	fetch next from cursor_table 
-	into @namea,@lists 
+	into @namea,@lists,@recno
 	while(@@FETCH_STATUS <> -1) 
 	begin 
-		set @cmd = 'insert into #tmpa (gno,title,a,b,c,d,e,f,g,h,i,j,k,l,sssno,namea) values(''0'','''+@namea+''', 
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/01'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/02'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/03'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/04'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/05'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/06'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/07'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/08'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/09'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/10'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/11'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/12'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),'''+@sssno+''','''+@sssnamea+''')'
+		set @cmd = 'insert into #tmpa (gno,recno,title,a,b,c,d,e,f,g,h,i,j,k,l,sssno,namea) values(''0'','+cast(@recno as  nvarchar(20))+','''+@namea+''', 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/01'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/02'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/03'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/04'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/05'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/06'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/07'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/08'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/09'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/10'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/11'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/12'' and b.sno='''+@sssno+'''),0),'''+@sssno+''','''+@sssnamea+''')' 
 
 		EXECUTE sp_executesql @cmd 
 
 		fetch next from cursor_table 
-		into @namea,@lists 
+		into @namea,@lists,@recno
 	end 
 	close cursor_table 
 	deallocate cursor_table 
@@ -1578,145 +1585,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,j),1)),4,12)) j,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,k),1)),4,12)) k, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,l),1)),4,12)) l,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,m),1)),4,12)) m 
-from #tmpa
-
---刪除暫存資料庫 
-IF OBJECT_ID('tempdb..#tmpa')is not null 
-BEGIN 
-drop table #tmpa
-END ;
--------------------------------------------------------------------------------------------------------------------------------------------------------
-z_salary12_it:--z_salary12_it
-declare @t_year nvarchar(20) 
-declare @t_bsssno nvarchar(20) 
-declare @t_esssno nvarchar(20) 
-
-set @t_year = case when '#non' = [11] then '' else [11] end
-set @t_bsssno = case when '#non' = [4] then '' else [4] end
-set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
-
-
-create table #tmpa( 
-	gno nvarchar(1), 
-	title nvarchar(20),
-	sssno nvarchar(20), 
-	namea nvarchar(20), 
-	a float, 
-	b float, 
-	c float, 
-	d float, 
-	e float, 
-	f float, 
-	g float, 
-	h float, 
-	i float, 
-	j float, 
-	k float, 
-	l float, 
-	m float
-) 
---a,b,c,d,e,f,g,h,i->都是1~12月欄位 
-declare @list table( 
-[namea] nvarchar(20), 
-[list] nvarchar(MAX) 
-) 
---插入要計算的欄位名稱 
-insert into @list (namea,list) values('底薪','b.money') 
-insert into @list (namea,list) values('主管津貼','b.bo_admin') 
-insert into @list (namea,list) values('交通津貼','b.bo_traffic') 
-insert into @list (namea,list) values('工作津貼','b.bo_special') 
-insert into @list (namea,list) values('其他津貼','b.bo_oth')
-insert into @list (namea,list) values('其他加項','b.plus') 
-insert into @list (namea,list) values('小計','b.total1') 
-insert into @list (namea,list) values('扣薪時數','b.mi_saliday') 
-insert into @list (namea,list) values('扣薪金額','b.mi_total') 
-insert into @list (namea,list) values('全勤','b.bo_full') 
-insert into @list (namea,list) values('應稅其他','b.tax_other') 
-insert into @list (namea,list) values('給付總額','b.total2') 
-insert into @list (namea,list) values('加班費','b.addmoney') 
-insert into @list (namea,list) values('免稅其他','b.tax_other2') 
-insert into @list (namea,list) values('伙食費','b.meals') 
-insert into @list (namea,list) values('應領總額','b.total3') 
-insert into @list (namea,list) values('借支','b.borrow') 
-insert into @list (namea,list) values('勞保費','b.ch_labor') 
-insert into @list (namea,list) values('勞退個人提繳','b.ch_labor_self') 
-insert into @list (namea,list) values('健保費','b.ch_health')
-insert into @list (namea,list) values('二代健保費','b.hplus2')
-insert into @list (namea,list) values('所得稅5%','b.tax5')  
-insert into @list (namea,list) values('所得稅','b.tax') 
-insert into @list (namea,list) values('福利金','b.welfare') 
-insert into @list (namea,list) values('其他扣款','b.minus') 
-insert into @list (namea,list) values('應扣總額','b.total4') 
-insert into @list (namea,list) values('實發金額','b.total5') 
-
-declare @lists nvarchar(MAX) 
-declare @namea nvarchar(20) 
-declare @cmd nvarchar(max) 
-
-declare @sssno nvarchar(20)
-declare @sssnamea nvarchar(20)
-
-declare sss_table cursor for 
-select noa,namea from sss where noa between @t_bsssno and @t_esssno
-open sss_table 
-fetch next from sss_table 
-into @sssno,@sssnamea
-while(@@FETCH_STATUS <> -1) 
-begin 
-
-	declare cursor_table cursor for 
-	select namea,list from @list 
-	open cursor_table 
-	fetch next from cursor_table 
-	into @namea,@lists 
-	while(@@FETCH_STATUS <> -1) 
-	begin 
-		set @cmd = 'insert into #tmpa (gno,title,a,b,c,d,e,f,g,h,i,j,k,l,sssno,namea) values(''0'','''+@namea+''', 
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/01'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/02'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/03'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/04'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/05'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/06'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/07'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/08'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/09'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/10'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/11'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),
-		isnull((select '+@lists+' from salary a left join salarys b on a.noa = b.noa left join sss c on b.sno = c.noa where a.person=''本國'' and a.mon='''+@t_year+'/12'' and a.monkind=''本月'' and b.sno='''+@sssno+'''),0),'''+@sssno+''','''+@sssnamea+''')'
-
-		EXECUTE sp_executesql @cmd 
-
-		fetch next from cursor_table 
-		into @namea,@lists 
-	end 
-	close cursor_table 
-	deallocate cursor_table 
-	
-	fetch next from sss_table 
-	into @sssno,@sssnamea
-end 
-close sss_table 
-deallocate sss_table 
-
-update #tmpa
-set m=a+b+c+d+e+f+g+h+i+j+k+l
-
-select gno,namea,title,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a),1)),4,12)) a, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b),1)),4,12)) b, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,c),1)),4,12)) c, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,d),1)),4,12)) d, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,e),1)),4,12)) e, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,f),1)),4,12)) f, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,g),1)),4,12)) g, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,h),1)),4,12)) h,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,i),1)),4,12)) i,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,j),1)),4,12)) j,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,k),1)),4,12)) k, 
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,l),1)),4,12)) l,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,m),1)),4,12)) m 
-from #tmpa
+from #tmpa order by sssno,gno,recno
 
 --刪除暫存資料庫 
 IF OBJECT_ID('tempdb..#tmpa')is not null 
