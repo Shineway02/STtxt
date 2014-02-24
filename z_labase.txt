@@ -567,3 +567,71 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sa_health),1)),4,12
 mount,disaster,comp 
 from @tmp order by noa,gno;
 -----------------------------------------------------------------------------------------------
+z_sali:--z_sali
+declare @t_bsno nvarchar(20)
+declare @t_esno nvarchar(20)
+declare @t_xyears nvarchar(10)
+declare @strNum nvarchar(max) = N'零壹貳叁肆伍陸柒捌玖'
+set @t_bsno = case when '#non' = [2] then '' else [2] end 
+set @t_esno = case when '#non' = [3] then CHAR(255) else [3] end 
+set @t_xyears = case when '#non' = [12] then '' else [12] end 
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(20),
+	namea nvarchar(50),
+	years nvarchar(20),
+	prefix nvarchar(10),
+	fnamea nvarchar(50),
+	ch_labor int,
+	ch_health int,
+	total int,
+	comp nvarchar(50),
+	serial nvarchar(20),
+	boss nvarchar(10),
+	addr nvarchar(max),
+	m01 nvarchar(10),
+	m02 nvarchar(10),
+	m03 nvarchar(10),
+	m04 nvarchar(10),
+	m05 nvarchar(10)
+)
+insert into @tmp
+	select
+		'0' gno,a.noa, a.namea,'','本人',a.namea,sum(d.ch_labor),
+		sum(d.ch_health),0,isnull(c.acomp,''),isnull(c.serial,''),isnull(c.boss,''),isnull(c.addr,''),
+		'' m01,'' m02,'' m03,'' m04,'' m05
+	from sss a
+	left join acomp c on c.noa = a.cno
+	left join salarys d on d.sno = a.noa
+	where (a.noa between @t_bsno and @t_esno) and
+			 (left(d.mon,3) = @t_xyears) and
+			 (isnull(a.outdate,'')='' or left(a.outdate,3)>=@t_xyears)
+	group by a.noa, a.namea,isnull(c.acomp,''),isnull(c.serial,''),isnull(c.boss,''),isnull(c.addr,'')
+delete @tmp where isnull(ch_labor,0)+isnull(ch_labor,0)=0
+insert into @tmp(gno,noa,total,comp,serial,boss,addr)
+	select
+		'1' gno,noa,SUM(ch_labor)+SUM(ch_health),comp,serial,boss,addr
+	from @tmp
+	where gno='0'
+	group by noa,comp,serial,boss,addr
+insert into @tmp(gno,noa,total,comp,serial,boss,addr)
+	select
+		'2' gno,noa,SUM(ch_labor)+SUM(ch_health),comp,serial,boss,addr
+	from @tmp
+	where gno='0'
+	group by noa,comp,serial,boss,addr
+update a  
+	set m01 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),1,1) as int)+1,1),
+	m02 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),2,1) as int)+1,1),
+	m03 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),3,1) as int)+1,1),
+	m04 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),4,1) as int)+1,1),
+	m05 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),5,1) as int)+1,1)
+from @tmp a
+select
+	a.gno,a.noa,a.namea,a.years,a.prefix,a.fnamea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.ch_labor),1)),4,12)) ch_labor,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.ch_health),1)),4,12)) ch_health,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
+	a.comp,a.serial,a.boss,a.addr,a.m01,a.m02,a.m03,a.m04,a.m05,@t_xyears wyear
+from @tmp a
+order by a.noa,a.gno;
