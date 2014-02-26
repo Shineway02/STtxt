@@ -418,7 +418,7 @@ begin
 			a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
 			a.money,
 			case when @checkUcca>0 then 0 else isnull(a.tax,0) end,
-			a.total,b.ordeno,b.uno,b.spec,
+			a.total,b.ordeno+(case when isnull(d.itype,'')='3' then '寄庫' else '' end),b.uno,b.spec,
 			case when charindex(left(uno,1),'XYZ') > 0 then  '廢料' else b.product end,
 			(case when (b.style='' and b.dime='') then null else 
 				(case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
@@ -430,6 +430,13 @@ begin
 		from view_vcc[1] a
 		left join view_vccs[1] b on a.noa = b.noa
 		left join vcca c on a.invono=c.noa
+		outer apply(
+			select
+				top 1 ina.itype
+			from view_ina ina 
+			left join view_inas inas on ina.noa=inas.noa
+			where inas.uno=b.uno
+		) d
 		where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
 end
 else if(@t_merga = '1')
@@ -441,7 +448,7 @@ begin
 			a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
 			a.money,
 			case when @checkUcca>0 then 0 else isnull(a.tax,0) end,
-			a.total,b.ordeno,'',b.spec,case when charindex(left(max(uno),1),'XYZ') > 0 then  '廢料' else b.product end ,
+			a.total,b.ordeno+(case when isnull(d.itype,'')='3' then '寄庫' else '' end),'',b.spec,case when charindex(left(max(uno),1),'XYZ') > 0 then  '廢料' else b.product end ,
 			(case when (b.style='' and b.dime='') then null else 
 				(case @t_showtype when '1' then b.size when '2' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else
 				(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) end )
@@ -452,8 +459,15 @@ begin
 		from view_vcc[1] a
 		left join view_vccs[1] b on a.noa = b.noa
 		left join vcca c on a.invono=c.noa
+		outer apply(
+			select
+				top 1 ina.itype
+			from view_ina ina 
+			left join view_inas inas on ina.noa=inas.noa
+			where inas.uno=b.uno
+		) d
 		where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
-		group by b.ordeno,b.no2,a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
+		group by d.itype,b.ordeno,b.no2,a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
 					a.memo,a.money,a.tax,a.total,b.spec,b.product,b.size,a.kind,b.dime,b.width,b.lengthb,b.radius,b.style,
 					b.price,a.trantype,left(uno,1)
 /*
