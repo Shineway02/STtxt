@@ -324,9 +324,7 @@ declare @tmp table(
 insert into @tmp
 	select 
 		'0',0,b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
-		(case when ltrim(rtrim(a.size)) = '' then 
-			dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)
-		else ltrim(rtrim(a.size)) end) sizea,a.spec,a.class,a.dime,
+		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) sizea,a.spec,a.class,a.dime,
 		a.price,a.weight,a.mount,a.notv,0,0,'ordest'+a.accy
 	from view_ordes a
 	left join view_orde b on a.noa = b.noa
@@ -382,12 +380,17 @@ outer apply(
 		sum(ordes.notv) mount
 	from view_orde orde
 	left join view_ordes ordes on ordes.noa=orde.noa
-	where (ordes.enda='0') and (orde.enda='0') and (orde.kind='B2') and 
+	where (ordes.enda='0') and (orde.enda='0') and (orde.kind='B2') and (ordes.productno=a.productno) and 
 			 (a.sizea=dbo.csize(orde.kind,ordes.dime,ordes.width,ordes.lengthb,ordes.radius))
 ) b
 where (a.gno='0') and (orderby=1) and ((isnull(stkmount,0)-isnull(b.mount,0)) != 0)
 
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
+update a
+	set sizea = c.size + '<br>(' + a.sizea + ')'
+from @tmp a
+outer apply(select top 1 size from view_ordes b where (a.ordeno=b.noa) and (a.no2=b.no2)) c
+where ((isnull(a.ordeno,'')!='') and (isnull(a.no2,'')!='') and (isnull(c.size,'') != '') and (isnull(c.size,'') != a.sizea))
 
 if(@t_sort = 'CUSTNO')
 	select
