@@ -132,7 +132,7 @@
 	close cursor_table
 	deallocate cursor_table
 	
-	select typea+'單' titlea
+	select case when typea='寄庫' then '寄庫出貨' else typea end+'單' titlea
 	,(ROW_NUMBER()over(partition by a.noa order by pno)-1)/@t_pageline +1 pp
 	,(b.n-1)/@t_pageline +1 qq
 	, a.*
