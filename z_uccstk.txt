@@ -403,9 +403,11 @@
 	end
 	----------------------------------------------------------------------------------
 	--重新入庫,單價無法計算,因此單價異常的改取平均
+	--代工排除
 	update @tmp set productno= b.productno,style=b.style
 	from @tmp a
 	left join view_uccb b on a.uno=b.uno  
+	
 	update @tmp set price = case when a.price>=isnull(d.price,0)*0.8 then a.price
 							when isnull(d.price,0)!=0 then d.price 
 							when isnull(c.price,0)!=0 then c.price
@@ -413,7 +415,10 @@
 	from @tmp a  
 	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style) c
 	outer apply (select AVG(price) price from @tmp where datea<='102/12/31' and a.productno=productno and a.style=style and price>=c.price*0.7) d
+	left join view_cubu e on a.uno=e.uno
+	left join view_cub f on e.accy=f.accy and e.noa=f.noa
 	where (a.style='1' or a.style='2' or a.style='3') and a.price<c.price*0.7 
+	and not(f.noa is not null and (CHARINDEX('代工',f.memo)>0 or CHARINDEX('代工',f.memo2)>0))
 	----------------------------------------------------------------------------------
 	----------------------------------------------------------------------------------
 	--更新CUTS,CUBU SPRICE
