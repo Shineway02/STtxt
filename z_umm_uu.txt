@@ -48,9 +48,11 @@ insert into @tmp
 	(left(um.datea,6) between @t_bmon and @t_emon) and 
 	(um.custno between @t_bcustno and @t_ecustno) and 
 	((len(@t_partno)=0) or (sss.partno = @t_partno)) and 
-	(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno) and 
+	--(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno) and 
 	((len(@t_xsalesgroup)=0) or @t_xsalesgroup=sss.salesgroup) 
 order by um.datea 
+
+delete @tmp where salesno not between @t_bsalesno and @t_esalesno
 	
 update @tmp set qhref = qhref+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'
 
@@ -109,10 +111,12 @@ us.noq!='' and
 (left(um.datea,6) between @t_bmon and @t_emon) and 
 (um.custno between @t_bcustno and @t_ecustno) and 
 ((len(@t_partno)=0) or (sss.partno = @t_partno)) and 
-(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno) and 
+--(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno) and 
 ((len(@t_xsalesgroup)=0) or @t_xsalesgroup=sss.salesgroup) 
 group by case when ISNULL(vcc.salesno,'')!='' then vcc.salesno else cust.salesno end, 
-case when ISNULL(vcc.salesno,'')!='' then vcc.sales else cust.sales end, um.datea,cust.noa,cust.nick 
+case when ISNULL(vcc.salesno,'')!='' then vcc.sales else cust.sales end, um.datea,cust.noa,cust.nick
+
+delete @tmp where salesno not between @t_bsalesno and @t_esalesno 
 
 insert into @tmp(gno,money,paysale) 
 select '1',sum(money),sum(paysale) from @tmp 
@@ -188,9 +192,11 @@ insert into @tmp
 	and (left(um.datea,6) between @t_bmon and @t_emon) 
 	and (c.custno between @t_bcustno and @t_ecustno)
 	and((len(@t_partno)=0) or (sss.partno = @t_partno)) 
-	and(isnull((case when (charindex('-',a.vccno)>0) then cust.salesno else c.salesno end),'') between @t_bsalesno and @t_esalesno)
+	--and(isnull((case when (charindex('-',a.vccno)>0) then cust.salesno else c.salesno end),'') between @t_bsalesno and @t_esalesno)
 	and((len(@t_xsalesgroup)=0) or @t_xsalesgroup=sss.salesgroup) 
 	order by b.productno,d.odate,d.noa
+	
+	delete @tmp where salesno not between @t_bsalesno and @t_esalesno
 	
 	insert into @tmp
 	select '1','','','','','','',pno,product,sum(lengthb),sum(width),sum(dime),'',sum(total),SUM(money),'','','' 
