@@ -508,14 +508,13 @@ outer apply(
 	left join view_vcc vcc on us.vccno=vcc.noa
 	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
 	left join cust custm on um.custno=custm.noa
-	where (left(um.datea,6)=left(@t_datea,6)) and (um.datea<=@t_datea) and (len(us.vccno) > 0) and 
+	where (left(um.datea,6)=left(@t_datea,6)) and (um.datea<=@t_datea)/* and (len(us.vccno) > 0)*/ and 
 	(
 		((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or 
 		((charindex('-',us.vccno)>0) and a.salesno=cust.salesno) or
 		((isnull(us.vccno,'') = '') and a.salesno=custm.salesno)
 	) and 
-	(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno)  
-
+	(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno when (isnull(us.vccno,'') = '') then custm.salesno when (charindex('-',us.vccno)=0) then vcc.salesno end),'') between @t_bsalesno and @t_esalesno)  
 ) b
 outer apply(
 	select
@@ -525,13 +524,13 @@ outer apply(
 	left join view_vcc vcc on us.vccno=vcc.noa
 	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
 	left join cust custm on um.custno=custm.noa
-	where (um.datea=@t_datea) and (len(us.vccno) > 0) and
+	where (um.datea=@t_datea)/* and (len(us.vccno) > 0) */and
 	(
 		((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or 
 		((charindex('-',us.vccno)>0) and a.salesno=cust.salesno) or
 		((isnull(us.vccno,'') = '') and a.salesno=custm.salesno)
 	) and 
-	(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno else vcc.salesno end),'') between @t_bsalesno and @t_esalesno)  
+	(isnull((case when (charindex('-',us.vccno)>0) then cust.salesno when (isnull(us.vccno,'') = '') then custm.salesno when (charindex('-',us.vccno)=0) then vcc.salesno end),'') between @t_bsalesno and @t_esalesno)  
 
 ) c
 where a.gno='6'
@@ -1469,7 +1468,7 @@ outer apply(
 	left join cust cust on substring(us.vccno,0,charindex('-',us.vccno))=cust.noa
 	left join cust custm on um.custno=custm.noa
 	where (left(um.datea,6)=@t_mon) and 
-	(um.datea<=(select top 1 bdatea from @weeklist where weekend=@t_week)) and (len(us.vccno) > 0) and 
+	(um.datea<=(select top 1 bdatea from @weeklist where weekend=@t_week))/* and (len(us.vccno) > 0) */and 
 	(
 		((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or 
 		((charindex('-',us.vccno)>0) and a.salesno=cust.salesno) or
@@ -1490,7 +1489,7 @@ outer apply(
 		((charindex('-',us.vccno)=0) and a.salesno=vcc.salesno) or 
 		((charindex('-',us.vccno)>0) and a.salesno=cust.salesno) or
 		((isnull(us.vccno,'') = '') and a.salesno=custm.salesno)
-	) and (len(us.vccno) > 0)
+	)/* and (len(us.vccno) > 0)*/
 ) c
 where a.gno='6'
 
