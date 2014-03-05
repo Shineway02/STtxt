@@ -153,13 +153,16 @@
 		mount float,
 		notmount float,
 		stkmount float,
-		notweight float
+		notweight float,
+		memo nvarchar(max)
 	)
 	insert into @tmpb(gno,pno,recno,ordeaccy,ordeno,ordeno2,datea,custno,nick
-		,product,spec,classa,size,price,weight,mount,notmount,stkmount,notweight)
+		,product,spec,classa,size,price,weight,mount,notmount,stkmount,notweight
+		,memo)
 	select '1','1', ROW_NUMBER()over(order by a.productno,a.style,a.radius,a.width,a.dime,a.lengthb)
 		,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick
 		,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight
+		,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end 
 	from @tmp a
 	left join cust b on a.custno=b.noa
 	outer apply(select SUM(ISNULL(mount,0)) mount from @tmpa 
@@ -169,13 +172,14 @@
 	declare @n int = 0
 	select @n = COUNT(1) from @tmpb
 
-	insert into @tmpb(gno,pno,recno,product,spec,size,stkmount)
+	insert into @tmpb(gno,pno,recno,product,spec,size,stkmount,memo)
 	select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.spec,a.size)+@n
 		,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)
+		,a.size
 	from (select productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight
 		from @tmpa where mount>0 and weight>0 group by productno,style,product,spec,size) a
 	outer apply(select SUM(ISNULL(notmount,0)) notmount from @tmp
-		where productno=a.productno and style=a.style and spec=a.spec and size=a.size)b	
+		where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b	
 	
 	select * 
 	,recno a01
@@ -187,7 +191,7 @@
 	,product a07
 	,spec a08
 	,classa a09
-	,size a10
+	,memo a10
 	,price a11
 	,weight a12
 	,mount a13
