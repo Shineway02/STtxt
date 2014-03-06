@@ -1,18 +1,27 @@
 ﻿z_ordest5:--z_ordest5
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
 	declare @t_bodate nvarchar(10)
 	declare @t_eodate nvarchar(10)
 	declare @t_bcustno nvarchar(20)
 	declare @t_ecustno nvarchar(20)
 	declare @t_bproductno nvarchar(30)
 	declare @t_eproductno nvarchar(30)
+	declare @t_sort nvarchar(30)
 	set @t_bodate = case when '#non'=[4] then '' else [4] end
 	set @t_eodate = case when '#non'=[5] then char(255) else [5] end
 	set @t_bcustno = case when '#non'=[6] then '' else [6] end
 	set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
 	set @t_bproductno = case when '#non'=[10] then '' else [10] end
 	set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+	set @t_sort = case when '#non'=[16] then '' else [16] end
+	set @t_sort = upper(@t_sort)
 	-----------------------------------------------------------------------------------------
-	declare @tmp table(
+	IF OBJECT_ID('tempdb.. #z_ordest5_a')is not null
+	BEGIN
+		drop table  #z_ordest5_a
+	END
+	create table #z_ordest5_a(
 		ordeaccy nvarchar(20),
 		ordeno nvarchar(20),
 		ordeno2 nvarchar(10),
@@ -42,7 +51,7 @@
 		notweight float
 	)
 	
-	insert into @tmp(ordeaccy,ordeno,ordeno2
+	insert into #z_ordest5_a(ordeaccy,ordeno,ordeno2
 		,custno,datea,style,productno,product,spec,classa,size
 		,dime,width,lengthb,radius,mount,[weight],price,memo
 		,notv)
@@ -56,16 +65,20 @@
 	and a.kind='B2'
 	order by productno,radius,width,dime,lengthb
 	
-	update @tmp set tmount = ISNULL(a.tmount,0)+b.mount,tweight = ISNULL(a.tweight,0)+b.weight
-	from @tmp a
+	update #z_ordest5_a set tmount = ISNULL(a.tmount,0)+b.mount,tweight = ISNULL(a.tweight,0)+b.weight
+	from #z_ordest5_a a
 	outer apply(select SUM(mount) mount,SUM(weight) weight from view_vccs where ordeno=a.ordeno and no2=a.ordeno2) b
 	------------------------------------------------------------------------------------------------------
-	delete @tmp where not( ISNULL(tmount,0)<ISNULL(mount,0) and ISNULL(tweight,0)<ISNULL(weight,0))
-	update @tmp set csize = dbo.csize('B2',dime,width,lengthb,radius)
+	delete #z_ordest5_a where not( ISNULL(tmount,0)<ISNULL(mount,0) and ISNULL(tweight,0)<ISNULL(weight,0))
+	update #z_ordest5_a set csize = dbo.csize('B2',dime,width,lengthb,radius)
 		,notmount = ISNULL(mount,0)-ISNULL(tmount,0)
 		,notweight = ISNULL(weight,0)-ISNULL(tweight,0)
 	-------------------------------------------------------------------------------------------------------
-	declare @tmpa table(
+	IF OBJECT_ID('tempdb.. #z_ordest5_b')is not null
+	BEGIN
+		drop table  #z_ordest5_b
+	END
+	create table #z_ordest5_b(
 		uno nvarchar(30),
 		productno nvarchar(20),
 		style nvarchar(20),
@@ -81,7 +94,7 @@
 	)
 	
 	----------------------------------------------------------------------------------------------------
-	insert into @tmpa(uno,mount,weight)
+	insert into #z_ordest5_b(uno,mount,weight)
 	select uno,SUM(mount),SUM(weight)
 	from(
 		select b.uno,b.mount,b.weight 
@@ -134,15 +147,15 @@
 		where c.style between '1' and '3')a
 	group by uno
 
-	delete @tmpa 
-	from @tmpa a
+	delete #z_ordest5_b
+	from #z_ordest5_b a
 	left join view_cubu b on a.uno=b.uno
 	left join view_cub c on b.accy=c.accy and b.noa=c.noa 
 	where c.typea!='4'
-	update @tmpa set productno=b.productno,product=b.product,style=b.style,spec=b.spec
+	update #z_ordest5_b set productno=b.productno,product=b.product,style=b.style,spec=b.spec
 		,size=dbo.csize('B2',b.dime,b.width,b.lengthb,b.radius)
 		,dime=b.dime,width=b.width,lengthb=b.lengthb,radius=b.radius
-	from @tmpa a
+	from #z_ordest5_b a
 	left join view_uccb b on a.uno=b.uno
 	----------------------------------------------------------------------------
 	--**************************************************************************
@@ -170,30 +183,89 @@
 		notweight float,
 		memo nvarchar(max)
 	)
+	set @cmd = ''
+	--custno@依客戶,sizea@依尺寸,dime@依厚度
+	if @t_sort = 'CUSTNO'
+	begin	
+		set @cmd = 
+		" select '1','1', ROW_NUMBER()over(order by a.custno,a.productno,a.style,a.radius,a.width,a.dime,a.lengthb)"+
+		" 	,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick"+
+		" 	,a.productno,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight"+
+		" 	,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end "+
+		" from #z_ordest5_a a"+
+		" left join cust b on a.custno=b.noa"+
+		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordest5_b"+
+		" 	where productno=a.productno and style=a.style and spec=a.spec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.custno,a.productno,a.spec,a.style,a.radius,a.width,a.dime,a.lengthb"
+	end
+	if @t_sort = 'SIZEA'
+	begin	
+		set @cmd = 
+		" select '1','1', ROW_NUMBER()over(order by a.productno,a.style,a.radius,a.width,a.dime,a.lengthb)"+
+		" 	,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick"+
+		" 	,a.productno,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight"+
+		" 	,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end "+
+		" from #z_ordest5_a a"+
+		" left join cust b on a.custno=b.noa"+
+		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordest5_b"+
+		" 	where productno=a.productno and style=a.style and spec=a.spec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.productno,a.spec,a.style,a.radius,a.width,a.dime,a.lengthb"	
+	end
+	if @t_sort = 'DIME'
+	begin	
+		set @cmd = 
+		" select '1','1', ROW_NUMBER()over(order by a.dime,a.productno,a.style,a.radius,a.width,a.lengthb)"+
+		" 	,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick"+
+		" 	,a.productno,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight"+
+		" 	,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end "+
+		" from #z_ordest5_a a"+
+		" left join cust b on a.custno=b.noa"+
+		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordest5_b"+
+		" 	where productno=a.productno and style=a.style and spec=a.spec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.dime,a.productno,a.spec,a.style,a.radius,a.width,a.lengthb"	
+	end
 	insert into @tmpb(gno,pno,recno,ordeaccy,ordeno,ordeno2,datea,custno,nick
 		,productno,product,spec,classa,size,price,weight,mount,notmount,stkmount,notweight
 		,memo)
-	select '1','1', ROW_NUMBER()over(order by a.productno,a.style,a.radius,a.width,a.dime,a.lengthb)
-		,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick
-		,a.productno,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight
-		,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end 
-	from @tmp a
-	left join cust b on a.custno=b.noa
-	outer apply(select SUM(ISNULL(mount,0)) mount from @tmpa 
-		where productno=a.productno and style=a.style and spec=a.spec and size=a.csize and mount>0 and weight>0) c
-	order by a.productno,a.spec,a.style,a.radius,a.width,a.dime,a.lengthb
+	execute sp_executesql @cmd
 	
 	declare @n int = 0
 	select @n = COUNT(1) from @tmpb
-
+	if @t_sort = 'CUSTNO'
+	begin	
+		set @cmd = 
+		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.spec,a.size)+@n"+
+		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
+		" 	,a.size"+
+		" from (select productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordest5_b where mount>0 and weight>0 group by productno,style,product,spec,size) a"+
+		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordest5_a"+
+		" 	where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b"
+	end
+	if @t_sort = 'SIZEA'
+	begin	
+		set @cmd = 
+		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.spec,a.size)+@n"+
+		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
+		" 	,a.size"+
+		" from (select productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordest5_b where mount>0 and weight>0 group by productno,style,product,spec,size) a"+
+		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordest5_a"+
+		" 	where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b"
+	end
+	if @t_sort = 'DIME'
+	begin	
+		set @cmd = 
+		" select '2','2',ROW_NUMBER()over(order by a.dime,a.productno,a.style,a.product,a.spec,a.size)+@n"+
+		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
+		" 	,a.size"+
+		" from (select dime,productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordest5_b where mount>0 and weight>0 group by dime,productno,style,product,spec,size) a"+
+		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordest5_a"+
+		" 	where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b"
+	end
 	insert into @tmpb(gno,pno,recno,productno,product,spec,size,stkmount,memo)
-	select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.spec,a.size)+@n
-		,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)
-		,a.size
-	from (select productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight
-		from @tmpa where mount>0 and weight>0 group by productno,style,product,spec,size) a
-	outer apply(select SUM(ISNULL(notmount,0)) notmount from @tmp
-		where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b	
+	execute sp_executesql @cmd,N'@n int',@n=@n	
 	
 	delete @tmpb
 	where pno='1' and not(datea between @t_bodate and @t_eodate
@@ -202,7 +274,9 @@
 	
 	delete @tmpb
 	where pno='2' and not(productno between @t_bproductno and @t_eproductno)
-		
+	
+	 drop table  #z_ordest5_a
+	 drop table  #z_ordest5_b	
 	select * 
 	,ROW_NUMBER()over(order by recno) a01
 	,ordeno a02
