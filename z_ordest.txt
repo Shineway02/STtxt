@@ -17,7 +17,7 @@
 	set @t_sort = case when '#non'=[16] then '' else [16] end
 	set @t_sort = upper(@t_sort)
 	-----------------------------------------------------------------------------------------
-	IF OBJECT_ID('tempdb.. #z_ordest5_a')is not null
+	IF OBJECT_ID('tempdb..#z_ordest5_a')is not null
 	BEGIN
 		drop table  #z_ordest5_a
 	END
@@ -32,6 +32,7 @@
 		productno nvarchar(20),
 		product nvarchar(40),
 		spec nvarchar(max),
+		tspec nvarchar(max),
 		classa nvarchar(20),
 		size nvarchar(max),
 		dime float,
@@ -52,11 +53,13 @@
 	)
 	
 	insert into #z_ordest5_a(ordeaccy,ordeno,ordeno2
-		,custno,datea,style,productno,product,spec,classa,size
+		,custno,datea,style,productno,product,spec,tspec,classa,size
 		,dime,width,lengthb,radius,mount,[weight],price,memo
 		,notv)
 	select b.accy,b.noa,b.no2
-		,a.custno,b.datea,b.style,b.productno,b.product,b.spec,b.classa,b.size
+		,a.custno,b.datea,b.style,b.productno,b.product,b.spec
+		,REPLACE(REPLACE(Upper(b.spec),'STK-','SS'),'STK','SS')
+		,b.classa,b.size
 		,b.dime,b.width,b.lengthb,b.radius,b.mount,b.[weight],b.price,b.memo
 		,b.notv
 	from view_orde a
@@ -74,7 +77,7 @@
 		,notmount = ISNULL(mount,0)-ISNULL(tmount,0)
 		,notweight = ISNULL(weight,0)-ISNULL(tweight,0)
 	-------------------------------------------------------------------------------------------------------
-	IF OBJECT_ID('tempdb.. #z_ordest5_b')is not null
+	IF OBJECT_ID('tempdb..#z_ordest5_b')is not null
 	BEGIN
 		drop table  #z_ordest5_b
 	END
@@ -84,6 +87,7 @@
 		style nvarchar(20),
 		product nvarchar(20),
 		spec nvarchar(40),
+		tspec nvarchar(40),
 		size nvarchar(max),
 		dime float,
 		width float,
@@ -152,7 +156,8 @@
 	left join view_cubu b on a.uno=b.uno
 	left join view_cub c on b.accy=c.accy and b.noa=c.noa 
 	where c.typea!='4'
-	update #z_ordest5_b set productno=b.productno,product=b.product,style=b.style,spec=b.spec
+	update #z_ordest5_b set productno=b.productno,product=b.product,style=b.style
+		,spec=b.spec,tspec=REPLACE(REPLACE(Upper(b.spec),'STK-','SS'),'STK','SS')
 		,size=dbo.csize('B2',b.dime,b.width,b.lengthb,b.radius)
 		,dime=b.dime,width=b.width,lengthb=b.lengthb,radius=b.radius
 	from #z_ordest5_b a
@@ -195,8 +200,8 @@
 		" from #z_ordest5_a a"+
 		" left join cust b on a.custno=b.noa"+
 		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordest5_b"+
-		" 	where productno=a.productno and style=a.style and spec=a.spec and size=a.csize and mount>0 and weight>0) c"+
-		" order by a.custno,a.productno,a.spec,a.style,a.radius,a.width,a.dime,a.lengthb"
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.custno,a.productno,a.tspec,a.style,a.radius,a.width,a.dime,a.lengthb"
 	end
 	if @t_sort = 'SIZEA'
 	begin	
@@ -208,8 +213,8 @@
 		" from #z_ordest5_a a"+
 		" left join cust b on a.custno=b.noa"+
 		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordest5_b"+
-		" 	where productno=a.productno and style=a.style and spec=a.spec and size=a.csize and mount>0 and weight>0) c"+
-		" order by a.productno,a.spec,a.style,a.radius,a.width,a.dime,a.lengthb"	
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.productno,a.tspec,a.style,a.radius,a.width,a.dime,a.lengthb"	
 	end
 	if @t_sort = 'DIME'
 	begin	
@@ -221,8 +226,8 @@
 		" from #z_ordest5_a a"+
 		" left join cust b on a.custno=b.noa"+
 		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordest5_b"+
-		" 	where productno=a.productno and style=a.style and spec=a.spec and size=a.csize and mount>0 and weight>0) c"+
-		" order by a.dime,a.productno,a.spec,a.style,a.radius,a.width,a.lengthb"	
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.dime,a.productno,a.tspec,a.style,a.radius,a.width,a.lengthb"	
 	end
 	insert into @tmpb(gno,pno,recno,ordeaccy,ordeno,ordeno2,datea,custno,nick
 		,productno,product,spec,classa,size,price,weight,mount,notmount,stkmount,notweight
@@ -234,35 +239,35 @@
 	if @t_sort = 'CUSTNO'
 	begin	
 		set @cmd = 
-		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.spec,a.size)+@n"+
+		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.tspec,a.size)+@n"+
 		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
 		" 	,a.size"+
-		" from (select productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
-		" 	from #z_ordest5_b where mount>0 and weight>0 group by productno,style,product,spec,size) a"+
+		" from (select productno,style,product,spec,tspec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordest5_b where mount>0 and weight>0 group by productno,style,product,spec,tspec,size) a"+
 		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordest5_a"+
-		" 	where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b"
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and csize=a.size)b"
 	end
 	if @t_sort = 'SIZEA'
 	begin	
 		set @cmd = 
-		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.spec,a.size)+@n"+
+		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.tspec,a.size)+@n"+
 		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
 		" 	,a.size"+
-		" from (select productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
-		" 	from #z_ordest5_b where mount>0 and weight>0 group by productno,style,product,spec,size) a"+
+		" from (select productno,style,product,spec,tspec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordest5_b where mount>0 and weight>0 group by productno,style,product,spec,tspec,size) a"+
 		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordest5_a"+
-		" 	where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b"
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and csize=a.size)b"
 	end
 	if @t_sort = 'DIME'
 	begin	
 		set @cmd = 
-		" select '2','2',ROW_NUMBER()over(order by a.dime,a.productno,a.style,a.product,a.spec,a.size)+@n"+
+		" select '2','2',ROW_NUMBER()over(order by a.dime,a.productno,a.style,a.product,a.tspec,a.size)+@n"+
 		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
 		" 	,a.size"+
-		" from (select dime,productno,style,product,spec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
-		" 	from #z_ordest5_b where mount>0 and weight>0 group by dime,productno,style,product,spec,size) a"+
+		" from (select dime,productno,style,product,spec,tspec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordest5_b where mount>0 and weight>0 group by dime,productno,style,product,spec,tspec,size) a"+
 		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordest5_a"+
-		" 	where productno=a.productno and style=a.style and spec=a.spec and csize=a.size)b"
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and csize=a.size)b"
 	end
 	insert into @tmpb(gno,pno,recno,productno,product,spec,size,stkmount,memo)
 	execute sp_executesql @cmd,N'@n int',@n=@n	
@@ -275,8 +280,8 @@
 	delete @tmpb
 	where pno='2' and not(productno between @t_bproductno and @t_eproductno)
 	
-	 drop table  #z_ordest5_a
-	 drop table  #z_ordest5_b	
+	drop table  #z_ordest5_a
+	drop table  #z_ordest5_b
 	select * 
 	,ROW_NUMBER()over(order by recno) a01
 	,ordeno a02
