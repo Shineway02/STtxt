@@ -37,7 +37,7 @@ insert into @tmp
 	case when ISNULL(vcc.salesno,'')!='' then vcc.sales else cust.sales end, 
 	(case when isnull(cust.noa,'')='' then um.custno else cust.noa end),
 	(case when isnull(cust.nick,'')='' then um.comp else cust.nick end),
-	um.datea,us.money,us.paysale,us.vccno,'umm' 
+	um.datea,case when us.acc1='4202.' then 0 else us.money end,us.paysale,us.vccno,'umm' 
 	from umm um 
 	left join umms us on um.noa=us.noa 
 	left join view_vcc vcc on (us.vccno=vcc.noa) 
@@ -100,7 +100,7 @@ insert into @tmp
 select '0' gno, 
 case when ISNULL(vcc.salesno,'')!='' then vcc.salesno else cust.salesno end, 
 case when ISNULL(vcc.salesno,'')!='' then vcc.sales else cust.sales end, 
-cust.noa,cust.nick,um.datea,sum(us.money) ,SUM(us.paysale)
+cust.noa,cust.nick,um.datea,sum(case when us.acc1='4202.' then 0 else us.money end) ,SUM(us.paysale)
 from umm um 
 left join umms us on um.noa=us.noa 
 left join view_vcc vcc on (us.vccno=vcc.noa) 
