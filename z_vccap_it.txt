@@ -57,6 +57,18 @@ insert into @tmp
 	left join view_vcc c on a.vccno = c.noa
 	left join cust d on a.buyerno=d.noa
 	where (a.taxtype != '6') and (a.noa=@t_noa)
+------------單筆處理<<Start>>-----------
+insert into @tmp(
+		gno,pageno,pageorder,datea,noa,noq,buyer,serial,invoaddr,chkno,
+		vccno,ordbno,ordeno,taxtype1,taxtype2,taxtype3,totpmoney,taxmoney,totmoney
+)
+	select
+		gno,pageno,2,datea,noa,'002',buyer,serial,invoaddr,chkno,
+		vccno,ordbno,ordeno,taxtype1,taxtype2,taxtype3,totpmoney,taxmoney,totmoney
+	from @tmp a
+	outer apply(select count(*) mount from @tmp where noa=a.noa) b
+	where b.mount = 1
+------------單筆處理<<End>>------------
 update a  
 	set money1 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),1,1) as int)+1,1),
 	money2 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 8) + cast(CAST(totmoney as int) as nvarchar), 8),2,1) as int)+1,1),
