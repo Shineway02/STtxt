@@ -277,7 +277,37 @@
 	--批號不能重覆
 	if exists(select uno from @tmp group by uno having COUNT(1)>1)
 	begin
-		print '入庫批號重覆'
+		declare @err table(
+			gno nvarchar(10),
+			uno nvarchar(50),
+			mount float,
+			[weight] decimal(15,2),
+			price decimal(15,2),
+			[money] float,
+			dime float,
+			width float,
+			lengthb float,
+			radius float,
+			size nvarchar(max),
+			productno nvarchar(max),
+			product nvarchar(max),
+			class nvarchar(max),
+			style nvarchar(10),
+			spec nvarchar(max),
+			kind nvarchar(10),
+			csize nvarchar(max),
+			cstyle nvarchar(max),
+			memo nvarchar(max)
+		)
+		insert into @err(gno,uno,memo)
+		select '4',uno,'【'+uno+'】批號重覆，請至批號履歷查詢明細。'  from @tmp group by uno having COUNT(1)>1
+		select ROW_NUMBER()over(order by isnull(kind,char(255)),isnull(style,char(255)),isnull(productno,char(255)),radius,dime,width,lengthb,uno) rr
+		,* 
+		,style s1
+		,productno ppn
+		,product ppt
+		,ghref = 'z_uno?$uno?'
+		from @err
 		return
 	end
 	-----------------------------------------------------------------------------------
@@ -839,7 +869,8 @@
 		spec nvarchar(max),
 		kind nvarchar(10),
 		csize nvarchar(max),
-		cstyle nvarchar(max)
+		cstyle nvarchar(max),
+		memo nvarchar(max)
 	)
 	insert into @result(gno,uno,mount,[weight],price,[money],dime,width,lengthb,radius,size
 		,productno,product,class,style,spec,kind,csize,cstyle)
