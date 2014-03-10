@@ -857,7 +857,7 @@ declare @tmp table(
 )
 insert into @tmp
 	select
-		'0' gno,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),a.typea,f.namea,a.custno,c.nick,a.invono,e.noa,g.namea,
+		'0' gno,a.datea,a.typea,f.namea,a.custno,c.nick,a.invono,e.noa,g.namea,
 		b.productno,d.product
 		,(case when a.typea='1' then 1 else -1 end)*b.lengthb
 		,(case when a.typea='1' then 1 else -1 end)*b.width
@@ -870,7 +870,7 @@ insert into @tmp
 	left join @stypeList f on a.stype=f.noa
 	left join sss e on a.salesno=e.noa
 	left join uccgb g on g.noa=d.groupbno
-	where (left((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),6) between @t_bmon and @t_emon) and
+	where (left(a.datea,6) between @t_bmon and @t_emon) and
 			 (a.custno between @t_bcustno and @t_ecustno) and
 			 (b.productno between @t_bproductno and @t_eproductno) and
 			 (a.salesno between @t_bsalesno and @t_esalesno) and
