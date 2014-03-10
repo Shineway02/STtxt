@@ -317,6 +317,25 @@ declare @t_stype nvarchar(20)
 declare @t_trantype nvarchar(20)
 declare @t_cancel nvarchar(1)
 declare @t_enda nvarchar(1)
+declare @t_stktype nvarchar(15)
+declare @t_bradius float
+declare @t_eradius float
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_stktype = case when '#non'=[17] then '' else [17] end
+set @t_bradius = case when '#non'=[18] then 0.00 else cast([18] as float) end
+set @t_eradius = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_bwidth = case when '#non'=[20] then 0.00 else cast([20] as float)end
+set @t_ewidth = case when '#non'=[21] then 9999.99 else cast([21] as float) end
+set @t_bdime = case when '#non'=[22] then 0.000 else cast([22] as float) end
+set @t_edime = case when '#non'=[23] then 999.990 else cast([23] as float) end
+set @t_blengthb = case when '#non'=[24] then 0.0 else cast([24] as float) end
+set @t_elengthb = case when '#non'=[25] then 99999.9 else cast([25] as float) end
+
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
 set @t_bodate = case when '#non'=[4] then '' else [4] end
@@ -331,6 +350,20 @@ set @t_stype = case when '#non'=[12] then '' else [12] end
 set @t_trantype = case when '#non'=[13] then '' else [13] end
 set @t_cancel = case when '#non'=[14] then '' else [14] end
 set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+
+set @t_stktype = upper(@t_stktype)
+declare @swapTmp1 int = 0
+declare @swapTmp2 int = 0
+if(left(@t_stktype,1) != 'B' and left(@t_stktype,1) != '')
+begin
+	set @swapTmp1 = @t_bwidth
+	set @swapTmp2 = @t_ewidth
+	set @t_bwidth = @t_bdime
+	set @t_ewidth = @t_edime
+	set @t_bdime = @swapTmp1
+	set @t_edime = @swapTmp2	
+end
+
 declare @tmp table(
 	gno nvarchar(1),
 	odate nvarchar(10),
@@ -362,7 +395,10 @@ insert into @tmp
 	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
-	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      (len(@t_enda)=0 or @t_enda=b.enda) and
+		  (b.radius between @t_bradius and @t_eradius) and (b.width between @t_bwidth and @t_ewidth) and
+		  (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) and
+		  (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
 	order by a.odate,a.noa,b.no2
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,odate,mount,weight,total)
