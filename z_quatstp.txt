@@ -284,7 +284,9 @@ select
 	case when b_total>0 or len(b_products)>0 then ROW_NUMBER()over(partition by a_noa order by pageno,gno,orderno) else null end rr
 	,gno,a_noa,a_stype,a_datea,a_odate,a_cno,a_acomp,a_coin,a_floata,a_contract,a_custno,a_comp
 	,a_paytype,a_sales,a_tel,a_fax,
-	a_kind,a_addressa,a_addressb,a_apv aa,a_memo,a_trantype a_tt
+	a_kind,a_addressa,a_addressb,a_apv aa
+	,replace(a_memo,'chr(10)','<BR>') a_memo
+	,a_trantype a_tt
 	,b_productno ppno,b_no3,b_products ptno,b_class cc,b_size,b_unit uu,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_taxs),1)),4,12)) a_taxs,a_taxtype ttp,
