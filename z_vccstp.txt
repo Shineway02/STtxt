@@ -386,6 +386,7 @@ declare @tmp table(
 	kind nvarchar(15),
 	stype nvarchar(30),
 	noa nvarchar(50),
+	typea nvarchar(10),
 	datea nvarchar(20),
 	custno nvarchar(30),
 	custs nvarchar(90),
@@ -415,7 +416,7 @@ begin
 		select
 			'0',
 			ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-			a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
+			a.kind,a.stype,a.noa,a.typea,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
 			a.money,
 			case when @checkUcca>0 then 0 else isnull(a.tax,0) end,
 			a.total,b.ordeno+(case when isnull(d.itype,'')='3' then '寄庫' else '' end),b.uno,b.spec,
@@ -427,8 +428,8 @@ begin
 			(case when ((b.style='' and b.dime='') and charindex(left(b.uno,1),'XYZ') <= 0 ) then null else b.mount end),
 			(case when ((b.style='' and b.dime='') and charindex(left(b.uno,1),'XYZ') <= 0) then null else b.weight end),
 			b.price,a.trantype
-		from view_vcc[1] a
-		left join view_vccs[1] b on a.noa = b.noa
+		from view_vcc a
+		left join view_vccs b on a.noa = b.noa
 		left join vcca c on a.invono=c.noa
 		outer apply(
 			select
@@ -445,7 +446,7 @@ begin
 		select
 			'0',
 			ROW_NUMBER()over(partition by a.noa order by a.noa),1,
-			a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
+			a.kind,a.stype,a.noa,a.typea,a.datea,a.custno,a.comp,a.tel,(case when a.addr2!='' then a.post2+a.addr2 else a.post+a.addr end),a.cardeal,a.carno,a.memo,
 			a.money,
 			case when @checkUcca>0 then 0 else isnull(a.tax,0) end,
 			a.total,b.ordeno+(case when isnull(d.itype,'')='3' then '寄庫' else '' end),'',b.spec,case when charindex(left(max(uno),1),'XYZ') > 0 then  '廢料' else b.product end ,
@@ -456,8 +457,8 @@ begin
 			(case when ((b.style='' and b.dime='') and (charindex(left(b.uno,1),'XYZ') <= 0)) then null else sum(b.mount) end),
 			(case when ((b.style='' and b.dime='') and (charindex(left(b.uno,1),'XYZ') <= 0) and (ltrim(rtrim(b.spec)) != '格外管')) then null else sum(b.weight) end),
 			b.price,a.trantype
-		from view_vcc[1] a
-		left join view_vccs[1] b on a.noa = b.noa
+		from view_vcc a
+		left join view_vccs b on a.noa = b.noa
 		left join vcca c on a.invono=c.noa
 		outer apply(
 			select
@@ -467,7 +468,7 @@ begin
 			where inas.uno=b.uno
 		) d
 		where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
-		group by d.itype,b.ordeno,b.no2,a.kind,a.stype,a.noa,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
+		group by d.itype,b.ordeno,b.no2,a.kind,a.stype,a.noa,a.typea,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
 					a.memo,a.money,a.tax,a.total,b.spec,b.product,b.size,a.kind,b.dime,b.width,b.lengthb,b.radius,b.style,
 					b.price,a.trantype,left(uno,1)
 /*
@@ -480,7 +481,7 @@ if(@checkUcca>0)
 begin
 	update @tmp set tax=isnull(c.tax,0)
 	from @tmp a
-	left join view_vcc[1] b on a.noa=b.noa
+	left join view_vcc b on a.noa=b.noa
 	outer apply  (select sum(isnull(tax,0))  tax from vcca where noa=b.invono) c
 end
 
@@ -527,16 +528,16 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,noa,trantype,memo,kind,stype,custno,custs,tax,money,total)
-				select '0',(@orderno+1),@pageno,@noa,trantype,memo,kind,stype,custno,custs,tax,money,total from @tmp where idno = @idno
+			insert into @tmp(gno,orderno,pageno,noa,typea,trantype,memo,kind,stype,custno,custs,tax,money,total)
+				select '0',(@orderno+1),@pageno,@noa,typea,trantype,memo,kind,stype,custno,custs,tax,money,total from @tmp where idno = @idno
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,noa,trantype,kind,stype,custno,custs,tax,money,total,memo,mount,weight) 
-		select '1',(@t_pageline+1),pageno,noa,trantype,kind,stype,custno,custs,max(tax),max(money),max(total),memo,sum(mount),sum(weight) from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,trantype,pageno,kind,stype,custno,custs,tax,money,total,memo 
-	insert into @tmp(gno,orderno,pageno,noa,trantype,kind,stype,memo) 
-		select '2',(@t_pageline+2),pageno,noa,trantype,kind,stype,memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,trantype,pageno,kind,stype,memo
+	insert into @tmp(gno,orderno,pageno,noa,typea,trantype,kind,stype,custno,custs,tax,money,total,memo,mount,weight) 
+		select '1',(@t_pageline+1),pageno,noa,typea,trantype,kind,stype,custno,custs,max(tax),max(money),max(total),memo,sum(mount),sum(weight) from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,typea,trantype,pageno,kind,stype,custno,custs,tax,money,total,memo 
+	insert into @tmp(gno,orderno,pageno,noa,typea,trantype,kind,stype,memo) 
+		select '2',(@t_pageline+2),pageno,noa,typea,trantype,kind,stype,memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,typea,trantype,pageno,kind,stype,memo
 	fetch next from cursor_table
 	into @noa,@orderno,@pageno,@idno,@count
 end
@@ -550,7 +551,7 @@ end
 update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set stype = (case stype when '1' then '買賣' when '2' then '加工' when '3' then '代工' end)
 select
-	gno,idno,orderno,pageno,kind,noa,datea,custno,custs,tel,addr,cardeal,carno,memo,stype,
+	gno,idno,orderno,pageno,kind,noa,typea,datea,custno,custs,tel,addr,cardeal,carno,memo,stype,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
@@ -561,5 +562,6 @@ select
 	round(weight,0) weight,
 	price,
 	case when trantype='自取' then '' else 'v' end aa,
-	case when trantype='自取' then 'v' else '' end bb
+	case when trantype='自取' then 'v' else '' end bb,
+	case when typea='2' then '退貨' else '' end isout
 from @tmp  order by noa desc,pageno,gno,orderno;
