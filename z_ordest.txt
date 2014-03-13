@@ -374,6 +374,7 @@ declare @tmp table(
 	comp nvarchar(90),
 	productno nvarchar(30),
 	products nvarchar(90),
+	spec nvarchar(max),
 	csize nvarchar(max),
 	dime float,
 	unit nvarchar(12),
@@ -386,7 +387,7 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
-		a.custno,c.nick,b.productno,b.product,
+		a.custno,c.nick,b.productno,b.product,b.spec,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 		b.dime,b.unit,b.mount,b.weight,b.price,b.total,'ordest'+a.accy
 	from view_orde a
@@ -414,7 +415,7 @@ insert into @tmp(gno,odate,noa,productno,dime,mount,weight,total)
 	where gno='0'
 	group by left(odate,6),productno,dime
 select
-	gno,odate,e,noa,no2,custno,comp,productno,products,csize,dime,unit,mount,weight,price,total,
+	gno,odate,e,noa,no2,custno,comp,productno,products,spec,csize,dime,unit,mount,weight,price,total,
 	row_number()over(partition by left(odate,6) order by left(odate,6),gno) idno,qhref
 from @tmp order by left(odate,6),gno,odate,noa,productno,dime;
 --*****************************************************************************************
