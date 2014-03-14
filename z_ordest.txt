@@ -408,16 +408,16 @@ insert into @tmp(gno,odate,mount,weight,total)
 insert into @tmp(gno,odate,mount,weight,total)
 	select '2',char(255),sum(mount),sum(weight),sum(total) from @tmp where gno='0'
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-insert into @tmp(gno,odate,noa,productno,dime,mount,weight,total)
+insert into @tmp(gno,odate,productno,products,spec,csize,mount,weight,total)
 	select
-		'3',char(255),left(odate,6),productno,dime,sum(mount),sum(weight),sum(total)
+		'3',char(255),productno,products,spec,csize,sum(mount),sum(weight),sum(total)
 	from @tmp
 	where gno='0'
-	group by left(odate,6),productno,dime
+	group by productno,products,spec,csize
 select
 	gno,odate,e,noa,no2,custno,comp,productno,products,spec,csize,dime,unit,mount,weight,price,total,
 	row_number()over(partition by left(odate,6) order by left(odate,6),gno) idno,qhref
-from @tmp order by left(odate,6),gno,odate,noa,productno,dime;
+from @tmp order by left(odate,6),gno,odate,noa,productno,products,spec,csize;
 --*****************************************************************************************
 z_ordest2a:--z_ordest2a
 declare @t_bdate nvarchar(10)
