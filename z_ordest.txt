@@ -151,11 +151,18 @@
 		where c.style between '1' and '3')a
 	group by uno
 
+	--製成品
 	delete #z_ordest5_b
 	from #z_ordest5_b a
 	left join view_cubu b on a.uno=b.uno
 	left join view_cub c on b.accy=c.accy and b.noa=c.noa 
 	where c.typea!='4'
+	--買賣
+	delete #z_ordest5_b
+	from #z_ordest5_b a
+	left join view_uccb b on a.uno=b.uno
+	where b.itype!='1'
+	
 	update #z_ordest5_b set productno=b.productno,product=b.product,style=b.style
 		,spec=b.spec,tspec=REPLACE(REPLACE(Upper(b.spec),'STK-','SS'),'STK','SS')
 		,size=dbo.csize('B2',b.dime,b.width,b.lengthb,b.radius)
