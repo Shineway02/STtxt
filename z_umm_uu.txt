@@ -409,7 +409,7 @@ begin
 	insert into @result
 		select '0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end) mon, 
 			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_comp,''), isnull(c.tel,''), b.productno, b.product, b.unit, 
-		       b.mount, b.weight, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+		       b.lengthb, b.width, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
 		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
@@ -445,7 +445,7 @@ begin
 	insert into @result
 	select '0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end) mon, 
 			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_comp,''), isnull(c.tel,''), b.productno, b.product, b.unit, 
-		       b.mount, b.weight, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+		       b.lengthb, b.width, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
 		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
@@ -593,7 +593,7 @@ declare @tmp table(
 insert into @tmp
 	select '0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end) mon, 
 		    (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_comp,''), isnull(c.tel,''), b.productno, b.product, b.unit, 
-	       b.mount, b.weight, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+	       b.lengthb, b.width, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
 	       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales 
 	from view_vccs b
 	left join view_vcc a on a.noa = b.noa
@@ -728,5 +728,5 @@ select
 	,pcount 
 from @result a left join cust b on a.custno=b.noa
  where (len(@t_zip)=0 or left(b.zip_comp,len(@t_zip))=@t_zip) and (len(@t_city)=0 or left(b.addr_comp,3)=@t_city)
-order by a.custno,a.gno,a.mon,a.datea,a.noa,a.noq;
+order by a.custno,a.gno,a.datea,a.noa,a.noq;
 --**************************************************************************************************
