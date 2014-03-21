@@ -76,6 +76,8 @@
 	update #z_ordest5_a set csize = dbo.csize('B2',dime,width,lengthb,radius)
 		,notmount = ISNULL(mount,0)-ISNULL(tmount,0)
 		,notweight = ISNULL(weight,0)-ISNULL(tweight,0)
+	
+	
 	-------------------------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_ordest5_b')is not null
 	BEGIN
@@ -278,7 +280,6 @@
 	end
 	insert into @tmpb(gno,pno,recno,productno,product,spec,size,stkmount,memo)
 	execute sp_executesql @cmd,N'@n int',@n=@n	
-	
 	delete @tmpb
 	where pno='1' and not(datea between @t_bodate and @t_eodate
 		and custno between @t_bcustno and @t_ecustno
@@ -286,6 +287,13 @@
 	
 	delete @tmpb
 	where pno='2' and not(productno between @t_bproductno and @t_eproductno)
+	--------------------------------------------------------------------------------
+	set @n = 0
+	select @n = COUNT(1) from @tmpb
+	insert into @tmpb(gno,pno,recno,productno,product,memo,notmount,notweight)
+	select '3','3',ROW_NUMBER()over(order by productno)+@n
+		,productno,product,memo,sum(isnull(notmount,0)),sum(isnull(notweight,0))
+	from @tmpb where pno='1' group by productno,product,memo
 	
 	drop table  #z_ordest5_a
 	drop table  #z_ordest5_b
