@@ -23,16 +23,16 @@ set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 declare @tmp table(
 	gno nvarchar(1),
-	noa nvarchar(15),
-	noq nvarchar(3),
-	type nvarchar(4),
+	noa nvarchar(20),
+	noq nvarchar(20),
+	type nvarchar(20),
 	datea nvarchar(10),
-	mon nvarchar(7),
+	mon nvarchar(10),
 	tggno nvarchar(20),
-	comp nvarchar(40),
-	productno nvarchar(30),
-	xproduct nvarchar(40),
-	unit nvarchar(8),
+	comp nvarchar(max),
+	productno nvarchar(max),
+	xproduct nvarchar(max),
+	unit nvarchar(20),
 	mount float,
 	weight float,
 	price float,
@@ -44,8 +44,8 @@ insert into @tmp
 	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) type, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit, 
 		   b.mount, b.weight, b.price, b.total,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-	from view_rc2s[1] b
-	left join view_rc2[1] a on a.noa = b.noa
+	from view_rc2s b
+	left join view_rc2 a on a.noa = b.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end)  between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
@@ -91,16 +91,16 @@ set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 declare @result table(
-	gno nvarchar(1),
-	type nvarchar(4),
-	noa nvarchar(15),
+	gno nvarchar(10),
+	type nvarchar(10),
+	noa nvarchar(20),
 	datea nvarchar(10),
 	tggno nvarchar(20),
-	comp nvarchar(40),
-	addr_invo nvarchar(90),
-	tel nvarchar(90),
-	productno nvarchar(30),
-	xproduct nvarchar(40),
+	comp nvarchar(max),
+	addr_invo nvarchar(max),
+	tel nvarchar(max),
+	productno nvarchar(max),
+	xproduct nvarchar(max),
 	unit nvarchar(8),
 	mount float,
 	weight float,
@@ -162,15 +162,15 @@ set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 declare @result table(
-	gno nvarchar(1),
-	type nvarchar(4),
-	noa nvarchar(15),
+	gno nvarchar(10),
+	type nvarchar(10),
+	noa nvarchar(20),
 	datea nvarchar(10),
 	tggno nvarchar(20),
-	comp nvarchar(40),
-	productno nvarchar(30),
-	xproduct nvarchar(40),
-	unit nvarchar(8),
+	comp nvarchar(max),
+	productno nvarchar(max),
+	xproduct nvarchar(max),
+	unit nvarchar(10),
 	mount float,
 	weight float,
 	price float,
@@ -228,15 +228,15 @@ set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 declare @result table(
-	gno nvarchar(1),
-	type nvarchar(4),
-	noa nvarchar(15),
+	gno nvarchar(10),
+	type nvarchar(10),
+	noa nvarchar(20),
 	datea nvarchar(10),
 	tggno nvarchar(20),
-	comp nvarchar(40),
-	productno nvarchar(30),
-	xproduct nvarchar(40),
-	unit nvarchar(8),
+	comp nvarchar(max),
+	productno nvarchar(max),
+	xproduct nvarchar(max),
+	unit nvarchar(10),
 	mount float,
 	weight float,
 	price float,
