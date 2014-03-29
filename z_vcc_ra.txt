@@ -37,6 +37,7 @@ insert into @tmp
 	left join view_vccs b on (a.noa=b.noa)
 	left join cust c on a.custno=c.noa
 	left join cardeal d on a.cardealno=d.noa
+	where (a.typea='1')
 	order by a.noa,b.noq
 ------gno-> 1=空白行,2=加總
 declare @idno int
@@ -100,10 +101,10 @@ deallocate cursor_table
 ------------插入合計<<Start>>-------------
 insert into @tmp(gno,noa,pageno,noapageno,recno,amount,rackmount)
 	select
-		'2' gno,noa,pageno,noapageno,max(recno)+1,sum(b.amount),sum(b.rackmount)
+		'2' gno,noa,pageno,noapageno,max(recno)+1,b.amount,b.rackmount
 	from @tmp a
 	outer apply(select sum(amount) amount,sum(rackmount) rackmount from @tmp where (gno='0') and (noa=a.noa)) b
-	group by noa,pageno,noapageno
+	group by noa,pageno,noapageno,b.amount,b.rackmount
 ------------插入合計<<End>>-------------
 update a
 	set noatotpno = b.pageno
