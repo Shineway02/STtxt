@@ -1,4 +1,9 @@
 z_cng_ra1:--z_cng_ra1
+declare @t_bnoa nvarchar(50) = case when '#non' = [2] then '' else [2] end
+declare @t_enoa nvarchar(50) = case when '#non' = [3] then char(255) else [3] end
+declare @t_btggno nvarchar(max) = case when '#non' = [4] then '' else [4] end
+declare @t_etggno nvarchar(max) = case when '#non' = [5] then char(255) else [5] end
+
 ------------報表設定<<Start>>------------
 declare @pageline int = 7 --每頁幾行
 ------------報表設定<<End>>------------
@@ -37,6 +42,8 @@ insert into @tmp
 		b.mount,0 rackmount,b.memo
 	from view_cng a
 	left join view_cngs b on (a.noa=b.noa)
+	where (a.noa between @t_bnoa and @t_enoa) and
+		  (isnull(a.tggno,'') between @t_btggno and @t_etggno)
 	order by a.noa,b.noq
 ------gno-> 1=空白行,2=加總
 declare @idno int
