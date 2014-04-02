@@ -1,0 +1,70 @@
+z_salpresentst1:--z_salpresentst1
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+set @t_bdate = case when '#non' = [1] then '' else [1] end
+set @t_edate = case when '#non' = [2] then CHAR(255) else [2] end 
+set @t_bsssno = case when '#non' = [4] then '' else [4] end
+set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
+
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		sssno nvarchar(50),
+		namea nvarchar(50),
+		clockin nvarchar(50),
+		clockout nvarchar(50),
+		w133 float,
+		w166 float,
+		w100 float,
+		spec float,
+		memo nvarchar(MAX)
+)
+
+insert into @tmp 
+select '0' gno,a.noa,a.sssno,a.namea,a.clockin,a.clockout,a.w133,a.w166,a.w100,a.hr_special,a.memo
+from salpresents a left join sss b on a.sssno = b.noa
+where (a.noa between @t_bdate and @t_edate)
+and (a.sssno between @t_bsssno and @t_esssno)
+
+insert into @tmp (gno,noa,sssno,w133,w166,w100,spec) 
+select '1','999/99/99',sssno,sum(w133),sum(w166),sum(w100),sum(spec) from @tmp group by sssno 
+
+select gno,noa,sssno,namea,clockin,clockout,w133,w166,w100,spec,dbo.charbr(memo,22)memo 
+from @tmp order by sssno,noa,gno 
+;
+--*****************************************************************
+z_salpresentst2:--z_salpresentst2
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+set @t_bdate = case when '#non' = [1] then '' else [1] end
+set @t_edate = case when '#non' = [2] then CHAR(255) else [2] end
+set @t_bsssno = case when '#non' = [4] then '' else [4] end
+set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
+
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		sssno nvarchar(50),
+		namea nvarchar(50),
+		clockin nvarchar(50),
+		clockout nvarchar(50),
+		w133 float,
+		w166 float,
+		w100 float,
+		spec float,
+		memo nvarchar(MAX)
+)
+insert into @tmp 
+select '0' gno,a.noa,a.sssno,a.namea,a.clockin,a.clockout,a.w133,a.w166,a.w100,a.hr_special,a.memo 
+from salpresents a left join sss b on a.sssno = b.noa
+where (a.noa between @t_bdate and @t_edate)  
+and (a.sssno between @t_bsssno and @t_esssno)
+
+insert into @tmp (gno,noa,w133,w166,w100,spec) 
+select '1',noa,sum(w133),sum(w166),sum(w100),sum(spec) from @tmp group by noa
+select * from @tmp order by noa,gno,sssno
+;
