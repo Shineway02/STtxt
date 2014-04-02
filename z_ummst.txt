@@ -1584,6 +1584,7 @@ declare @result table(
 	products nvarchar(90),
 	csize nvarchar(max),
 	b_mount float,
+	b_weight float,
 	b_price float,
 	b_money float,
 	b_tax float,
@@ -1597,8 +1598,7 @@ declare @result table(
 	t_total6 float,
 	t_total7 float,
 	t_total8 float,
-	t_total9 float,
-	kind nvarchar(30)
+	t_total9 float
 )
 declare @checkUcca int = (select count(*) from ucca)
 insert into @result
@@ -1613,12 +1613,14 @@ insert into @result
 				(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) 
 			 end size,
 			 case when  (b.style='' and b.dime='' and not(charindex(left(b.uno,1),'XYZ') > 0)) then null else
-			 	case when left(a.kind,1)='B' then b.mount else b.weight end end b_mount ,
+			 	case when left(a.kind,1)='B' then b.mount else null end end b_mount ,
+			 case when  (b.style='' and b.dime='' and not(charindex(left(b.uno,1),'XYZ') > 0)) then null else
+			 	case when left(a.kind,1)='B' then null else b.weight end end b_weight ,
 			 b.price,b.total,
 			 case when @checkUcca>0 then 0 else isnull(a.tax,0) end tax,
 			 0 b_total,a.total a_total,0 t_total1,0 t_total2,0 t_total3,
 			 isnull((isnull(d.total,0)+isnull(d.tax,0)),0) t_total4,f.payed t_total5,
-			 0 t_total6,0 t_total7,f.unpay t_total8,0 t_total9,a.kind
+			 0 t_total6,0 t_total7,f.unpay t_total8,0 t_total9
 		from view_vcc a
 		left join view_vccs b on (a.noa = b.noa)
 		left join cust c on a.custno = c.noa
@@ -1627,7 +1629,7 @@ insert into @result
 		outer apply(select * from @tmp where custno=a.custno) f
 		where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
 	) a where a.custno between @t_bcustno and @t_ecustno
-update @result set b_mount=b_mount*(-1),b_price=b_price*(-1),b_money=b_money*(-1),b_tax=b_tax*(-1),a_total=a_total*(-1) where typea='2'
+update @result set b_mount=b_mount*(-1),b_weight=b_weight*(-1),b_price=b_price*(-1),b_money=b_money*(-1),b_tax=b_tax*(-1),a_total=a_total*(-1) where typea='2'
 if(@checkUcca>0)
 begin
 	update @result set b_tax=isnull(c.tax,0)
@@ -1651,7 +1653,6 @@ declare @custs nvarchar(90)
 declare @zipcode nvarchar(20)
 declare @addr nvarchar(max)
 declare @tel nvarchar(90)
-declare @kind nvarchar(50)
 declare cursor_table cursor for
 	select custno,custs,count(*),max(orderno) from @result group by custno,custs
 open cursor_table
@@ -1701,10 +1702,10 @@ deallocate cursor_table
 ------------------------------------------------------------------------------
 declare @maxpage int
 declare cursor_table cursor for
-	select distinct custno,kind,max(custs),max(zipcode),max(addr),max(tel),max(orderno),pageno,min(idno),count(*),max(pageno) from @result group by custno,kind,custs,zipcode,addr,tel,pageno
+	select distinct custno,max(custs),max(zipcode),max(addr),max(tel),max(orderno),pageno,min(idno),count(*),max(pageno) from @result group by custno,custs,zipcode,addr,tel,pageno
 open cursor_table
 fetch next from cursor_table
-into @custno,@kind ,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count,@maxpage
+into @custno ,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count,@maxpage
 while(@@FETCH_STATUS <> -1)
 begin		
 	set @k = @t_pageline -(@a_count%@t_pageline)
@@ -1713,40 +1714,34 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel,kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9) 
-				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel,@kind,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9 from @result where idno = @idno 
+			insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9) 
+				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel,t_total1,t_total2,t_total3,t_total4,t_total5,t_total6,t_total7,t_total8,t_total9 from @result where idno = @idno 
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
 	end
 	fetch next from cursor_table
-	into @custno,@kind,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count,@maxpage
+	into @custno,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count,@maxpage
 end
 close cursor_table
 deallocate cursor_table
-insert into @result(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,b_mount,b_money,b_tax,b_total)
-	select
-		'1',(max(orderno)+1),pageno,custno,kind,custs,zipcode,addr,tel,sum(b_mount),sum(b_money),sum(b_tax),sum(b_total) 
-	from @result a
-	where gno=0 and pageno != (select max(pageno) from @result where custno=a.custno)
-	group by kind,custno,custs,zipcode,addr,tel,pageno	
-insert into @result(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5,t_total8)
-	select '2',(max(orderno)+2),max(pageno),custno,kind,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @result where gno=0 group by kind,custno,custs,zipcode,addr,tel
-insert into @result(gno,orderno,pageno,custno,kind,custs,zipcode,addr,tel) 
-	select '3',(max(orderno)+3),max(pageno),custno,kind,custs,zipcode,addr,tel from @result where gno=0 group by custno,kind,custs,zipcode,addr,tel
-update @result set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '2'
-update @result set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '2'
-update @result set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '2'
-update @result set t_total9 = 0 where gno = '2' and (t_total9 <=0)
+insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5,t_total8)
+	select '1',(max(orderno)+1),max(pageno),custno,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @result where gno=0 group by custno,custs,zipcode,addr,tel
+insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel) 
+	select '2',(max(orderno)+2),max(pageno),custno,custs,zipcode,addr,tel from @result where gno=0 group by pageno,custno,custs,zipcode,addr,tel
+update @result set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '1'
+update @result set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '1'
+update @result set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '1'
+update @result set t_total9 = 0 where gno = '1' and (t_total9 <=0)
 update @result set csize = replace(csize,'~#$','''')
 --update @result set datea = isnull(typea,'') + isnull(datea,'')
 update @result set b_mount=b_mount*(-1),b_price=b_price*(-1),b_money=b_money*(-1),b_tax=b_tax*(-1),a_total=a_total*(-1),b_total=b_total*(-1) where typea='2'
 update @result set typea = (case typea when '1' then '出' when '2' then '退' end)
 select
-	gno,idno,kind,orderno,pageno,(select max(pageno) from @result where a.custno=custno) maxpage
+	gno,idno,orderno,pageno,(select max(pageno) from @result where a.custno=custno) maxpage
 	,typea,custno,custs,zipcode,addr,tel,
 	 isnull(typea,'') + isnull(datea,'')  a1,noa,pno,products a2,csize,
-	b_mount,case when left(kind,1)='B' then '數量' else '重量' end txmt,
+	b_mount,b_weight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_money),1)),4,12)) b_money,
 	(case when b_tax = 0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_tax),1)),4,12)) end) b_tax,
@@ -1760,5 +1755,5 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total7,0)),1)),4,12)) t_total7,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total8,0)),1)),4,12)) t_total8,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total9,0)),1)),4,12)) t_total9
-from @result a order by custno,kind,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
+from @result a order by custno,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
 --********************************************************************************
