@@ -76,6 +76,8 @@
 	update #z_ordest5_a set csize = dbo.csize('B2',dime,width,lengthb,radius)
 		,notmount = ISNULL(mount,0)-ISNULL(tmount,0)
 		,notweight = ISNULL(weight,0)-ISNULL(tweight,0)
+	
+	
 	-------------------------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_ordest5_b')is not null
 	BEGIN
@@ -278,7 +280,6 @@
 	end
 	insert into @tmpb(gno,pno,recno,productno,product,spec,size,stkmount,memo)
 	execute sp_executesql @cmd,N'@n int',@n=@n	
-	
 	delete @tmpb
 	where pno='1' and not(datea between @t_bodate and @t_eodate
 		and custno between @t_bcustno and @t_ecustno
@@ -286,6 +287,13 @@
 	
 	delete @tmpb
 	where pno='2' and not(productno between @t_bproductno and @t_eproductno)
+	--------------------------------------------------------------------------------
+	set @n = 0
+	select @n = COUNT(1) from @tmpb
+	insert into @tmpb(gno,pno,recno,productno,product,memo,notmount,notweight)
+	select '3','3',ROW_NUMBER()over(order by productno)+@n
+		,productno,product,memo,sum(isnull(notmount,0)),sum(isnull(notweight,0))
+	from @tmpb where pno='1' group by productno,product,memo
 	
 	drop table  #z_ordest5_a
 	drop table  #z_ordest5_b
@@ -485,8 +493,9 @@ insert into @tmp
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
-	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
+			and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
+	      and (len(@t_enda)=0 or @t_enda=isnull(b.enda,'0'))
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,custno,comp,weight,mount,notv,nototal)
 	select '1',custno,comp,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by custno,comp
@@ -555,8 +564,9 @@ insert into @tmp
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
-	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
+	      and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
+	      and (len(@t_enda)=0 or @t_enda=isnull(b.enda,'0'))
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,productno,products,weight,mount,notv,nototal)
 	select '1',productno,products,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by productno,products
@@ -625,8 +635,9 @@ insert into @tmp
 	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
 	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
-	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
+	      and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
+	      and (len(@t_enda)=0 or @t_enda=isnull(b.enda,'0'))
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,noa,weight,mount,notv,nototal)
 	select '1',noa,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by noa
