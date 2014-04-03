@@ -1725,10 +1725,12 @@ begin
 end
 close cursor_table
 deallocate cursor_table
-insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5,t_total8)
-	select '1',(max(orderno)+1),max(pageno),custno,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @result where gno=0 group by custno,custs,zipcode,addr,tel
 insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel) 
-	select '2',(max(orderno)+2),max(pageno),custno,custs,zipcode,addr,tel from @result where gno=0 group by pageno,custno,custs,zipcode,addr,tel
+	select '1',(max(orderno)+1),max(pageno),custno,custs,zipcode,addr,tel from @result where gno=0 group by pageno,custno,custs,zipcode,addr,tel
+insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total4,t_total5,t_total8)
+	select '2',(max(orderno)+2),max(pageno),custno,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @result where gno=0 group by custno,custs,zipcode,addr,tel
+insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel) 
+	select '3',(max(orderno)+3),max(pageno),custno,custs,zipcode,addr,tel from @result where gno=0 group by pageno,custno,custs,zipcode,addr,tel
 update @result set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '1'
 update @result set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '1'
 update @result set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '1'
