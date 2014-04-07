@@ -594,12 +594,15 @@ from (select noa,nick from cust union all select noa,namea from carOwner)a
 
 delete @tmp where bmoney=0 and opay=0 and opbalance=0
 
+insert into @tmp 
+select '1','','',sum(bmoney),sum(opay),sum(unopay),sum(opbalance) from @tmp
+
 select gno,custno,comp,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bmoney),1)),4,12)) bmoney, 
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,opay),1)),4,12)) opays, 
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unopay),1)),4,12)) unopay, 
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bmoney+opay-unopay),1)),4,12)) opbalance 
-from @tmp order by custno;
+from @tmp order by gno,custno;
 --*******************************************************************************************
 z_vccj:--z_vccj
 declare @t_bdate nvarchar(10)
