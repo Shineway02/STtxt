@@ -197,7 +197,8 @@ declare @tmp table(
 	b_theory float,
 	b_memo nvarchar(200),
 	b_ordeno nvarchar(35),
-	b_enda nvarchar(10)
+	b_enda nvarchar(10),
+	b_spec nvarchar(20)
 )
 insert into @tmp
 	select
@@ -211,8 +212,9 @@ insert into @tmp
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 		b.unit,b.mount,b.weight,b.price,b.total,b.theory,b.memo,
 		case when isnull(b.no2,'') != '' then b.ordeno +'-'+b.no2 else b.ordeno end,b.enda
-	from quat[1] a
-	left join quats[1] b on b.noa = a.noa
+		,b.spec
+	from view_quat a
+	left join view_quats b on a.accy=b.accy and  b.noa = a.noa
 	left join cust c on a.custno = c.noa
 	where (len(@t_noa) = 0 or a.noa = @t_noa)
 update @tmp set b_size = replace(b_size,'~#$','''')
@@ -298,7 +300,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar) pp1 ,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_theory),1)),4,12)) b_theory,
-	b_memo,b_ordeno,b_enda ee,b.comptel
+	b_memo,b_ordeno,b_enda ee,b.comptel,b_spec
 from @tmp a
 left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end comptel from acomp) b on a.a_cno=b.noa
 order by a_noa desc,pageno,gno,orderno;
