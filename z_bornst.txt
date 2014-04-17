@@ -34,21 +34,25 @@ insert into @tmp
 			 and isnull(b.noa,'') != '' 
 	union all
 	select '0', isnull(a.ordeno,'') + '-' + isnull(a.no2,'') ordeno,'派車單',b.noa,b.datea,a.productno,a.product,
-	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'vccest'+a.accy
+	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,1,'vccest'+a.accy
 	from view_vcces a 
 	left join view_vcce b on a.noa = b.noa
 	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and b.ordeno + '-' + a.noq = @t_ordeno) or (@checkNoq = 0 and b.ordeno = @t_ordeno)))
 			 and isnull(a.ordeno,'') != '' 
 	union all
 	select '0', isnull(a.ordeno,'') + '-' + isnull(a.no2,'')  ordeno,'出貨單',b.noa,b.datea,a.productno,a.product,
-	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,0,'vccst'+a.accy
+	(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) size,a.mount,a.weight,a.uno,a.memo,2,'vccst'+a.accy
 	from view_vccs a
 	left join view_vcc b on a.noa = b.noa
 	where (len(@t_ordeno) = 0 or ((@checkNoq = 1 and a.ordeno + '-' + a.no2 = @t_ordeno) or  (@checkNoq = 0 and a.ordeno = @t_ordeno)))
 			 and isnull(a.ordeno,'') != '' 
 
 insert into @tmp(ordeno,gno,mount,weight)
-	select distinct ordeno,'1',sum(mount),sum(weight) from @tmp group by ordeno
+	select
+		distinct ordeno,'1',
+		sum(case orderby when 1 then 0 when 2 then mount*(-1) else mount end),
+		sum(case orderby when 1 then 0 when 2 then weight*(-1) else weight end)
+	from @tmp group by ordeno
 update @tmp set size = replace(size,'~#$','''')
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 select
@@ -56,4 +60,4 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
 	uno,memo,orderby,qhref
-from @tmp order by ordeno,gno,datea,typea,noa,orderby;
+from @tmp order by ordeno,gno,datea,orderby,noa;
