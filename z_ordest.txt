@@ -1,20 +1,21 @@
 ﻿z_ordest5:--z_ordest5
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
-	declare @t_bodate nvarchar(10)
-	declare @t_eodate nvarchar(10)
-	declare @t_bcustno nvarchar(20)
-	declare @t_ecustno nvarchar(20)
-	declare @t_bproductno nvarchar(30)
-	declare @t_eproductno nvarchar(30)
-	declare @t_sort nvarchar(30)
-	set @t_bodate = case when '#non'=[4] then '' else [4] end
-	set @t_eodate = case when '#non'=[5] then char(255) else [5] end
-	set @t_bcustno = case when '#non'=[6] then '' else [6] end
-	set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
-	set @t_bproductno = case when '#non'=[10] then '' else [10] end
-	set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
-	set @t_sort = case when '#non'=[16] then '' else [16] end
+	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
+	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	declare @t_bproductno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+	declare @t_eproductno nvarchar(30) = case when '#non'=[11] then char(255) else [11] end
+	declare @t_sort nvarchar(30) = case when '#non'=[16] then '' else [16] end
+	declare @t_bradius float = cast(case when '#non'=[26] then '0' else [26] end as float)
+	declare @t_eradius float = cast(case when '#non'=[27] then '99999' else [27] end as float)
+	declare @t_bwidth float = cast(case when '#non'=[28] then '0' else [28] end as float)
+	declare @t_ewidth float = cast(case when '#non'=[29] then '99999' else [29] end as float)
+	declare @t_bdime float = cast(case when '#non'=[30] then '0' else [30] end as float)
+	declare @t_edime float = cast(case when '#non'=[31] then '99999' else [31] end as float)
+	declare @t_blength float = cast(case when '#non'=[32] then '0' else [32] end as float)
+	declare @t_elength float = cast(case when '#non'=[33] then '99999' else [33] end as float)
 	set @t_sort = upper(@t_sort)
 	-----------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_ordest5_a')is not null
@@ -297,25 +298,33 @@
 	
 	drop table  #z_ordest5_a
 	drop table  #z_ordest5_b
-	select * 
-	,ROW_NUMBER()over(order by recno) a01
-	,ordeno a02
-	,ordeno2 a03
-	,datea a04
-	,custno a05
-	,nick a06
-	,product a07
-	,spec a08
-	,classa a09
-	,memo a10
-	,price a11
-	,weight a12
-	,mount a13
-	,notmount a14
-	,stkmount a15
-	,round(notweight,3) a16 
-	,'ordest?left(noa,'+CAST(len(ordeno) as nvarchar)+')=$a02?'+ordeaccy ghref
-	 from @tmpb order by recno;
+	select a.* 
+	,ROW_NUMBER()over(order by a.recno) a01
+	,a.ordeno a02
+	,a.ordeno2 a03
+	,a.datea a04
+	,a.custno a05
+	,a.nick a06
+	,a.product a07
+	,a.spec a08
+	,a.classa a09
+	,a.memo a10
+	,a.price a11
+	,a.weight a12
+	,a.mount a13
+	,a.notmount a14
+	,a.stkmount a15
+	,round(a.notweight,3) a16 
+	,'ordest?left(noa,'+CAST(len(a.ordeno) as nvarchar)+')=$a02?'+a.ordeaccy ghref
+	 from @tmpb a
+	 left join view_ordes b on a.ordeaccy=b.accy and a.ordeno=b.noa and a.ordeno2=b.no2
+	 where b.noa is null
+	 or( b.dime between @t_bdime and @t_edime
+		and b.width between @t_bwidth and @t_ewidth
+		and b.lengthb between @t_blength and @t_elength
+		and b.radius between @t_bradius and @t_eradius
+	 )
+	 order by a.recno;
 
 z_ordest1:--z_ordest1
 declare @t_bdate nvarchar(10)
