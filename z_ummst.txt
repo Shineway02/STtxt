@@ -1731,10 +1731,10 @@ insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_
 	select '2',(max(orderno)+2),max(pageno),custno,custs,zipcode,addr,tel,sum(b_money),sum(b_tax),sum(t_total4),max(t_total5),max(t_total8) from @result where gno=0 group by custno,custs,zipcode,addr,tel
 insert into @result(gno,orderno,pageno,custno,custs,zipcode,addr,tel) 
 	select '3',(max(orderno)+3),max(pageno),custno,custs,zipcode,addr,tel from @result where gno=0 group by pageno,custno,custs,zipcode,addr,tel
-update @result set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '1'
-update @result set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '1'
-update @result set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '1'
-update @result set t_total9 = 0 where gno = '1' and (t_total9 <=0)
+update @result set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '2'
+update @result set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '2'
+update @result set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '2'
+update @result set t_total9 = 0 where gno = '2' and (t_total9 <=0)
 update @result set csize = replace(csize,'~#$','''')
 --update @result set datea = isnull(typea,'') + isnull(datea,'')
 update @result set b_mount=b_mount*(-1),b_price=b_price*(-1),b_money=b_money*(-1),b_tax=b_tax*(-1),a_total=a_total*(-1),b_total=b_total*(-1) where typea='2'
