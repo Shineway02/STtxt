@@ -371,7 +371,7 @@
 					set @money2 = case when @bweight=0 then 0 else round(@bmoney2*@weight/@weight2,0)end
 					set @price = case when @weight=0 then 0 else @money/@weight end
 					set @price2 = case when @weight=0 then 0 else @money2/@weight end
-					update @tmp set isprice=1,price=@price+ISNULL(cutprice,0),price2=@price2,[money]=@money,money2=@money2,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
+					update @tmp set isprice=1,price=@price+ISNULL(cutprice,0),price2=@price2,[money]=@money+ISNULL(cutprice,0)*[weight],money2=@money2,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
 				end
 			end
 			fetch next from cursor_table
