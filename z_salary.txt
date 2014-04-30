@@ -1,8 +1,10 @@
 ﻿z_salary1:--z_salary1
 declare @t_xmon nvarchar(20)
 declare @t_xkind nvarchar(20)
+declare @t_order nvarchar(20)
 set @t_xmon = case when '#non' = [1] then '' else [1] end
 set @t_xkind = case when '#non' = [3] then '' else [3] end
+set @t_order = case when '#non' = [8] then '' else [8] end
 declare @tmp table(
 		gno nvarchar(1),
 		partno nvarchar(20),
@@ -56,13 +58,16 @@ left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
 where a.person = '日薪' and @t_xmon = a.mon and @t_xkind = a.monkind
 
-insert into @tmp
-select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
-sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
-from @tmp
-group by partno,part
+if(@t_order='部門')
+begin
+	insert into @tmp
+	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
+	sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
+	sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
+	sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
+	from @tmp
+	group by partno,part
+end
 
 insert into @tmp
 select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
@@ -72,50 +77,97 @@ sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
 from @tmp
 where gno='0'
 
-select gno,partno,part,indate,sno,namea,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,day),1)),4,12)) day,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mtotal),1)),4,12)) mtotal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12))laco,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12))lase,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lopofee),1)),4,12)) lopofee,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind) worker
-from @tmp order by partno,gno;
+if(@t_order='部門')
+begin
+	select gno,partno,part,indate,sno,namea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,day),1)),4,12)) day,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mtotal),1)),4,12)) mtotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12))laco,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12))lase,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lopofee),1)),4,12)) lopofee,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
+	(select worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind) worker
+	from @tmp order by partno,gno
+end
+else
+begin
+	select gno,partno,part,indate,sno,namea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,day),1)),4,12)) day,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mtotal),1)),4,12)) mtotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12))laco,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12))lase,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lopofee),1)),4,12)) lopofee,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
+	(select worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind) worker
+	from @tmp order by gno,sno
+end
+;
 ------------------------------------------------------------------------------------------------------------------------------
 z_salary2:--z_salary2
 declare @t_xmon nvarchar(20)
 declare @t_xkind nvarchar(20)
+declare @t_order nvarchar(20)
 set @t_xmon = case when '#non' = [1] then '' else [1] end
 set @t_xkind = case when '#non' = [3] then '' else [3] end
+set @t_order = case when '#non' = [8] then '' else [8] end
 declare @tmp table(
 		gno nvarchar(1),
 		partno nvarchar(20),
@@ -171,13 +223,16 @@ left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
 where a.person = '本國' and @t_xmon = a.mon and @t_xkind = a.monkind
 
-insert into @tmp
-select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(total1),
-sum(chla1),sum(chla2),SUM(chhei),sum(miday),sum(mitotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus)
-from @tmp
-group by partno,part
+if(@t_order='部門')
+begin
+	insert into @tmp
+	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(total1),
+	sum(chla1),sum(chla2),SUM(chhei),sum(miday),sum(mitotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
+	sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
+	sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus)
+	from @tmp
+	group by partno,part
+end
 
 insert into @tmp
 select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(total1),
@@ -187,48 +242,95 @@ sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus)
 from @tmp
 where gno='0'
 
-select gno,partno,part,indate,sno,namea,job,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,miday),1)),2,12)) miday,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mitotal),1)),4,12)) mitotal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),2,12)) addh1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),2,12)) addh2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12))laco,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12))lase,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lopofee),1)),4,12)) lopofee,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
-(select worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind) worker
-from @tmp order by partno,gno,jobno;
+if(@t_order='部門')
+begin
+	select gno,partno,part,indate,sno,namea,job,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,miday),1)),2,12)) miday,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mitotal),1)),4,12)) mitotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),2,12)) addh1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),2,12)) addh2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12))laco,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12))lase,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lopofee),1)),4,12)) lopofee,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
+	(select worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind) worker
+	from @tmp order by partno,gno,jobno
+end
+else
+begin
+	select gno,partno,part,indate,sno,namea,job,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,miday),1)),2,12)) miday,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mitotal),1)),4,12)) mitotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),2,12)) addh1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),2,12)) addh2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12))laco,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12))lase,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lopofee),1)),4,12)) lopofee,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
+	(select worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind) worker
+	from @tmp order by gno,sno,jobno
+end
+;
 ---------------------------------------------------------------------------------------------------
 z_salary3:--z_salary3
 declare @t_xmon nvarchar(20)
+declare @t_order nvarchar(20)
 set @t_xmon = case when '#non' = [1] then '' else [1] end
+set @t_order = case when '#non' = [8] then '' else [8] end
 declare @tmp table(
 		gno nvarchar(1),
 		partno nvarchar(20),
@@ -295,12 +397,15 @@ left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
 where a.person = '外勞' and @t_xmon = a.mon 
 
-insert into @tmp
-select '1',partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
-sum(chla1),sum(chla2),sum(chhei),sum(miday),sum(mitotal),sum(bobo),sum(boni),sum(bofu),sum(bodu),sum(taxot),sum(total2),sum(addh1),sum(addh2),sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),
-sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5) 
-from @tmp
-group by partno,part
+if(@t_order='部門')
+begin
+	insert into @tmp
+	select '1',partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
+	sum(chla1),sum(chla2),sum(chhei),sum(miday),sum(mitotal),sum(bobo),sum(boni),sum(bofu),sum(bodu),sum(taxot),sum(total2),sum(addh1),sum(addh2),sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),
+	sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5) 
+	from @tmp
+	group by partno,part
+end
 
 insert into @tmp
 select '2','ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
@@ -309,57 +414,115 @@ sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6
 from @tmp
 where gno='0'
 
-select gno,partno,part,indate,sno,namea,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,miday),1)),4,12)) miday,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mitotal),1)),4,12)) mitotal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bobo),1)),4,12)) bobo,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boni),1)),4,12)) boni,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bodu),1)),4,12)) bodu,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add46m,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh00,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add0m,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12)) laco,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12)) lase,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chg),1)),4,12)) chg,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax6),1)),4,12)) tax6,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax10),1)),4,12)) tax10,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax12),1)),4,12)) tax12,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax18),1)),4,12)) tax18,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,staym),1)),4,12)) staym,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where person = '外勞' and @t_xmon = mon) worker
-from @tmp order by partno,gno;
+if(@t_order='部門')
+begin
+	select gno,partno,part,indate,sno,namea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,miday),1)),4,12)) miday,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mitotal),1)),4,12)) mitotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bobo),1)),4,12)) bobo,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boni),1)),4,12)) boni,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bodu),1)),4,12)) bodu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add0m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12)) laco,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12)) lase,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chg),1)),4,12)) chg,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax6),1)),4,12)) tax6,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax10),1)),4,12)) tax10,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax12),1)),4,12)) tax12,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax18),1)),4,12)) tax18,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,staym),1)),4,12)) staym,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
+	(select worker from salary where person = '外勞' and @t_xmon = mon) worker
+	from @tmp order by partno,gno
+end
+else
+begin
+	select gno,partno,part,indate,sno,namea,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,botr),1)),4,12)) botr,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bosp,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla1),1)),4,12)) chla1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla2),1)),4,12)) chla2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhei),1)),4,12)) chhei,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,miday),1)),4,12)) miday,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mitotal),1)),4,12)) mitotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bobo),1)),4,12)) bobo,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boni),1)),4,12)) boni,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bodu),1)),4,12)) bodu,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxot),1)),4,12)) taxot,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add0m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,borrow),1)),4,12)) borrow,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,labor),1)),4,12)) labor,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,laco),1)),4,12)) laco,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lase),1)),4,12)) lase,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chg),1)),4,12)) chg,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax6),1)),4,12)) tax6,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax10),1)),4,12)) tax10,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax12),1)),4,12)) tax12,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax18),1)),4,12)) tax18,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,wel),1)),4,12)) wel,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,staym),1)),4,12)) staym,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,heal),1)),4,12)) heal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,hplus2),1)),4,12)) hplus2,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
+	(select worker from salary where person = '外勞' and @t_xmon = mon) worker
+	from @tmp order by gno,sno
+end
+;
 
 -----------------------------------------------------------------------------------------------
 z_salary4:--z_salary4
