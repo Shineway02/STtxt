@@ -251,7 +251,7 @@ z_anavccst01:--z_anavccst01
 		" from "+@tableas+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" left join view_uccb c on a.uno=c.uno "+
-		" outer apply (select sum(isnull([weight],0)) [weight] from "+@tableas+" where noa=a.noa and dime!=0) d"+
+		" outer apply (select sum(isnull([weight],0)) [weight] from "+@tableas+" where noa=a.noa and (len(isnull(uno,''))>0 or dime!=0)) d"+
 		" where b.noa is not null"+
 		" and isnull(b.typea,'0')='1'"+
 		" and len(isnull(a.uno,''))>0"+
