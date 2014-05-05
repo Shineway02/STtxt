@@ -25,8 +25,8 @@ insert into @tmp
 	left join ucclab b on a.noa=b.noa
 	where (a.productno between @t_bproductno and @t_eproductno) and
 		  (len(@t_noa)=0 or b.noa=@t_noa)
-update @tmp set barcode39_pno = '<img height="40px" src="http://barcode.tec-it.com/barcode.ashx?code=Code39&modulewidth=fit&data='+upper(productno)+'&dpi=96&imagetype=gif&rotation=0&color=&bgcolor=&fontcolor=&quiet=0&qunit=mm&download=true">' where len(productno) > 0
-update @tmp set barcode39_uno = '<img height="40px" src="http://barcode.tec-it.com/barcode.ashx?code=Code39&modulewidth=fit&data='+upper(uno)+'&dpi=96&imagetype=gif&rotation=0&color=&bgcolor=&fontcolor=&quiet=0&qunit=mm&download=true">' where len(uno) > 0
+update @tmp set barcode39_pno = '<img width="100px" src="https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl='+upper(productno)+'&chld=L|4">' where len(productno) > 0
+update @tmp set barcode39_uno = '<img width="100px" src="https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl='+upper(uno)+'&chld=L|4">' where len(uno) > 0
 insert into @tmp(gno,noa,noq)
 	select '1',noa,noq from @tmp group by noa,noq
 select
