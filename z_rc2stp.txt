@@ -106,8 +106,8 @@ z_rc2stp1:--z_rc2stp1
 	update @tmp set pno = RIGHT('0000'+CAST(recno as nvarchar),4)
 
 	----------------------------------------------------------------------------------------------
-	declare @t_pageline int = 11   --------一頁幾行
-	declare @t_end int = 4 --頁尾行數
+	declare @t_pageline int = 10   --------一頁幾行
+	declare @t_end int = 3 --頁尾行數
 	declare @noa nvarchar(20)
 	declare @m int
 	
@@ -141,7 +141,6 @@ z_rc2stp1:--z_rc2stp1
 	left join (select noa,pno,row_number()over(partition by noa order by pno) recno from @tmp) b on a.noa=b.noa and a.pno=b.pno
 	------------------------------------------------------------------------------------------------
 	declare @recno int
-	declare @x int
 	
 	declare cursor_table cursor for
 	select noa,COUNT(1) n from @tmp group by noa
@@ -150,13 +149,9 @@ z_rc2stp1:--z_rc2stp1
 	into @noa,@n
 	while(@@FETCH_STATUS <> -1)
 	begin
-		if (@n+@t_end)>@t_pageline
-			set @x = @t_end + 1 --多合計
-		else
-			set @x = @t_end
 		set @recno = @n + 1
 		set @m = @t_pageline-@n%@t_pageline
-		if @m<@x
+		if @m<@t_end
 		begin
 			while @m>0
 			begin
@@ -168,26 +163,20 @@ z_rc2stp1:--z_rc2stp1
 			set @m = @t_pageline
 		end
 		
-		while @m>@x
+		while @m>@t_end
 		begin
 			insert into @tmp(noa,pno,recno,gno)
 			values(@noa,right('0000'+CAST(@recno as nvarchar),4),@recno,'3')
 			set @recno = @recno + 1
 			set @m = @m - 1
 		end	
-		if @x = @t_end + 1
-		begin
-			insert into @tmp(gno,noa,recno)select '4',@noa,@recno
-			set @recno = @recno + 1
-		end
+
 		insert into @tmp(gno,noa,recno)
 		select '5',@noa,@recno
 		insert into @tmp(gno,noa,recno)
 		select '6',@noa,@recno+1
 		insert into @tmp(gno,noa,recno)
 		select '7',@noa,@recno+2
-		insert into @tmp(gno,noa,recno)
-		select '8',@noa,@recno+3
 		
 		fetch next from cursor_table
 		into @noa,@n
@@ -205,7 +194,7 @@ z_rc2stp1:--z_rc2stp1
 	
 	----------------------------------------------------------------------------------------
 	declare @memo nvarchar(max)
-	declare @maxcount int = 50
+	declare @maxcount int = 60
 
 	declare cursor_table cursor for
 	select noa,memo from @tmp group by noa,memo
