@@ -149,7 +149,8 @@
 		money2 float,
 		memo nvarchar(max),
 		productno nvarchar(20),
-		style nvarchar(20)
+		style nvarchar(20),
+		groupa nvarchar(20)
 	)
 	declare @tablea nvarchar(20)
 	declare @tableas nvarchar(20)
@@ -260,12 +261,13 @@
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" ,a.productno"+
+		" ,a.groupa"+
 		" from "+@tableau+" a"+
 		" left join "+@tablea+" b on a.noa=b.noa"+
 		" where len(isnull(a.uno,''))>0"+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
 		
-		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],memo,productno)
+		insert into @tmp(isprice,tablea,accy,noa,noq,datea,uno,mount,[weight],memo,productno,groupa)
 		execute sp_executesql @cmd,N'@accy nvarchar(20)',@accy=@accy
 		
 		fetch next from cursor_table
@@ -311,7 +313,7 @@
 		return
 	end
 	-----------------------------------------------------------------------------------
-	set @n = 50 --製程步驟需小於此數
+	set @n = 10 --製程步驟需小於此數
 	declare @noa nvarchar(20)
 	declare @noq nvarchar(10)
 	declare @buno nvarchar(50)
@@ -339,7 +341,9 @@
 		[money] float,
 		money2 float
 	)
-	
+	----------------------------------------------
+	declare @groupa nvarchar(20)
+	----------------------------------------------
 	update @tmp set memo='製程步驟大於'+CAST(@n as nvarchar)+'，無法找到成本金額。' where isprice=0 and len(isnull(memo,''))=0
 	while @n>0
 	begin
@@ -381,22 +385,23 @@
 		deallocate cursor_table
 		---CUB
 		declare cursor_table cursor for
-		select tablea,accy,noa,noq,[weight],productno from @tmp where isprice=0 and tablea='cubu'
+		select tablea,accy,noa,noq,[weight],productno,isnull(groupa,'') from @tmp where isprice=0 and tablea='cubu'
 		open cursor_table
 		fetch next from cursor_table
-		into @tablea,@accy,@noa,@noq,@weight,@productno
+		into @tablea,@accy,@noa,@noq,@weight,@productno,@groupa
 		while(@@FETCH_STATUS <> -1)
 		begin
 			if exists(select * from @tmp where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq and isprice=0)
 			begin	
 				delete @tmpCust	
+				
 				set @cmd =
 				" select a.uno,b.productno,a.gweight from cubt"+@accy+" a "
 				+" left join view_uccb b on a.uno=b.uno"
-				+" where a.noa=@noa and b.productno=@productno and a.gweight>0"
+				+" where a.noa=@noa and b.productno=@productno and a.gweight>0  and ISNULL(a.groupa,'')=@groupa"
 				insert into @tmpCust(uno,productno,gweight)
-				execute sp_executesql @cmd,N'@noa nvarchar(20),@productno nvarchar(20)',@noa=@noa,@productno=@productno
-				
+				execute sp_executesql @cmd,N'@noa nvarchar(20),@productno nvarchar(20),@groupa nvarchar(20)',@noa=@noa,@productno=@productno,@groupa=@groupa
+	
 				update @tmpCust set isprice=ISNULL(b.isprice,0)
 					,[money]=case when ISNULL(b.[weight],0)=0 then 0 else isnull(a.gweight,0)/ISNULL(b.[weight],0)*isnull(b.[money],0) end
 					,[money2]=case when ISNULL(b.[weight],0)=0 then 0 else isnull(a.gweight,0)/ISNULL(b.[weight],0)*isnull(b.[money2],0) end
@@ -408,8 +413,8 @@
 					if exists(select * from @tmpCust)
 					begin
 						select @bweight=0,@bmoney=0,@weight=0
-						select @bweight=sum(gweight),@bmoney=SUM([money]),@bmoney2=SUM([money2]) from @tmpCust where productno=@productno
-						select @weight=sum([weight])from @tmp where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno
+						select @bweight=sum(gweight),@bmoney=SUM([money]),@bmoney2=SUM([money2]) from @tmpCust --where productno=@productno 
+						select @weight=sum([weight])from @tmp where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno and isnull(groupa,'')=@groupa
 						--製管的成本攤提,用CUBU的產出重量,不用CUBT的領料重
 						--同張CUB一起更新
 						update @tmp set isprice=1
@@ -418,22 +423,29 @@
 						,price =case when @weight=0 or [weight]=0 then 0 else Round(ROUND([weight]/@weight*@bmoney,0)/[weight],4) end
 						,price2 =case when @weight=0 or [weight]=0 then 0 else Round(ROUND([weight]/@weight*@bmoney2,0)/[weight],4) end
 						,memo='' 
-						where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno
+						where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno and groupa=@groupa
 					end
 					else
 					begin
 						update @tmp set isprice=1,price=0,[money]=0,money2=0
-						where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno
+						where tablea=@tablea and accy=@accy and noa=@noa and productno=@productno and isnull(groupa,'')=@groupa
 					end
 				end
 			end
 			fetch next from cursor_table
-			into @tablea,@accy,@noa,@noq,@weight,@productno
+			into @tablea,@accy,@noa,@noq,@weight,@productno,@groupa
 		end
 		close cursor_table
 		deallocate cursor_table
+		--endcub
 		set @n = @n - 1
 	end
+	
+	--select * from view_uccb where uno='1030403001A01A01A3' or uno='1030403001A01A01A5' or  uno='1030403001A01A01A4'
+	--select * from @tmp where uno='1030403001A01A01A3' or uno='1030403001A01A01A5' or  uno='1030403001A01A01A4'
+	
+	----select * from @tmp 
+	--return
 	----------------------------------------------------------------------------------
 	--重新入庫,單價無法計算,因此單價異常的改取平均
 	--代工排除
