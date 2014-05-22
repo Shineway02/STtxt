@@ -9,7 +9,7 @@ z_rc2stp1:--z_rc2stp1
 	declare @t_edate nvarchar(20) 
 	declare @t_btggno nvarchar(20)
 	declare @t_etggno nvarchar(20)
-	
+
 	set @t_accy = '[1]'
 	set @t_kind = '[2]'
 	set @t_bno = case when '#non' = [3] then '' else [3] end
@@ -45,6 +45,7 @@ z_rc2stp1:--z_rc2stp1
 	end
 	----------------------------------------------------------------------------------------------
 	declare @tmp table(
+		recno int,
 		gno nvarchar(10),
 		noa nvarchar(20),
 		tggno nvarchar(20),
@@ -67,7 +68,12 @@ z_rc2stp1:--z_rc2stp1
 		ordcno nvarchar(max),
 		tranprice float,
 		trancost float,
-		
+		mma nvarchar(max),
+		mmb nvarchar(max),
+		mmc nvarchar(max),
+		cca nvarchar(max),
+		ccb nvarchar(max),
+		ccc nvarchar(max),
 		
 		no2 nvarchar(10),
 		productno nvarchar(20),
@@ -82,9 +88,10 @@ z_rc2stp1:--z_rc2stp1
 		memos nvarchar(max) ,
 		uno2 nvarchar(max)
 	)
-	
+
 	set @cmd =
-	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
+	" select row_number()over(partition by a.noa order by a.no2)"+
+	" ,case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
 	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0),b.cardeal,b.carno,b.ordcno,isnull(b.[price],0),isnull(b.[tranmoney],0)"+
@@ -99,47 +106,49 @@ z_rc2stp1:--z_rc2stp1
 	" and a.noa between @t_bno and @t_eno"+
 	" and isnull(b.tggno,'') between @t_btggno and @t_etggno"+
 	" order by a.noa,a.no2 "
-	
-	insert into @tmp(gno,noa,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total],cardeal,carno,ordcno,tranprice,trancost
+
+	insert into @tmp(recno,gno,noa,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total],cardeal,carno,ordcno,tranprice,trancost
 		,no2,productno,product,unit,mounts,weights,price,totals,size,spec,memos,uno2)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bno nvarchar(20),@t_eno nvarchar(20),@t_btggno nvarchar(20),@t_etggno nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bno=@t_bno,@t_eno=@t_eno,@t_btggno=@t_btggno,@t_etggno=@t_etggno
-	
+
 	update @tmp set ckind=b.namea
 	from @tmp a left join @listKind b on a.kind= b.noa
 	----------------------------------------------------------------------------------------------
 	declare @noa nvarchar(20)
+	declare @m int
 	
 	declare cursor_table cursor for
-	select noa,COUNT(1) n from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
+	select noa,COUNT(1) n,max(recno) from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
 	open cursor_table
 	fetch next from cursor_table
-	into @noa,@n
+	into @noa,@n,@m
 	while(@@FETCH_STATUS <> -1)
 	begin		
-		insert into @tmp(noa,no2,gno,memos)
-		values(@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
-	
+		insert into @tmp(recno,noa,no2,gno,memos)
+		values(@m+1,@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
+
 		fetch next from cursor_table
-		into @noa,@n
+		into @noa,@n,@m
 	end
 	close cursor_table
 	deallocate cursor_table
-	
+
 	declare cursor_table cursor for
-	select noa,COUNT(1) n from @tmp group by noa 
+	select noa,COUNT(1) n,max(recno) from @tmp group by noa 
 	open cursor_table
 	fetch next from cursor_table
-	into @noa,@n
+	into @noa,@n,@m
 	while(@@FETCH_STATUS <> -1)
 	begin		
 		while(@n%@t_pageline!=0)
 		begin
-			insert into @tmp(noa,no2,gno)values(@noa,'zzz','4')
+			set @m = @m + 1
+			insert into @tmp(recno,noa,no2,gno)values(@m,@noa,'zzz','4')
 			set @n = @n + 1
 		end
 		fetch next from cursor_table
-		into @noa,@n
+		into @noa,@n,@m
 	end
 	close cursor_table
 	deallocate cursor_table
@@ -151,95 +160,159 @@ z_rc2stp1:--z_rc2stp1
 	from @tmp a
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
-
-declare @tmpa table(
-	gno nvarchar(10),
-	noa nvarchar(90),
-	no2 nvarchar(10),
-	rrno int,
-	ttno int,
-	a01 nvarchar(50),
-	a02 nvarchar(max),
-	a03 nvarchar(max),
-	a04 nvarchar(50),
-	a05 float,
-	a06 float,
-	a07 float,--
-	a0a7 float,--
-	a08 float,--
-	a09 float,--
-	a10 nvarchar(max),
+	-----------------------------------------------------------------------------------------------------
 	
-	cardeal nvarchar(max),
-	carno nvarchar(max),
-	ordcno nvarchar(max),
-	tranprice float,
-	trancost float,
+	declare @memo nvarchar(max)
+	declare @maxcount int = 60
+	declare cursor_table cursor for
+	select noa,memo from @tmp group by noa,memo
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@memo
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @n = 0
+		set @m = 1	
+		set @string = ""	
+		update @tmp set memo='' where noa=@noa and (gno='5' or gno='6' or gno='7')
+		while(LEN(@memo)>0)
+		begin
+			set @n = @n + case when UNICODE(LEFT(@memo,1))>5000 then 2 else 1 end	
+			set @string = @string + LEFT(@memo,1)
+			set @memo = substring(@memo,2,len(@memo)-1)
+			if(LEN(@memo)=0 or @n>=@maxcount)
+			begin
+				if @m = 3
+				begin
+					update @tmp set mmc=N'<a style='+CHAR(39)+'font-family: "Times New Roman","標楷體", serif'+CHAR(59)+CHAR(39)+'>'+@string+'</a>' where noa=@noa
+					set @m = @m + 1
+				end
+				if @m = 2
+				begin
+					update @tmp set mmb=N'<a style='+CHAR(39)+'font-family: "Times New Roman","標楷體", serif'+CHAR(59)+CHAR(39)+'>'+@string+'</a>' where noa=@noa
+					set @m = @m + 1
+				end
+				if @m = 1
+				begin
+					update @tmp set mma=N'<a style='+CHAR(39)+'font-family: "Times New Roman","標楷體", serif'+CHAR(59)+CHAR(39)+'>'+@string+'</a>' where noa=@noa
+					set @m = @m + 1
+				end
+				set @n = 0
+				set @string = ""
+			end		
+		end
+		fetch next from cursor_table
+		into @noa,@memo
+	end
+	close cursor_table
+	deallocate cursor_table
 	
-	
-	datea nvarchar(10),
-	b01 nvarchar(50),
-	b02 nvarchar(50),
-	b03 nvarchar(max),
-	b04 nvarchar(50),
-	b05 float,
-	b06 float,
-	b07 float,
-	b08 float, --
-	b09 nvarchar(max),
-	ba1 nvarchar(20),
-	ba2 nvarchar(max),--uno2
-	pno nvarchar(max)
-)
+	update @tmp set cca = '金　額：',ccb='營業稅：',ccc='總　計：'
+	from @tmp a
+	left join (select noa,MAX(recno) recno from @tmp group by noa) b on a.noa=b.noa and a.recno=b.recno
+	where b.noa is not null
+	-----------------------------------------------------------------------------------------------------
+	declare @tmpa table(
+		gno nvarchar(10),
+		noa nvarchar(90),
+		no2 nvarchar(10),
+		rrno int,
+		ttno int,
+		a01 nvarchar(50),
+		a02 nvarchar(max),
+		a03 nvarchar(max),
+		a04 nvarchar(50),
+		a05 float,
+		a06 float,
+		a07 float,--
+		a0a7 float,--
+		a08 float,--
+		a09 float,--
+		a10 nvarchar(max),
+		mma nvarchar(max),
+		mmb nvarchar(max),
+		mmc nvarchar(max),
+		cca nvarchar(max),
+		ccb nvarchar(max),
+		ccc nvarchar(max),
 
-insert into @tmpa
-	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
-	from(
-		select gno,noa,no2
-		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
-		,b.rrno ttno
-		,noa a01
-		,tggno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+tgg a02
-		,tel a03
-		,ckind a04
-		,mount a05
-		,[weight] a06
-		,money a07,money a0a7
-		,tax a08
-		,total a09
-		,memo a10
-		,cardeal
-		,carno
-		,ordcno
-		,tranprice
-		,trancost
+		cardeal nvarchar(max),
+		carno nvarchar(max),
+		ordcno nvarchar(max),
+		tranprice float,
+		trancost float,
 
-		,datea
-		,productno b01
-		,product b02
-		,replace(size,'~#$',"'") b03
-		,unit b04
-		,mounts b05
-		,weights b06
-		,price b07
-		,totals b08
-		,memos b09
-		,spec ba1
-		,uno2 ba2
-		from @tmp a
-		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
-			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
-	)a
-	order by a.noa,a.no2
-update @tmpa set a05 = b.b05,a06=b.b06,a07=b.b08
-from @tmpa a
-left join (select noa,rrno,sum(b05) b05,sum(b06) b06,sum(b08) b08 from @tmpa group by noa,rrno) b on (a.noa = b.noa) and (b.rrno = a.rrno)
-select
-	gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,datea,cardeal,carno,ordcno,tranprice,trancost,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a07),1)),4,12)) a07,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a0a7),1)),4,12)) a0a7,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a08),1)),4,12)) a08,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a09),1)),4,12)) a09,
-	a10,b01,b02,b03,b04,b05,b06,b07,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b08),1)),4,12)) b08,b09,ba1,ba2,pno
-from @tmpa order by noa,no2;
+
+		datea nvarchar(10),
+		b01 nvarchar(50),
+		b02 nvarchar(50),
+		b03 nvarchar(max),
+		b04 nvarchar(50),
+		b05 float,
+		b06 float,
+		b07 float,
+		b08 float, --
+		b09 nvarchar(max),
+		ba1 nvarchar(20),
+		ba2 nvarchar(max),--uno2
+		pno nvarchar(max)
+	)
+
+	insert into @tmpa
+		select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+		from(
+			select gno,noa,no2
+			,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+			,b.rrno ttno
+			,noa a01
+			,tggno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+tgg a02
+			,tel a03
+			,ckind a04
+			,mount a05
+			,[weight] a06
+			,[money] a07
+			,[money] a0a7
+			,tax a08
+			,total a09
+			,memo a10
+			,mma
+			,mmb
+			,mmc
+			,cca
+			,ccb
+			,ccc
+			,cardeal
+			,carno
+			,ordcno
+			,tranprice
+			,trancost
+
+			,datea
+			,productno b01
+			,product b02
+			,replace(size,'~#$',"'") b03
+			,unit b04
+			,mounts b05
+			,weights b06
+			,price b07
+			,totals b08
+			,memos b09
+			,spec ba1
+			,uno2 ba2
+			from @tmp a
+			outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+				from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
+		)a
+		order by a.noa,a.no2
+	update @tmpa set a05 = b.b05,a06=b.b06,a07=b.b08
+	from @tmpa a
+	left join (select noa,rrno,sum(b05) b05,sum(b06) b06,sum(b08) b08 from @tmpa group by noa,rrno) b on (a.noa = b.noa) and (b.rrno = a.rrno)
+	select
+		gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,mma,mmb,mmc,cca,ccb,ccc,datea,cardeal,carno,ordcno,tranprice,trancost,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a07),1)),4,12)) a07,
+		case when len(isnull(cca,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a0a7),1)),4,12)) end a0a7,
+		case when len(isnull(ccb,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a08),1)),4,12)) end a08,
+		case when len(isnull(ccc,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a09),1)),4,12)) end a09,
+		a10,b01,b02,b03,b04,b05,b06,b07,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b08),1)),4,12)) b08,b09,ba1,ba2,pno
+	from @tmpa order by noa,no2;
