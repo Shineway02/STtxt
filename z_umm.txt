@@ -590,7 +590,7 @@ insert into @tmp
 	--本期預收沖帳
 	,isnull((select SUM(unopay)  from umm where custno=a.noa and datea between @t_bdate and @t_edate),0) unopay
 	,0
-from (select noa,nick from cust union all select noa,namea from carOwner)a
+from (select noa,nick from cust union all select noa,namea from carOwner union all select ''noa,''namea union all select null noa,null namea)a
 
 delete @tmp where bmoney=0 and opay=0 and opbalance=0
 
