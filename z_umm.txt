@@ -497,14 +497,15 @@ declare @tmp table(
 ) 
 --上期餘額
 insert into @tmp 
-	select '0' gno,null,'000',null,null,'上期餘額',a.custno,left(a.comp,4),null,null,null,null,null,null,null, 
-	null,null,null,sum(a.opay),sum(a.unopay),SUM(a.opay)-SUM(a.unopay)
-	from umm a 
+	select '0' gno,null,'000',null,null,'上期餘額',a.custno,b.nick,null,null,null,null,null,null,null, 
+	null,null,null,sum(a.opay),sum(a.unopay),SUM(a.opay)-SUM(a.unopay) 
+	from umm a left join cust b on a.custno=b.noa
 	where (LEN(@t_cno) = 0 or a.cno = @t_cno) and 
 	(a.datea <@t_bdate) and 
 	(a.custno between @t_bcustno and @t_ecustno) 
-	and a.custno!='' and noa!=''
-	group by a.custno,a.comp
+	and a.custno!='' and a.noa!='' 
+	group by a.custno,b.nick
+
 --指定時間的資料 
 insert into @tmp 
 	select '0' gno,a.noa,case when len(b.noq)>0 then b.noq else '001' end,a.datea,a.cno,b.acc2
