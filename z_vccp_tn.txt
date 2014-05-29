@@ -82,7 +82,7 @@ set pageno=ceiling(cast(recno as float)/cast(@t_pageline as float))
 where gno='0'
 
 update a 
-set topage=(select MAX(pageno) from @tmp where noa=a.noa),title=''
+set topage=(select MAX(pageno) from @tmp where noa=a.noa),title='出貨單'
 from @tmp a
 
 update a 
@@ -90,7 +90,7 @@ set total=(select SUM(total) from @tmp where noa=a.noa and pageno=a.pageno and g
 from @tmp a where gno='2'
 
 select gno,case when isnull(productno,'')='' then null else  recno end no,pageno,topage,title
-,noa,datea,custno,comp,tel,addr,store,salesno,sales,productno,product
+,noa,datea,custno,left(comp,15)comp,tel,addr,store,salesno,sales,productno,product
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),4,30)) mount
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
 ,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
