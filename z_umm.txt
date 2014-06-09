@@ -1688,7 +1688,8 @@ declare @t_ecustno nvarchar(20)
 declare @t_bsalesno nvarchar(20)
 declare @t_esalesno nvarchar(20)
 declare @t_showunpay nvarchar(30)
-
+declare @t_bcusttype nvarchar(50)
+declare @t_ecusttype nvarchar(50)
 set @t_bdate = case when '#non'=[3] then '' else [3] end
 set @t_edate = case when '#non'=[4] then char(255) else [4] end
 set @t_bmon = case when '#non'=[13] then '' else [13] end
@@ -1697,7 +1698,9 @@ set @t_bcustno = case when '#non'=[5] then '' else [5] end
 set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
 set @t_bsalesno = case when '#non'=[15] then '' else [15] end
 set @t_esalesno = case when '#non'=[16] then char(255) else [16] end
-set @t_showunpay = case when '#non'='#non' then '0' else '#non' end
+set @t_showunpay = case when '#non'='#non' then '1' else '#non' end
+set @t_bcusttype = case when '#non'=[23] then '' else [23] end
+set @t_ecusttype = case when '#non'=[24] then char(255) else [24] end
 
 declare @result table(
 	gno nvarchar(10),
@@ -1721,8 +1724,9 @@ declare @result table(
 	total2 float,
 	pcount int,
 	salesno nvarchar(30),
-	saless nvarchar(30)
-	--primary key (custno,gno,mon,datea,noa,typea)
+	saless nvarchar(30),
+	form nvarchar(90)
+	primary key (custno,gno,mon,datea,noa,typea,form)
 )
 
 if(@t_showunpay='0')
@@ -1731,7 +1735,7 @@ begin
 		select '0' gno, a.typea, a.noa noa,isnull(a.invono,'') invoiceno, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end) mon,
 			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''),isnull(c.serial,''), isnull(c.tel,''),
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
-		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
+		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales,'vcc'
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
@@ -1740,11 +1744,10 @@ begin
 			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  (a.salesno between @t_bsalesno and @t_esalesno)
 		group by a.typea, a.noa,a.invono,a.datea,a.mon,a.custno2,a.custno,c.comp,c.addr_invo,c.serial,c.tel,a.salesno2,a.salesno,a.sales2,a.sales
-
 		union all --無發票系統
 		select '0' gno, '稅' typea, noa,invono, datea, (case when mon='' then left(datea,6) else mon end),
 			   (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
+			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'','','vcc'
 		from view_vcc
 		where tax > 0 and (taxtype='1' or taxtype='5') and
 			  (datea between @t_bdate and @t_edate)and
@@ -1754,9 +1757,9 @@ begin
 		union all --有發票系統
 		select '0' gno, '稅' typea, vccno,noa, datea, (case when mon='' then left(datea,6) else mon end),
 			   custno, '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
+			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'','','vcca'
 		from vcca
-		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
+		where tax > 0 and (taxtype='1' or taxtype='5') and (1!=3) and
 				(datea between @t_bdate and @t_edate)and
 			  ((case when mon='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
 			  (custno between @t_bcustno and @t_ecustno)
@@ -1768,7 +1771,7 @@ begin
 	select '0' gno, a.typea, a.noa noa,isnull(a.invono,''), a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end) mon,
 			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''),isnull(c.serial,''), isnull(c.tel,''),
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
-		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
+		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales,'vcc'
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
@@ -1780,7 +1783,7 @@ begin
 		union all --無發票系統
 		select '0' gno, '稅' typea, noa,invono, datea, (case when mon='' then left(datea,6) else mon end),
 			   (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
+			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'','','vcc'
 		from view_vcc
 		where tax > 0 and (taxtype='1' or taxtype='5') and
 			  (datea between @t_bdate and @t_edate)and
@@ -1790,14 +1793,15 @@ begin
 		union all --有發票系統
 		select '0' gno, '稅' typea, vccno,noa, datea, (case when mon='' then left(datea,6) else mon end),
 			   custno, '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
+			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'','','vcca'
 		from vcca
-		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
+		where tax > 0 and (taxtype='1' or taxtype='5') and (1!=3) and
 				(datea between @t_bdate and @t_edate)and
 			  ((case when mon='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
 			  (custno between @t_bcustno and @t_ecustno)
 		order by custno,gno,mon,datea,noa
 end
+delete @result where custno not in (select noa from cust where typea between @t_bcusttype and @t_ecusttype)
 update a
 	set tax=isnull(b.total,0)
 from @result a
@@ -1845,7 +1849,7 @@ begin
 			set @t_total1 = @t_money - @t_back + @t_tax
 			insert into @result
 			select '1' gno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo,'' serial, '' tel,
-			       0 total, @t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,'',''
+			       0 total, @t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,'','',''
 		end
 		set @t_custno = @custno
 		set @t_comp = @comp
@@ -1871,7 +1875,7 @@ begin
 	set @t_total1 = @t_money - @t_back + @t_tax
 	insert into @result
 		select '1' gno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo,'' serial, '' tel,
-				 0 total,@t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,'',''
+				 0 total,@t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,'','',''
 	end
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 --已收款
@@ -1906,14 +1910,16 @@ declare @tmp table(
 	total2 float,
 	pcount int,
 	salesno nvarchar(30),
-	saless nvarchar(30)
-	--primary key (custno,gno,mon,datea,noa,typea)
+	saless nvarchar(30),
+	form nvarchar(90)
+	primary key (custno,gno,mon,datea,noa,typea,form)
 )
+
 insert into @tmp
-	select '0' gno, a.typea, a.noa noa,a.invono invoiceno, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end) mon,
+	select '0' gno, a.typea, a.noa noa,a.invono invoiceno, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else isnull(a.mon,'') end) mon,
 		    (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''),isnull(c.serial,''), isnull(c.tel,''),
 	       sum(b.total), 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
-	       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
+	       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales,'vcc'
 	from view_vccs b
 	left join view_vcc a on a.noa = b.noa
 	left join cust c on  a.custno = c.noa
@@ -1924,7 +1930,7 @@ insert into @tmp
 	union all
 	select '0' gno, '稅' typea, noa,invono,datea, (case when mon='' then left(datea,6) else mon end),
 		    (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo,'' serial, '' tel,
-		    tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
+		    tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'','','vcc'
 	from view_vcc
 	where tax > 0 and (taxtype='1' or taxtype='5')
 		  and ((datea < @t_bdate) or ((case when mon='' then left(datea,6) else mon end) < @t_bmon))
@@ -1933,17 +1939,19 @@ insert into @tmp
 	union all
 	select '0' gno, '稅' typea, vccno,noa, datea, (case when mon='' then left(datea,6) else mon end),
 		   custno, '' comp, '' addr_invo,'' serial, '' tel,
-		   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount	,'',''
+		   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'','','vcca'
 	from vcca
-	where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3)
+	where tax > 0 and (taxtype='1' or taxtype='5') and (1!=3)
 		and ((datea < @t_bdate) or ((case when mon='' then left(datea,6) else mon end) < @t_bmon ))
 		and  (custno between @t_bcustno and @t_ecustno)
 	order by custno,gno,mon,datea,noa
-update a
-	set tax=isnull(b.total,0)
-from @tmp a
-outer apply(select sum(total) total from @tmp where noa=a.noa and (typea='稅')) b
-delete @tmp where (typea='稅')
+delete @tmp where custno not in (select noa from cust where typea between @t_bcusttype and @t_ecusttype)
+
+--update a
+--	set tax=isnull(b.total,0)
+--from @tmp a
+--outer apply(select sum(total) total from @tmp where noa=a.noa and (typea='稅')) b
+--delete @tmp where (typea='稅')
 
 set @t_custno = '#zzzz#zzzz'
 set @t_comp = ''
@@ -1972,7 +1980,7 @@ begin
 			set @t_total1 = @t_money - @t_back + @t_tax
 			insert into @tmp
 			select '1' gno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo,'' serial, '' tel,
-			       0 total, @t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,@salesno,@sales
+			       0 total, @t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,@salesno,@sales,'' form
 		end
 		set @t_custno = @custno
 		set @t_comp = @comp
@@ -1999,7 +2007,7 @@ begin
 	set @t_total1 = @t_money - @t_back + @t_tax
 	insert into @tmp
 	select '1' gno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo,'' serial, '' tel,
-		       0 total,@t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,@salesno,@sales
+		       0 total,@t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,@salesno,@sales,'' form
 end
 update @tmp set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 
@@ -2018,8 +2026,8 @@ update a
 	set unpay=isnull((select total1-pay from @tmp where custno=a.custno and gno='1'),0)
 from @result a where a.gno='1'
 
-insert into @result (gno,noa,typea,datea,mon,custno,comp,salesno,saless,total1,pay,unpay)
-select gno,noa,typea,datea,mon,custno,comp,salesno,saless,0,0,total1-pay+unpay from @tmp
+insert into @result (gno,noa,typea,datea,mon,custno,comp,salesno,saless,total1,pay,unpay,form)
+select gno,noa,typea,datea,mon,custno,comp,salesno,saless,0,0,total1-pay+unpay,'' from @tmp
 where custno not in (select custno from @result) and gno='1' and (total1-pay+unpay)!=0
 
 update @result
