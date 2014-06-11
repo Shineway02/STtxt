@@ -1,9 +1,9 @@
 z_acx01:--z_acx01
-	set @t_bdate = case when '#non'=[2] then '' else [2] end
-	set @t_edate = case when '#non'=[3] then char(255) else [3] end
-	declare @t_style nvarchar(max)= case when '#non'=[5] then '' else [5] end
-	declare @t_productno nvarchar(max) = case when '#non'=[35] then '' else [35] end
-	declare @t_itype nvarchar(max)= case when '#non'=[36] then '' else [36] end
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_itype nvarchar(max)= case when '#non'=[35] then '' else [35] end
+	declare @t_style nvarchar(max)= case when '#non'=[36] then '' else [36] end
+	declare @t_productno nvarchar(max) = case when '#non'=[37] then '' else [37] end
 	----------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_acx')is not null
 	BEGIN
@@ -415,7 +415,17 @@ z_acx01:--z_acx01
 		and (len(@t_style)=0 or CHARINDEX(a.style,@t_style)>0)
 	group by a.productno,a.style
 	
-	select * from @tmp
+	update @tmp set a18 = case when a16!=0 then round((a17-a16)/a16*100,0) else null end
+		,a23 = case when a22!=0 then round(a24/a22,2) else null end
+	
+	insert into @tmp(gno,pno,a01,a02,a03,a04,a05,a06,a07,a08,a09
+		,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19
+		,a20,a21,a22,a23,a24)
+	select '2','2',sum(isnull(a01,0)),sum(isnull(a02,0)),sum(isnull(a03,0)),sum(isnull(a04,0)),sum(isnull(a05,0)),sum(isnull(a06,0)),sum(isnull(a07,0)),sum(isnull(a08,0)),sum(isnull(a09,0))
+		,sum(isnull(a10,0)),sum(isnull(a11,0)),sum(isnull(a12,0)),sum(isnull(a13,0)),sum(isnull(a14,0)),sum(isnull(a15,0)),sum(isnull(a16,0)),sum(isnull(a17,0)),sum(isnull(a18,0)),sum(isnull(a19,0))
+		,sum(isnull(a20,0)),sum(isnull(a21,0)),sum(isnull(a22,0)),sum(isnull(a23,0)),sum(isnull(a24,0))
+	from @tmp
+	select '' titlea, * from @tmp order by pno,style,productno
 
 	drop table #z_acx;
 	
