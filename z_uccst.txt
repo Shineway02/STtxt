@@ -341,7 +341,11 @@ z_acx01:--z_acx01
 		-isnull(vccs,0)-isnull(gets,0)-isnull(cut,0)-isnull(cubt,0)
 		,mount = isnull(rc2sm,0)+isnull(inasm,0)+isnull(cutsm,0)+isnull(cubum,0)
 		-isnull(vccsm,0)-isnull(getsm,0)-isnull(cutm,0)-isnull(cubtm,0)	
+	update #z_acx set bweight = case when bweight>0 and bmount>0 then bweight else 0 end
+		,bmount = case when bweight>0 and bmount>0 then bmount else 0 end	
 	update #z_acx set eweight = bweight+[weight],emount =bmount+mount
+	update #z_acx set eweight = case when eweight>0 and emount>0 then eweight else 0 end
+		,emount = case when eweight>0 and emount>0 then emount else 0 end	
 	---------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(20),
@@ -398,10 +402,10 @@ z_acx01:--z_acx01
 		,0 a18
 		,SUM(ISNULL(getsm,0)+ISNULL(cutm,0)+ISNULL(cubtm,0)) a19
 		,SUM(ISNULL(gets,0)+ISNULL(cut,0)+ISNULL(cubt,0)) a20
-		,SUM(case when ISNULL(emount,0)>0 and ISNULL(eweight,0)>0 then ISNULL(emount,0) else 0 end) a21
-		,SUM(case when ISNULL(emount,0)>0 and ISNULL(eweight,0)>0 then ISNULL(eweight,0) else 0 end) a22
+		,SUM(ISNULL(emount,0)) a21
+		,SUM(ISNULL(eweight,0)) a22
 		,0 a23
-		,round(SUM(case when ISNULL(emount,0)>0 and ISNULL(eweight,0)>0 then ISNULL(eweight*b.sprice,0) else 0 end),0) a24
+		,round(SUM(ISNULL(eweight*b.sprice,0)),0) a24
 	from #z_acx a
 	left join view_uccb b on a.uno=b.uno
 	where ((a.bweight>0 or a.bmount>0) 
