@@ -398,10 +398,10 @@ z_acx01:--z_acx01
 		,0 a18
 		,SUM(ISNULL(getsm,0)+ISNULL(cutm,0)+ISNULL(cubtm,0)) a19
 		,SUM(ISNULL(gets,0)+ISNULL(cut,0)+ISNULL(cubt,0)) a20
-		,SUM(ISNULL(emount,0)) a21
-		,SUM(ISNULL(eweight,0)) a22
+		,SUM(case when ISNULL(emount,0)>0 and ISNULL(eweight,0)>0 then ISNULL(emount,0) else 0 end) a21
+		,SUM(case when ISNULL(emount,0)>0 and ISNULL(eweight,0)>0 then ISNULL(eweight,0) else 0 end) a22
 		,0 a23
-		,round(SUM(ISNULL(eweight*b.sprice,0)),0) a24
+		,round(SUM(case when ISNULL(emount,0)>0 and ISNULL(eweight,0)>0 then ISNULL(eweight*b.sprice,0) else 0 end),0) a24
 	from #z_acx a
 	left join view_uccb b on a.uno=b.uno
 	where ((a.bweight>0 or a.bmount>0) 
