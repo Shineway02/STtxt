@@ -352,30 +352,30 @@ z_acx01:--z_acx01
 		pno nvarchar(10),
 		productno nvarchar(20),
 		style nvarchar(20),
-		a01 float,
-		a02 float,
-		a03 float,
-		a04 float,
-		a05 float,
-		a06 float,
-		a07 float,
-		a08 float,
-		a09 float,
-		a10 float,
-		a11 float,
-		a12 float,
-		a13 float,
-		a14 float,
-		a15 float,
-		a16 float,
-		a17 float,
-		a18 float,
-		a19 float,
-		a20 float,
-		a21 float,
-		a22 float,
-		a23 float,
-		a24 float
+		a01 decimal(20,3),
+		a02 decimal(20,3),
+		a03 decimal(20,3),
+		a04 decimal(20,3),
+		a05 decimal(20,3),
+		a06 decimal(20,3),
+		a07 decimal(20,3),
+		a08 decimal(20,3),
+		a09 decimal(20,3),
+		a10 decimal(20,3),
+		a11 decimal(20,3),
+		a12 decimal(20,3),
+		a13 decimal(20,3),
+		a14 decimal(20,3),
+		a15 decimal(20,3),
+		a16 decimal(20,3),
+		a17 decimal(20,3),
+		a18 decimal(20,3),
+		a19 decimal(20,3),
+		a20 decimal(20,3),
+		a21 decimal(20,3),
+		a22 decimal(20,3),
+		a23 decimal(20,3),
+		a24 decimal(20,3)
 	)
 	insert into @tmp(gno,pno,productno,style
 		,a01,a02,a03,a04,a05,a06,a07,a08,a09,a10
@@ -429,9 +429,40 @@ z_acx01:--z_acx01
 		,sum(isnull(a10,0)),sum(isnull(a11,0)),sum(isnull(a12,0)),sum(isnull(a13,0)),sum(isnull(a14,0)),sum(isnull(a15,0)),sum(isnull(a16,0)),sum(isnull(a17,0)),sum(isnull(a18,0)),sum(isnull(a19,0))
 		,sum(isnull(a20,0)),sum(isnull(a21,0)),sum(isnull(a22,0)),sum(isnull(a23,0)),sum(isnull(a24,0))
 	from @tmp
+	
+	update @tmp set a18 = case when a16!=0 then round((a17-a16)/a16*100,0) else null end
+		,a23 = case when a22!=0 then round(a24/a22,2) else null end
+	where gno='2'
+
 	select '' titlea
 	, b.product ssss
-	, a.* 
+	, a.gno
+	, a.pno
+	, a.productno
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a01),1)),4,17)) a01
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a02),1)),4,17))+'.'+RIGHT(CAST(a.a02 as nvarchar),3) a02
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a03),1)),4,17)) a03
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a04),1)),4,17)) a04
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a05),1)),4,17))+'.'+RIGHT(CAST(a.a05 as nvarchar),3) a05
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a06),1)),4,17)) a06
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a07),1)),4,17)) a07
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a08),1)),4,17))+'.'+RIGHT(CAST(a.a08 as nvarchar),3) a08
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a09),1)),4,17)) a09
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a10),1)),4,17)) a10
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a11),1)),4,17))+'.'+RIGHT(CAST(a.a11 as nvarchar),3) a11
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a12),1)),4,17)) a12
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a13),1)),4,17))+'.'+RIGHT(CAST(a.a13 as nvarchar),3) a13
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a14),1)),4,17)) a14
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a15),1)),4,17))+'.'+RIGHT(CAST(a.a15 as nvarchar),3) a15
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a16),1)),4,17)) a16
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a17),1)),4,17)) a17
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a18),1)),4,17)) a18
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a19),1)),4,17)) a19
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a20),1)),4,17))+'.'+RIGHT(CAST(a.a20 as nvarchar),3) a20
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a21),1)),4,17)) a21
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a22),1)),4,17))+'.'+RIGHT(CAST(a.a22 as nvarchar),3) a22
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a23),1)),4,17))+'.'+RIGHT(CAST(a.a23 as nvarchar),3) a23
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a24),1)),4,17)) a24
 	from @tmp a 
 	left join style b on a.style=b.noa
 	order by a.pno,a.style,a.productno
