@@ -100,7 +100,7 @@ z_acx01:--z_acx01
 	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
 	from view_cubu a
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
-	where b.noa is not null and b.datea < @t_bdate
+	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end < @t_bdate
 	and len(ISNULL(a.uno,''))>0
 	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
 	----------------------------------------------------------------------------------------------
@@ -235,7 +235,7 @@ z_acx01:--z_acx01
 	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
 	from view_cubu a
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
-	where b.noa is not null and b.datea between @t_bdate and @t_edate
+	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
 	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
 	----------------------------------------------------------------------------------------------
