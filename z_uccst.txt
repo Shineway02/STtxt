@@ -429,7 +429,12 @@ z_acx01:--z_acx01
 		,sum(isnull(a10,0)),sum(isnull(a11,0)),sum(isnull(a12,0)),sum(isnull(a13,0)),sum(isnull(a14,0)),sum(isnull(a15,0)),sum(isnull(a16,0)),sum(isnull(a17,0)),sum(isnull(a18,0)),sum(isnull(a19,0))
 		,sum(isnull(a20,0)),sum(isnull(a21,0)),sum(isnull(a22,0)),sum(isnull(a23,0)),sum(isnull(a24,0))
 	from @tmp
-	select '' titlea, * from @tmp order by pno,style,productno
+	select '' titlea
+	, b.product ssss
+	, a.* 
+	from @tmp a 
+	left join style b on a.style=b.noa
+	order by a.pno,a.style,a.productno
 
 	drop table #z_acx;
 	
