@@ -2139,6 +2139,10 @@ begin
 end
 close cursor_table
 deallocate cursor_table
+update a
+	set totpage = b.maxpageno
+from @result a
+outer apply(select max(pageno) maxpageno from @result where a.custno=custno) b
 insert into @result(gno,orderno,pageno,totpage,custno)
 	select
 		'2',max(orderno)+1,pageno,totpage,custno
