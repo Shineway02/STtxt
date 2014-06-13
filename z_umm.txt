@@ -2118,9 +2118,10 @@ fetch next from cursor_table
 into @idno,@custno,@totpage
 while(@@FETCH_STATUS <> -1)
 begin
-	if((select max(orderno) from @result where (custno=@custno) and (totpage=@totpage))>(@pageCount-@totalLineCount))
+	declare @t_maxOrderno int = (select max(orderno) from @result where (custno=@custno) and (totpage=@totpage))
+	if(@t_maxOrderno>(@pageCount-@totalLineCount))
 	begin
-		update @result set pageno=@totpage+1,totpage=@totpage+1 where (custno=@custno) and (pageno=@totpage) and ((orderno>(@pageCount-@totalLineCount)) or pageno=0)
+		update @result set pageno=@totpage+1,totpage=@totpage+1 where (custno=@custno) and (pageno=@totpage) and ((orderno>@t_maxOrderno) or pageno=0)
 	end
 	declare @thisOrder int = (select top 1 orderno from @result where (custno=@custno) and (gno='3'))
 	declare @allLine int = (select sum(case when gno='0' then 1 when gno='3' then @totalLineCount end) from @result where custno=@custno)
@@ -2131,6 +2132,11 @@ begin
 				'1',@thisOrder orderno,pageno,totpage,'' typea,'' noa,'' invoiceno,'' datea,'' mon,custno,comp,addr_invo,serial,tel,salesno,saless,'Empty' + cast(@thisOrder as nvarchar)
 			from @result where idno=@idno
 		set @thisOrder = @thisOrder+1
+		if(@thisOrder > @pageCount)
+		begin
+			set @thisOrder = 1
+			update @result set pageno=pageno+1 where custno=@custno and gno='3'
+		end
 		set @allLine = @allLine+1
 	end
 	update @result set orderno=@thisOrder where custno=@custno and gno='3'
