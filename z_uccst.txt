@@ -11,7 +11,7 @@ z_acx01:--z_acx01
 	END
 	create table #z_acx(
 		tablea nvarchar(20),
-		uno nvarchar(20),
+		uno nvarchar(50),
 		productno nvarchar(20),
 		style nvarchar(20),
 		
@@ -105,7 +105,7 @@ z_acx01:--z_acx01
 	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
 	----------------------------------------------------------------------------------------------
 	--出
-	declare @uno nvarchar(20)
+	declare @uno nvarchar(50)
 	declare @weight float
 	declare @mount float
 	declare @total float
@@ -1240,7 +1240,7 @@ begin
 end
 update @tmp set weight = round(weight,3)
 update @tmp set uno2=isnull(uno2,'')
-update @tmp set memo =  ltrim(rtrim(substring(memo,len(uno2)+1,len(memo))))
+update @tmp set memo =  ltrim(rtrim(substring(memo,len(uno2)+1,len(memo)))) where (charindex(uno2,memo)>0)
 if(@t_sortby = 'DATEA')
 	select
 		ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
