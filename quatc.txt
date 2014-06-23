@@ -1,0 +1,307 @@
+dis_apv:--dis_apv
+	declare @t_workerno nvarchar(50)=[1]
+	declare @t_worker nvarchar(50)=[2]
+	declare @t_dispass nvarchar(50)=[3]
+	declare @t_dispasser nvarchar(50)=[4]
+	declare @t_checkpass nvarchar(50)=[5]
+	declare @t_checkpasser nvarchar(50)=[6]
+	declare @t_quatno nvarchar(max)=[7]
+	declare @cmd nvarchar(max)
+	set @t_quatno = '0@'+replace(@t_quatno,'^^',',0@')
+	declare @thisJob nvarchar(max)=''
+	declare @returnMemo table(
+		memo nvarchar(max)
+	)
+	----先確認身分
+	if(exists(select top 1 * from nhpe where (upper(noa)=@t_workerno) and (upper(passwd)=upper(@t_dispass))))
+	begin
+		set @thisJob = isnull((select top 1 b.job from sss a left join salm b on (a.jobno=b.noa) where a.noa=@t_workerno),'')
+	end
+	if((charindex('經理',@thisJob)>0) or (charindex('副理',@thisJob)>0) or (charindex('董事長',@thisJob)>0))
+	begin
+		----分割報價單號
+		declare @quatTable table(
+			accy nvarchar(10),
+			quatno nvarchar(50),
+			no3 nvarchar(10)
+		)
+		insert into @quatTable(accy,quatno,no3)
+			select
+				b.accy,
+				ltrim(rtrim(substring(item,0,charindex('-',item)))) quatno,
+				ltrim(rtrim(substring(item,charindex('-',item)+1,len(item)))) no3
+			from fnSplit(@t_quatno) a
+			left join view_quat b on (substring(a.item,0,charindex('-',a.item))=b.noa)
+		declare @accy nvarchar(max)
+		declare @quatno nvarchar(max)
+		declare @no3 nvarchar(max)
+		declare cursor_table cursor for
+			select accy,quatno,no3 from @quatTable order by accy,quatno,no3
+		open cursor_table
+		fetch next from cursor_table
+		into @accy,@quatno,@no3
+		while(@@FETCH_STATUS <> -1)
+		begin
+			begin try
+				set @cmd = 'update quats'+@accy + ' set diser=N'''+@t_worker+''' where noa=N'''+@quatno+''' and no3=N'''+@no3+''' and len(isnull(ltrim(rtrim(diser)),''''))=0'
+				EXECUTE sp_executesql @cmd
+				if(@@ROWCOUNT=1)
+				begin
+					insert into @returnMemo(memo)
+						select 'SUCCESS:'+@quatno+'-'+@no3+':寫入折扣主管成功'
+				end
+				else
+				begin
+					insert into @returnMemo(memo)
+						select 'MESSAGES:'+@quatno+'-'+@no3+':影響筆數為>>' + cast(@@ROWCOUNT as nvarchar)
+				end
+			end try
+			begin catch
+				insert into @returnMemo(memo)
+					select 'ERROR:'+@quatno+'-'+@no3+':寫入折扣主管錯誤:訊息>>' + ERROR_MESSAGE()				
+			end catch
+			fetch next from cursor_table
+			into @accy,@quatno,@no3
+		end
+		close cursor_table
+		deallocate cursor_table
+	end
+	else
+	begin
+		insert into @returnMemo
+			select 'ERROR:未授權 或 密碼錯誤'
+	end
+	select memo from @returnMemo;
+----------------------------------------------------------------------------------------------------*
+dis_unapv:--dis_unapv
+	declare @t_workerno nvarchar(50)=[1]
+	declare @t_worker nvarchar(50)=[2]
+	declare @t_dispass nvarchar(50)=[3]
+	declare @t_dispasser nvarchar(50)=[4]
+	declare @t_checkpass nvarchar(50)=[5]
+	declare @t_checkpasser nvarchar(50)=[6]
+	declare @t_quatno nvarchar(max)=[7]
+	declare @cmd nvarchar(max)
+	set @t_quatno = '0@'+replace(@t_quatno,'^^',',0@')
+	declare @thisJob nvarchar(max)=''
+	declare @returnMemo table(
+		memo nvarchar(max)
+	)
+	----先確認身分
+	if(exists(select top 1 * from nhpe where (upper(noa)=@t_workerno) and (upper(passwd)=upper(@t_dispass))))
+	begin
+		set @thisJob = isnull((select top 1 b.job from sss a left join salm b on (a.jobno=b.noa) where a.noa=@t_workerno),'')
+	end
+	if((charindex('經理',@thisJob)>0) or (charindex('副理',@thisJob)>0) or (charindex('董事長',@thisJob)>0))
+	begin
+		----分割報價單號
+		declare @quatTable table(
+			accy nvarchar(10),
+			quatno nvarchar(50),
+			no3 nvarchar(10)
+		)
+		insert into @quatTable(accy,quatno,no3)
+			select
+				b.accy,
+				ltrim(rtrim(substring(item,0,charindex('-',item)))) quatno,
+				ltrim(rtrim(substring(item,charindex('-',item)+1,len(item)))) no3
+			from fnSplit(@t_quatno) a
+			left join view_quat b on (substring(a.item,0,charindex('-',a.item))=b.noa)
+		declare @accy nvarchar(max)
+		declare @quatno nvarchar(max)
+		declare @no3 nvarchar(max)
+		declare cursor_table cursor for
+			select accy,quatno,no3 from @quatTable order by accy,quatno,no3
+		open cursor_table
+		fetch next from cursor_table
+		into @accy,@quatno,@no3
+		while(@@FETCH_STATUS <> -1)
+		begin
+			begin try
+				set @cmd = 'update quats'+@accy + ' set diser=N'''' where noa=N'''+@quatno+''' and no3=N'''+@no3+''' and len(isnull(ltrim(rtrim(diser)),''))>0'
+				EXECUTE sp_executesql @cmd
+				if(@@ROWCOUNT=1)
+				begin
+					insert into @returnMemo(memo)
+						select 'SUCCESS:'+@quatno+'-'+@no3+':取消折扣主管成功'
+				end
+				else
+				begin
+					insert into @returnMemo(memo)
+						select 'MESSAGES:'+@quatno+'-'+@no3+':影響筆數為>>' + cast(@@ROWCOUNT as nvarchar)
+				end
+			end try
+			begin catch
+				insert into @returnMemo(memo)
+					select 'ERROR:'+@quatno+'-'+@no3+':取消折扣主管錯誤:訊息>>' + ERROR_MESSAGE()				
+			end catch
+			fetch next from cursor_table
+			into @accy,@quatno,@no3
+		end
+		close cursor_table
+		deallocate cursor_table
+	end
+	else
+	begin
+		insert into @returnMemo
+			select 'ERROR:未授權 或 密碼錯誤'
+	end
+	select memo from @returnMemo;
+----------------------------------------------------------------------------------------------------*
+checker_apv:--checker_apv
+	declare @t_workerno nvarchar(50)=[1]
+	declare @t_worker nvarchar(50)=[2]
+	declare @t_dispass nvarchar(50)=[3]
+	declare @t_dispasser nvarchar(50)=[4]
+	declare @t_checkpass nvarchar(50)=[5]
+	declare @t_checkpasser nvarchar(50)=[6]
+	declare @t_quatno nvarchar(max)=[7]
+	declare @cmd nvarchar(max)
+	set @t_quatno = '0@'+replace(@t_quatno,'^^',',0@')
+	declare @thisLv int=''
+	declare @returnMemo table(
+		memo nvarchar(max)
+	)
+	----先確認身分
+	if(exists(select top 1 * from nhpe where (upper(noa)=@t_workerno) and (upper(passwd)=upper(@t_checkpass))))
+	begin
+		set @thisLv = cast(isnull((select top 1 a.rank from nhpe a where (upper(noa)=@t_workerno) and (upper(passwd)=upper(@t_checkpass))),0) as int)
+	end
+	if(@thisLv > 7)
+	begin
+		----分割報價單號
+		declare @quatTable table(
+			accy nvarchar(10),
+			quatno nvarchar(50),
+			no3 nvarchar(10)
+		)
+		insert into @quatTable(accy,quatno,no3)
+			select
+				b.accy,
+				ltrim(rtrim(substring(item,0,charindex('-',item)))) quatno,
+				ltrim(rtrim(substring(item,charindex('-',item)+1,len(item)))) no3
+			from fnSplit(@t_quatno) a
+			left join view_quat b on (substring(a.item,0,charindex('-',a.item))=b.noa)
+		declare @accy nvarchar(max)
+		declare @quatno nvarchar(max)
+		declare @no3 nvarchar(max)
+		declare cursor_table cursor for
+			select accy,quatno,no3 from @quatTable order by accy,quatno,no3
+		open cursor_table
+		fetch next from cursor_table
+		into @accy,@quatno,@no3
+		while(@@FETCH_STATUS <> -1)
+		begin
+			begin try
+				set @cmd = 'update quats'+@accy + ' set checker=N'''+@t_worker+''' where noa=N'''+@quatno+''' and no3=N'''+@no3+''' and len(isnull(ltrim(rtrim(checker)),''''))=0'
+				EXECUTE sp_executesql @cmd
+				if(@@ROWCOUNT=1)
+				begin
+					insert into @returnMemo(memo)
+						select 'SUCCESS:'+@quatno+'-'+@no3+':寫入核准主管成功'
+				end
+				else if(@@ROWCOUNT = 0)
+				begin
+					insert into @returnMemo(memo)
+						select 'MESSAGES:'+@quatno+'-'+@no3+':已被核准'
+				end
+				else
+				begin
+					insert into @returnMemo(memo)
+						select 'MESSAGES:'+@quatno+'-'+@no3+':影響筆數為>>' + cast(@@ROWCOUNT as nvarchar)
+				end
+			end try
+			begin catch
+				insert into @returnMemo(memo)
+					select 'ERROR:'+@quatno+'-'+@no3+':寫入核准主管錯誤:訊息>>' + ERROR_MESSAGE()				
+			end catch
+			fetch next from cursor_table
+			into @accy,@quatno,@no3
+		end
+		close cursor_table
+		deallocate cursor_table
+	end
+	else
+	begin
+		insert into @returnMemo
+			select 'ERROR:未授權 或 密碼錯誤'
+	end
+	select memo from @returnMemo;
+----------------------------------------------------------------------------------------------------*
+checker_unapv:--checker_unapv
+	declare @t_workerno nvarchar(50)=[1]
+	declare @t_worker nvarchar(50)=[2]
+	declare @t_dispass nvarchar(50)=[3]
+	declare @t_dispasser nvarchar(50)=[4]
+	declare @t_checkpass nvarchar(50)=[5]
+	declare @t_checkpasser nvarchar(50)=[6]
+	declare @t_quatno nvarchar(max)=[7]
+	declare @cmd nvarchar(max)
+	set @t_quatno = '0@'+replace(@t_quatno,'^^',',0@')
+	declare @thisLv int=''
+	declare @thisJob nvarchar(max)=''
+	declare @returnMemo table(
+		memo nvarchar(max)
+	)
+	----先確認身分
+	if(exists(select top 1 * from nhpe where (upper(noa)=@t_workerno) and (upper(passwd)=upper(@t_checkpass))))
+	begin
+		set @thisLv = cast(isnull((select top 1 a.rank from nhpe a where (upper(noa)=@t_workerno) and (upper(passwd)=upper(@t_checkpass))),0) as int)
+		set @thisJob = isnull((select top 1 b.job from sss a left join salm b on (a.jobno=b.noa) where a.noa=@t_workerno),'')
+	end
+	if((@thisLv > 7) or (charindex('董',@thisJob)>0) or (charindex('代理',@thisJob)>0))
+	begin
+		----分割報價單號
+		declare @quatTable table(
+			accy nvarchar(10),
+			quatno nvarchar(50),
+			no3 nvarchar(10)
+		)
+		insert into @quatTable(accy,quatno,no3)
+			select
+				b.accy,
+				ltrim(rtrim(substring(item,0,charindex('-',item)))) quatno,
+				ltrim(rtrim(substring(item,charindex('-',item)+1,len(item)))) no3
+			from fnSplit(@t_quatno) a
+			left join view_quat b on (substring(a.item,0,charindex('-',a.item))=b.noa)
+		declare @accy nvarchar(max)
+		declare @quatno nvarchar(max)
+		declare @no3 nvarchar(max)
+		declare cursor_table cursor for
+			select accy,quatno,no3 from @quatTable order by accy,quatno,no3
+		open cursor_table
+		fetch next from cursor_table
+		into @accy,@quatno,@no3
+		while(@@FETCH_STATUS <> -1)
+		begin
+			begin try
+				set @cmd = 'update quats'+@accy + ' set checker=N'''' where noa=N'''+@quatno+''' and no3=N'''+@no3+''' and len(isnull(ltrim(rtrim(checker)),''''))>0'
+				EXECUTE sp_executesql @cmd
+				if(@@ROWCOUNT=1)
+				begin
+					insert into @returnMemo(memo)
+						select 'SUCCESS:'+@quatno+'-'+@no3+':取消核准主管成功'
+				end
+				else
+				begin
+					insert into @returnMemo(memo)
+						select 'MESSAGES:'+@quatno+'-'+@no3+':影響筆數為>>' + cast(@@ROWCOUNT as nvarchar)
+				end
+			end try
+			begin catch
+				insert into @returnMemo(memo)
+					select 'ERROR:'+@quatno+'-'+@no3+':取消核准主管錯誤:訊息>>' + ERROR_MESSAGE()				
+			end catch
+			fetch next from cursor_table
+			into @accy,@quatno,@no3
+		end
+		close cursor_table
+		deallocate cursor_table
+	end
+	else
+	begin
+		insert into @returnMemo
+			select 'ERROR:未授權 或 密碼錯誤'
+	end
+	select memo from @returnMemo;
+----------------------------------------------------------------------------------------------------*
