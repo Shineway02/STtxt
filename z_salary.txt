@@ -115,7 +115,7 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-	(select worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind) worker
+	(select top 1 worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind order by noa desc) worker
 	from @tmp order by partno,gno
 end
 else
@@ -156,7 +156,7 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-	(select worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind) worker
+	(select top 1 worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind order by noa desc) worker
 	from @tmp order by gno,sno
 end
 ;
@@ -165,9 +165,11 @@ z_salary2:--z_salary2
 declare @t_xmon nvarchar(20)
 declare @t_xkind nvarchar(20)
 declare @t_order nvarchar(20)
+declare @t_xnoa nvarchar(20)
 set @t_xmon = case when '#non' = [1] then '' else [1] end
 set @t_xkind = case when '#non' = [3] then '' else [3] end
 set @t_order = case when '#non' = [8] then '' else [8] end
+set @t_xnoa = case when '#non' = [12] then '' else [12] end
 declare @tmp table(
 		gno nvarchar(1),
 		partno nvarchar(20),
@@ -221,7 +223,7 @@ b.welfare,b.ch_health,b.total4,b.total5,c.jobno,c.job,b.plus,b.minus
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
-where a.person = '本國' and @t_xmon = a.mon and @t_xkind = a.monkind
+where a.person = '本國' and @t_xmon = a.mon and @t_xkind = a.monkind and (len(@t_xnoa)=0 or @t_xnoa=a.noa)
 
 if(@t_order='部門')
 begin
@@ -280,7 +282,7 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
-	(select worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind) worker
+	(select top 1 worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind order by noa desc) worker
 	from @tmp order by partno,gno,jobno
 end
 else
@@ -321,7 +323,7 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
-	(select worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind) worker
+	(select top 1 worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind order by noa desc) worker
 	from @tmp order by gno,sno,jobno
 end
 ;
@@ -465,7 +467,7 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-	(select worker from salary where person = '外勞' and @t_xmon = mon) worker
+	(select top 1 worker from salary where person = '外勞' and @t_xmon = mon order by noa desc) worker
 	from @tmp order by partno,gno
 end
 else
@@ -519,7 +521,7 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-	(select worker from salary where person = '外勞' and @t_xmon = mon) worker
+	(select top 1 worker from salary where person = '外勞' and @t_xmon = mon order by noa desc) worker
 	from @tmp order by gno,sno
 end
 ;
@@ -558,12 +560,12 @@ left join sss c on b.sno = c.noa
 where @t_xmon = a.mon and @t_xkind = a.monkind and @t_xperson = a.person
 
 insert into @tmp
-select '1' gno,'','',partno,part,'9999','',SUM(addh00),SUM(add0m),SUM(addh461),SUM(add461m),SUM(addh462),SUM(add462m),SUM(total)
+select '1' gno,'','',partno,part,'ZZZZZZ','',SUM(addh00),SUM(add0m),SUM(addh461),SUM(add461m),SUM(addh462),SUM(add462m),SUM(total)
 from @tmp
 group by partno,part
 
 insert into @tmp
-select '2' gno,'','','999999','','','',SUM(addh00),SUM(add0m),SUM(addh461),SUM(add461m),SUM(addh462),SUM(add462m),SUM(total)
+select '2' gno,'','','ZZZZZZ','','','',SUM(addh00),SUM(add0m),SUM(addh461),SUM(add461m),SUM(addh462),SUM(add462m),SUM(total)
 from @tmp
 where gno='1'
 
@@ -575,7 +577,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add461m),1)),4,12))
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add462m),1)),4,12)) add462m,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and @t_xperson = person) worker
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and @t_xperson = person order by noa desc) worker
 from @tmp order by partno,jobno,gno;
 ------------------------------------------------------------------------------------------------
 z_salary5:--z_salary5
@@ -676,7 +678,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,welfare),1)),4,12))
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ch_health),1)),4,12)) ch_health,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '日薪') worker,memo
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '日薪' order by noa desc) worker,memo
 from @tmp;
 ----------------------------------------------------------------------------------------------
 z_salary6:--z_salary6
@@ -795,7 +797,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,mon,monkind, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) minus, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,plus),1)),4,12)) plus, 
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國') worker 
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國' order by noa desc) worker 
 ,plusmemo,minusmemo,memo
 from @tmp;
 ---------------------------------------------------------------------------------------
@@ -916,7 +918,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ch_labor2),1)),4,12)) ch_labor2,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla_comp),1)),4,12)) chla_comp,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chla_self),1)),4,12)) chla_self,
-(select worker from salary where @t_xmon = mon and person = '外勞') worker,memo
+(select top 1 worker from salary where @t_xmon = mon and person = '外勞' order by noa desc) worker,memo
 from @tmp;
 --------------------------------------------------------------------------------------------------
 z_salary8:--z_salary8(dc)
@@ -1010,12 +1012,9 @@ insert into @list (namea,list) values('其他扣款','minus')
 insert into @list (namea,list) values('應扣總額','total4')
 insert into @list (namea,list) values('實發金額','total5')
 
-
-
 declare @lists nvarchar(20)
 declare @namea nvarchar(20)
 declare @cmd nvarchar(max)
-
 
 declare cursor_table cursor for
 select namea,list from  @list
@@ -1048,7 +1047,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,j),1)),4,12)) j,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,k),1)),4,12)) k,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,l),1)),4,12)) l,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a,0)+isnull(b,0)+isnull(c,0)+isnull(d,0)+isnull(e,0)+isnull(f,0)+isnull(g,0)+isnull(h,0)+isnull(i,0)+isnull(j,0)+isnull(k,0)+isnull(l,0)),1)),4,12)) total,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and @t_xperson = person) worker 
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and @t_xperson = person order by noa desc) worker 
 from #tmpx
 
 --刪除暫存資料庫
@@ -1118,12 +1117,9 @@ insert into @list (namea,list) values('健保費','SUM(b.ch_health)')
 insert into @list (namea,list) values('應扣總額','SUM(b.total4)') 
 insert into @list (namea,list) values('實發金額','SUM(b.total5)') 
 
-
-
 declare @lists nvarchar(MAX)
 declare @namea nvarchar(20)
 declare @cmd nvarchar(max)
-
 
 declare cursor_table cursor for
 select namea,list from  @list
@@ -1151,7 +1147,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,f),1)),4,12)) f,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,g),1)),4,12)) g,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,h),1)),4,12)) h,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,i),1)),4,12)) i ,
-(select worker from salary where person='外勞' and mon=@t_xmon and monkind='本月') worker
+(select top 1 worker from salary where person='外勞' and mon=@t_xmon and monkind='本月' order by noa desc) worker
 from #tmp
 
 --刪除暫存資料庫
@@ -1230,7 +1226,7 @@ select gno,noq,mon,namea,account,sssno,part,job,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國') worker
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國' order by noa desc) worker
 from @tmp order by gno,partno,jobno
 
 if(@t_order='員工編號')
@@ -1238,7 +1234,7 @@ select gno,noq,mon,namea,account,sssno,part,job,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國') worker
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國' order by noa desc) worker
 from @tmp order by gno,noa
 
 if(@t_order='帳號')
@@ -1246,7 +1242,7 @@ select gno,noq,mon,namea,account,sssno,part,job,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國') worker
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國' order by noa desc) worker
 from @tmp order by gno,account
 
 if(@t_order='金額')
@@ -1254,10 +1250,8 @@ select gno,noq,mon,namea,account,sssno,part,job,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國') worker
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '本國' order by noa desc) worker
 from @tmp order by gno,cast(total5 as int) desc;
-
-
 
 ---------------------------------------------
 z_salary11:--z_salary11(dc)
@@ -1331,7 +1325,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,minus),1)),4,12)) m
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,lhrt),1)),4,12)) lhrt, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = @t_xperson) worker 
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = @t_xperson order by noa desc) worker 
 from @tmp order by gno,partno,jobno;
 -----------------------------------------------------------------------------------------------
 z_salarydc:--z_salarydc 
@@ -1387,7 +1381,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,welf),1)),4,12)) we
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chhe),1)),4,12)) chhe,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
-(select worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '日薪') worker
+(select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '日薪' order by noa desc) worker
 from @tmp ;
 ------------------------------------------------------------------------------------------
 z_saladjust1:--z_saladjust1
@@ -1598,7 +1592,6 @@ from @tmp where gno='0'
 update @tmp
 set rate=ROUND((payrise/total),3)*100.0
 where gno='1'
-
 
 select gno,partno,part,sssno,namea,jobno,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,salary),1)),4,12)) salary, 
