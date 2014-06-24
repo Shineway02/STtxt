@@ -1,8 +1,8 @@
 z_cngst1:--z_cngst1
 declare @pagecount int
 declare @t_accy nvarchar(20)
-declare @t_bnoa nvarchar(20)
-declare @t_enoa nvarchar(20)
+declare @t_bnoa nvarchar(30)
+declare @t_enoa nvarchar(30)
 declare @t_pageline int = 5   --------一頁幾行
 set @t_accy = '[1]'
 set @t_bnoa = case when '#non' = [2] then '' else [2] end
@@ -21,7 +21,7 @@ declare @tmp table(
 	datea nvarchar(10),
 	sto nvarchar(20),
 	s nvarchar(20),
-	uno nvarchar(20),
+	uno nvarchar(30),
 	spec nvarchar(30),
 	class nvarchar(20),
 	product nvarchar(50),
@@ -60,7 +60,7 @@ open cursor_table
 fetch next from cursor_table
 into @noa,@a_count,@orderno
 while(@@FETCH_STATUS <> -1)
-begin		
+begin
 	if(@a_count > @t_pageline)
 	begin
 		set @k = CEILING((cast(@a_count as float)/@t_pageline))
@@ -82,22 +82,22 @@ open cursor_table
 fetch next from cursor_table
 into @noa,@orderno,@pageno,@idno,@a_count
 while(@@FETCH_STATUS <> -1)
-begin		
+begin
 	set @k = @t_pageline -(@a_count%@t_pageline)
 	set @pageCount = @a_count/@t_pageline
 	if(@k < @t_pageline and (@pageCount =0))
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo) 
-				select '0',(@orderno+1),@pageno,@noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo from @tmp where idno = @idno 
+			insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo)
+				select '0',(@orderno+1),@pageno,@noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo from @tmp where idno = @idno
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,mo,weightb,memo) 
-		select '1',(@t_pageline+1),pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,sum(mo),sum(weightb),memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo,pageno 
-	insert into @tmp(gno,orderno,pageno,noa) 
+	insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,mo,weightb,memo)
+		select '1',(@t_pageline+1),pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,sum(mo),sum(weightb),memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo,pageno
+	insert into @tmp(gno,orderno,pageno,noa)
 		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno
 	fetch next from cursor_table
 	into @noa,@orderno,@pageno,@idno,@a_count

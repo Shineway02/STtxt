@@ -166,7 +166,7 @@ z_anavccst02:--z_anavccst02
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
 	,case when tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) end a6
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a7
-	,case when total=0 then '' else cast(round(profit/total*100,2) as decimal(18,2)) end a8
+	,case when total=0 then 0 else cast(round(profit/total*100,2) as decimal(18,2)) end a8
 	from @tmp a
 	left join cust b on a.custno=b.noa
 	order by case when rr1 is null then char(255) else ''end,rr1,rr2;
