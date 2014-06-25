@@ -104,7 +104,7 @@ cust.noa,cust.nick,um.datea,sum(case when us.acc1='4202.' then 0 else us.money e
 from umm um 
 left join umms us on um.noa=us.noa 
 left join view_vcc vcc on (us.vccno=vcc.noa) 
-left join cust cust on (cust.noa=substring(us.vccno,0,charindex('-',us.vccno))) or (vcc.custno=cust.noa) or (um.custno=cust.noa)
+left join cust cust on (cust.noa=substring(us.vccno,0,charindex('-',us.vccno))) or ((case when isnull(vcc.custno,'')!='' then vcc.custno else um.custno end)=cust.noa) --or (vcc.custno=cust.noa) or (um.custno=cust.noa)
 left join sss sss on ((charindex('-',us.vccno)>0) and (cust.salesno=sss.noa)) or ((charindex('-',us.vccno)<=0) and (vcc.salesno=sss.noa)) 
 where --(isnull(rtrim(ltrim(us.vccno)),'') != '') and 
 us.noq!='' and 
