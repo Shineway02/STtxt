@@ -74,7 +74,11 @@
 		from view_ordcs a
 		left join view_ordc b on a.accy=b.accy and a.noa=b.noa 
 		left join view_ordb c on a.ordbno=c.noa
-		outer apply(select top 1 * from sign where (zno=c.noa) and (right(form,1) != '*') order by datea desc) d
+		outer apply(
+			select top 1 y.* from view_ordct x 
+			left join sign y on (y.zno=x.ordbno) and (right(y.form,1) != '*')
+			where a.accy=x.accy and a.noa=x.noa and a.no2=x.no2
+			order by y.datea desc) d
 		where (isnull(a.cancel,0)=1 or ISNULL(b.cancel,0)=1)
 		and b.noa is not null
 		and (len(@t_kind)=0 or @t_kind=a.kind)
@@ -82,7 +86,9 @@
 		and b.odate between @t_bdate and @t_edate
 		and b.tggno between @t_btggno and @t_etggno
 		and a.productno between @t_bproductno and @t_eproductno 
-		and not exists(select * from view_ordcs x left join view_ordc y on x.accy=y.accy and x.noa=y.noa where x.noa!=a.noa and x.ordbno=a.ordbno and x.no3=a.no3 and ISNULL(x.cancel,0)=0 and ISNULL(y.cancel,0)=0)
+		and not exists(select * from view_ordct x 
+			left join view_ordc y on x.accy=y.accy and x.noa=y.noa 
+			where x.noa!=a.noa and x.ordbno=a.ordbno and x.no3=a.no3 and ISNULL(x.cancel,0)=0 and ISNULL(y.cancel,0)=0)
 	end
 	else
 	begin
@@ -151,7 +157,7 @@
 		--排除已採購
 		delete @tmpa
 		from @tmpa a
-		left join view_ordcs b on a.noa=b.ordbno and a.no3=b.no3
+		left join view_ordct b on a.noa=b.ordbno and a.no3=b.no3
 		left join view_ordc c on b.accy=c.accy and b.noa=c.noa 
 		where b.noa is not null
 		and ISNULL(b.cancel,0)=0 and ISNULL(c.cancel,0)=0
@@ -160,7 +166,7 @@
 	begin
 		update @tmpa set ordcmount=b.mount
 		from @tmpa a
-		left join view_ordcs b on a.noa=b.ordbno and a.no3=b.no3
+		left join view_ordct b on a.noa=b.ordbno and a.no3=b.no3
 		left join view_ordc c on b.accy=c.accy and b.noa=c.noa 
 		where b.noa is not null
 		and ISNULL(b.cancel,0)=0 and ISNULL(c.cancel,0)=0
