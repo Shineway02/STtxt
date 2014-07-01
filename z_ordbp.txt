@@ -888,7 +888,7 @@
 			select * 
 			,recno rr
 			,case when len(mon)=0 then '' else mon+'/'+dd end ee
-			,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,case @t_ttype when 'ordb' then mount when 'ordc' then ordcmount else isnull(mount,0)+isnull(ordcmount,0) end),1)),4,12))mm1
+			,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,case @t_ttype when 'ordb' then mount when 'ordc' then ordcmount else isnull(mount,0)+isnull(ordcmount,0) end),1)),0,12))mm1
 			,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12))tot1
 			,case @t_ttype when 'ordb' then '未採購量' when 'ordc' then '已採購量' else '數量小計' end ff,'' spec ,'' ordcno ,noapv,lastdate
 			from @tmp order by srecno,pno,cast(gno as int)
@@ -898,7 +898,7 @@
 			select * 
 			,recno rr
 			,case when len(mon)=0 then '' else mon+'/'+dd end ee
-			,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,case @t_ttype when 'ordb' then mount when 'ordc' then ordcmount else isnull(mount,0)+isnull(ordcmount,0) end),1)),4,12))mm1
+			,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,case @t_ttype when 'ordb' then mount when 'ordc' then ordcmount else isnull(mount,0)+isnull(ordcmount,0) end),1)),0,12))mm1
 			,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12))tot1
 			,case @t_ttype when 'ordb' then '未採購量' when 'ordc' then '已採購量' else '數量小計' end ff,'' spec ,'' ordcno ,noapv,lastdate
 			from @tmp order by recno,pno
@@ -1047,39 +1047,51 @@ z_ordbp05:--z_ordbp05
 	
 z_ordbp04:--z_ordbp04
 	declare @t_ordbno nvarchar(20) = case when '#non' = [29] then '' else [29] end
+	declare @t_unrprice nvarchar(20) = case when '#non' = [35] then '0' else [35] end
 	-----------------------------------------------------------------------------------
 	declare @t_pageline int = 10
 	-----------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(10),
-		pno nvarchar(10),
-		noa nvarchar(20),
+		pno nvarchar(90),
+		noa nvarchar(50),
 		no3 nvarchar(10),
-		productno nvarchar(20),
+		productno nvarchar(90),
 		product nvarchar(50),
 		unit nvarchar(20),
 		no4 nvarchar(10),
 		
-		tggno nvarchar(20),
+		tggno nvarchar(50),
 		rdate nvarchar(20),
 		mount float,
 		rprice float,
 		total float
 	)
-	insert into @tmp(gno,pno,noa,no3,productno,product,unit
-		,no4,rdate,tggno,mount,rprice)
-	select '1','1',a.noa,b.no3,b.productno,b.product,b.unit
-		,c.no4,c.rdate,c.tggno
-		,b.mount
-		,c.rprice
-	from view_ordb a
-	left join view_ordbs b on a.accy=b.accy and a.noa=b.noa
-	right join view_ordbt c on a.accy=c.accy and a.noa=c.noa and b.no3=c.no3 and len(isnull(c.tggno,''))> 0 
-	where a.noa=@t_ordbno
-	and isnull(a.cancel,0)=0
-	and isnull(b.cancel,0)=0
-	
-	update @tmp set total = ROUND(mount*rprice,0)
+	if(@t_unrprice='1')
+	begin
+		insert into @tmp(gno,pno,noa,no3,productno,product,unit,no4,rdate,tggno,mount)
+		select '1','1',a.noa,b.no3,b.productno,b.product,b.unit,c.no4,c.rdate,c.tggno,b.mount
+		from view_ordb a
+		left join view_ordbs b on a.accy=b.accy and a.noa=b.noa
+		left join view_ordbt c on a.accy=c.accy and a.noa=c.noa and b.no3=c.no3 and len(isnull(c.tggno,''))= 0 
+		where a.noa=@t_ordbno
+		and isnull(a.cancel,0)=0
+		and isnull(b.cancel,0)=0
+		
+	end
+	else
+	begin
+		insert into @tmp(gno,pno,noa,no3,productno,product,unit,no4,rdate,tggno,mount,rprice)
+		select '1','1',a.noa,b.no3,b.productno,b.product,b.unit,c.no4,c.rdate,c.tggno,b.mount,c.rprice
+		from view_ordb a
+		left join view_ordbs b on a.accy=b.accy and a.noa=b.noa
+		right join view_ordbt c on a.accy=c.accy and a.noa=c.noa and b.no3=c.no3 and len(isnull(c.tggno,''))> 0 
+		where a.noa=@t_ordbno
+		and isnull(a.cancel,0)=0
+		and isnull(b.cancel,0)=0
+		
+		update @tmp set total = ROUND(mount*rprice,0)
+	end
 
 	--------------------------------------------------
 	declare @tggno nvarchar(20)
