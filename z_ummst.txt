@@ -1766,6 +1766,6 @@ update @result set typea = (case typea when '1' then '出' when '2' then '退' e
 	outer apply (select top 1 
 		substring(a.addr,1,CHARINDEX(road,addr)+len(road)-1) xaddr,
 		substring(a.addr,CHARINDEX(road,addr)+len(road),len(addr)) yaddr 
-		from road where CHARINDEX(road,a.addr)>0 and CHARINDEX(city,a.addr)>0) b
+		from road where CHARINDEX(road,a.addr)>0 and CHARINDEX(city,a.addr)>0 order by road desc) b
 	order by custno,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
 --********************************************************************************
