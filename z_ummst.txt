@@ -1739,23 +1739,33 @@ update @result set csize = replace(csize,'~#$','''')
 --update @result set datea = isnull(typea,'') + isnull(datea,'')
 update @result set b_mount=b_mount*(-1),b_price=b_price*(-1),b_money=b_money*(-1),b_tax=b_tax*(-1),a_total=a_total*(-1),b_total=b_total*(-1) where typea='2'
 update @result set typea = (case typea when '1' then '出' when '2' then '退' end)
-select
-	gno,idno,orderno,pageno,(select max(pageno) from @result where a.custno=custno) maxpage
-	,typea,custno,custs,zipcode,addr,tel,
-	 isnull(typea,'') + isnull(datea,'')  a1,noa,pno,products a2,csize,
-	b_mount,b_weight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_money),1)),4,12)) b_money,
-	(case when b_tax = 0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_tax),1)),4,12)) end) b_tax,
-	(case when b_total = 0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) end) b_total, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total1,0)),1)),4,12)) t_total1,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total2,0)),1)),4,12)) t_total2,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total3,0)),1)),4,12)) t_total3,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total4,0)),1)),4,12)) t_total4,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total5,0)),1)),4,12)) t_total5,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total6,0)),1)),4,12)) t_total6,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total7,0)),1)),4,12)) t_total7,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total8,0)),1)),4,12)) t_total8,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total9,0)),1)),4,12)) t_total9
-from @result a order by custno,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
+
+	select
+		gno,idno,orderno,pageno,(select max(pageno) from @result where a.custno=custno) maxpage
+		,typea,custno,custs,zipcode
+		,addr
+		,b.xaddr xaddr
+		,b.yaddr yaddr
+		,tel
+		,isnull(typea,'') + isnull(datea,'')  a1,noa,pno,products a2,csize,
+		b_mount,b_weight,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_money),1)),4,12)) b_money,
+		(case when b_tax = 0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_tax),1)),4,12)) end) b_tax,
+		(case when b_total = 0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) end) b_total, 
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total1,0)),1)),4,12)) t_total1,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total2,0)),1)),4,12)) t_total2,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total3,0)),1)),4,12)) t_total3,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total4,0)),1)),4,12)) t_total4,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total5,0)),1)),4,12)) t_total5,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total6,0)),1)),4,12)) t_total6,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total7,0)),1)),4,12)) t_total7,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total8,0)),1)),4,12)) t_total8,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(t_total9,0)),1)),4,12)) t_total9
+	from @result a 
+	outer apply (select top 1 
+		substring(a.addr,1,CHARINDEX(road,addr)+len(road)-1) xaddr,
+		substring(a.addr,CHARINDEX(road,addr)+len(road),len(addr)) yaddr 
+		from road where CHARINDEX(road,a.addr)>0 and CHARINDEX(city,a.addr)>0 order by road desc) b
+	order by custno,custs,zipcode,addr,pageno,gno,isnull(datea,char(255));
 --********************************************************************************
