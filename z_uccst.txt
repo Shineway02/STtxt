@@ -5,6 +5,7 @@ z_acx01:--z_acx01
 	declare @t_style nvarchar(max)= case when '#non'=[36] then '' else [36] end
 	declare @t_productno nvarchar(max) = case when '#non'=[37] then '' else [37] end
 	----------------------------------------------------------------------------
+	----------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_acx')is not null
 	BEGIN
 		drop table #z_acx
@@ -19,21 +20,25 @@ z_acx01:--z_acx01
 		binas decimal(14,3),
 		bcuts decimal(14,3),
 		bcubu decimal(14,3),
+		bcubuz decimal(14,3),
 		
 		bvccs decimal(14,3),
 		bgets decimal(14,3),
 		bcut decimal(14,3),
 		bcubt decimal(14,3),
+		bcubtz decimal(14,3),
 		
 		brc2sm decimal(14,3),
 		binasm decimal(14,3),
 		bcutsm decimal(14,3),
 		bcubum decimal(14,3),
+		bcubumz decimal(14,3),
 		
 		bvccsm decimal(14,3),
 		bgetsm decimal(14,3),
 		bcutm decimal(14,3),
 		bcubtm decimal(14,3),
+		bcubtmz decimal(14,3),
 		
 		bvccsmoney decimal(14,3),
 		
@@ -44,21 +49,25 @@ z_acx01:--z_acx01
 		inas decimal(14,3),
 		cuts decimal(14,3),
 		cubu decimal(14,3),
+		cubuz decimal(14,3),
 		
 		vccs decimal(14,3),
 		gets decimal(14,3),
 		cut decimal(14,3),
 		cubt decimal(14,3),
+		cubtz decimal(14,3),
 		
 		rc2sm decimal(14,3),
 		inasm decimal(14,3),
 		cutsm decimal(14,3),
 		cubum decimal(14,3),
+		cubumz decimal(14,3),
 		
 		vccsm decimal(14,3),
 		getsm decimal(14,3),
 		cutm decimal(14,3),
 		cubtm decimal(14,3),
+		cubtmz decimal(14,3),
 		
 		vccsmoney decimal(14,3),
 		
@@ -96,8 +105,12 @@ z_acx01:--z_acx01
 	and len(ISNULL(a.bno,''))>0
 	and upper(left(isnull(a.bno,''),1)) between '0' and '9'
 	
-	insert into #z_acx(tablea,uno,productno,style,bcubu,bcubum)
-	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
+	insert into #z_acx(tablea,uno,productno,style,bcubu,bcubum,bcubuz,bcubumz)
+	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,'')
+		,case when isnull(b.typea,'')='4' then isnull(a.weight,0) else 0 end
+		,case when isnull(b.typea,'')='4' then ISNULL(a.mount,0) else 0 end
+		,case when isnull(b.typea,'')!='4' then isnull(a.weight,0) else 0 end
+		,case when isnull(b.typea,'')!='4' then ISNULL(a.mount,0) else 0 end
 	from view_cubu a
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end < @t_bdate
@@ -108,6 +121,8 @@ z_acx01:--z_acx01
 	declare @uno nvarchar(50)
 	declare @weight float
 	declare @mount float
+	declare @weightz float
+	declare @mountz float
 	declare @total float
 	
 	declare cursor_table cursor for
@@ -181,7 +196,11 @@ z_acx01:--z_acx01
 	deallocate cursor_table
 	
 	declare cursor_table cursor for
-	select isnull(a.uno,''),sum(ISNULL(a.gweight,0)),sum(ISNULL(a.gmount,0))
+	select isnull(a.uno,'')
+		,sum(case when isnull(b.typea,'')='4' then ISNULL(a.gweight,0) else 0 end)
+		,sum(case when isnull(b.typea,'')='4' then ISNULL(a.gmount,0) else 0 end)
+		,sum(case when isnull(b.typea,'')!='4' then ISNULL(a.gweight,0) else 0 end)
+		,sum(case when isnull(b.typea,'')!='4' then ISNULL(a.gmount,0) else 0 end)
 	from view_cubt a
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
@@ -190,15 +209,15 @@ z_acx01:--z_acx01
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
-	into @uno,@weight,@mount
+	into @uno,@weight,@mount,@weightz,@mountz
 	while(@@FETCH_STATUS <> -1)
 	begin
 		if exists(select uno from #z_acx where uno=@uno)
-			update #z_acx set bcubt = @weight,bcubtm=@mount where uno=@uno
+			update #z_acx set bcubt = @weight,bcubtm=@mount,bcubtz = @weightz,bcubtmz=@mountz where uno=@uno
 		else
-			insert into #z_acx(uno,bcubt,bcubtm)values(@uno,@weight,@mount)			
+			insert into #z_acx(uno,bcubt,bcubtm,bcubtz,bcubtmz)values(@uno,@weight,@mount,@weightz,@mountz)			
 		fetch next from cursor_table
-		into @uno,@weight,@mount
+		into @uno,@weight,@mount,@weightz,@mountz
 	end
 	close cursor_table
 	deallocate cursor_table
@@ -231,8 +250,13 @@ z_acx01:--z_acx01
 	and len(ISNULL(a.bno,''))>0
 	and upper(left(isnull(a.bno,''),1)) between '0' and '9'
 	
-	insert into #z_acx(tablea,uno,productno,style,cubu,cubum)
-	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
+	insert into #z_acx(tablea,uno,productno,style,cubu,cubum,cubuz,cubumz)
+	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,'')
+		,case when isnull(b.typea,'')='4' then ISNULL(a.weight,0) else 0 end
+		,case when isnull(b.typea,'')='4' then ISNULL(a.mount,0) else 0 end
+		,case when isnull(b.typea,'')!='4' then ISNULL(a.weight,0) else 0 end
+		,case when isnull(b.typea,'')!='4' then ISNULL(a.mount,0) else 0 end
+		
 	from view_cubu a
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end between @t_bdate and @t_edate
@@ -311,7 +335,11 @@ z_acx01:--z_acx01
 	deallocate cursor_table
 	
 	declare cursor_table cursor for
-	select isnull(a.uno,''),sum(ISNULL(a.gweight,0)),sum(ISNULL(a.gmount,0))
+	select isnull(a.uno,'')
+		,sum(case when isnull(b.typea,'')='4' then ISNULL(a.gweight,0) else 0 end)
+		,sum(case when isnull(b.typea,'')='4' then ISNULL(a.gmount,0) else 0 end)
+		,sum(case when isnull(b.typea,'')!='4' then ISNULL(a.gweight,0) else 0 end)
+		,sum(case when isnull(b.typea,'')!='4' then ISNULL(a.gmount,0) else 0 end)
 	from view_cubt a
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
@@ -320,15 +348,15 @@ z_acx01:--z_acx01
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
-	into @uno,@weight,@mount
+	into @uno,@weight,@mount,@weightz,@mountz
 	while(@@FETCH_STATUS <> -1)
 	begin
 		if exists(select uno from #z_acx where uno=@uno)
-			update #z_acx set cubt = @weight,cubtm=@mount where uno=@uno
+			update #z_acx set cubt = @weight,cubtm=@mount,cubtz = @weightz,cubtmz=@mountz where uno=@uno
 		else
-			insert into #z_acx(uno,cubt,cubtm)values(@uno,@weight,@mount)			
+			insert into #z_acx(uno,cubt,cubtm,cubtz,cubtmz)values(@uno,@weight,@mount,@weightz,@mountz)			
 		fetch next from cursor_table
-		into @uno,@weight,@mount
+		into @uno,@weight,@mount,@weightz,@mountz
 	end
 	close cursor_table
 	deallocate cursor_table
@@ -375,12 +403,20 @@ z_acx01:--z_acx01
 		a21 decimal(20,3),
 		a22 decimal(20,3),
 		a23 decimal(20,3),
-		a24 decimal(20,3)
+		a24 decimal(20,3),
+		a25 decimal(20,3),
+		a26 decimal(20,3),
+		a27 decimal(20,3),
+		a28 decimal(20,3),
+		a29 decimal(20,3),
+		a30 decimal(20,3),
+		a31 decimal(20,3),
+		a32 decimal(20,3)
 	)
 	insert into @tmp(gno,pno,productno,style
 		,a01,a02,a03,a04,a05,a06,a07,a08,a09,a10
 		,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20
-		,a21,a22,a23,a24)
+		,a21,a22,a23,a24,a25,a26,a27,a28,a29,a30,a31,a32)
 	select '1','1',a.productno,a.style
 		,SUM(ISNULL(bmount,0)) a01
 		,SUM(ISNULL(bweight,0)) a02
@@ -393,45 +429,56 @@ z_acx01:--z_acx01
 		,round(SUM(ISNULL(inas*b.sprice,0)),0) a09
 		,SUM(ISNULL(cutsm,0)) a10
 		,SUM(ISNULL(cuts,0)) a11
-		,SUM(ISNULL(cubum,0)) a12
-		,SUM(ISNULL(cubu,0)) a13
-		,SUM(ISNULL(vccsm,0)) a14
-		,SUM(ISNULL(vccs,0)) a15
-		,round(SUM(ISNULL(vccs*b.sprice,0)),0) a16
-		,SUM(ISNULL(vccsmoney,0)) a17
-		,0 a18
-		,SUM(ISNULL(getsm,0)+ISNULL(cutm,0)+ISNULL(cubtm,0)) a19
-		,SUM(ISNULL(gets,0)+ISNULL(cut,0)+ISNULL(cubt,0)) a20
-		,SUM(ISNULL(emount,0)) a21
-		,SUM(ISNULL(eweight,0)) a22
-		,0 a23
-		,round(SUM(ISNULL(eweight*b.sprice,0)),0) a24
+		,SUM(ISNULL(cubumz,0)) a12
+		,SUM(ISNULL(cubuz,0)) a13
+		,SUM(ISNULL(cubum,0)) a14
+		,SUM(ISNULL(cubu,0)) a15
+		
+		,SUM(ISNULL(vccsm,0)) a16
+		,SUM(ISNULL(vccs,0)) a17
+		,round(SUM(ISNULL(vccs*b.sprice,0)),0) a18
+		,SUM(ISNULL(vccsmoney,0)) a19
+		,0 a20
+		
+		,SUM(ISNULL(getsm,0)) a21
+		,SUM(ISNULL(gets,0)) a22
+		,SUM(ISNULL(cutm,0)) a23
+		,SUM(ISNULL(cut,0)) a24
+		,SUM(ISNULL(cubtmz,0)) a25
+		,SUM(ISNULL(cubtz,0)) a26
+		,SUM(ISNULL(cubtm,0)) a27
+		,SUM(ISNULL(cubt,0)) a28
+		,SUM(ISNULL(emount,0)) a29
+		,SUM(ISNULL(eweight,0)) a30
+		,0 a31
+		,round(SUM(ISNULL(eweight*b.sprice,0)),0) a32
 	from #z_acx a
 	left join view_uccb b on a.uno=b.uno
 	where ((a.bweight>0 or a.bmount>0) 
-		or (ISNULL(rc2s,0)!=0 or ISNULL(inas,0)!=0 or ISNULL(cuts,0)!=0 or ISNULL(cubu,0)!=0
-			or ISNULL(vccs,0)!=0 or ISNULL(gets,0)!=0 or ISNULL(cut,0)!=0 or ISNULL(cubt,0)!=0
-			or ISNULL(rc2sm,0)!=0 or ISNULL(inasm,0)!=0 or ISNULL(cutsm,0)!=0 or ISNULL(cubum,0)!=0
-			or ISNULL(vccsm,0)!=0 or ISNULL(getsm,0)!=0 or ISNULL(cutm,0)!=0 or ISNULL(cubtm,0)!=0))
+		or (ISNULL(rc2s,0)!=0 or ISNULL(inas,0)!=0 or ISNULL(cuts,0)!=0 or ISNULL(cubu,0)!=0 or ISNULL(cubuz,0)!=0
+			or ISNULL(vccs,0)!=0 or ISNULL(gets,0)!=0 or ISNULL(cut,0)!=0 or ISNULL(cubt,0)!=0 or ISNULL(cubtz,0)!=0
+			or ISNULL(rc2sm,0)!=0 or ISNULL(inasm,0)!=0 or ISNULL(cutsm,0)!=0 or ISNULL(cubum,0)!=0 or ISNULL(cubumz,0)!=0
+			or ISNULL(vccsm,0)!=0 or ISNULL(getsm,0)!=0 or ISNULL(cutm,0)!=0 or ISNULL(cubtm,0)!=0 or ISNULL(cubtmz,0)!=0))
 		--and b.sprice2>0 and b.sprice>0
 		and (len(@t_itype)=0 or CHARINDEX(b.itype,@t_itype)>0)
 		and (len(@t_productno)=0 or CHARINDEX(a.productno,@t_productno)>0)
 		and (len(@t_style)=0 or CHARINDEX(a.style,@t_style)>0)
 	group by a.productno,a.style
 	
-	update @tmp set a18 = case when a16!=0 then round((a17-a16)/a16*100,0) else null end
-		,a23 = case when a22!=0 then round(a24/a22,2) else null end
+	update @tmp set a20 = case when a18!=0 then round((a19-a18)/a18*100,0) else null end
+		,a31 = case when a30!=0 then round(a32/a30,2) else null end
 	
 	insert into @tmp(gno,pno,a01,a02,a03,a04,a05,a06,a07,a08,a09
 		,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19
-		,a20,a21,a22,a23,a24)
+		,a20,a21,a22,a23,a24,a25,a26,a27,a28,a29,a30,a31,a32)
 	select '2','2',sum(isnull(a01,0)),sum(isnull(a02,0)),sum(isnull(a03,0)),sum(isnull(a04,0)),sum(isnull(a05,0)),sum(isnull(a06,0)),sum(isnull(a07,0)),sum(isnull(a08,0)),sum(isnull(a09,0))
 		,sum(isnull(a10,0)),sum(isnull(a11,0)),sum(isnull(a12,0)),sum(isnull(a13,0)),sum(isnull(a14,0)),sum(isnull(a15,0)),sum(isnull(a16,0)),sum(isnull(a17,0)),sum(isnull(a18,0)),sum(isnull(a19,0))
 		,sum(isnull(a20,0)),sum(isnull(a21,0)),sum(isnull(a22,0)),sum(isnull(a23,0)),sum(isnull(a24,0))
+		,sum(isnull(a25,0)),sum(isnull(a26,0)),sum(isnull(a27,0)),sum(isnull(a28,0)),sum(isnull(a29,0)),sum(isnull(a30,0)),sum(isnull(a31,0)),sum(isnull(a32,0))
 	from @tmp
 	
-	update @tmp set a18 = case when a16!=0 then round((a17-a16)/a16*100,0) else null end
-		,a23 = case when a22!=0 then round(a24/a22,2) else null end
+	update @tmp set a20 = case when a18!=0 then round((a19-a18)/a18*100,0) else null end
+		,a31 = case when a30!=0 then round(a32/a30,2) else null end
 	where gno='2'
 
 	select '' titlea
@@ -455,14 +502,22 @@ z_acx01:--z_acx01
 	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a14),1)),4,17)) a14
 	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a15),1)),4,17))+'.'+RIGHT(CAST(a.a15 as nvarchar),3) a15
 	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a16),1)),4,17)) a16
-	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a17),1)),4,17)) a17
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a17),1)),4,17))+'.'+RIGHT(CAST(a.a17 as nvarchar),3) a17
 	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a18),1)),4,17)) a18
 	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a19),1)),4,17)) a19
-	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a20),1)),4,17))+'.'+RIGHT(CAST(a.a20 as nvarchar),3) a20
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a20),1)),4,17)) a20	
 	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a21),1)),4,17)) a21
 	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a22),1)),4,17))+'.'+RIGHT(CAST(a.a22 as nvarchar),3) a22
-	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a23),1)),4,17))+'.'+RIGHT(CAST(a.a23 as nvarchar),3) a23
-	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a24),1)),4,17)) a24
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a23),1)),4,17)) a23
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a24),1)),4,17))+'.'+RIGHT(CAST(a.a24 as nvarchar),3) a24
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a25),1)),4,17)) a25
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a26),1)),4,17))+'.'+RIGHT(CAST(a.a26 as nvarchar),3) a26
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a27),1)),4,17)) a27
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a28),1)),4,17))+'.'+RIGHT(CAST(a.a28 as nvarchar),3) a28
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a29),1)),4,17)) a29
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a30),1)),4,17))+'.'+RIGHT(CAST(a.a30 as nvarchar),3) a30
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a31),1)),4,17))+'.'+RIGHT(CAST(a.a31 as nvarchar),3) a31
+	, reverse(substring(reverse(convert(char(20),CONVERT(money,a.a32),1)),4,17)) a32
 	from @tmp a 
 	left join style b on a.style=b.noa
 	order by a.pno,a.style,a.productno
