@@ -361,14 +361,14 @@ z_acx01:--z_acx01
 	close cursor_table
 	deallocate cursor_table
 	---------------------------------------------------------------------------------------------
-	update #z_acx set bweight = isnull(brc2s,0)+isnull(binas,0)+isnull(bcuts,0)+isnull(bcubu,0)
-		-isnull(bvccs,0)-isnull(bgets,0)-isnull(bcut,0)-isnull(bcubt,0)
-		,bmount = isnull(brc2sm,0)+isnull(binasm,0)+isnull(bcutsm,0)+isnull(bcubum,0)
-		-isnull(bvccsm,0)-isnull(bgetsm,0)-isnull(bcutm,0)-isnull(bcubtm,0)
-		,[weight] = isnull(rc2s,0)+isnull(inas,0)+isnull(cuts,0)+isnull(cubu,0)
-		-isnull(vccs,0)-isnull(gets,0)-isnull(cut,0)-isnull(cubt,0)
-		,mount = isnull(rc2sm,0)+isnull(inasm,0)+isnull(cutsm,0)+isnull(cubum,0)
-		-isnull(vccsm,0)-isnull(getsm,0)-isnull(cutm,0)-isnull(cubtm,0)	
+	update #z_acx set bweight = isnull(brc2s,0)+isnull(binas,0)+isnull(bcuts,0)+isnull(bcubu,0)+isnull(bcubuz,0)
+		-isnull(bvccs,0)-isnull(bgets,0)-isnull(bcut,0)-isnull(bcubt,0)-isnull(bcubtz,0)
+		,bmount = isnull(brc2sm,0)+isnull(binasm,0)+isnull(bcutsm,0)+isnull(bcubum,0)+isnull(bcubumz,0)
+		-isnull(bvccsm,0)-isnull(bgetsm,0)-isnull(bcutm,0)-isnull(bcubtm,0)-isnull(bcubtmz,0)
+		,[weight] = isnull(rc2s,0)+isnull(inas,0)+isnull(cuts,0)+isnull(cubu,0)+isnull(cubuz,0)
+		-isnull(vccs,0)-isnull(gets,0)-isnull(cut,0)-isnull(cubt,0)-isnull(cubtz,0)
+		,mount = isnull(rc2sm,0)+isnull(inasm,0)+isnull(cutsm,0)+isnull(cubum,0)+isnull(cubumz,0)
+		-isnull(vccsm,0)-isnull(getsm,0)-isnull(cutm,0)-isnull(cubtm,0)	-isnull(cubtmz,0)	
 	update #z_acx set bweight = case when bweight>0 and bmount>0 then bweight else 0 end
 		,bmount = case when bweight>0 and bmount>0 then bmount else 0 end	
 	update #z_acx set eweight = bweight+[weight],emount =bmount+mount
