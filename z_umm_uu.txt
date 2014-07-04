@@ -250,10 +250,13 @@ select custno,salesno,SUM(money),mon from (
 --vcc =前期未收-前期已收月結
 	select aa.custno custno,(case when aa.salesno !='' then aa.salesno else bb.salesno end) salesno 
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bmon and left(vccno,len(vccno)-7)=aa.custno),0) money 
-	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
+	--,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
+	,left(aa.datea,6) mon
 	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon
 	or aa.datea < @t_bdate
-	group by aa.custno ,(case when aa.salesno !='' then aa.salesno else bb.salesno end) ,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
+	group by aa.custno ,(case when aa.salesno !='' then aa.salesno else bb.salesno end)
+	,left(aa.datea,6) 
+	--,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
 )tmp where (custno between @t_bcustno and @t_ecustno) and (salesno between @t_bsalesno and @t_esalesno) group by custno,salesno,mon
 
 delete @tmpa where money=0 
