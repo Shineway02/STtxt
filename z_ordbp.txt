@@ -1322,7 +1322,7 @@ z_ordbp03:--z_ordbp03
 		delete @tmp where ordbno+'_'+ordbno3 in (select ordbno+'_'+ordbno3 from @tmp where gno='3' and isnull(iprice,0)!=0)
 
 	--1030419 刪除沒有議價的資料
-	delete @tmp where ordbno not in (select ordbno from @tmp where pno='3') 
+	delete @tmp where ordbno+'_'+ordbno3 not in (select ordbno+'_'+ordbno3 from @tmp where pno='3') 
 	
 	--1030419 刪除有成交日的資料 
 	delete @tmp where ordbno in (select ordbno from @tmp where isnull(fdate,'')!='')
