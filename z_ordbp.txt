@@ -1621,3 +1621,89 @@ select gno,RANK() OVER(ORDER BY case when ldate='' then '999/99/99' else ldate e
 ,dbo.getcomma(umount,[36]) umount
 from @tmp order by case when ldate='' then '999/99/99' else ldate end,noa,pno
 ;
+----**************************************************************************************
+z_ordbp09:--z_ordbp09
+declare @t_bodate nvarchar(20) = case when '#non' = [5] then '' else [5] end
+declare @t_eodate nvarchar(20) = case when '#non' = [6] then char(255) else [6] end
+declare @t_bpno nvarchar(20) = case when '#non' = [15] then '' else [15] end
+declare @t_epno nvarchar(20) = case when '#non' = [16] then char(255) else [16] end
+declare @t_enda nvarchar(20) = case when '#non' = [38] then '' else [38] end
+--****************************************************************************************
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(50),
+	noq nvarchar(50),
+	odate nvarchar(10),
+	pno nvarchar(50),
+	product nvarchar(100),
+	spec nvarchar(100),
+	unit nvarchar(20),
+	mount float,
+	omount float,
+	c1 float,
+	notv float,
+	price float,
+	total float,
+	enda nvarchar(10),
+	memo nvarchar(MAX)
+)
+	insert @tmp
+	select '0',a.noa,b.no3,a.odate,b.productno,b.product,b.spec,b.unit,b.mount,b.omount
+	,b.c1,b.notv,b.price,b.total,case when isnull(b.enda,0)=0 then 'N' else 'Y' end,b.memo
+	from view_ordb a left join view_ordbs b on a.noa=b.noa
+	where b.mount!=b.omount
+	and a.odate between @t_bodate and @t_eodate
+	and b.productno between @t_bpno and @t_epno
+	and (len(@t_enda)=0 or @t_enda=isnull(b.enda,0))
+
+select gno,noa,noq,odate,pno,product,spec,unit,enda,memo
+,dbo.getcomma(mount,[36]) mount
+,dbo.getcomma(omount,[36]) omount
+,dbo.getcomma(c1,[36]) c1
+,dbo.getcomma(notv,[36]) notv
+,dbo.getcomma(price,[36]) price
+,dbo.getcomma(total,[36]) total
+from @tmp order by odate,noa,noq;
+----**************************************************************************************
+z_ordbp10:--z_ordbp10
+declare @t_bodate nvarchar(20) = case when '#non' = [5] then '' else [5] end
+declare @t_eodate nvarchar(20) = case when '#non' = [6] then char(255) else [6] end
+declare @t_bpno nvarchar(20) = case when '#non' = [15] then '' else [15] end
+declare @t_epno nvarchar(20) = case when '#non' = [16] then char(255) else [16] end
+declare @t_enda nvarchar(20) = case when '#non' = [38] then '' else [38] end
+--****************************************************************************************
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(50),
+	noq nvarchar(50),
+	odate nvarchar(10),
+	pno nvarchar(50),
+	product nvarchar(100),
+	spec nvarchar(100),
+	unit nvarchar(20),
+	mount float,
+	omount float,
+	c1 float,
+	notv float,
+	price float,
+	total float,
+	enda nvarchar(10),
+	memo nvarchar(MAX)
+)
+	insert @tmp
+	select '0',a.noa,b.no2,a.odate,b.productno,b.product,b.spec,b.unit,b.mount,b.omount
+	,b.c1,b.notv,b.price,b.total,case when isnull(b.enda,0)=0 then 'N' else 'Y' end,b.memo
+	from view_ordc a left join view_ordcs b on a.noa=b.noa
+	where b.mount!=b.omount
+	and a.odate between @t_bodate and @t_eodate
+	and b.productno between @t_bpno and @t_epno
+	and (len(@t_enda)=0 or @t_enda=isnull(b.enda,0))
+
+select gno,noa,noq,odate,pno,product,spec,unit,enda,memo
+,dbo.getcomma(mount,[36]) mount
+,dbo.getcomma(omount,[36]) omount
+,dbo.getcomma(c1,[36]) c1
+,dbo.getcomma(notv,[36]) notv
+,dbo.getcomma(price,[36]) price
+,dbo.getcomma(total,[36]) total
+from @tmp order by odate,noa,noq;
