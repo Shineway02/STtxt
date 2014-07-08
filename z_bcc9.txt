@@ -1,0 +1,188 @@
+﻿z_bcc9st:--z_bcc9st
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bproductno nvarchar(20)
+	declare @t_eproductno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	declare @t_typea nvarchar(max)
+
+	set @t_bdate = case when '#non'=[1] then '' else [1] end
+	set @t_edate = case when '#non'=[2] then char(255) else [2] end
+	set @t_bproductno = case when '#non'=[3] then '' else [3] end
+	set @t_eproductno = case when '#non'=[4] then char(255) else [4] end
+	set @t_storeno = case when '#non'=[5] then '' else [5] end
+	set @t_typea = case when '#non'=[6] then '' else [6] end
+------------------------------------------------------------------------------------------
+	------------------------------------------------------------------------------------------
+	declare @n int
+	declare @string nvarchar(max)
+	declare @store table(
+		noa nvarchar(20)
+	)
+	set @string = @t_storeno
+	while(1=1 and len(@string)>0)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @store select @string
+			end
+			break
+		end
+		insert into @store select LEFT(@string,@n-1)	
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	
+	declare @typea table(
+		noa nvarchar(20)
+	)
+	set @string = @t_typea
+	while(1=1 and len(@string)>0)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @typea select @string
+			end
+			break
+		end
+		insert into @typea select LEFT(@string,@n-1)	
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	------------------------------------------------------------------------------------------
+	declare @tmp table(
+		bccno nvarchar(20),
+		storeno nvarchar(20)
+	)
+	insert into @tmp(bccno,storeno)
+	select a.bccno,b.storeno
+	from bccins a
+	right join bccin b on a.noa=b.noa
+	right join bcc c on a.bccno=c.noa
+	right join @typea d on c.typea=d.noa
+	right join @store e on b.storeno=e.noa
+	where b.datea <= @t_edate
+	and a.bccno between @t_bproductno and @t_eproductno
+	and len(isnull(a.bccno,''))>0
+	group by a.bccno,b.storeno
+	union
+	select a.bccno,b.storeno
+	from bccouts a
+	right join bccout b on a.noa=b.noa
+	right join bcc c on a.bccno=c.noa
+	right join @typea d on c.typea=d.noa
+	right join @store e on b.storeno=e.noa
+	where b.datea <= @t_edate
+	and a.bccno between @t_bproductno and @t_eproductno
+	and len(isnull(a.bccno,''))>0
+	group by a.bccno,b.storeno
+	union
+	select a.bccno,b.storeno
+	from bcces a
+	right join bcce b on a.noa=b.noa
+	right join bcc c on a.bccno=c.noa
+	right join @typea d on c.typea=d.noa
+	right join @store e on b.storeno=e.noa
+	where b.datea <= @t_edate
+	and a.bccno between @t_bproductno and @t_eproductno
+	and len(isnull(a.bccno,''))>0
+	group by a.bccno,b.storeno
+	
+	--------------------------------------------------------------------------------------
+	declare @tmpa table(
+		gno nvarchar(20),
+		bccno nvarchar(20),
+		bccname nvarchar(40),
+		storeno nvarchar(20),
+		store nvarchar(40),
+		mount1 float,--前期存量
+		mount2 float,--本期入庫
+		mount3 float,--本期領用
+		mount4 float,--本期繳回
+		mount5 float--結餘
+	)
+	declare @gno nvarchar(10)
+	declare @bccno nvarchar(20)
+	declare @storeno nvarchar(20)
+	declare @datea nvarchar(20)
+	declare @mount1 float
+	declare @bccemount float
+	declare @mount2 float
+	declare @mount3 float
+	declare @mount4 float
+	declare @nextdate date
+	
+	declare cursor_table cursor for
+	select bccno,storeno from @tmp order by bccno,storeno
+	open cursor_table
+	fetch next from cursor_table
+	into @bccno,@storeno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		select @datea=''
+		select @mount1=0,@bccemount=0,@mount2=0,@mount3=0,@mount4=0
+		--前期有盤點
+		if exists(select a.noa from bcces a right join bcce b on a.noa=b.noa where a.bccno=@bccno and b.storeno=@storeno and b.datea < @t_bdate)
+		begin
+			select top 1 @datea=b.datea,@mount1=a.mount from bcces a right join bcce b on a.noa=b.noa where a.bccno=@bccno and b.storeno=@storeno and b.datea < @t_bdate order by b.datea desc,b.noa desc
+		end
+		select @mount1 = isnull(@mount1,0) + SUM(a.mount)
+		from bccins a
+		right join bccin b on a.noa=b.noa
+		where a.bccno=@bccno and b.storeno=@storeno and b.datea >@datea and b.datea<@t_bdate
+		
+		select @mount1 = isnull(@mount1,0) - isnull(SUM(a.mount-a.bkbcc),0)
+		from bccouts a
+		right join bccout b on a.noa=b.noa
+		where a.bccno=@bccno and b.storeno=@storeno and b.datea >@datea and b.datea<@t_bdate
+		
+		
+		--本期有盤點
+		select @datea = @t_bdate,@gno='1'
+		if exists(select a.noa from bcces a left join bcce b on a.noa=b.noa where a.bccno=@bccno and b.storeno=@storeno and b.datea between @t_bdate and @t_edate)
+		begin
+			select top 1 @datea=b.datea,@bccemount=a.mount from bcces a left join bcce b on a.noa=b.noa where a.bccno=@bccno and b.storeno=@storeno and b.datea between @t_bdate and @t_edate order by b.datea desc,b.noa desc
+			set @nextdate = dateadd(dd,1,convert(date,cast(cast(left(@datea,3) as int)+1911 as nvarchar)+right(@datea,6),111))
+			set @datea =  right('00'+cast(YEAR(@nextdate)-1911 as nvarchar),4)+'/'+right('00'+cast(Month(@nextdate) as nvarchar),2)+'/'+right('00'+cast(Day(@nextdate) as nvarchar),2)
+			set @gno='2'
+		end
+		select @mount2 = SUM(a.mount)
+		from bccins a
+		right join bccin b on a.noa=b.noa
+		where a.bccno=@bccno and b.storeno=@storeno and b.datea>=@datea and b.datea<=@t_edate
+		
+		select @mount3 = SUM(a.mount),@mount4=SUM(a.bkbcc)
+		from bccouts a
+		right join bccout b on a.noa=b.noa
+		where a.bccno=@bccno and b.storeno=@storeno and b.datea>=@datea and b.datea<=@t_edate
+		-------------------
+		if not(isnull(@mount1,0)=0 and isnull(@bccemount,0)=0 and isnull(@mount2,0)=0 and isnull(@mount3,0)=0 and isnull(@mount4,0)=0 )
+		begin
+			insert into @tmpa(gno,bccno,storeno,mount1,mount2,mount3,mount4,mount5)
+			select @gno,@bccno,@storeno,@mount1,@mount2,@mount3,@mount4,isnull(@mount1,0)+isnull(@bccemount,0)+isnull(@mount2,0)-isnull(@mount3,0)+isnull(@mount4,0)
+		end
+		----------------------
+		fetch next from cursor_table
+		into @bccno,@storeno
+		
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @tmpa set bccname= isnull(b.product,''),store=isnull(c.store,'')
+	from @tmpa a
+	left join bcc b on a.bccno = b.noa
+	left join store c on a.storeno=c.noa
+	
+	select *
+	,bccno+'&nbsp'+char(59)+bccname pp
+	,ISNULL(mount1,0) mm1
+	,case when ISNULL(mount2,0)=0 then null else CAST(mount2 as float) end mm2
+	,case when ISNULL(mount3,0)=0 then null else CAST(mount3 as float) end mm3
+	,case when ISNULL(mount4,0)=0 then null else CAST(mount4 as float) end mm4
+	,ISNULL(mount5,0) mm5
+	from @tmpa order by bccno,storeno;

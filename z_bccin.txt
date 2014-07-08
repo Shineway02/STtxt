@@ -1,0 +1,561 @@
+z_bccinst1:--z_bccinst1
+declare @t_bbccno nvarchar(20)
+declare @t_ebccno nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_storeno nvarchar(max)
+set @t_bdate = case when '#non' = [2] then '' else [2] end
+set @t_edate = case when '#non' = [3] then CHAR(255) else [3] end
+set @t_bbccno = case when '#non' = [6] then '' else [6] end
+set @t_ebccno = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_storeno = case when '#non'=[10] then '' else [10] end
+
+declare @tmp  table(
+		storeno nvarchar(20),
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		datea nvarchar(10),
+		bccno nvarchar(20),
+		sbccno nvarchar(50),
+		bccname nvarchar(50),
+		unit nvarchar(10),
+		price int,
+		mount int,
+		total int
+)
+
+	insert into @tmp
+	select b.storeno,'0' gno,a.noa,b.noq,a.datea,b.bccno,b.bccno,b.bccname,b.unit,b.price,b.mount,b.total
+	from bccin a
+	left join bccins b on a.noa = b.noa
+	where (a.datea between @t_bdate and @t_edate) and
+	(b.bccno between @t_bbccno and @t_ebccno) and (@t_storeno = '99' or b.storeno = @t_storeno)
+	order by b.storeno,b.bccno,a.noa
+
+declare @t_bccno nvarchar(20)
+declare @t_bccname nvarchar(50)
+declare @t_unit nvarchar(20)
+declare @bccno nvarchar(20)
+declare @sbccno nvarchar(20)
+declare @bccname nvarchar(50)
+declare @unit nvarchar(20)
+declare @datea nvarchar(20)
+declare @noa nvarchar(20)
+set @t_bccno = 'wderfff'
+set @t_bccname = 'erwereee'
+set @t_unit = 'ererere'
+
+declare cursor_table cursor for
+select datea,noa,sbccno,bccno,bccname
+from @tmp 
+open cursor_table 
+fetch next from cursor_table
+into @datea,@noa,@sbccno,@bccno,@bccname
+while(@@FETCH_STATUS <> -1)
+begin
+	if (@bccno = @t_bccno)  and(@t_bccno != 'wderfff') 
+	begin
+		update @tmp set bccno = '' , bccname = '',unit = '' where current of cursor_table
+	end
+	else
+	begin
+		set @t_bccno = @bccno
+		set @t_bccname = @bccname
+	end
+fetch next from cursor_table
+into @datea,@noa,@sbccno,@bccno,@bccname
+end
+close cursor_table
+deallocate cursor_table
+
+insert into @tmp
+select storeno,'1' gno,'','','','',sbccno,'','',0,SUM(mount),SUM(total)
+from @tmp
+group by storeno,sbccno
+
+insert into @tmp
+select storeno,'2' gno,'','','','','zzzzzzzz','','',0,SUM(mount),SUM(total)
+from @tmp
+where gno = '1'
+group by storeno
+
+select b.store,a.gno,a.noa,a.noq,a.datea,a.bccno,a.sbccno,a.bccname,a.unit,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total
+from @tmp a left join store b on a.storeno=b.noa 
+order by a.storeno,a.sbccno,a.gno;
+-----------------------------------------------------------------------------------------------------------------
+z_bccinst2:--z_bccinst2
+declare @pagecount int
+declare @t_xnoa nvarchar(20)
+set @pageCount = 7
+set @t_xnoa = case when '#non' = [1] then '' else [1] end
+declare @tmpa table (
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		mon nvarchar(10),
+		tggno nvarchar(20),
+		comp nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(20),
+		addr nvarchar(50),
+		datea nvarchar(10),
+		ordeno nvarchar(20),
+		bccname nvarchar(90),
+		weightb float,
+		mount int,
+		unit nvarchar(20),
+		price float,
+		total int,
+		paytype nvarchar(20),
+		tmemo nvarchar(200),
+		memo nvarchar(200),
+		tmount int,
+		ttotal int,
+		mttotal int,
+		tax int,
+		tmoney int,
+		w nvarchar(20),
+		store nvarchar(20),
+		part nvarchar(20),
+		invono nvarchar(20),
+		buyer nvarchar(20)
+)
+insert into @tmpa
+select '0' gno,a.noa,b.noq,a.mon,a.tggno,a.tgg,c.tel,c.fax,c.addr_invo,a.datea,'' /*a.ordeno*/,
+b.bccname,'' /*b.weight*/,b.mount,b.unit,b.price,b.total,c.paytype,a.memo,b.memo,0,a.money,a.money,a.tax,a.total,a.worker
+,d.store,a.part,a.invono,a.buyer
+from bccin a
+left join bccins b on a.noa = b.noa
+left join tgg c on a.tggno = c.noa
+left join store d on a.storeno=d.noa
+where @t_xnoa = a.noa
+
+declare @tmp table (
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		mon nvarchar(10),
+		tggno nvarchar(20),
+		comp nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(20),
+		addr nvarchar(50),
+		datea nvarchar(10),
+		ordeno nvarchar(20),
+		bccname nvarchar(90),
+		weightb float,
+		mount int,
+		unit nvarchar(20),
+		price float,
+		total int,
+		paytype nvarchar(20),
+		tmemo nvarchar(200),
+		memo nvarchar(200),
+		tmount int,
+		ttotal int,
+		mttotal int,
+		tax int,
+		tmoney int,
+		w nvarchar(20),
+		store nvarchar(20),
+		part nvarchar(20),
+		invono nvarchar(20),
+		buyer nvarchar(20),
+		recno int,
+		currecno int,
+		curpage int,
+		totpage int
+)
+insert into @tmp
+select a.*,ROW_NUMBER()over(order by gno) recno,0 currecno,0 curpage,0 totpage 
+				 from( 
+				select  gno,noa,noq,mon,tggno,comp,tel,fax,addr,datea,ordeno,bccname,weightb,mount,unit,price,
+				total,paytype,tmemo,memo,tmount,ttotal,mttotal,tax,tmoney,w,store,part,invono,buyer
+				from @tmpa a
+				 )a
+
+
+declare @noa nvarchar(20)
+declare @gno nvarchar(20)
+declare @tmount float
+declare @count int
+declare @t_count int
+declare @recno int
+declare @currecno int
+declare @t_curpage int
+declare @curpage int
+declare @totpage int
+declare @ttotal int
+declare @mttotal int
+declare @tax int
+declare @tmoney int
+declare @mount int
+declare @t_mount int
+declare @total int
+declare @t_total int
+declare @tt_total int
+declare @w nvarchar(30)
+declare @paytype nvarchar(20)
+declare @tmemo nvarchar(20)
+declare @t_noa nvarchar(30)
+declare @t_currecno float
+set @t_currecno = 0
+
+
+	
+	declare cursor_table cursor for
+	select noa,min(recno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set currecno = recno - @recno +1 where noa=@noa
+		fetch next from cursor_table
+		into @noa,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	--------------------------------------------------
+		
+	----------------------------------------------------
+	declare @count1 int
+	declare @count2 int
+	declare cursor_table cursor for
+	select noa,sum(mount),max(ttotal),max(mttotal),max(tax),max(tmoney),max(w),max(paytype),max(tmemo),count(*) count1,(count(*)/@pageCount+1)*@pageCount count2 from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@tmount,@ttotal,@mttotal,@tax,@tmoney,@w,@paytype,@tmemo,@count1,@count2
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while(@count1<@count2) and not(@count1 % @pagecount = 0)
+		begin
+			insert into @tmp (gno,noa,noq,tmount,ttotal,mttotal,tax,tmoney,w,paytype,tmemo,currecno)VALUES
+			(0,@noa,CHAR(255),@tmount,@ttotal,@mttotal,@tax,@tmoney,@w,@paytype,@tmemo,@count1+1)
+			set @count1=@count1+1
+		end
+		fetch next from cursor_table
+		into @noa,@tmount,@ttotal,@mttotal,@tax,@tmoney,@w,@paytype,@tmemo,@count1,@count2
+	end
+	close cursor_table
+	deallocate cursor_table
+
+
+	---------------------------------------------------
+	declare cursor_table cursor for
+	select noa,max(currecno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set totpage = (@currecno-@currecno%@pagecount)/@pagecount where noa=@noa
+		fetch next from cursor_table
+		into @noa,@currecno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,recno,currecno from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set curpage = FLOOR((@currecno-1)/@pagecount)+1 where noa=@noa and recno=@recno
+		fetch next from cursor_table
+		into @noa,@recno,@currecno
+	end
+		close cursor_table
+	deallocate cursor_table
+	
+	set @t_curpage=0
+	set @t_mount=0
+	set @t_total=0
+	set @tt_total=0
+	set @t_noa='xxxxxxxx'
+	set @t_curpage=0
+	
+	declare cursor_table cursor for
+	select noa,mount,total,curpage from @tmp order by noa,currecno
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@mount,@total,@curpage
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if(@t_curpage!=@curpage and @t_noa!='xxxxxxxx')
+		begin
+			update @tmp set tmount=@t_mount where curpage=@t_curpage and noa=@t_noa
+			update @tmp set ttotal=@t_total where curpage=@t_curpage and noa=@t_noa
+			update @tmp set mttotal=@tt_total where curpage=@t_curpage and noa=@t_noa
+			set @t_mount=0
+			set @t_total=0
+			if(@noa!=@t_noa)
+			set @tt_total=0
+		end
+		if(@t_curpage!=@curpage)
+			set @t_curpage=@curpage
+		if(@t_noa!=@noa)
+			set @t_noa=@noa
+			
+		set @t_mount=@t_mount+isnull(@mount,0)
+		set @t_total=@t_total+isnull(@total,0)
+		set @tt_total=@tt_total+isnull(@total,0)
+		
+		fetch next from cursor_table
+		into @noa,@mount,@total,@curpage
+	end
+		close cursor_table
+	deallocate cursor_table
+	--最後一筆
+	update @tmp set tmount=@t_mount where (curpage=@t_curpage or curpage is null) and noa=@t_noa
+	update @tmp set ttotal=@t_total where (curpage=@t_curpage or curpage is null) and noa=@t_noa
+	update @tmp set mttotal=@tt_total where (curpage=@t_curpage or curpage is null) and noa=@t_noa
+	
+	
+	select gno,noa,noq,mon,tggno,comp,tel,fax,addr,datea,ordeno,bccname,store,part,invono,buyer,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,unit,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,paytype,
+	tmemo,memo,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tmount),1)),4,12)) tmount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,ttotal),1)),4,12)) ttotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mttotal),1)),4,12)) mttotal,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tmoney),1)),4,12)) tmoney,
+	w,recno,currecno,curpage,totpage,CONVERT(nvarchar(5),curpage)+'/'+CONVERT(nvarchar(5),totpage) page
+	from @tmp where gno = 0
+	order by noa,currecno;
+--*********************************************************************************************
+z_bcc8sta:--z_bcc8sta
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_btggno nvarchar(20)
+	declare @t_etggno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then char(255) else [3] end
+	set @t_btggno = case when '#non'=[8] then '' else [8] end
+	set @t_etggno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+declare @result table(
+		gno nvarchar(1),
+		tggno nvarchar(20),
+		tggname nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(20),
+		mount float,
+		price float,
+		mount2 float,
+		unit nvarchar(10),
+		total float,
+		storeno nvarchar(20),
+		store nvarchar(20),
+		buyer nvarchar(20)
+)
+	--資料 
+			insert into @result 
+			select '0' gno,a.tggno,a.tgg,b.bccno,b.bccname,a.datea,a.noa,b.mount,b.price,b.mount2,b.unit,b.total,a.storeno,c.store,a.buyer
+			from bccin a left join bccins b on a.noa=b.noa 
+			left join store c on a.storeno=c.noa
+			where (a.datea between @t_bdate and @t_edate) and (a.tggno between @t_btggno and @t_etggno) and (@t_storeno = '99' or a.storeno = @t_storeno)
+			order by a.tggno,b.bccno 
+			
+	--清除多餘欄位
+	/*declare @tggno nvarchar(10)
+	declare @t_tggno nvarchar(10)
+	set @t_tggno='#zzzz#zzzz'
+
+	declare bcc_table cursor for
+	select tggno from @result
+	open bcc_table
+	fetch next from bcc_table
+	into @tggno
+	while(@@FETCH_STATUS <> -1)
+	begin
+	if (@tggno=@t_tggno)
+	begin
+		update @result
+		set tggname=''
+		where current of bcc_table
+
+	end
+		set @t_tggno=@tggno
+		fetch next from bcc_table
+		into @tggno
+	end
+	close bcc_table
+	deallocate bcc_table*/
+	
+	--小計
+	insert into @result
+	select '1',tggno,'','','','','',SUM(mount),0,SUM(mount2),'',SUM(total),'','',''
+	from @result
+	group by tggno
+
+select gno,tggno,tggname,bccno,bccname,datea,noa,unit,storeno,store,buyer,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount2),1)),4,12)) mount2,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total
+from @result order by tggno,gno,tggname,storeno,datea,bccno;
+
+--*********************************************************************************************
+z_bcc8stb:--z_bcc8stb
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then char(255) else [3] end
+	set @t_bbccno = case when '#non'=[6] then '' else [6] end
+	set @t_ebccno = case when '#non'=[7] then char(255) else [7] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+
+declare @result table(
+		gno nvarchar(1),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		tggno nvarchar(20),
+		tggname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(20),
+		mount float,
+		price float,
+		mount2 float,
+		unit nvarchar(10),
+		total float,
+		storeno nvarchar(20),
+		store nvarchar(20),
+		buyer nvarchar(20)
+)
+	--資料 
+			insert into @result 
+			select '0' gno,b.bccno,b.bccname,a.tggno,a.tgg,a.datea,a.noa,b.mount,b.price,b.mount2,b.unit,b.total,b.storeno,c.store,a.buyer
+			from bccin a left join bccins b on a.noa=b.noa 
+			left join store c on a.storeno=c.noa
+			where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno) and (@t_storeno = '99' or b.storeno = @t_storeno)
+			order by b.bccno,a.tggno 
+
+
+	/*--清除多餘欄位
+	declare @bccno nvarchar(10)
+	declare @t_bccno nvarchar(10)
+	set @t_bccno='#zzzz#zzzz'
+
+	declare bcc_table cursor for
+	select bccno from @result
+	open bcc_table
+	fetch next from bcc_table
+	into @bccno
+	while(@@FETCH_STATUS <> -1)
+	begin
+	if (@bccno=@t_bccno)
+	begin
+		update @result
+		set bccname=''
+		where current of bcc_table
+
+	end
+		set @t_bccno=@bccno
+		fetch next from bcc_table
+		into @bccno
+	end
+	close bcc_table
+	deallocate bcc_table*/
+	
+	--小計
+	insert into @result
+	select '1',bccno,'','','','','',SUM(mount),0,SUM(mount2),'',SUM(total),'','',''
+	from @result
+	group by bccno
+
+select gno,bccno,bccname,tggno,tggname,datea,noa,unit,storeno,store,buyer,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount2),1)),4,12)) mount2,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total
+from @result order by bccno,gno,datea,storeno,tggno;
+
+--*********************************************************************************************
+z_bcc8stc:--z_bcc8stc
+	declare @t_bmon nvarchar(10)
+	declare @t_emon nvarchar(10)
+	declare @t_btggno nvarchar(20)
+	declare @t_etggno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bmon = case when '#non'=[4] then '' else [4] end
+	set @t_emon = case when '#non'=[5] then char(255) else [5] end
+	set @t_btggno = case when '#non'=[8] then '' else [8] end
+	set @t_etggno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+
+declare @result table(
+		gno nvarchar(1),
+		tggno nvarchar(20),
+		tggname nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		unit nvarchar(10),
+		datea nvarchar(10),
+		mount float,
+		price float,
+		mount2 float,
+		weight float,
+		total float,
+		tax float
+)
+	--資料 
+	insert into @result 
+	select '0' gno,a.tggno,a.tgg+' ('+a.tggno+')',b.bccno,b.bccname,b.unit,a.datea,b.mount,b.price,b.mount2,''/*b.weight*/,b.total,null 
+	from bccin a left join bccins b on a.noa=b.noa 
+	where a.datea between @t_bmon+'/01' and @t_emon+'/31' and a.tggno between @t_btggno and @t_etggno 
+	order by tggno,b.bccno 
+	
+	--小計
+	insert into @result
+	select '1',tggno,'','','','','',0,0,0,0,SUM(total),0
+	from @result
+	group by tggno
+	
+	--計算營業稅
+	declare @gno nvarchar(10)
+	declare @tggno nvarchar(10)
+
+	declare bcc_table cursor for
+	select gno,tggno from @result
+	open bcc_table
+	fetch next from bcc_table
+	into @gno,@tggno
+	while(@@FETCH_STATUS <> -1)
+	begin
+	if (@gno=1)
+	begin
+		update @result
+		set tax=(select SUM(tax) from bccin where tggno=@tggno and datea between @t_bmon+'/01' and @t_emon+'/31')
+		where current of bcc_table
+
+	end
+		fetch next from bcc_table
+		into @gno,@tggno
+	end
+	close bcc_table
+	deallocate bcc_table
+	
+
+select gno,tggno,tggname,bccno,bccname,unit,datea,weight,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount2),1)),4,12)) mount2,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax
+from @result order by tggno,gno,bccno;
