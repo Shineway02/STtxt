@@ -205,8 +205,6 @@ declare @t_noa nvarchar(30)
 declare @t_currecno float
 set @t_currecno = 0
 
-
-	
 	declare cursor_table cursor for
 	select noa,min(recno) from @tmp group by noa
 	open cursor_table
@@ -221,7 +219,6 @@ set @t_currecno = 0
 	close cursor_table
 	deallocate cursor_table
 	--------------------------------------------------
-		
 	----------------------------------------------------
 	declare @count1 int
 	declare @count2 int
@@ -243,7 +240,6 @@ set @t_currecno = 0
 	end
 	close cursor_table
 	deallocate cursor_table
-
 
 	---------------------------------------------------
 	declare cursor_table cursor for
@@ -316,7 +312,6 @@ set @t_currecno = 0
 	update @tmp set tmount=@t_mount where (curpage=@t_curpage or curpage is null) and noa=@t_noa
 	update @tmp set ttotal=@t_total where (curpage=@t_curpage or curpage is null) and noa=@t_noa
 	update @tmp set mttotal=@tt_total where (curpage=@t_curpage or curpage is null) and noa=@t_noa
-	
 	
 	select gno,noa,noq,mon,tggno,comp,tel,fax,addr,datea,ordeno,bccname,store,part,invono,buyer,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
@@ -401,7 +396,7 @@ declare @result table(
 	from @result
 	group by tggno
 
-select gno,tggno,tggname,bccno,bccname,datea,noa,unit,storeno,store,buyer,
+select gno,tggno,left(tggname,8)tggname,bccno,bccname,datea,noa,unit,storeno,store,buyer,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount2),1)),4,12)) mount2,
@@ -446,7 +441,6 @@ declare @result table(
 			where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno) and (@t_storeno = '99' or b.storeno = @t_storeno)
 			order by b.bccno,a.tggno 
 
-
 	/*--清除多餘欄位
 	declare @bccno nvarchar(10)
 	declare @t_bccno nvarchar(10)
@@ -479,7 +473,7 @@ declare @result table(
 	from @result
 	group by bccno
 
-select gno,bccno,bccname,tggno,tggname,datea,noa,unit,storeno,store,buyer,
+select gno,bccno,bccname,tggno,left(tggname,10)tggname,datea,noa,unit,storeno,store,buyer,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,12)) price,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount2),1)),4,12)) mount2,

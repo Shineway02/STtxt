@@ -1,4 +1,4 @@
-z_bcc4:--z_bcc4
+z_bcc4st:--z_bcc4st
 	declare @t_bdate nvarchar(10)
 	declare @t_edate nvarchar(10)
 	declare @t_bbccno nvarchar(20)
@@ -6,185 +6,178 @@ z_bcc4:--z_bcc4
 	declare @t_bmechno nvarchar(20)
 	declare @t_emechno nvarchar(20)
 	declare @t_storeno nvarchar(max)
-	set @t_bdate = case when '#non'=[1] then '' else [1] end
-	set @t_edate = case when '#non'=[2] then char(255) else [2] end
-	set @t_bbccno = case when '#non'=[3] then '' else [3] end
-	set @t_ebccno = case when '#non'=[4] then char(255) else [4] end
-	set @t_bmechno = case when '#non'=[5] then '' else [5] end
-	set @t_emechno = case when '#non'=[6] then char(255) else [6] end
-	set @t_storeno = case when '#non'=[7] then '' else [7] end
+	set @t_bdate = case when '#non'=[3] then '' else [3] end
+	set @t_edate = case when '#non'=[4] then char(255) else [4] end
+	set @t_bbccno = case when '#non'=[5] then '' else [5] end
+	set @t_ebccno = case when '#non'=[6] then char(255) else [6] end
+	set @t_bmechno = case when '#non'=[7] then '' else [7] end
+	set @t_emechno = case when '#non'=[8] then char(255) else [8] end
+	set @t_storeno = case when '#non'=[9] then '' else [9] end
 	--*****************************************************************************************	
---存放機台資料的表格，後面來判斷要增加幾個存放機台的欄位
-declare @listmech table(
-	n int,
-	[mechno] nvarchar(10),
-	[mech] nvarchar(20)
-)
---將機台資料存入
-insert into @listmech
-select ROW_NUMBER()over(order by mech) ,noa,mech from mech order by noa
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max) 
+	IF OBJECT_ID('tempdb..#tmpa')is not null
+	BEGIN
+		   drop table #tmpa
+	END
+	IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		   drop table #tmp
+	END
 
---判斷暫存使用的資料表是否存在，存在則刪除
-IF OBJECT_ID('tempdb..#tmp')is not null
-BEGIN
-       drop table #tmp
-END
-IF OBJECT_ID('tempdb..#result')is not null
-BEGIN
-       drop table #result
-END
---建立暫存的表格(固定機台所使用的表格)
-create table #tmp(
-	gno nvarchar(1),
-	bccno nvarchar(20),
-	bccname nvarchar(50),
-	stkmount decimal (10,2),
-	price decimal (14,2),
-	datea nvarchar(10),
-	total decimal (14,2)
-)
-
-declare @cmd nvarchar(max)
-declare @n int
-declare @mech nvarchar(20)
-
---根據機台來增加固定機台表格的欄位
-declare cursor_table cursor for
-select n,mech from  @listmech
-open cursor_table
-fetch next from cursor_table
-into @n,@mech
-while(@@FETCH_STATUS <> -1)
-begin
-	set @cmd = 'alter table #tmp add mount'+CONVERT(nvarchar(3),@n)+' decimal (10,2)'
-	EXECUTE sp_executesql @cmd
-fetch next from cursor_table
-into @n,@mech
-end
-close cursor_table
-deallocate cursor_table
-
-declare @gno nvarchar(1)
-declare @bccno nvarchar(20)
-declare @bccname nvarchar(50)
-declare @stkmount decimal (14,2)
-declare @price decimal (14,2)
-declare @datea nvarchar(10)
-declare @mount decimal (14,2)
-declare @t_bccno nvarchar(20)
-set @t_bccno='#zzzz#zzzz'
-declare @field_mount nvarchar(200)
-
---插入領料的資料 
-declare cursor_table cursor for 
-select b.bccno,b.bccname,c.stkmount,c.price,a.datea,b.mount,''/*b.mechno */
-from bccout a left join bccouts b on a.noa=b.noa left join bcc c on b.bccno=c.noa 
-where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno)/* and (b.mechno between @t_bmechno and @t_emechno )*/
-order by b.bccno 
-open cursor_table
-fetch next from cursor_table
-into @bccno,@bccname,@stkmount,@price,@datea,@mount,@mech
-while(@@FETCH_STATUS <> -1)
-begin
-	--根據領料的機台判斷要寫入哪一個欄位(mount1,mount2,.....)資料
-	set @n = 0
-	select  @n=n from @listmech where [mechno]=@mech
-	if not(@n=0)
+	create table #tmpa(
+		mechno nvarchar(20),
+		mech nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(50),
+		noq nvarchar(30), 
+		mount float
+	)
+	
+	insert #tmpa
+	select isnull(a.mechno,''),isnull(a.mech,''),b.bccno,b.bccname,a.datea,a.noa,b.noq,isnull(b.mount,0)-isnull(b.bkbcc,0) 
+	from bccout a left join bccouts b on a.noa=b.noa
+	where a.datea between @t_bdate and @t_edate
+	and isnull(b.bccno,'') between @t_bbccno and @t_ebccno
+	and isnull(a.mechno,'') between @t_bmechno and @t_emechno
+	and (len(@t_storeno)=0 or @t_storeno=a.storeno)
+	
+	declare @mech table(
+		idno int,
+		mechno nvarchar(50)
+	)
+	
+	create table #tmp(
+		tgno nvarchar(1),
+		bccno nvarchar(20),
+		datea nvarchar(10),
+		mt int,
+		m0 nvarchar(50),
+		m1 nvarchar(50),
+		m2 nvarchar(50),
+		m3 nvarchar(50),
+		m4 nvarchar(50),
+		m5 nvarchar(50),
+		m6 nvarchar(50),
+		m7 nvarchar(50),
+		m8 nvarchar(50),
+		m9 nvarchar(50),
+		t0 float,
+		t1 float,
+		t2 float,
+		t3 float,
+		t4 float,
+		t5 float,
+		t6 float,
+		t7 float,
+		t8 float,
+		t9 float,
+		total float
+	)
+	declare @bccno nvarchar(50)
+	declare @mechno nvarchar(50)
+	declare @midno nvarchar(50)
+	
+	declare bccno_table cursor for
+	select bccno from #tmpa group by bccno 
+	open bccno_table
+	fetch next from bccno_table
+	into @bccno
+	while(@@FETCH_STATUS <> -1)
 	begin
-		set @field_mount =  'mount'+CONVERT(nvarchar(3),@n)
+		delete @mech
 		
-		if not exists(select * from #tmp where bccno=@bccno and datea=@datea)
+		insert @mech
+		select ROW_NUMBER() over(order by mechno),mechno from #tmpa where bccno=@bccno group by mechno
+		-----------------------------------------------
+		declare mechno_table cursor for
+		select idno-1,mechno from @mech order by idno
+		open mechno_table
+		fetch next from mechno_table
+		into @midno,@mechno
+		while(@@FETCH_STATUS <> -1)
 		begin
-			--增加領料紀錄
-			insert into #tmp (gno,bccno,bccname,stkmount,price,datea)
-			values('0',@bccno,@bccname,@stkmount,@price,@datea)
+			set @cmd=
+			"insert #tmp(tgno,bccno,datea,mt,m"+cast((@midno%10)as nvarchar(10))+",t"+cast((@midno%10) as nvarchar(10))+")
+			select '9','"+@bccno+"',datea,"+cast(@midno/10 as nvarchar(10))+",'"+@mechno+"',mount from #tmpa 
+			where mechno='"+@mechno+"' and bccno='"+@bccno+"'"
+			execute sp_executesql @cmd
+			
+	
+			fetch next from mechno_table
+			into @midno,@mechno
 		end
-		if(@t_bccno!=@bccno)
-		begin 
-			--增加小計的欄位
-			insert into #tmp (gno,bccno,bccname,stkmount,price)
-			values('1',@bccno,@bccname,@stkmount,@price)
-		end
-		
-		set @t_bccno=@bccno
-		set @cmd = 'update #tmp set '+@field_mount+'=@mount where bccno=@bccno and datea=@datea'
-		EXECUTE sp_executesql @cmd,@params=N'@mount int,@bccno nvarchar(20),@datea nvarchar(10)',@mount=@mount,@bccno=@bccno,@datea=@datea
+		close mechno_table
+		deallocate mechno_table
+		------------------------------------------------
+		fetch next from bccno_table
+		into @bccno
 	end
-fetch next from cursor_table
-into @bccno,@bccname,@stkmount,@price,@datea,@mount,@mech
-end
-
-close cursor_table
-deallocate cursor_table
-
-declare @column nvarchar(max)
-declare @columns nvarchar(max)
-declare @columns2 nvarchar(max)
-
---更新小計與合計內容
-set @columns = (select 'mount'+CONVERT(nvarchar(3),n)+'=(select sum(mount'+CONVERT(nvarchar(3),n)+') from #tmp where gno=0 and bccno=@bccno),' from @listmech FOR XML PATH(''))
-set @columns2 = (select 'isnull(mount'+CONVERT(nvarchar(3),n)+',0)+' from @listmech FOR XML PATH(''))
-declare bcc_table cursor for
-select gno,bccno from #tmp
-open bcc_table
-fetch next from bcc_table
-into @gno,@bccno
-while(@@FETCH_STATUS <> -1)
-begin
-	if(@gno=1)
-	Begin
-		set @cmd = 'update #tmp set '+left(@columns,len(@columns)-1)+' where current of bcc_table'
-		EXECUTE sp_executesql @cmd,@params=N'@bccno nvarchar(20)',@bccno=@bccno
-	End
+	close bccno_table
+	deallocate bccno_table
 	
-	set @cmd = 'update #tmp set total='+left(@columns2,len(@columns2)-1)+' where current of bcc_table'
-	EXECUTE sp_executesql @cmd
 	
-	fetch next from bcc_table
-	into @gno,@bccno
-
-end
-close bcc_table
-deallocate bcc_table
-
-
---將全部的機台資料寫入到一個欄位(mount)中
-set @columns = (select 'CONVERT(nvarchar(20),isnull(mount'+CONVERT(nvarchar(3),n)+',0))+'+'''      '''+'+' from @listmech FOR XML PATH(''))
-set @columns2 = (select 'isnull(mount'+CONVERT(nvarchar(3),n)+',0)+' from @listmech FOR XML PATH(''))
-create table #result(
-	gno nvarchar(1),
-	bccno nvarchar(20),
-	bccname nvarchar(50),
-	stkmount decimal (10,2),
-	price decimal (14,2),
-	datea nvarchar(10),
-	mount nvarchar(max),
-	total decimal (14,2),
-	columns nvarchar(max)
-)
-set @column =(select mech+'<span></span>' from @listmech FOR XML PATH(''))
-set @cmd='insert into #result select gno,bccno,bccname,stkmount,price,datea,'+left(@columns,len(@columns)-1)+','+left(@columns2,len(@columns2)-1)+','''+@column+''''
-set @cmd=@cmd+' from #tmp order by bccno,gno,datea'
-
-EXECUTE sp_executesql @cmd
-
-
---**************************************************************************************----
-
---固定機台用這一個，每增加一個欄位會多一個mount(mount1,mount2,mount3,.......)
---固定機台是指EXCEL是固定的
---select * from #tmp order by bccno,gno,datea
-
---要變動機台使用這一個，機台欄位用mount即可
---變動機台是指EXCEL是用一個欄位來放入所有變動機台的資料
-select * from #result
-
---刪除暫存使用的資料表
-IF OBJECT_ID('tempdb..#tmp')is not null
-BEGIN
-       drop table #tmp
-END
-IF OBJECT_ID('tempdb..#result')is not null
-BEGIN
-       drop table #result
-END;
+	insert #tmp (tgno,mt,bccno,datea,m0,m1,m2,m3,m4,m5,m6,m7,m8,m9,t0,t1,t2,t3,t4,t5,t6,t7,t8,t9)
+	select '1',mt,bccno,datea,MAX(m0),MAX(m1),MAX(m2),MAX(m3),MAX(m4),MAX(m5),MAX(m6),MAX(m7),MAX(m8),MAX(m9)
+	,SUM(t0),SUM(t1),SUM(t2),SUM(t3),SUM(t4),SUM(t5),SUM(t6),SUM(t7),SUM(t8),SUM(t9)
+	from #tmp group by mt,bccno,datea
+	
+	insert #tmp (tgno,mt,bccno,m0,m1,m2,m3,m4,m5,m6,m7,m8,m9)
+	select '0',mt,bccno,MAX(m0),MAX(m1),MAX(m2),MAX(m3),MAX(m4),MAX(m5),MAX(m6),MAX(m7),MAX(m8),MAX(m9)
+	from #tmp group by mt,bccno
+	
+	insert #tmp (tgno,bccno,mt,t0,t1,t2,t3,t4,t5,t6,t7,t8,t9)
+	select '2',bccno,mt 
+	,SUM(t0),SUM(t1),SUM(t2),SUM(t3),SUM(t4),SUM(t5),SUM(t6),SUM(t7),SUM(t8),SUM(t9)
+	from #tmp where tgno='1' group by bccno,mt
+	
+	update #tmp
+	set total=isnull(t0,0)+isnull(t1,0)+isnull(t2,0)+isnull(t3,0)+isnull(t4,0)+isnull(t5,0)
+	+isnull(t6,0)+isnull(t7,0)+isnull(t8,0)+isnull(t9,0)
+	
+	update a
+	set m0=(select mech from mech where a.m0=noa)
+	,m1=(select mech from mech where a.m1=noa)
+	,m2=(select mech from mech where a.m2=noa)
+	,m3=(select mech from mech where a.m3=noa)
+	,m4=(select mech from mech where a.m4=noa)
+	,m5=(select mech from mech where a.m5=noa)
+	,m6=(select mech from mech where a.m6=noa)
+	,m7=(select mech from mech where a.m7=noa)
+	,m8=(select mech from mech where a.m8=noa)
+	,m9=(select mech from mech where a.m9=noa)	
+	from #tmp a	where tgno='0'
+	
+	select bccno,mt,datea
+	,m0,m1,m2,m3,m4,m5,m6,m7,m8,m9
+	,dbo.getComma(t0,[1]) t0
+	,dbo.getComma(t1,[1]) t1
+	,dbo.getComma(t2,[1]) t2
+	,dbo.getComma(t3,[1]) t3
+	,dbo.getComma(t4,[1]) t4
+	,dbo.getComma(t5,[1]) t5
+	,dbo.getComma(t6,[1]) t6
+	,dbo.getComma(t7,[1]) t7
+	,dbo.getComma(t8,[1]) t8
+	,dbo.getComma(t9,[1]) t9
+	,dbo.getComma(a.total,[1]) total
+	,dbo.getComma(isnull((select sum(mount) from stkbcc(@t_edate,'','') where bccno=a.bccno),0),[1]) s1
+	,dbo.getComma(isnull((select case when sum(mount) =0 then 0 else sum(mount*price)/sum(mount) end from stkbcc(@t_edate,'','') where bccno=a.bccno),0),[2]) p1
+	,case when a.tgno='1' then '0' when a.tgno='0' then '1' else tgno end gno
+	,b.product  bccname from #tmp a 
+	left join bcc b on a.bccno=b.noa 
+	where tgno<'9' 
+	order by bccno,mt,tgno
+	
+	IF OBJECT_ID('tempdb..#tmpa')is not null
+	BEGIN
+		   drop table #tmpa
+	END
+	
+	IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		   drop table #tmp
+	END
+;

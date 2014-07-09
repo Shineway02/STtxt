@@ -1,0 +1,477 @@
+z_bccstc:--z_bccstc
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_bmechno nvarchar(20)
+	declare @t_emechno nvarchar(20)
+	declare @t_store nvarchar(20)
+	set @t_bdate = case when '#non'=[3] then '' else [3] end
+	set @t_edate = case when '#non'=[4] then char(255) else [4] end
+	set @t_bbccno = case when '#non'=[5] then '' else [5] end
+	set @t_ebccno = case when '#non'=[6] then char(255) else [6] end
+	set @t_bsssno = case when '#non'=[7] then '' else [7] end
+	set @t_esssno = case when '#non'=[8] then char(255) else [8] end
+	set @t_bmechno = case when '#non'=[9] then '' else [9] end
+	set @t_emechno = case when '#non'=[10] then char(255) else [10] end
+	set @t_store = case when '#non'=[13] then '' else [13] end
+	--*****************************************************************************************	
+	declare @result table(
+		gno nvarchar(1),
+		mechno nvarchar(20),
+		mech nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		sno nvarchar(20),
+		sname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(50),
+		noq nvarchar(30), 
+		mount float,
+		bkbcc float,
+		orgbcc float,
+		price float,
+		total float,
+		memo nvarchar (MAX),
+		storeno nvarchar(50),
+		store nvarchar(50)
+	)
+	
+	insert into @result
+	SELECT '0' gno,a.mechno,a.mech,b.bccno,b.bccname,a.sno,a.sname,a.datea,b.noa,b.noq
+	,b.mount,b.bkbcc,b.mount-b.bkbcc orgbcc,0,0
+	,b.memo,a.storeno,d.store 
+	from  bccout a left join bccouts b on a.noa=b.noa left join bcc c on b.bccno=c.noa
+	left join store d on b.storeno = d.noa
+	where (isnull(a.datea,'') between @t_bdate and @t_edate) 
+	and (isnull(b.bccno,'') between @t_bbccno and @t_ebccno) 
+	and (isnull(a.sno,'') between @t_bsssno and @t_esssno) 
+	and (isnull(a.mechno,'') between @t_bmechno and @t_emechno)  
+	and (len(@t_store) = 0 or isnull(a.storeno,'') = @t_store)
+	order by b.bccno
+	
+	--取得當時的領出的平均單價
+	declare @noa nvarchar(50)
+	declare @noq nvarchar(20)
+	declare @datea nvarchar(10)
+	declare @predate nvarchar(10)
+	declare @storeno nvarchar(50)
+	declare @bccno nvarchar(50)
+	declare @t_total float
+	declare @t_mount float
+
+	declare cursor_table cursor for
+	select noa,noq,datea,storeno,bccno from @result 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@noq,@datea,@storeno,@bccno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		--取前一天
+		set @predate=cast(cast(left(@datea,3) as int )+1911 as nvarchar(10))+'/'+right(@datea,5)
+		set @predate=convert(varchar(10),dateadd(day,-1,@predate),120)
+		set @predate=cast(cast(left(@predate,4) as int)-1911 as nvarchar(10))+'/'+left(right(@predate,5),2)+'/'+right(@predate,2)
+		
+		if((select COUNT(*) from bccin a left join bccins b on a.noa=b.noa where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea)>0)
+		begin
+			select @t_total=b.total,@t_mount=b.mount from bccin a left join bccins b on a.noa=b.noa 
+			where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea
+			
+			select @t_total=@t_total+(price*mount)
+			,@t_mount=@t_mount+mount
+			from stkbcc(@predate,@storeno,@bccno)
+			
+			update @result
+			set price=(case when @t_mount=0 then 0 else round(@t_total/@t_mount,4) end)
+			where noa=@noa and noq=@noq
+		end
+		else
+		begin
+			update @result
+			set price=(select price from stkbcc(@predate,@storeno,@bccno))
+			where noa=@noa and noq=@noq
+		end
+		
+		fetch next from cursor_table
+		into @noa,@noq,@datea,@storeno,@bccno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @result set total=orgbcc*price
+
+	insert into @result(gno,mechno,mount,bkbcc,orgbcc,total)
+	select '1',mechno,sum(mount),sum(bkbcc),sum(orgbcc),sum(total) from @result 
+	group by mechno 
+
+	select * 
+	,dbo.getComma(mount,[1])m1
+	,dbo.getComma(orgbcc,[1])m2
+	,dbo.getComma(bkbcc,[1])m3
+	,dbo.getComma(price,[2])p1
+	,dbo.getComma(total,0)t1
+	from @result 
+	order by mechno,gno,datea,sno,bccno;
+
+--*********************************************************************************************
+z_bccstb:--z_bccstb
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_bmechno nvarchar(20)
+	declare @t_emechno nvarchar(20)
+	declare @t_store nvarchar(20)
+	set @t_bdate = case when '#non'=[3] then '' else [3] end
+	set @t_edate = case when '#non'=[4] then char(255) else [4] end
+	set @t_bbccno = case when '#non'=[5] then '' else [5] end
+	set @t_ebccno = case when '#non'=[6] then char(255) else [6] end
+	set @t_bsssno = case when '#non'=[7] then '' else [7] end
+	set @t_esssno = case when '#non'=[8] then char(255) else [8] end
+	set @t_bmechno = case when '#non'=[9] then '' else [9] end
+	set @t_emechno = case when '#non'=[10] then char(255) else [10] end
+	set @t_store = case when '#non'=[13] then '' else [13] end
+	--*****************************************************************************************	
+	declare @result table(
+		gno nvarchar(1),
+		mechno nvarchar(20),
+		mech nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		sno nvarchar(20),
+		sname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(50),
+		noq nvarchar(30), 
+		mount float,
+		bkbcc float,
+		orgbcc float,
+		price float,
+		total float,
+		memo nvarchar (MAX),
+		storeno nvarchar(50),
+		store nvarchar(50)
+	)
+	
+	insert into @result
+	SELECT '0' gno,a.mechno,a.mech,b.bccno,b.bccname,a.sno,a.sname,a.datea,b.noa,b.noq
+	,b.mount,b.bkbcc,b.mount-b.bkbcc orgbcc,0,0
+	,b.memo,a.storeno,d.store 
+	from  bccout a left join bccouts b on a.noa=b.noa left join bcc c on b.bccno=c.noa
+	left join store d on b.storeno = d.noa
+	where (isnull(a.datea,'') between @t_bdate and @t_edate) 
+	and (isnull(b.bccno,'') between @t_bbccno and @t_ebccno) 
+	and (isnull(a.sno,'') between @t_bsssno and @t_esssno) 
+	and (isnull(a.mechno,'') between @t_bmechno and @t_emechno)  
+	and (len(@t_store) = 0 or isnull(a.storeno,'') = @t_store)
+	order by b.bccno
+	
+	--取得當時的領出的平均單價
+	declare @noa nvarchar(50)
+	declare @noq nvarchar(20)
+	declare @datea nvarchar(10)
+	declare @predate nvarchar(10)
+	declare @storeno nvarchar(50)
+	declare @bccno nvarchar(50)
+	declare @t_total float
+	declare @t_mount float
+
+	declare cursor_table cursor for
+	select noa,noq,datea,storeno,bccno from @result 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@noq,@datea,@storeno,@bccno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		--取前一天
+		set @predate=cast(cast(left(@datea,3) as int )+1911 as nvarchar(10))+'/'+right(@datea,5)
+		set @predate=convert(varchar(10),dateadd(day,-1,@predate),120)
+		set @predate=cast(cast(left(@predate,4) as int)-1911 as nvarchar(10))+'/'+left(right(@predate,5),2)+'/'+right(@predate,2)
+		
+		if((select COUNT(*) from bccin a left join bccins b on a.noa=b.noa where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea)>0)
+		begin
+			select @t_total=b.total,@t_mount=b.mount from bccin a left join bccins b on a.noa=b.noa 
+			where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea
+			
+			select @t_total=@t_total+(price*mount)
+			,@t_mount=@t_mount+mount
+			from stkbcc(@predate,@storeno,@bccno)
+			
+			update @result
+			set price=(case when @t_mount=0 then 0 else round(@t_total/@t_mount,4) end)
+			where noa=@noa and noq=@noq
+		end
+		else
+		begin
+			update @result
+			set price=(select price from stkbcc(@predate,@storeno,@bccno))
+			where noa=@noa and noq=@noq
+		end
+		
+		fetch next from cursor_table
+		into @noa,@noq,@datea,@storeno,@bccno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @result set total=orgbcc*price
+
+	insert into @result(gno,sno,mount,bkbcc,orgbcc,total)
+	select '1',sno,sum(mount),sum(bkbcc),sum(orgbcc),sum(total) from @result 
+	group by sno 
+
+	select * 
+	,dbo.getComma(mount,[1])m1
+	,dbo.getComma(orgbcc,[1])m2
+	,dbo.getComma(bkbcc,[1])m3
+	,dbo.getComma(price,[2])p1
+	,dbo.getComma(total,0)t1
+	from @result 
+	order by sno,gno,datea,mechno,bccno;
+
+--****************************************************************************************************
+z_bccsta:--z_bccsta
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_bmechno nvarchar(20)
+	declare @t_emechno nvarchar(20)
+	declare @t_store nvarchar(20)
+	set @t_bdate = case when '#non'=[3] then '' else [3] end
+	set @t_edate = case when '#non'=[4] then char(255) else [4] end
+	set @t_bbccno = case when '#non'=[5] then '' else [5] end
+	set @t_ebccno = case when '#non'=[6] then char(255) else [6] end
+	set @t_bsssno = case when '#non'=[7] then '' else [7] end
+	set @t_esssno = case when '#non'=[8] then char(255) else [8] end
+	set @t_bmechno = case when '#non'=[9] then '' else [9] end
+	set @t_emechno = case when '#non'=[10] then char(255) else [10] end
+	set @t_store = case when '#non'=[13] then '' else [13] end
+	--*****************************************************************************************	
+	declare @result table(
+		gno nvarchar(1),
+		mechno nvarchar(20),
+		mech nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		sno nvarchar(20),
+		sname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(50),
+		noq nvarchar(30), 
+		mount float,
+		bkbcc float,
+		orgbcc float,
+		price float,
+		total float,
+		memo nvarchar (MAX),
+		storeno nvarchar(50),
+		store nvarchar(50)
+	)
+	
+	insert into @result
+	SELECT '0' gno,a.mechno,a.mech,b.bccno,b.bccname,a.sno,a.sname,a.datea,b.noa,b.noq
+	,b.mount,b.bkbcc,b.mount-b.bkbcc orgbcc,0,0
+	,b.memo,a.storeno,d.store 
+	from  bccout a left join bccouts b on a.noa=b.noa left join bcc c on b.bccno=c.noa
+	left join store d on b.storeno = d.noa
+	where (isnull(a.datea,'') between @t_bdate and @t_edate) 
+	and (isnull(b.bccno,'') between @t_bbccno and @t_ebccno) 
+	and (isnull(a.sno,'') between @t_bsssno and @t_esssno) 
+	and (isnull(a.mechno,'') between @t_bmechno and @t_emechno)  
+	and (len(@t_store) = 0 or isnull(a.storeno,'') = @t_store)
+	order by b.bccno
+	
+	--取得當時的領出的平均單價
+	declare @noa nvarchar(50)
+	declare @noq nvarchar(20)
+	declare @datea nvarchar(10)
+	declare @predate nvarchar(10)
+	declare @storeno nvarchar(50)
+	declare @bccno nvarchar(50)
+	declare @t_total float
+	declare @t_mount float
+
+	declare cursor_table cursor for
+	select noa,noq,datea,storeno,bccno from @result 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@noq,@datea,@storeno,@bccno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		--取前一天
+		set @predate=cast(cast(left(@datea,3) as int )+1911 as nvarchar(10))+'/'+right(@datea,5)
+		set @predate=convert(varchar(10),dateadd(day,-1,@predate),120)
+		set @predate=cast(cast(left(@predate,4) as int)-1911 as nvarchar(10))+'/'+left(right(@predate,5),2)+'/'+right(@predate,2)
+		
+		if((select COUNT(*) from bccin a left join bccins b on a.noa=b.noa where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea)>0)
+		begin
+			select @t_total=b.total,@t_mount=b.mount from bccin a left join bccins b on a.noa=b.noa 
+			where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea
+			
+			select @t_total=@t_total+(price*mount)
+			,@t_mount=@t_mount+mount
+			from stkbcc(@predate,@storeno,@bccno)
+			
+			update @result
+			set price=(case when @t_mount=0 then 0 else round(@t_total/@t_mount,4) end)
+			where noa=@noa and noq=@noq
+		end
+		else
+		begin
+			update @result
+			set price=(select price from stkbcc(@predate,@storeno,@bccno))
+			where noa=@noa and noq=@noq
+		end
+		
+		fetch next from cursor_table
+		into @noa,@noq,@datea,@storeno,@bccno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @result set total=orgbcc*price
+
+	insert into @result(gno,bccno,mount,bkbcc,orgbcc,total)
+	select '1',bccno,sum(mount),sum(bkbcc),sum(orgbcc),sum(total) from @result 
+	group by bccno 
+
+	select * 
+	,dbo.getComma(mount,[1])m1
+	,dbo.getComma(orgbcc,[1])m2
+	,dbo.getComma(bkbcc,[1])m3
+	,dbo.getComma(price,[2])p1
+	,dbo.getComma(total,0)t1
+	from @result 
+	order by bccno,gno,datea,mechno,sno;
+-----------------------------------------------------------------------------------------
+z_bccstd:--z_bccstd
+declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_bmechno nvarchar(20)
+	declare @t_emechno nvarchar(20)
+	declare @t_bpartno nvarchar(20)
+	declare @t_epartno nvarchar(20)
+	declare @t_store nvarchar(20)
+	
+	set @t_bdate = case when '#non'=[3] then '' else [3] end
+	set @t_edate = case when '#non'=[4] then char(255) else [4] end
+	set @t_bbccno = case when '#non'=[5] then '' else [5] end
+	set @t_ebccno = case when '#non'=[6] then char(255) else [6] end
+	set @t_bsssno = case when '#non'=[7] then '' else [7] end
+	set @t_esssno = case when '#non'=[8] then char(255) else [8] end
+	set @t_bmechno = case when '#non'=[9] then '' else [9] end
+	set @t_emechno = case when '#non'=[10] then char(255) else [10] end
+	set @t_bpartno = case when '#non'=[11] then '' else [11] end
+	set @t_epartno = case when '#non'=[12] then char(255) else [12] end
+	set @t_store = case when '#non'=[13] then '' else [13] end
+	--*****************************************************************************************	
+	declare @result table(
+		gno nvarchar(1),
+		mechno nvarchar(20),
+		mech nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		sno nvarchar(20),
+		sname nvarchar(50),
+		pno nvarchar(20),
+		part nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(50),
+		noq nvarchar(30), 
+		mount float,
+		bkbcc float,
+		orgbcc float,
+		price float,
+		total float,
+		memo nvarchar (MAX),
+		storeno nvarchar(50),
+		store nvarchar(50)
+	)
+	
+	insert into @result
+	SELECT '0' gno,a.mechno,a.mech,b.bccno,b.bccname,a.sno,a.sname,a.partno,a.part,a.datea,b.noa,b.noq
+	,b.mount,b.bkbcc,b.mount-b.bkbcc orgbcc,0,0
+	,b.memo,a.storeno,d.store 
+	from  bccout a left join bccouts b on a.noa=b.noa left join bcc c on b.bccno=c.noa
+	left join store d on b.storeno = d.noa
+	where (isnull(a.datea,'') between @t_bdate and @t_edate) 
+	and (isnull(b.bccno,'') between @t_bbccno and @t_ebccno) 
+	and (isnull(a.sno,'') between @t_bsssno and @t_esssno) 
+	and (isnull(a.mechno,'') between @t_bmechno and @t_emechno)  
+	and (isnull(a.partno,'') between @t_bpartno and @t_epartno) 
+	and (len(@t_store) = 0 or isnull(a.storeno,'') = @t_store)
+	order by b.bccno
+	
+	--取得當時的領出的平均單價
+	declare @noa nvarchar(50)
+	declare @noq nvarchar(20)
+	declare @datea nvarchar(10)
+	declare @predate nvarchar(10)
+	declare @storeno nvarchar(50)
+	declare @bccno nvarchar(50)
+	declare @t_total float
+	declare @t_mount float
+
+	declare cursor_table cursor for
+	select noa,noq,datea,storeno,bccno from @result 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@noq,@datea,@storeno,@bccno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		--取前一天
+		set @predate=cast(cast(left(@datea,3) as int )+1911 as nvarchar(10))+'/'+right(@datea,5)
+		set @predate=convert(varchar(10),dateadd(day,-1,@predate),120)
+		set @predate=cast(cast(left(@predate,4) as int)-1911 as nvarchar(10))+'/'+left(right(@predate,5),2)+'/'+right(@predate,2)
+		
+		if((select COUNT(*) from bccin a left join bccins b on a.noa=b.noa where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea)>0)
+		begin
+			select @t_total=b.total,@t_mount=b.mount from bccin a left join bccins b on a.noa=b.noa 
+			where a.storeno=@storeno and b.bccno=@bccno and a.datea=@datea
+			
+			select @t_total=@t_total+(price*mount)
+			,@t_mount=@t_mount+mount
+			from stkbcc(@predate,@storeno,@bccno)
+			
+			update @result
+			set price=(case when @t_mount=0 then 0 else round(@t_total/@t_mount,4) end)
+			where noa=@noa and noq=@noq
+		end
+		else
+		begin
+			update @result
+			set price=(select price from stkbcc(@predate,@storeno,@bccno))
+			where noa=@noa and noq=@noq
+		end
+		
+		fetch next from cursor_table
+		into @noa,@noq,@datea,@storeno,@bccno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @result set total=orgbcc*price
+
+	insert into @result(gno,pno,mount,bkbcc,orgbcc,total)
+	select '1',pno,sum(mount),sum(bkbcc),sum(orgbcc),sum(total) from @result 
+	group by pno 
+
+	select * 
+	,dbo.getComma(mount,[1])m1
+	,dbo.getComma(orgbcc,[1])m2
+	,dbo.getComma(bkbcc,[1])m3
+	,dbo.getComma(price,[2])p1
+	,dbo.getComma(total,0)t1
+	from @result 
+	order by pno,gno,datea,mechno,bccno,sno;
