@@ -415,6 +415,8 @@ and a.noa+'-'+b.noa not in (select bccno+'-'+storeno from @t_result)
 insert @tmp(gno,storeno,datea,bccno,bccname,inmount,outmount,stkmount,usename,memo,total) 
 select '0',storeno,'庫存',bccno,'',0,0,0,'','',0 
 from bccins where bccno not in(select bccno from @tmp) 
+and bccno between @t_bbccno and @t_ebccno
+and (len(@t_storeno)=0 or storeno=@t_storeno) 
 and datea<@t_bdate group by storeno,bccno
 
 update t_tmp
@@ -433,7 +435,6 @@ from @t_result a left join bcc b on a.bccno=b.noa
 
 update @tmp
 set price=total/nullif(stkmount,0)
-
 
 --插入進出貨明細 
 insert into @tmp 
@@ -462,11 +463,12 @@ declare @result table(
 	memo nvarchar (200), 
 	total float,
 	price float,
-	sp nvarchar (1) 
+	sp nvarchar (1),
+	idno2 int
 ) 
 
 insert into @result 
-select *,'2' from @tmp order by storeno,bccno,datea 
+select *,'2',0 from @tmp order by storeno,bccno,datea 
 
 --更新庫存量 
 declare @idno int
@@ -508,19 +510,22 @@ close bcc_table
 deallocate bcc_table 
 
 insert into @result 
-select a.storeno,'1',null,a.bccno,b.product,null,null,null,null,null,0,null,'0' from @result a left join bcc b on a.bccno=b.noa group by a.storeno,a.bccno,b.product 
+select a.storeno,'1',null,a.bccno,b.product,null,null,null,null,null,0,null,'0',0 from @result a left join bcc b on a.bccno=b.noa group by a.storeno,a.bccno,b.product 
 insert into @result 
-select storeno,'0',null,bccno,null,null,null,null,null,null,0,null,'3' from @result group by storeno,bccno 
+select storeno,'0',null,bccno,null,null,null,null,null,null,0,null,'3',0 from @result group by storeno,bccno 
 insert into @result 
-select storeno,'0',null,bccno,null,null,null,null,null,null,0,null,'3' from @result group by storeno,bccno 
+select storeno,'0',null,bccno,null,null,null,null,null,null,0,null,'3',0 from @result group by storeno,bccno 
 update @result 
 set bccname=null,sp='1',price=case when stkmount=0 then 0 else price end where datea='庫存'
 
 -------------不要讓同一個資材拆成兩頁
 declare @space bit	
+declare	@sp nvarchar(10)
 declare @count int
+declare @count2 int
 declare	@t_bccno2 nvarchar(50)
 declare	@t_bccno33 nvarchar(50)
+declare	@bccname nvarchar(120)
 declare	@gno nvarchar(1)
 declare	@t_gno nvarchar(1)
 set @space=1
@@ -529,32 +534,56 @@ set @t_bccno2='YYYY'
 set @x_storeno='ZZZZZ'
 
 	set @count=0
+	set @count2=0
 	declare bcc_table cursor for 
-	select storeno,gno,bccno from @result order by storeno,bccno,gno desc ,sp
+	select storeno,gno,bccno,idno,bccname,sp from @result order by storeno,bccno,gno desc ,sp
 	open bcc_table 
 	fetch next from bcc_table 
-	into @storeno,@gno,@bccno
+	into @storeno,@gno,@bccno,@idno,@bccname,@sp
 	while(@@FETCH_STATUS <> -1) 
 	begin
+		set @count2=@count2+1
 		if (@x_storeno='ZZZZZ')
 			set @x_storeno=@storeno
 		set @count=@count+1
+		
 		if(@gno='1')
 			set @count=@count+1
-		if(@count>39 or @storeno!=@x_storeno)
+			
+		update @result
+		set idno2=@count2
+		where idno=@idno
+		
+		if(@count>39 or @storeno!=@x_storeno)and @sp!='3'
 		begin
+			set @count2=@count2+1
 			insert into @result 
-			select @storeno,'2',null,@bccno,null,null,null,null,null,null,null,null,'1'
+			select @storeno,'2',null,@bccno,null,null,null,null,null,null,null,null,'1',@count2-case when @sp='1' then 2 else 1 end
+			
+			if(@count>39 and @sp='2')
+			begin
+				insert into @result 
+				select @storeno,'1',null,@bccno,@bccname,null,null,null,null,null,null,null,'0',@count2-1
+			end
+			
 			set @count=0
 		end
+		else
+		begin
+			if(@sp='3' and @count>39)
+				set @count=38
+		end
+		
 		if (@x_storeno!=@storeno)
 			set @x_storeno=@storeno
 		fetch next from bcc_table 
-		into @storeno,@gno,@bccno
+		into @storeno,@gno,@bccno,@idno,@bccname,@sp
 	end 
 	close bcc_table 
 	deallocate bcc_table 
 
+insert into @result 
+select @storeno,'2',null,@bccno,null,null,null,null,null,null,null,null,'1',@count2+1
 ------------------- 
 select b.store,gno,a.datea,a.bccno,a.bccname,a.usename,a.memo, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.inmount),1)),4,12)) inmount, 
@@ -563,7 +592,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.stkmount),1)),4,1
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.price),1)),4,12)) price
 from @result a left join store b on a.storeno=b.noa 
 left join bcc c on a.bccno=c.noa 
-order by a.storeno,a.bccno,gno desc,sp;
+order by a.storeno,a.bccno,idno2,gno desc,sp;
 ------------------------------------------------------------------------------------------------------------------------------------------------	
 --早期程式(跑比較慢)
 --declare @tmp table( 
