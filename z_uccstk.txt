@@ -161,9 +161,9 @@ z_uccstk01:--z_uccstk01
 		set @cmd =
 		" select 1,'rc2s',@accy,a.noa,a.noq,b.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
-		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
-		" ,isnull(a.price,0)"+
-		" ,round((isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end)*isnull(a.[weight],0),0)"+
+		" ,case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end + case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
+		" ,case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end"+
+		" ,round((case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end)*isnull(a.[weight],0),0)"+
 		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" ,a.productno"+
@@ -194,9 +194,9 @@ z_uccstk01:--z_uccstk01
 		set @cmd =
 		" select 1,'inas',@accy,a.noa,a.noq,b.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
-		" ,isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
-		" ,isnull(a.price,0)"+
-		" ,round((isnull(a.price,0)+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end)*isnull(a.[weight],0),0)"+
+		" ,case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
+		" ,case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end"+
+		" ,round((case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end)*isnull(a.[weight],0),0)"+
 		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" ,a.productno"+
