@@ -165,7 +165,7 @@ select '9',custno,SUM(money),0,0 from (
 	--vcc 前期未收-前期已收月結
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(kind,4)!='健勞勞退')
+	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
 	 --vcca 前期全部稅額-前期已收稅額
 	union all
@@ -190,7 +190,7 @@ select '9',custno,0,SUM(total),0 from (
 	--vcc =本期應收金額
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0)) total
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(kind,4)!='健勞勞退')
+	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
 	--vcca =本期應收稅額
 	union all
@@ -215,7 +215,7 @@ select '9',custno,0,0,SUM(payed) from (
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*payed,0))
 	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6) between @t_bsmon and @t_esmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) payed
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(kind,4)!='健勞勞退')
+	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
 	--vcca 本期稅額已付
 	union all
@@ -319,7 +319,7 @@ insert into @tmp
 			unpay
 			,partno,part
 			from view_vcc a
-			where ((case when len(mon)=0 then left(datea,6) else mon end ) between @t_bsmon and @t_esmon) and  (left(kind,4)!='健勞勞退') group by custno,cno,partno,part
+			where ((case when len(mon)=0 then left(datea,6) else mon end ) between @t_bsmon and @t_esmon) and  (left(isnull(kind,''),4)!='健勞勞退') group by custno,cno,partno,part
 			union all
 			--cara 監理部
 			select a.custno,a.cno,a.money,a.total,a.payed,a.unpay,'07' partno,'監理部' part from(
@@ -345,7 +345,7 @@ insert into @tmp
 insert into @tmp
 	--vcc
 	select '2'gno,custno,'',cno,'',null money,noa,'請款',total,payed,unpay,partno,part from view_vcc a
-	where ((case when len(mon)=0 then left(datea,6) else mon end ) between @t_bsmon and @t_esmon) and  (left(kind,4)!='健勞勞退')
+	where ((case when len(mon)=0 then left(datea,6) else mon end ) between @t_bsmon and @t_esmon) and  (left(isnull(kind,''),4)!='健勞勞退')
 	and (a.cno between @t_bscno and @t_escno) and (a.custno between @t_bcustno and @t_ecustno)and (LEN(@t_xpart) = 0 or @t_xpart = part)
 
 insert into @tmp
@@ -1581,7 +1581,7 @@ select '9',custno,salesno,SUM(money),0,0 from (
 	--vcc
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(kind,4)!='健勞勞退')
+	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
 	and (@t_paytype='全部' or aa.paytype=@t_paytype)
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
 	--vcca
@@ -1610,7 +1610,7 @@ select '9',custno,salesno,0,SUM(total),0 from (
 	--vcc
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0)) total
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(kind,4)!='健勞勞退')
+	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
 	and (@t_paytype='全部' or aa.paytype=@t_paytype)
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
 	--vcca
@@ -1640,7 +1640,7 @@ select '9',custno,salesno,0,0,SUM(payed) from (
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*payed,0))
 	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6) between @t_bsmon and @t_esmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) payed
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(kind,4)!='健勞勞退')
+	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
 	and (@t_paytype='全部' or aa.paytype=@t_paytype)
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
 	--vcca
