@@ -225,9 +225,12 @@ z_ummst03:--z_ummst03
 			select '1','1',@custno
 			,case when a.typea='1' then '出' else '退' end
 			,a.datea,a.noa,b.productno,b.product,b.unit
-			,case when len(b.uno)>0 or len(b.style)>0 or b.dime!=0 then b.[weight] else null end
-			,case when len(b.uno)>0 or len(b.style)>0 or b.dime!=0 then b.mount  else null end
-			,case when len(b.uno)>0 or len(b.style)>0 or b.dime!=0 then b.price  else null end
+			--,case when len(b.uno)>0 or len(b.style)>0 or b.dime!=0 then b.[weight] else null end
+			--,case when len(b.uno)>0 or len(b.style)>0 or b.dime!=0 then b.mount  else null end
+			--,case when len(b.uno)>0 or len(b.style)>0 or b.dime!=0 then b.price  else null end
+			,b.weight
+			,b.mount
+			,b.price
 			,b.total
 			from view_vcc a
 			left join view_vccs b on a.noa=b.noa
