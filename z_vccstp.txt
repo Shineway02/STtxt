@@ -567,7 +567,9 @@ select
 	'&nbsp'+CHAR(59)+ordeno ordeno
 	,case when len(uno)>11 then '' else uno end uno,spec,
 	products,
-	csize,cast(mount as nvarchar)+'&nbsp'+CHAR(59) mount,
+	csize
+	,case when len(products)>=4 then products+'&nbsp'+CHAR(59)+csize else left(products+'　　　　',4)+'&nbsp'+CHAR(59)+csize end xxx
+	,cast(mount as nvarchar)+'&nbsp'+CHAR(59) mount,
 	round(weight,0) weight,
 	price,
 	case when trantype='自取' then '' else 'V' end aa,
