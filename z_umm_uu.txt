@@ -735,7 +735,8 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.pay),1)),4,30)) pay 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.unpay),1)),4,30)) unpay 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.total2),1)),4,30)) total2 
-	,pcount 
+	,pcount
+	,(select us.vccno from view_vcc v left join ummb u on v.cardeal=u.noa left join ummbs us on u.noa=us.noa and us.productno=a.productno where v.noa=a.noa and us.noq=a.noq) ummb
 from @result a left join cust b on a.custno=b.noa
  where (len(@t_zip)=0 or left(b.zip_comp,len(@t_zip))=@t_zip) and (len(@t_city)=0 or left(b.addr_comp,3)=@t_city)
 order by a.custno,a.gno,a.datea,a.noa,a.noq;
