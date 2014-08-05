@@ -1,0 +1,150 @@
+z_certi01:--z_certi01
+	SET QUOTED_IDENTIFIER OFF	
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[4] then '' else [4] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[5] then char(255) else [5] end
+	
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		noa nvarchar(20),
+		recno int,
+		custno nvarchar(20),
+		cust nvarchar(50),
+		nick nvarchar(20),
+		
+		uno nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(20),
+		dime float,
+		width float,
+		lengtha float,
+		size nvarchar(max),
+		typea nvarchar(20),
+		finish nvarchar(50),
+		heatno nvarchar(50),
+		spec nvarchar(50),
+		netweight float,
+		
+		c float,
+		si float,
+		mn float,
+		p float,
+		s float,
+		ni float,
+		cr float,
+		mo float,
+		n float,
+		cu float,
+		
+		ts float,
+		ys float,
+		el float,
+		hrb float,
+		hv float,
+		
+		memo nvarchar(max)
+	)
+	insert into @tmp(gno,pno,noa)
+	select '1','1',a.noa
+	from certi a
+	where (len(@t_noa)=0 or @t_noa = a.noa)
+	and a.datea between @t_bdate and @t_edate
+	and a.custno between @t_bcustno and @t_ecustno
+	
+	insert into @tmp(gno,pno,noa,recno,custno,cust,nick
+		,uno,productno,product
+		,dime,width,lengtha,size
+		,typea,finish,heatno,spec,netweight)
+	
+	select '2','2', a.noa,ROW_NUMBER()over(partition by a.noa order by b.noq),a.custno,a.cust,a.nick
+		,b.uno,b.productno,b.product
+		,b.dime,b.width,b.lengtha,b.size
+		,b.typea,b.finish,b.heatno,b.spec,b.netweight
+	from certi a
+	left join certis b on a.noa=b.noa
+	where (len(@t_noa)=0 or @t_noa = a.noa)
+	and a.datea between @t_bdate and @t_edate
+	and a.custno between @t_bcustno and @t_ecustno
+	
+	insert into @tmp(gno,pno,noa)
+	select '3','3',a.noa
+	from certi a
+	where (len(@t_noa)=0 or @t_noa = a.noa)
+	and a.datea between @t_bdate and @t_edate
+	and a.custno between @t_bcustno and @t_ecustno
+	
+	insert into @tmp(gno,pno,noa,recno,custno,cust,nick
+		,c,si,mn,p,s,ni,cr,mo,n,cu
+		,ts,ys,el,hrb,hv)
+	select '4','4',a.noa,ROW_NUMBER()over(partition by a.noa order by b.noq),a.custno,a.cust,a.nick
+		,b.c,b.si,b.mn,b.p,b.s,b.ni,b.cr,b.mo,b.n,b.cu
+		,b.ts,b.ys,b.el,b.hrb,b.hv
+	from certi a
+	left join certit b on a.noa=b.noa
+	where (len(@t_noa)=0 or @t_noa = a.noa)
+	and a.datea between @t_bdate and @t_edate
+	and a.custno between @t_bcustno and @t_ecustno
+	
+	insert into @tmp(gno,pno,noa)
+	select '5','5',a.noa
+	from certi a
+	where (len(@t_noa)=0 or @t_noa = a.noa)
+	and a.datea between @t_bdate and @t_edate
+	and a.custno between @t_bcustno and @t_ecustno
+	------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	declare @n int
+	declare @gno nvarchar(10)
+	declare @pno nvarchar(10)
+	
+	declare cursor_table cursor for
+	select noa,gno,pno,COUNT(1) n from @tmp where pno='2' or pno='4' group by noa,gno,pno
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@gno,@pno,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while @n%7 !=0
+		begin
+			insert into @tmp(gno,pno,noa)
+			values(@gno,@pno,@noa)
+			set @n=@n+1
+		end
+		
+		fetch next from cursor_table
+		into @noa,@gno,@pno,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
+	select recno rr
+		,product a01
+		,size a02
+		,typea a03
+		,finish a04
+		,netweight a05
+		,heatno a06
+		,uno a07
+		,spec a08
+		,c b01
+		,si b02
+		,mn b03
+		,p b04
+		,s b05
+		,ni b06
+		,cr b07
+		,mo b08
+		,n b09
+		,cu b10
+		,ts c01
+		,ys c02
+		,el c03
+		,hrb c04
+		,hv c05
+		,* 
+	from @tmp
+	order by pno,isnull(recno,999);
