@@ -31,6 +31,11 @@ declare @tmp table(
 		addh1 float,
 		addh2 float,
 		addm float,
+		addh461 float,
+		addh462 float,
+		add46m float,
+		addh00 float,
+		add0m float,
 		taxno float,
 		meals float,
 		total3 float,
@@ -46,13 +51,15 @@ declare @tmp table(
 		hplus2 float,
 		minus float,
 		total4 float,
-		total5 float
+		total5 float,
+		memo nvarchar(MAX)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.daymoney,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special,b.bo_oth,b.plus,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
-b.addmoney,b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.tax,b.tax5,
-b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5
+b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
+b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.tax,b.tax5,
+b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
@@ -63,8 +70,8 @@ begin
 	insert into @tmp
 	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
 	sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-	sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-	sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
+	sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
+	sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
 	from @tmp
 	group by partno,part
 end
@@ -72,14 +79,14 @@ end
 insert into @tmp
 select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
 sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
+sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
+sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
 from @tmp
 where gno='0'
 
 if(@t_order='部門')
 begin
-	select gno,partno,part,indate,sno,namea,
+	select gno,partno,part,indate,sno,namea,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -99,6 +106,11 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -120,7 +132,7 @@ begin
 end
 else
 begin
-	select gno,partno,part,indate,sno,namea,
+	select gno,partno,part,indate,sno,namea,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -140,6 +152,11 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -195,6 +212,11 @@ declare @tmp table(
 		addh1 float,
 		addh2 float,
 		addm float,
+		addh461 float,
+		addh462 float,
+		add46m float,
+		addh00 float,
+		add0m float,
 		taxno float,
 		meals float,
 		total3 float,
@@ -213,13 +235,15 @@ declare @tmp table(
 		jobno nvarchar(20),
 		job nvarchar(50),
 		plus float,
-		minus float
+		minus float,
+		memo nvarchar(MAX)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.money,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special,b.bo_oth,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
-b.addmoney,b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.hplus2,b.tax,b.tax5,
-b.welfare,b.ch_health,b.total4,b.total5,c.jobno,c.job,b.plus,b.minus
+b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
+b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.hplus2,b.tax,b.tax5,
+b.welfare,b.ch_health,b.total4,b.total5,c.jobno,c.job,b.plus,b.minus,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
@@ -230,8 +254,8 @@ begin
 	insert into @tmp
 	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(total1),
 	sum(chla1),sum(chla2),SUM(chhei),sum(miday),sum(mitotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-	sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
-	sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus)
+	sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
+	sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus),''
 	from @tmp
 	group by partno,part
 end
@@ -239,14 +263,14 @@ end
 insert into @tmp
 select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(total1),
 sum(chla1),sum(chla2),SUM(chhei),sum(miday),sum(mitotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus)
+sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
+sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus),''
 from @tmp
 where gno='0'
 
 if(@t_order='部門')
 begin
-	select gno,partno,part,indate,sno,namea,job,
+	select gno,partno,part,indate,sno,namea,job,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -265,6 +289,11 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),2,12)) addh1,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),2,12)) addh2,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -287,7 +316,7 @@ begin
 end
 else
 begin
-	select gno,partno,part,indate,sno,namea,job,
+	select gno,partno,part,indate,sno,namea,job,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -306,6 +335,11 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),2,12)) addh1,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),2,12)) addh2,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -387,13 +421,14 @@ declare @tmp table(
 		hplus2 float,
 		minus float,
 		total4 float,
-		total5 float
+		total5 float,
+		memo nvarchar(MAX)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.money,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special,b.bo_oth,b.plus,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_born,b.bo_night,b.bo_full,b.bo_duty,b.tax_other,b.total2,
 b.addh2_1,b.addh2_2,b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),b.tax_other2,b.meals,b.total3,
-b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.chgcash,b.tax,b.tax5,b.tax6,b.stay_tax,b.tax12,b.tax18,b.welfare,b.stay_money,b.ch_health,b.hplus2,b.minus,b.total4,b.total5
+b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.chgcash,b.tax,b.tax5,b.tax6,b.stay_tax,b.tax12,b.tax18,b.welfare,b.stay_money,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
@@ -404,7 +439,7 @@ begin
 	insert into @tmp
 	select '1',partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
 	sum(chla1),sum(chla2),sum(chhei),sum(miday),sum(mitotal),sum(bobo),sum(boni),sum(bofu),sum(bodu),sum(taxot),sum(total2),sum(addh1),sum(addh2),sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),
-	sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5) 
+	sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),'' 
 	from @tmp
 	group by partno,part
 end
@@ -412,13 +447,13 @@ end
 insert into @tmp
 select '2','ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
 sum(chla1),sum(chla2),sum(chhei),sum(miday),sum(mitotal),sum(bobo),sum(boni),sum(bofu),sum(bodu),sum(taxot),sum(total2),sum(addh1),sum(addh2),sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),
-sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
+sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
 from @tmp
 where gno='0'
 
 if(@t_order='部門')
 begin
-	select gno,partno,part,indate,sno,namea,
+	select gno,partno,part,indate,sno,namea,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -443,9 +478,9 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add46m,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh00,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add0m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -472,7 +507,7 @@ begin
 end
 else
 begin
-	select gno,partno,part,indate,sno,namea,
+	select gno,partno,part,indate,sno,namea,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -497,9 +532,9 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add46m,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh00,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) add0m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -612,7 +647,12 @@ declare @tmp table(
 		total2 int,
 		addh2_1 float,
 		addh2_2 float,
-		addmoney int,
+		addmoney float,
+		addh461 float,
+		addh462 float,
+		add46m float,
+		addh00 float,
+		add0m float,
 		tax_other2 int,
 		meals float,
 		total3 int,
@@ -633,7 +673,7 @@ declare @tmp table(
 insert into @tmp
 select '0' gno,b.sno,b.namea,c.indate,c.ft_date,b.daymoney,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special,
 b.bo_oth,b.total1,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
-b.addmoney,b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5,
+b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5,
 b.welfare,b.ch_health,b.total4,b.total5,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
@@ -663,6 +703,11 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2_1),1)),4,12)) addh2_1,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2_2),1)),4,12)) addh2_2,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addmoney),1)),4,12)) addmoney,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax_other2),1)),4,12)) tax_other2,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12))total3,
@@ -717,6 +762,11 @@ declare @tmp table(
 	addh2_1 float, 
 	addh2_2 float, 
 	addmoney int, 
+	addh461 float,
+	addh462 float,
+	add46m float,
+	addh00 float,
+	add0m float,
 	tax_other2 int, 
 	meals float,
 	total3 int, 
@@ -746,7 +796,8 @@ declare @tmp table(
 insert into @tmp 
 select '0' gno, a.noa,b.noq,b.sno,b.namea,c.indate,c.ft_date,b.money,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special, 
 b.bo_oth,b.total1,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2, 
-b.addmoney,b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5, 
+b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
+b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5, 
 b.welfare,b.ch_health,b.total4,b.total5,a.monkind,a.mon,isnull(b.minus,0),isnull(b.plus,0), 
 (select plusitem from (select sssno,STUFF((select ','+T4.item from salchg T2 left join salchgitem T4 on T2.plusitem=T4.noa where T2.sssno=T1.sssno and mon=@t_xmon FOR XML PATH('')),1,1,'')plusitem from salchg T1 where mon=@t_xmon group by sssno) T3 where b.sno=sssno), 
 (select minusitem from (select sssno,STUFF((select ','+T4.item from salchg T2 left join salchgitem T4 on T2.minusitem=T4.noa where T2.sssno=T1.sssno and mon=@t_xmon FOR XML PATH('')),1,1,'')minusitem from salchg T1 where mon=@t_xmon group by sssno) T3 where b.sno=sssno), 
@@ -780,6 +831,11 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2_1),1)),4,12)) ad21, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2_2),1)),4,12)) ad22, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addmoney),1)),4,12)) addm, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax_other2),1)),4,12)) taxt, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals, 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3, 
@@ -1678,6 +1734,7 @@ begin
 		insert into @list (recno,namea,list) values(11,'應稅其他','b.tax_other') 
 		insert into @list (recno,namea,list) values(12,'給付總額','b.total2') 
 		insert into @list (recno,namea,list) values(13,'加班費','b.addmoney') 
+		insert into @list (recno,namea,list) values(13,'假日加班費','ROUND((b.addh100*b.ostand),0)') 
 		insert into @list (recno,namea,list) values(14,'免稅其他','b.tax_other2') 
 		insert into @list (recno,namea,list) values(15,'伙食費','b.meals') 
 		insert into @list (recno,namea,list) values(16,'應領總額','b.total3') 
@@ -1708,6 +1765,7 @@ begin
 		insert into @list (recno,namea,list) values(10,'應稅其他','b.tax_other') 
 		insert into @list (recno,namea,list) values(11,'給付總額','b.total2') 
 		insert into @list (recno,namea,list) values(12,'加班費','b.addmoney') 
+		insert into @list (recno,namea,list) values(12,'假日加班費','ROUND((b.addh100*b.ostand),0)') 
 		insert into @list (recno,namea,list) values(13,'免稅其他','b.tax_other2') 
 		insert into @list (recno,namea,list) values(14,'伙食費','b.meals') 
 		insert into @list (recno,namea,list) values(15,'應領總額','b.total3') 
@@ -1742,6 +1800,7 @@ begin
 		insert into @list (recno,namea,list) values(14,'應稅其他','b.tax_other') 
 		insert into @list (recno,namea,list) values(15,'給付總額','b.total2') 
 		insert into @list (recno,namea,list) values(16,'加班費','b.addmoney') 
+		insert into @list (recno,namea,list) values(16,'假日加班費','ROUND((b.addh100*b.ostand),0)') 
 		insert into @list (recno,namea,list) values(17,'免稅其他','b.tax_other2') 
 		insert into @list (recno,namea,list) values(18,'伙食費','b.meals') 
 		insert into @list (recno,namea,list) values(19,'應領總額','b.total3') 
@@ -1777,6 +1836,7 @@ begin
 		insert into @list (recno,namea,list) values(10,'應稅其他','b.tax_other') 
 		insert into @list (recno,namea,list) values(11,'給付總額','b.total2') 
 		insert into @list (recno,namea,list) values(12,'加班費','b.addmoney') 
+		insert into @list (recno,namea,list) values(12,'假日加班費','ROUND((b.addh100*b.ostand),0)') 
 		insert into @list (recno,namea,list) values(13,'免稅其他','b.tax_other2') 
 		insert into @list (recno,namea,list) values(14,'伙食費','b.meals') 
 		insert into @list (recno,namea,list) values(15,'應領總額','b.total3') 
@@ -1889,6 +1949,11 @@ declare @tmp table(
 		addh1 float,
 		addh2 float,
 		addm float,
+		addh461 float,
+		addh462 float,
+		add46m float,
+		addh00 float,
+		add0m float,
 		taxno float,
 		meals float,
 		total3 float,
@@ -1904,13 +1969,15 @@ declare @tmp table(
 		hplus2 float,
 		minus float,
 		total4 float,
-		total5 float
+		total5 float,
+		memo nvarchar(MAX)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.daymoney,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special,b.bo_oth,b.plus,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
-b.addmoney,b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.tax,b.tax5,
-b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5
+b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
+b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.tax,b.tax5,
+b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
@@ -1921,8 +1988,8 @@ begin
 	insert into @tmp
 	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
 	sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-	sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-	sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
+	sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
+	sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
 	from @tmp
 	group by partno,part
 end
@@ -1930,14 +1997,14 @@ end
 insert into @tmp
 select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
 sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-sum(addm),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5)
+sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
+sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
 from @tmp
 where gno='0'
 
 if(@t_order='部門')
 begin
-	select gno,partno,part,indate,sno,namea,
+	select gno,partno,part,indate,sno,namea,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -1957,6 +2024,11 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -1978,7 +2050,7 @@ begin
 end
 else
 begin
-	select gno,partno,part,indate,sno,namea,
+	select gno,partno,part,indate,sno,namea,memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,sal),1)),4,12)) sal,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pub),1)),4,12)) pub,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boad),1)),4,12)) boad,
@@ -1998,6 +2070,11 @@ begin
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh1),1)),4,12)) addh1,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2),1)),4,12)) addh2,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addm),1)),4,12)) addm,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxno),1)),4,12)) taxno,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3,
@@ -2052,6 +2129,11 @@ declare @tmp table(
 		addh2_1 float,
 		addh2_2 float,
 		addmoney int,
+		addh461 float,
+		addh462 float,
+		add46m float,
+		addh00 float,
+		add0m float,
 		tax_other2 int,
 		meals float,
 		total3 int,
@@ -2072,7 +2154,8 @@ declare @tmp table(
 insert into @tmp
 select '0' gno,b.sno,b.namea,c.indate,c.ft_date,b.daymoney,b.pubmoney,b.bo_admin,b.bo_traffic,b.bo_special,
 b.bo_oth,b.total1,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
-b.addmoney,b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5,
+b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
+b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5,
 b.welfare,b.ch_health,b.total4,b.total5,b.memo
 from salary a
 left join salarys b on a.noa = b.noa
@@ -2102,6 +2185,11 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2_1),1)),4,12)) addh2_1,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh2_2),1)),4,12)) addh2_2,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addmoney),1)),4,12)) addmoney,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12)) addh461,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add46m),1)),4,12)) add46m,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax_other2),1)),4,12)) tax_other2,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,meals),1)),4,12)) meals,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12))total3,
