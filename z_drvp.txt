@@ -1,0 +1,103 @@
+z_drvp1:--z_drvp1
+declare @t_noa nvarchar(MAX)=[1]
+declare @t_handle nvarchar(MAX)=[2]
+declare @t_handle2 nvarchar(MAX)=[3]
+declare @t_store nvarchar(MAX)=[4]
+
+declare @nowdate nvarchar(50) --今天日期
+set @nowdate=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+set @nowdate=left(@nowdate,3)+'/'+substring(@nowdate,4,2)+'/'+right(@nowdate,2)
+---------------------------------------------------------------------------------------------------------------------------
+declare @handle table( 
+	noa nvarchar(50), 
+	handle nvarchar(30)
+) 
+set @t_handle=REPLACE(@t_handle,'#non#','')
+
+while (CHARINDEX('#',@t_handle)>0)
+begin
+	insert @handle
+	select left(@t_handle,CHARINDEX('^',@t_handle)-1)
+	,SUBSTRING(left(@t_handle,CHARINDEX('#',@t_handle)-1),CHARINDEX('^',@t_handle)+1,len(@t_handle))
+	
+	set @t_handle=SUBSTRING(@t_handle,CHARINDEX('#',@t_handle)+1,LEN(@t_handle))
+end
+
+declare @handle2 table( 
+	noa nvarchar(50), 
+	handle nvarchar(30)
+) 
+set @t_handle2=REPLACE(@t_handle2,'#non#','')
+
+while (CHARINDEX('#',@t_handle2)>0)
+begin
+	insert @handle2
+	select left(@t_handle2,CHARINDEX('^',@t_handle2)-1)
+	,SUBSTRING(left(@t_handle2,CHARINDEX('#',@t_handle2)-1),CHARINDEX('^',@t_handle2)+1,len(@t_handle2))
+	
+	set @t_handle2=SUBSTRING(@t_handle2,CHARINDEX('#',@t_handle2)+1,LEN(@t_handle2))
+end
+
+declare @store table( 
+	noa nvarchar(80),
+	store nvarchar(90)
+) 
+set @t_store=REPLACE(@t_store,'#non#','')
+
+while (CHARINDEX('#',@t_store)>0)
+begin
+	insert @store
+	select left(@t_store,CHARINDEX('^',@t_store)-1)
+	,SUBSTRING(left(@t_store,CHARINDEX('#',@t_store)-1),CHARINDEX('^',@t_store)+1,len(@t_store))
+	
+	set @t_store=SUBSTRING(@t_store,CHARINDEX('#',@t_store)+1,LEN(@t_store))
+end
+
+--select * from @handle
+--select * from @handle2
+--select * from @store
+
+declare @tmp table( 
+	gno nvarchar(1), 
+	noa nvarchar(50), 
+	no2 nvarchar(30), 
+	custno nvarchar(100), 
+	comp nvarchar(100), 
+	handle1 nvarchar(100), 
+	handle2 nvarchar(100), 
+	a_memo nvarchar(MAX), 
+
+	pno nvarchar(50), 
+	product nvarchar(100), 
+	lengthb float, 
+	unit nvarchar(90), 
+	mount float, 
+	weight float, 
+	store nvarchar(100), 
+	b_memo nvarchar(MAX) 
+) 
+
+insert @tmp
+select '0',a.noa,b.no2,a.custno,a.comp
+,(select handle from @handle where noa=a.noa)
+,(select handle from @handle2 where noa=a.noa)
+,a.memo
+,b.productno,b.product,b.lengthb,b.unit,b.mount-b.vmount,b.weight-b.vweight
+,(select store from @store where noa=a.noa+'-'+b.no2)
+,b.memo
+from view_orde a left join view_ordes b on a.noa=b.noa
+where charindex(a.noa,@t_noa)>0 order by a.noa,b.no2
+
+insert @tmp(gno,noa,custno,comp,handle1,handle2,a_memo)
+select '1',noa,custno,comp,handle1,handle2,a_memo from @tmp group by noa,custno,comp,handle1,handle2,a_memo
+
+insert @tmp(gno,noa,no2)
+select '2',noa,'ZZZ' from @tmp group by noa
+
+select @nowdate qdate
+,dbo.getComma(lengthb,2) lengthb
+,dbo.getComma(mount,0) mount
+,dbo.getComma(weight,2) weight 
+,* 
+from @tmp order by noa,no2
+;
