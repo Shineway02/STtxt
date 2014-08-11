@@ -1,0 +1,76 @@
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	
+	--------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		page nvarchar(20),
+		
+		accy nvarchar(10),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		addr nvarchar(50),
+		
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		price float,
+		mount float,
+		[money] float,
+		memo nvarchar(max)
+	)
+	
+	insert into @tmp(gno,pno,recno,accy,noa,datea,custno,cust,addr
+		,productno,product,unit,price,mount,[money],memo)
+	select '1','1',ROW_NUMBER()over(partition by a.noa order by b.noq)
+		,a.accy,a.noa,a.datea,a.custno,a.custno,a.addr
+		,b.productno,b.product,b.unit,b.price,b.mount,b.total,b.memo
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa
+	where (len(@t_noa)=0 or @t_noa=a.noa)
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	---------------------------------------------------------------
+	insert into @tmp (gno,pno,noa,mount ,[money])
+	select '3','3',noa,sum(isnull(mount,'')),sum(isnull([money],''))
+	from @tmp
+	group by noa
+	
+	---------------------------------------------------------------
+	declare @t_pageline int = 20 --一頁幾行
+	declare @noa nvarchar(20)
+	declare @n int
+	declare @recno int
+	
+	declare cursor_table cursor for
+	select noa,count(1),max(recno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while @n%@t_pageline !=0
+		begin
+			set @recno = @recno + 1
+			insert into @tmp(gno,pno,noa,recno)
+			values('2','2',@noa,@recno)
+			set @n=@n+1
+		end
+		
+		fetch next from cursor_table
+		into @noa,@n,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	------------------------------------------------------------------
+	update @tmp set page = CAST(ceiling(cast(a.recno as float)/cast(@t_pageline as float)) as nvarchar)+'/'+CAST(ceiling(cast(b.recno as float)/cast(@t_pageline as float)) as nvarchar)
+	from @tmp a
+	left join (select noa,MAX(recno) recno from @tmp group by noa) b on a.noa=b.noa
+	
+
+	select * from @tmp order by noa,pno,recno;
