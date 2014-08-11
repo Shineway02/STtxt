@@ -1,0 +1,156 @@
+﻿z_getfep1:--z_getfep1
+declare @pagecount int
+declare @t_accy nvarchar(20)
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+set @pageCount = 10
+set @t_accy = '[1]'
+set @t_bnoa = case when '#non' = [5] then ' ' else [5] end
+set @t_enoa = case when '#non' = [6] then CHAR(255) else [6] end
+declare @tmpa table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		datea nvarchar(10),
+		storeno nvarchar(50),
+		stores nvarchar(100),
+		typea nvarchar(10),
+		uno nvarchar(20),
+		pno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		lengthb float,
+		mount float,
+		weight float,
+		atype nvarchar(20),
+		memo nvarchar(200),
+		cardeal nvarchar(50),
+		carno nvarchar(20),
+		tmemo nvarchar(200),
+		totmount float,
+		totweight float
+)
+insert into @tmpa
+select '0' gno,a.noa,a.storeno,a.store,a.datea,a.typea,b.uno,b.productno,b.product
+,b.unit,b.lengthb,b.mount,b.weight,b.typea,b.memo,a.cardeal,a.carno,a.memo,0,0
+from view_get a
+left join view_gets b on a.noa = b.noa
+left join cust c on a.custno = c.noa 
+where a.noa between @t_bnoa and @t_enoa
+
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		datea nvarchar(10),
+		storeno nvarchar(50),
+		stores nvarchar(100),
+		typea nvarchar(10),
+		uno nvarchar(20),
+		pno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		lengthb float,
+		mount float,
+		weight float,
+		atype nvarchar(20),
+		memo nvarchar(200),
+		cardeal nvarchar(50),
+		carno nvarchar(20),
+		tmemo nvarchar(200),
+		totmount float,
+		totweight float,
+		recno int,
+		currecno int,
+		curpage int,
+		totpage int
+)
+insert into @tmp
+select a.*,ROW_NUMBER()over(order by gno) recno,0 currecno,0 curpage,0 totpage 
+from(select * from @tmpa a)a
+
+	declare @noa nvarchar(30)
+	declare @count int
+	declare @t_count int
+	declare @recno int
+	declare @mount float
+	declare @weight float
+	declare @currecno int
+	declare @curpage int
+	declare @totpage int
+	declare @t_noa nvarchar(30)
+	declare @t_currecno float
+	set @t_currecno = 0
+	
+	declare cursor_table cursor for
+	select noa,min(recno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set currecno = recno - @recno +1 where noa=@noa
+		fetch next from cursor_table
+		into @noa,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	--------------------------------------------------
+	declare @count1 int
+	declare @count2 int
+	declare cursor_table cursor for
+	select noa,sum(mount),sum(weight),count(*) count1,(count(*)/@pageCount+1)*@pageCount count2 from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@mount,@weight,@count1,@count2
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while(@count1<@count2) and not(@count1 % @pagecount = 0)
+		begin
+			insert into @tmp (gno,noa,totmount,totweight,currecno)VALUES(0,@noa,@mount,@weight,@count1+1)
+			set @count1=@count1+1
+		end
+		fetch next from cursor_table
+		into @noa,@mount,@weight,@count1,@count2
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	---------------------------------------------------
+	declare cursor_table cursor for
+	select noa,max(currecno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set totpage = (@currecno-@currecno%@pagecount)/@pagecount where noa=@noa
+		fetch next from cursor_table
+		into @noa,@currecno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,recno,currecno from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set curpage = FLOOR((@currecno-1)/@pagecount)+1 where noa=@noa and recno=@recno
+		fetch next from cursor_table
+		into @noa,@recno,@currecno
+	end
+		close cursor_table
+	deallocate cursor_table
+
+insert @tmp (gno,noa,mount,weight)
+select '1',noa,SUM(mount),sum(weight) from @tmp group by noa
+
+select
+dbo.getComma(lengthb,2)  lengthb
+,dbo.getComma(mount,[2])  mount
+,dbo.getComma(weight,[3])  weight 
+,CONVERT(nvarchar(5),curpage)+'/'+CONVERT(nvarchar(5),totpage) page
+,*
+from @tmp 
+order by noa,gno,datea desc;

@@ -1,0 +1,68 @@
+﻿z_getfe1:--z_getfe1
+declare @t_accy nvarchar(20)
+declare @t_typea nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+
+set @t_accy = '[1]'
+set @t_typea = case when '#non' = [5] then '' when '全部'=[5] then '' else [5] end
+set @t_bdate = case when '#non' = [6] then '' else [6] end
+set @t_edate = case when '#non' = [7] then CHAR(255) else [7] end
+
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(20),
+	noq nvarchar(20),
+	storeno nvarchar(50),
+	stores nvarchar(100),
+	datea nvarchar(10),
+	atype nvarchar(10),
+	comp nvarchar(50),
+	uno nvarchar(20),
+	pno nvarchar(20),
+	product nvarchar(50),
+	unit nvarchar(20),
+	lengthb float,	
+	mount float,
+	weight float,
+	price float,
+	money float,
+	memo nvarchar(200),
+	qhref nvarchar(max)
+)
+
+insert into @tmp
+	select '0' gno,a.noa,b.noq,a.storeno,a.store,a.datea,b.typea,(case when c.nick!='' then c.nick else left(a.comp,4) end)
+	,b.uno,b.productno,b.product,b.unit,b.lengthb,b.mount,b.weight
+	,isnull((select top 1 aprice from uccp where noa=b.productno and datea<=a.datea order by datea desc),0)
+	,0,b.memo,'getfe'+a.accy
+	from view_get a
+	left join view_gets b on a.noa = b.noa
+	left join cust c on a.custno=c.noa
+	where (LEN(@t_typea) = 0 or @t_typea = a.typea) and
+	(isnull(a.datea,'') between @t_bdate and @t_edate)
+	
+update @tmp
+set money=case when isnull(UPPER(unit),'')='KG' or isnull(unit,'')='' then weight*price else mount*price end  
+
+--insert into @tmp(gno,storeno,stores,mount,weight,money,qhref)
+--select '1',storeno,MAX(stores),sum(mount),sum(weight),sum(money),'get'
+--from @tmp group by storeno
+
+insert into @tmp(gno,storeno,mount,weight,money,qhref)
+select '2' gno,'ZZZZZZ',sum(mount),sum(weight),sum(money),'get'
+from @tmp where gno='0'
+	
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+select
+dbo.getComma(lengthb,2)  lengthb
+,dbo.getComma(mount,[2])  mount
+,dbo.getComma(weight,[3])  weight
+,dbo.getComma(price,[4])  price
+,dbo.getComma(money,0)  money
+,*
+from @tmp 
+order by gno,datea,noa,noq
+--order by storeno,gno,datea
+;

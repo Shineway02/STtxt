@@ -1,7 +1,7 @@
 ﻿z_rc2fe1:--z_rc2fe1
 	declare @t_accy nvarchar(10)
-	declare @t_btggno nvarchar(20)
-	declare @t_etggno nvarchar(20)
+	declare @t_btggno nvarchar(50)
+	declare @t_etggno nvarchar(50)
 	declare @t_bmon nvarchar(7)
 	declare @t_emon nvarchar(7)
 	declare @t_bdate nvarchar(10)
@@ -541,16 +541,11 @@ declare @tmp table(
 insert into @tmp
 	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) typea
 		, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit
-		,b.lengthb
-		,b.mount
-		,b.weight
-		,b.price
-		,b.total
+		,b.lengthb,b.mount,b.weight,b.price,b.total
 		,case when isnull(a.invono,'')!='' and (select count(*) from ucca)>0 then (select tax from rc2a where noa=a.invono) else  a.tax end
 		,(case when a.typea='2' then 0 else 1 end)*b.total
 		,(case when a.typea='2' then 1 else 0 end)*b.total
-		,b.memo
-		,'rc2'+b.accy
+		,b.memo,'rc2'+b.accy
 	from view_rc2 a
 	left join view_rc2s b on a.noa = b.noa
 	where (a.datea between @t_bdate and @t_edate) and  (len(@t_cno)=0 or a.cno=@t_cno)
@@ -579,9 +574,8 @@ z_rc2fe3:--z_rc2fe3
 declare @t_accy nvarchar(10)
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
-declare @t_bproductno nvarchar(30)
-declare @t_eproductno nvarchar(30)
-
+declare @t_bproductno nvarchar(50)
+declare @t_eproductno nvarchar(50)
 
 set @t_accy = '[1]'
 set @t_bdate = case when '#non'=[12] then '' else [12] end
@@ -625,7 +619,7 @@ insert into @result(gno,productno,xproduct,mount,total)
 update @result set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 update @result
-set mount=abs(mount),weight=abs(mount),total=abs(total)
+set mount=abs(mount),weight=abs(weight),total=abs(total)
 where gno='0'
 
 select gno, typea, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit
@@ -639,77 +633,75 @@ from @result order by productno,xproduct,gno,datea,noa;
 --***********************************************************************************
 z_rc2fe4:--z_rc2fe4
 declare @t_accy nvarchar(10)
+declare @t_btggno nvarchar(50)
+declare @t_etggno nvarchar(50)
+declare @t_bproductno nvarchar(50)
+declare @t_eproductno nvarchar(50)
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
-declare @t_bmon nvarchar(7)
-declare @t_emon nvarchar(7)
-declare @t_btggno nvarchar(20)
-declare @t_etggno nvarchar(20)
---declare @t_bsalesno nvarchar(20)
---declare @t_esalesno nvarchar(20)
-declare @t_bproductno nvarchar(30)
-declare @t_eproductno nvarchar(30)
-declare @t_stype nvarchar(50)
 
 set @t_accy = '[1]'
-set @t_bdate = case when '#non'=[2] then '' else [2] end
-set @t_edate = case when '#non'=[3] then char(255) else [3] end
-set @t_bmon = case when '#non'=[4] then '' else [4] end
-set @t_emon = case when '#non'=[5] then char(255) else [5] end
 set @t_btggno = case when '#non'=[6] then '' else [6] end
 set @t_etggno = case when '#non'=[7] then char(255) else [7] end
---set @t_bsalesno = case when '#non'=[8] then '' else [8] end
---set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
-set @t_bproductno = case when '#non'=[10] then '' else [10] end
-set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
-set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_bproductno = case when '#non'=[8] then '' else [8] end
+set @t_eproductno = case when '#non'=[9] then char(255) else [9] end
+set @t_bdate = case when '#non'=[12] then '' else [12] end
+set @t_edate = case when '#non'=[13] then char(255) else [13] end
 ---------------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
-	type nvarchar(4),
-	noa nvarchar(15),
-	invono nvarchar(15),
+	typea nvarchar(4),
+	noa nvarchar(50),
 	datea nvarchar(10),
-	tggno nvarchar(20),
-	comp nvarchar(40),
-	productno nvarchar(30),
-	xproduct nvarchar(40),
+	tggno nvarchar(50),
+	comp nvarchar(50),
+	pno nvarchar(30),
+	product nvarchar(40),
 	unit nvarchar(8),
+	lengthb float,
 	mount float,
 	weight float,
 	price float,
 	total float,
-	memo nvarchar(max),
 	qhref nvarchar(max)
 )
 insert into @result
-	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.invono,a.datea,a.tggno,
+	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.datea,a.tggno,
 			 isnull(c.comp,''), b.productno, b.product, b.unit
-			 ,(case when a.typea='2' then -1 else 1 end)*b.mount
-			 ,(case when a.typea='2' then -1 else 1 end)*b.weight
+			 ,b.lengthb
+			 ,(case when a.typea='2' then -1 else 1 end)*isnull(b.mount,0)
+			 ,(case when a.typea='2' then -1 else 1 end)*isnull(b.weight,0)
 			 , b.price
-			 ,(case when a.typea='2' then -1 else 1 end)*b.total,b.memo,'rc2'+b.accy
+			 ,(case when a.typea='2' then -1 else 1 end)*isnull(b.total,0)
+			 ,'rc2'+b.accy
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
-		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
-		  --(a.salesno between @t_bsalesno and @t_esalesno) and
-		  (b.productno between @t_bproductno and @t_eproductno) and
-		  (len(@t_stype)=0 or a.stype=@t_stype)
-	order by a.tggno,b.productno,a.datea,a.noa
-insert into @result(gno,tggno,comp,productno,xproduct,mount,total)
-	select '1',tggno,comp,productno,xproduct,sum(mount),sum(total) from @result group by tggno,comp,productno,xproduct
-insert into @result(gno,tggno,comp,productno,mount,total)
-	select '2',tggno,comp,char(255),sum(mount),sum(total) from @result where gno='1' group by tggno,comp
+		  (b.productno between @t_bproductno and @t_eproductno)
+		  order by a.tggno,b.productno,a.datea,a.noa
+		  
+insert into @result(gno,tggno,comp,pno,product,mount,weight,total)
+	select '1',tggno,MAX(comp),pno,MAX(product),sum(mount),sum(weight),sum(total) 
+	from @result group by tggno,pno
+	
+insert into @result(gno,tggno,pno,mount,weight,total) 
+select '2',tggno,CHAR(255),sum(mount),sum(weight),sum(total) 
+from @result where gno='1' group by tggno
+		
 update @result set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
-select gno, type, noa, datea, tggno, comp,productno, xproduct, unit,invono,memo,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price ,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,qhref,
-		row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno
-from @result order by tggno,productno,gno,datea;
+update @result
+set mount=abs(mount),weight=abs(weight),total=abs(total)
+where gno='0'
+
+select 
+dbo.getComma(lengthb,2)  lengthb
+,dbo.getComma(mount,[2])  mount
+,dbo.getComma(weight,[3])  weight
+,dbo.getComma(price,[4])  price
+,dbo.getComma(total,0)  total
+,*
+from @result order by tggno,pno,gno,datea;
 --***********************************************************************************

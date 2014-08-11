@@ -1,0 +1,47 @@
+z_uccefep1:--z_uccefep1
+declare @t_bnoa nvarchar(50)
+declare @t_enoa nvarchar(50)
+
+set @t_bnoa = case when '#non' = [5] then '' else [5] end
+set @t_enoa = case when '#non' = [6] then CHAR(255) else [6] end
+
+declare @tmp table(
+	gno nvarchar(1),
+	datea nvarchar(10),
+	noa nvarchar(30),
+	storeno nvarchar(30),
+	store nvarchar(30),
+	uno nvarchar(50),
+	productno nvarchar(30),
+	products nvarchar(90),
+	emount2 float, ----帳面數量
+	eweight2 float, ----帳面重量
+	amount float, -----盤點數量
+	aweight float, -----盤點數量
+	dmount float, --差異數量
+	dweight float,--差異重量
+	memo nvarchar(max)
+)
+
+insert into @tmp
+	select
+		'0',a.datea,a.noa,b.storeno,b.store,b.uno,b.productno,b.product,b.emount2,b.eweight2,b.mount,b.weight,0,0,b.memo
+	from view_ucce a
+	left join view_ucces b on a.noa = b.noa
+	where (a.noa between @t_bnoa and @t_enoa) 
+			 
+update @tmp set dmount = emount2-amount,dweight=eweight2-aweight
+
+insert into @tmp(gno,noa)
+	select '1',noa from @tmp group by noa
+	
+select
+	gno,datea,noa,dbo.charbr(store,18) store,uno,productno,dbo.charbr(products,28) products
+	,dbo.getComma(emount2,[2])  emount2
+	,dbo.getComma(eweight2,[3])  eweight2
+	,dbo.getComma(amount,[2])  amount
+	,dbo.getComma(aweight,[3])  aweight
+	,dbo.getComma(dmount,[2])  dmount
+	,dbo.getComma(dweight,[3])  dweight
+	,dbo.charbr(memo,22) memo
+from @tmp order by noa,gno,storeno;
