@@ -19,7 +19,6 @@ import:--import
 	
 	update @tmp set lprice=isnull(b.sprice,0),ldate=isnull(b.datea,'')
 	from @tmp a
-	outer apply(select top 1 productno,sprice,datea from uccp left join uccps on uccp.noa=uccps.noa where uccp.datea<@t_datea and uccps.productno=a.productno order by uccp.datea desc) b
-	where isnull(b.sprice,0)!=0
+	outer apply(select top 1 productno,sprice,datea from uccp left join uccps on uccp.noa=uccps.noa where uccp.datea<@t_datea and uccps.productno=a.productno and isnull(uccps.sprice,0)!=0 order by uccp.datea desc) b
 	
 	select * from @tmp order by productno;
