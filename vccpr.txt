@@ -64,5 +64,10 @@ import:--vccpr import
 		left join view_vccs y on x.accy=y.accy and x.noa=y.noa 
 		where a.custno=x.custno and a.datea<=x.datea and a.productno=y.productno and a.vccno!=x.noa
 		order by ISNULL(y.price,0) desc) b
-
+	
+	--基價
+	update @tmp set sprice = b.sprice
+	from @tmp a
+	outer apply(select top 1 y.sprice from uccp x left join uccps y on x.noa=y.noa where y.productno=a.productno and x.datea<=a.datea and y.sprice!=0 order by datea desc) b
+	
 	select * from @tmp;
