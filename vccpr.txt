@@ -4,37 +4,45 @@ import:--vccpr import
 	declare @t_edate nvarchar(10) = [2]
 	declare @t_custno nvarchar(20) = [3] 
 	declare @t_salesno nvarchar(20) = [4]
-	---------------------------------------------------------------------------------------
 	declare @tmp table(
-		accy nvarchar(20),
-		noa nvarchar(20),
-		datea nvarchar(10),
-		custno nvarchar(20),
-		cust nvarchar(50),
-		nick nvarchar(20),
-		productno nvarchar(20),
-		product nvarchar(50),
-		lengthb float,
-		unit nvarchar(20),
-		mount float,
-		[weight] float,
-		rate float,
-		apv nvarchar(20),
-		tranmoney float,
-		price float,
-		hprice float,
-		pprice float,
-		lprice float,
-		wcost float,
-		sprice float,
-		sprice2 float,
-		tranmoney2 float
+		[datea] [nvarchar](10) NULL,
+		[custno] [nvarchar](20) NULL,
+		[cust] [nvarchar](50) NULL,
+		[nick] [nvarchar](20) NULL,
+		[lengthb] [float] NULL,
+		[unit] [nvarchar](20) NULL,
+		[mount] [float] NULL,
+		[weight] [float] NULL,
+		[rate] [float] NULL,
+		[apv] [nvarchar](10) NULL,
+		[tranmoney] [float] NULL,
+		[price] [float] NULL,
+		[hprice] [float] NULL,
+		[pprice] [float] NULL,
+		[lprice] [float] NULL,
+		[wcost] [float] NULL,
+		[sprice] [float] NULL,
+		[sprice2] [float] NULL,
+		[tranmoney2] [float] NULL,
+		[trantype] [nvarchar](20) NULL,
+		[tranaddr] [nvarchar](max) NULL,
+		[tranmoney3] [float] NULL,
+		[accy] [nvarchar](10) NULL,
+		[tablea] [nvarchar](20) NULL,
+		[vccno] [nvarchar](20) NULL,
+		[worker] [nvarchar](20) NULL,
+		[profit] [float] NULL,
+		[total] [float] NULL,
+		[productno] [nvarchar](20) NULL,
+		[product] [nvarchar](50) NULL,
+		[inte] [float] NULL,
+		[daya] [float] NULL
 	)
 	
-	insert into @tmp(accy,noa,datea,custno,cust,nick,apv
-		,productno,product,lengthb,unit,mount,[weight],tranmoney,sprice,sprice2,wcost)
-	select a.accy,a.noa,a.datea,a.custno,a.custno,a.nick,a.apv
-		,b.productno,b.product,b.lengthb,b.unit,b.mount,b.[weight],b.tranmoney,b.sprice,b.sprice2,b.wcost
+	insert into @tmp(accy,tablea,vccno,datea,custno,cust,nick,apv,trantype,tranaddr
+		,productno,product,lengthb,unit,mount,[weight],price,tranmoney,sprice,sprice2,wcost)
+	select a.accy,'vccs',a.noa,a.datea,a.custno,a.custno,a.nick,a.apv,a.trantype,a.addr2
+		,b.productno,b.product,b.lengthb,b.unit,b.mount,b.[weight],b.price,b.tranmoney,b.sprice,b.sprice2,b.wcost
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
 	where a.datea between @t_bdate and @t_edate
@@ -46,7 +54,7 @@ import:--vccpr import
 	outer apply (select top 1 y.* 
 		from view_vcc x 
 		left join view_vccs y on x.accy=y.accy and x.noa=y.noa 
-		where a.custno=x.custno and a.datea<=x.datea and a.productno=y.productno and a.noa!=x.noa
+		where a.custno=x.custno and a.datea<=x.datea and a.productno=y.productno and a.vccno!=x.noa
 		order by x.datea desc) b
 	
 	update @tmp set hprice=b.price
@@ -54,7 +62,7 @@ import:--vccpr import
 	outer apply (select top 1 y.* 
 		from view_vcc x 
 		left join view_vccs y on x.accy=y.accy and x.noa=y.noa 
-		where a.custno=x.custno and a.datea<=x.datea and a.productno=y.productno and a.noa!=x.noa
+		where a.custno=x.custno and a.datea<=x.datea and a.productno=y.productno and a.vccno!=x.noa
 		order by ISNULL(y.price,0) desc) b
 
-	select * from @tmp；
+	select * from @tmp;
