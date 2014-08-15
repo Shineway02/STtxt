@@ -86,7 +86,9 @@ select '0',a.noa,b.no2,a.custno,a.comp
 ,(select store from @store where noa=a.noa+'-'+b.no2)
 ,b.memo
 from view_orde a left join view_ordes b on a.noa=b.noa
-where charindex(a.noa,@t_noa)>0 order by a.noa,b.no2
+where charindex(a.noa,@t_noa)>0
+and a.noa in (select ordeno from view_vcces where charindex(ordeno,@t_noa)>0) 
+order by a.noa,b.no2
 
 insert @tmp(gno,noa,custno,comp,handle1,handle2,a_memo)
 select '1',noa,custno,comp,handle1,handle2,a_memo from @tmp group by noa,custno,comp,handle1,handle2,a_memo
