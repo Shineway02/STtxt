@@ -1,0 +1,24 @@
+import:--uccp import 
+	declare @t_datea nvarchar(10) = [1] --基價日期
+	declare @t_edate nvarchar(10) = [2] --運算截止日
+	---------------------------------------------------------------------------------------
+	declare @tmp table(
+		productno nvarchar(20),
+		product nvarchar(50),
+		mount float,
+		[weight] float,
+		sprice float,
+		lprice float,
+		ldate nvarchar(10)
+	)
+	insert into @tmp(productno,product,mount,[weight])
+	select productno,product,SUM(isnull(mount,0)),SUM(isnull([weight],0)) 
+	from dbo.stkucc(@t_edate,'','') 
+	group by productno,product
+	having not(SUM(isnull(mount,0))=0 and SUM(isnull([weight],0))=0)
+	
+	update @tmp set lprice=isnull(b.sprice,0),ldate=isnull(b.datea,'')
+	from @tmp a
+	outer apply(select top 1 productno,sprice,datea from uccp left join uccps on uccp.noa=uccps.noa where uccp.datea<@t_datea and uccps.productno=a.productno and isnull(uccps.sprice,0)!=0 order by uccp.datea desc) b
+	
+	select * from @tmp order by productno;
