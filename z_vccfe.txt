@@ -2380,6 +2380,7 @@ z_vccfe17:--z_vccfe17
 	
 	update a
 	set unpay=isnull((select sum(money) from @tmpa where custno=a.custno),0)
+	,pcount=(select count(*) from (select noa from @result where a.custno=custno and typea!='稅' and gno='0' group by noa) tmp)
 	from @result a where a.gno>='1'
 	
 	update @result
@@ -2390,21 +2391,28 @@ z_vccfe17:--z_vccfe17
 	--set mount=mount*-1,total=total*-1
 	--where typea='退'
 	
-	select 
-	case when @t_title!='' then @t_title else comp end comp
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,back),1)),4,30)) back 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,tax),1)),4,30)) tax 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total1),1)),4,30)) total1 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pay),1)),4,30)) pay 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),4,30)) unpay 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total2),1)),4,30)) total2 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,btotal),1)),4,30)) btotal 
-	,*
+	select case when @t_title!='' then @t_title else comp end comp
+	,acomp axcomp
+	,dbo.getComma(mount,[23])  mount
+	,dbo.getComma(weight,[24])  weight
+	,dbo.getComma(price,[25])  price
+	,dbo.getComma(total,0)  total
+	,dbo.getComma(money,0)  money
+	,dbo.getComma(back,0)  back
+	,dbo.getComma(tax,0)  tax
+	,dbo.getComma(total1,0)  total1
+	,dbo.getComma(pay,0)  pay
+	,dbo.getComma(unpay,0)  unpay
+	,dbo.getComma(unvcc,0)  unvcc
+	,dbo.getComma(total2,0)  total2
+	,dbo.getComma(btotal,0)  btotal
+	,dbo.getComma(opay,0)  opay
+	,dbo.getComma(cash,0)  cash
+	,dbo.getComma(remit,0)  remit
+	,dbo.getComma(lc,0)  lc
+	,dbo.getComma(other,0)  other
+	,dbo.getComma(discount,0)  discount
 	,case when @t_evdate=char(255) then '帳款月份：' else '帳款日期：' end md1
 	,case when @t_evdate=char(255) then @t_bvmon+'~'+@t_evmon else @t_bvdate+'~'+@t_evdate end md2
+	,*
 	from @result order by custno,cast(gno as int),mon,datea,noa,noq;
