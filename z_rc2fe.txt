@@ -1,509 +1,4 @@
 ﻿z_rc2fe1:--z_rc2fe1
-	declare @t_accy nvarchar(10)
-	declare @t_btggno nvarchar(50)
-	declare @t_etggno nvarchar(50)
-	declare @t_bmon nvarchar(7)
-	declare @t_emon nvarchar(7)
-	declare @t_bdate nvarchar(10)
-	declare @t_edate nvarchar(10)
-	declare @t_opaydate nvarchar(10)
-	
-	set @t_accy = '[1]'
-	set @t_btggno = case when '#non'=[6] then '' else [6] end
-	set @t_etggno = case when '#non'=[7] then char(255) else [7] end
-	set @t_bmon = case when '#non'=[10] then '' else [10] end
-	set @t_emon = case when '#non'=[11] then char(255) else [11] end
-	set @t_bdate = case when '#non'=[12] then '' else [12] end
-	set @t_edate = case when '#non'=[13] then char(255) else [13] end
-	set @t_opaydate = case when '#non'=[14] then '' else [14] end
-	--***********************************************************************************
-	declare @tmp1 table(
-		tggno nvarchar(20),
-		mon nvarchar(10),
-		[money] float,
-		bkmoney float,
-		tax float
-	)
-	insert into @tmp1(tggno,mon,[money],bkmoney,tax)
-	select tggno,mon
-	,SUM(case when typea='1' then ISNULL([money],0) else 0 end)
-	,SUM(case when typea!='1' then ISNULL([money],0) else 0 end)
-	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end)
-	from view_rc2 
-	where (tggno between @t_btggno and @t_etggno) 
-	and mon <= @t_emon and datea <=@t_edate
-	group by tggno,mon
-	
-	declare @tmp2 table(
-		tggno nvarchar(20),
-		mon nvarchar(10),
-		tax float
-	)
-	insert into @tmp2(tggno,mon,tax)
-	select tggno,mon,SUM(ISNULL([tax],0))
-	from rc2a
-	where tggno between @t_btggno and @t_etggno
-	and mon <= @t_emon and datea <=@t_edate
-	group by tggno,mon
-	
-	declare @tmp3 table(
-		tggno nvarchar(20),
-		mon nvarchar(10),
-		paysale float 
-	)
-	
-	insert into @tmp3(tggno,mon,paysale)
-	select case when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.rc2no,0,charindex('-',a.rc2no)) 
-		when len(ISNULL(a.rc2no,''))=0 and len(ISNULL(c.tggno,''))>0 then c.tggno
-		when len(ISNULL(a.rc2no,''))=0 and len(ISNULL(d.tggno,''))>0 then d.tggno
-		when len(ISNULL(a.rc2no,''))=0 and len(ISNULL(e.tggno,''))>0 then e.tggno 
-		else b.tggno end
-	,case when len(ISNULL(a.rc2no,''))=0 then '' 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6) 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6)
-		when len(isnull(c.mon,''))>0 then isnull(c.mon,'')
-		when len(isnull(d.mon,''))>0 then isnull(d.mon,'') 
-		else isnull(e.mon,'') end
-	,SUM(ISNULL(a.paysale,0))
-	from pays a
-	left join pay b on a.noa=b.noa
-	left join view_rc2 c on a.accy=c.accy and a.rc2no=c.noa
-	left join bccin d on a.rc2no=d.noa
-	left join bccin e on a.rc2no=e.noa 
-	where b.noa is not null
-	and ISNULL(a.paysale,0)!=0
-	and case when len(ISNULL(a.rc2no,''))=0 then '' 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6) 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6)
-		when len(isnull(c.mon,''))>0 then isnull(c.mon,'')
-		when len(isnull(d.mon,''))>0 then isnull(d.mon,'') 
-		else isnull(e.mon,'') end <= @t_emon 
-	and case when len(ISNULL(a.rc2no,''))=0 then '' 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6) 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6)
-		when len(isnull(c.datea,''))>0 then isnull(c.datea,'')
-		when len(isnull(d.datea,''))>0 then isnull(d.datea,'') 
-		else isnull(e.mon,'') end <= @t_edate
-	group by case when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.rc2no,0,charindex('-',a.rc2no)) 
-		when len(ISNULL(a.rc2no,''))=0 and len(ISNULL(c.tggno,''))>0 then c.tggno
-		when len(ISNULL(a.rc2no,''))=0 and len(ISNULL(d.tggno,''))>0 then d.tggno
-		when len(ISNULL(a.rc2no,''))=0 and len(ISNULL(e.tggno,''))>0 then e.tggno 
-		else b.tggno end
-	,case when len(ISNULL(a.rc2no,''))=0 then '' 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6) 
-		when a.rc2no like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.rc2no,charindex('-',a.rc2no)+1,6)
-		when len(isnull(c.mon,''))>0 then isnull(c.mon,'')
-		when len(isnull(d.mon,''))>0 then isnull(d.mon,'') 
-		else isnull(e.mon,'') end
-	delete @tmp3 where not(tggno between @t_btggno and @t_etggno)
-	
-	declare @tmp4 table(
-		tggno nvarchar(20),
-		mon nvarchar(10),
-		[money] float,
-		bkmoney float,
-		tax float
-	)
-	insert into @tmp4(tggno,mon,[money],bkmoney,tax)
-	select tggno,mon
-	,SUM(case when typea='1' then ISNULL([money],0)-ISNULL([discount],0) else 0 end)
-	,SUM(case when typea!='1' then ISNULL([money],0)-ISNULL([discount],0) else 0 end)
-	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end)
-	from bccin
-	where tggno between @t_btggno and @t_etggno
-	and mon <= @t_emon and datea <=@t_edate
-	group by tggno,mon
-	
-	declare @tmp5 table( 
-		tggno nvarchar(20), 
-		mon nvarchar(10), 
-		[money] float, 
-		bkmoney float, 
-		tax float 
-	) 
-	insert into @tmp5(tggno,mon,[money],bkmoney,tax) 
-	select tggno,mon 
-	,SUM(case when typea='1' then ISNULL([money],0) else 0 end) 
-	,SUM(case when typea!='1' then ISNULL([money],0) else 0 end) 
-	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end) 
-	from view_workd 
-	where tggno between @t_btggno and @t_etggno 
-	and mon <= @t_emon and datea <=@t_edate
-	group by tggno,mon 
-	--------------------------------------------------------------------------------------------------
-	declare @tmp table(
-		tggno nvarchar(20),
-		[money] float,
-		bkmoney float,
-		tax float,
-		total float,
-		payed float,
-		unpay float,
-		tot float
-	)
-	insert into @tmp(tggno,[money],bkmoney,tax)
-	select tggno,SUM(ISNULL([money],0)),SUM(ISNULL([bkmoney],0)),SUM(ISNULL([tax],0))
-	from @tmp1
-	where mon between @t_bmon and @t_emon
-	group by tggno
-	--------------------------------------------------------------------------------------- 
-	update @tmp set [money] = isnull(a.[money],0) + isnull(b.[money],0) 
-	,[bkmoney] = isnull(a.[bkmoney],0) + isnull(b.[bkmoney],0) 
-	,tax = isnull(a.tax,0) + isnull(b.tax,0) 
-	from @tmp a 
-	right join @tmp5 b on a.tggno=b.tggno and b.mon between @t_bmon and @t_emon 
-	
-	insert into @tmp(tggno,[money],bkmoney,tax) 
-	select tggno,sum([money]),sum(bkmoney),sum(tax) 
-	from @tmp5 a 
-	where not exists(select * from @tmp where tggno=a.tggno) 
-	and a.mon between @t_bmon and @t_emon 
-	group by a.tggno 
-	---------------------------------------------------------------------------------------
-	update @tmp set [money] = isnull(a.[money],0) + isnull(b.[money],0)
-		,[bkmoney] = isnull(a.[bkmoney],0) + isnull(b.[bkmoney],0)
-		,tax = isnull(a.tax,0) + isnull(b.tax,0)
-	from @tmp a
-	right join @tmp4 b on a.tggno=b.tggno and b.mon between @t_bmon and @t_emon
-	
-	insert into @tmp(tggno,[money],bkmoney,tax)
-	select tggno,sum([money]),sum(bkmoney),sum(tax)
-	from @tmp4 a
-	where not exists(select * from @tmp where tggno=a.tggno)
-	and a.mon between @t_bmon and @t_emon
-	group by a.tggno 
-	---------------------------------------------------------------------------------------
-	update @tmp set tax = ISNULL(a.tax,0)+ISNULL(b.tax,0)
-	from @tmp a
-	right join @tmp2 b on a.tggno=b.tggno and b.mon between @t_bmon and @t_emon
-	
-	insert into @tmp(tggno,[money],bkmoney,tax)
-	select tggno,0,0,sum(tax)
-	from @tmp2 a
-	where not exists(select * from @tmp where tggno=a.tggno)
-	and a.mon between @t_bmon and @t_emon
-	group by a.tggno 
-	----------------------------------------------------------------------------------------
-	update @tmp set total = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)
-	
-	----------------------------------------------------------------------------------------
-	update @tmp set payed=isnull(a.payed,0) + isnull(b.paysale,0)
-	from @tmp a
-	right join @tmp3 b on a.tggno=b.tggno and b.mon between @t_bmon and @t_emon
-	
-	insert into @tmp(tggno,[money],bkmoney,tax,total, payed)
-	select tggno,0,0,0,0,sum(paysale)
-	from @tmp3 a
-	where not exists(select * from @tmp where tggno=a.tggno)
-	and a.mon between @t_bmon and @t_emon
-	group by a.tggno 
-	------------------------------------------------------------------------------------------
-	--unpay
-	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0)
-	from @tmp a
-	right join (select tggno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
-		from @tmp1
-		where mon<@t_bmon
-		group by tggno) b on a.tggno=b.tggno
-	
-	insert into @tmp(tggno,[money],bkmoney,tax,total,payed,unpay)
-	select a.tggno,0,0,0,0,0,sum(a.unpay)
-	from (select tggno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
-		from @tmp1
-		where mon<@t_bmon
-		group by tggno) a
-	where not exists(select * from @tmp where tggno=a.tggno)
-	and ISNULL(a.unpay,0)!=0
-	group by a.tggno 
-	
-	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0) 
-	from @tmp a 
-	right join (select tggno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay 
-	from @tmp5 
-	where mon<@t_bmon 
-	group by tggno) b on a.tggno=b.tggno 
-	
-	insert into @tmp(tggno,[money],bkmoney,tax,total,payed,unpay) 
-	select a.tggno,0,0,0,0,0,a.unpay 
-	from (select tggno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay 
-	from @tmp5 
-	where mon<@t_bmon 
-	group by tggno) a 
-	where not exists(select * from @tmp where tggno=a.tggno) 
-	and ISNULL(a.unpay,0)!=0 
-	
-	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0)
-	from @tmp a
-	right join (select tggno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
-		from @tmp4
-		where mon<@t_bmon
-		group by tggno) b on a.tggno=b.tggno
-		
-	insert into @tmp(tggno,[money],bkmoney,tax,total,payed,unpay)
-	select a.tggno,0,0,0,0,0,sum(a.unpay)
-	from (select tggno ,SUM(ISNULL([money],0)-ISNULL(bkmoney,0)+isnull(tax,0)) unpay
-		from @tmp4
-		where mon<@t_bmon
-		group by tggno) a
-	where not exists(select * from @tmp where tggno=a.tggno)
-	and ISNULL(a.unpay,0)!=0
-	group by a.tggno 
-	
-	update @tmp set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0)
-	from @tmp a
-	right join (select tggno ,sum(isnull(tax,0)) unpay
-		from @tmp2
-		where mon<@t_bmon
-		group by tggno) b on a.tggno=b.tggno
-		
-	insert into @tmp(tggno,[money],bkmoney,tax,total,payed,unpay)
-	select a.tggno,0,0,0,0,0,sum(a.unpay)
-	from (select tggno ,SUM(isnull(tax,0)) unpay
-		from @tmp2
-		where mon<@t_bmon
-		group by tggno) a
-	where not exists(select * from @tmp where tggno=a.tggno)
-	and ISNULL(a.unpay,0)!=0
-	group by a.tggno 
-	
-	update @tmp set unpay = ISNULL(a.unpay,0)-ISNULL(b.paysale,0)
-	from @tmp a
-	right join (select tggno ,sum(isnull(paysale,0)) paysale
-		from @tmp3
-		where mon<@t_bmon
-		group by tggno) b on a.tggno=b.tggno
-	
-	insert into @tmp(tggno,[money],bkmoney,tax,total,payed,unpay)
-	select a.tggno,0,0,0,0,0,sum(-a.paysale)
-	from (select tggno ,sum(isnull(paysale,0)) paysale
-		from @tmp3
-		where mon<@t_bmon
-		group by tggno) a
-	where not exists(select * from @tmp where tggno=a.tggno)
-	and ISNULL(a.paysale,0)!=0
-	group by a.tggno 
-	------------------------------------------------------------------------------------------
-	update @tmp set tot = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)-ISNULL(payed,0)+ISNULL(unpay,0)
-	
-	declare @linecount int --每頁行數
-	declare @endcount int --總計行數
-	set @linecount = 36
-	set @endcount = 7
-	
-	declare @tggno nvarchar(20)
-	declare @money float
-	declare @bkmoney float
-	declare @tax float
-	declare @total float
-	declare @payed float
-	declare @unpay float
-	declare @tot float
-	declare @nn int
-	declare @mm int
-	declare @totpage int
-	
-	declare @result table(
-		gno nvarchar(10),
-		pno int,
-		totpage int,
-		tggno nvarchar(20),
-		[money] float,
-		bkmoney float,
-		tax float,
-		total float,
-		payed float,
-		unpay float,
-		tot float,
-		
-		nn int,--出貨單張數
-		
-		typea nvarchar(10),
-		datea nvarchar(10),
-		rc2no nvarchar(20),
-		productno nvarchar(20),
-		product nvarchar(50),
-		csize nvarchar(max),
-		unit nvarchar(20),
-		[weight] float,
-		mount float,
-		price float,
-		moneys float,
-		memo nvarchar(max)
-	)
-	
-	declare cursor_table cursor for
-	select tggno,[money],bkmoney,tax,total,payed,unpay,tot from @tmp
-	open cursor_table
-	fetch next from cursor_table
-	into @tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-	while(@@FETCH_STATUS <> -1)
-	begin
-		if exists(select top 1 * from @tmp1 where tggno=@tggno and mon between @t_bmon and @t_emon)
-		or exists(select top 1 * from @tmp4 where tggno=@tggno and mon between @t_bmon and @t_emon)
-		or exists(select top 1 * from @tmp5 where tggno=@tggno and mon between @t_bmon and @t_emon) 
-		begin
-			insert into @result(gno,pno,tggno
-				,typea,datea,rc2no,productno,product,csize,unit,[weight],mount,price,moneys)
-			select '1','1',@tggno
-			,case when a.typea='1' then '進' else '退' end
-			,a.datea,a.noa,b.productno,b.product
-			,case when len(isnull(b.size,''))>0 then b.size else dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) end
-			,b.unit
-			,b.[weight]
-			,b.mount
-			,b.price
-			,b.total
-			from view_rc2 a
-			left join view_rc2s b on a.noa=b.noa
-			where (a.tggno=@tggno) and (a.mon between @t_bmon and @t_emon) and (a.datea between @t_bdate and @t_edate) 
-			order by a.datea,a.noa,b.noq
-			
-			insert into @result(gno,pno,tggno 
-			,typea,datea,rc2no,productno,product,unit,[weight],mount,price,moneys) 
-			select '2','2',@tggno 
-			,case when a.typea='1' then '進' else '退' end 
-			,a.datea,a.noa,b.productno,b.product,b.unit 
-			,null 
-			,b.mount 
-			,b.price 
-			,b.total 
-			from view_workd a 
-			left join view_workds b on a.noa=b.noa 
-			where a.tggno=@tggno 
-			and case when isnull(a.mon,'')='' then LEFT(a.datea,6) else a.mon end between @t_bmon and @t_emon 
-			and (a.datea between @t_bdate and @t_edate) 
-			order by a.datea,a.noa,b.noq 
-			
-			insert into @result(gno,pno,tggno
-				,typea,datea,rc2no,productno,product,unit,[weight],mount,price,moneys)
-			select '2','2',@tggno
-			,case when a.typea='1' then '物' else '退' end
-			,a.datea,a.noa,b.bccno,b.bccname,b.unit
-			,null
-			,b.mount 
-			,b.price
-			,b.total
-			from bccin a
-			left join bccins b on a.noa=b.noa
-			where a.tggno=@tggno 
-			and a.mon between @t_bmon and @t_emon
-			and (a.datea between @t_bdate and @t_edate) 
-			order by a.datea,a.noa,b.noq
-			
-			insert into @result(gno,pno,tggno
-				,typea,datea,rc2no,productno,product,unit,[weight],mount,price,moneys)
-			select '3','3',@tggno
-			,'折',datea,noa,'','物料折讓','',null,null,null,-discount
-			from bccin
-			where tggno=@tggno 
-			and mon between @t_bmon and @t_emon
-			and (datea between @t_bdate and @t_edate) 
-			and isnull(discount,0)!=0
-			
-			insert into @result(gno,pno,tggno
-				,typea,datea,rc2no,productno,product,unit,[weight],mount,price,moneys)
-			select '3','3',@tggno
-			,'稅',datea,noa,'','稅額','',null,null,null,tax
-			from view_rc2 
-			where tggno=@tggno 
-			and mon between @t_bmon and @t_emon
-			and (datea between @t_bdate and @t_edate) 
-			and isnull(tax,0)!=0
-			
-			insert into @result(gno,pno,tggno
-				,typea,datea,rc2no,productno,product,unit,[weight],mount,price,moneys)
-			select '3','3',@tggno
-			,'稅',datea,noa,'','稅額','',null,null,null,tax
-			from bccin
-			where tggno=@tggno 
-			and mon between @t_bmon and @t_emon
-			and (datea between @t_bdate and @t_edate) 
-			and isnull(tax,0)!=0
-		end
-		if exists(select top 1 * from @tmp2 where tggno=@tggno and mon between @t_bmon and @t_emon)
-		begin
-			insert into @result(gno,pno,tggno
-				,typea,datea,rc2no,productno,product,unit,[weight],mount,price,moneys)
-			select '3','3',@tggno
-			,'稅'
-			,datea
-			,case when (select top 1 noa from view_rc2 where invono=a.noa ) IS NULL then noa else (select top 1 noa from view_rc2 where invono=a.noa )end  --讓發票在該進貨單的下方(原noa)  
-			,'',noa,'',0,0,0,tax 
-			from rc2a a
-			where tggno=@tggno and mon between @t_bmon and @t_emon and (a.datea between @t_bdate and @t_edate) 
-		end
-		
-		select @mm = COUNT(1) from @result where tggno=@tggno
-		if @mm>0 or @money!=0 or @bkmoney !=0 or @tax !=0 or @payed !=0 or @unpay!=0 or @tot!=0
-		begin
-			if(@mm+@endcount)%@linecount != 0
-			begin
-				insert into @result(gno,pno,tggno,memo)
-				select '4','4',@tggno,'---以下空白---'
-				set @mm = @mm + 1
-				while @linecount-@mm%@linecount!=@endcount
-				begin
-					insert into @result(gno,pno,tggno)
-					select '5','5',@tggno
-					set @mm = @mm + 1
-				end
-			end
-			
-			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '6','6',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '7','7',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '8','8',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '9','9',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '10','10',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '11','11',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '12','12',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-			
-			select @nn = count(1) from (select rc2no from @result where tggno=@tggno and (gno='1' or gno='2') group by rc2no)a
-			select @totpage = COUNT(1) from @result where tggno=@tggno
-			update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where tggno=@tggno
-		end
-		fetch next from cursor_table
-		into @tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-	end
-	close cursor_table
-	deallocate cursor_table
-	
-	update a
-	set mount=(select sum(mount) from @result where a.tggno=tggno)
-	,weight=(select sum(weight) from @result where a.tggno=tggno)
-	from @result a where gno >='6'
-	
-	select a.* 
-	,(ROW_NUMBER()over(partition by a.tggno order by pno)-1)/@linecount+1 pp
-	,a.totpage qq
-	,a.datea dd
-	,a.typea tt
-	,a.unit uu
-	,dbo.getComma(a.mount,[2])  a1
-	,dbo.getComma(a.[weight],[3])  a2
-	,dbo.getComma(a.price,[4])  a3
-	,dbo.getComma(a.[moneys],0)  a4
-	,b.comp comp
-	,b.nick nick
-	,b.addr_comp addr
-	,dbo.getComma(a.[money],0)  b1
-	,dbo.getComma(a.[bkmoney],0)  b2
-	,dbo.getComma(a.[tax],0)  b3
-	,dbo.getComma(a.[total],0)  b4
-	,dbo.getComma(a.[payed],0)  b5
-	,dbo.getComma(a.[unpay],0)  b6
-	,dbo.getComma(a.[tot],0)  b7
-	from @result a
-	left join tgg b on a.tggno=b.noa
-	order by a.tggno,case when len(isnull(a.rc2no,''))=0 then 2 else 1 end,isnull(a.rc2no,''),a.pno;
---*********************************************************************
-z_rc2fe2:--z_rc2fe2
 declare @t_accy nvarchar(10)
 declare @t_cno nvarchar(50)
 declare @t_bdate nvarchar(20)
@@ -570,7 +65,7 @@ select gno, noa, noq,typea, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4
 ,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno,qhref
 from @tmp order by gno,datea,noa,noq;
 --***********************************************************************************
-z_rc2fe3:--z_rc2fe3
+z_rc2fe2:--z_rc2fe2
 declare @t_accy nvarchar(10)
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
@@ -631,77 +126,152 @@ select gno, typea, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit
 ,qhref,row_number()over(partition by productno,xproduct order by productno,xproduct,gno,datea,noa) idno
 from @result order by productno,xproduct,gno,datea,noa;
 --***********************************************************************************
-z_rc2fe4:--z_rc2fe4
+z_rc2fe3:--z_rc2fe3
 declare @t_accy nvarchar(10)
-declare @t_btggno nvarchar(50)
-declare @t_etggno nvarchar(50)
-declare @t_bproductno nvarchar(50)
-declare @t_eproductno nvarchar(50)
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
+declare @t_bmon nvarchar(7)
+declare @t_emon nvarchar(7)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bproductno nvarchar(50)
+declare @t_eproductno nvarchar(50)
 
 set @t_accy = '[1]'
+set @t_bdate = case when '#non'=[10] then '' else [10] end
+set @t_edate = case when '#non'=[11] then char(255) else [11] end
+set @t_bmon = case when '#non'=[12] then '' else [12] end
+set @t_emon = case when '#non'=[13] then char(255) else [13] end
 set @t_btggno = case when '#non'=[6] then '' else [6] end
 set @t_etggno = case when '#non'=[7] then char(255) else [7] end
 set @t_bproductno = case when '#non'=[8] then '' else [8] end
 set @t_eproductno = case when '#non'=[9] then char(255) else [9] end
-set @t_bdate = case when '#non'=[12] then '' else [12] end
-set @t_edate = case when '#non'=[13] then char(255) else [13] end
 ---------------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
-	typea nvarchar(4),
-	noa nvarchar(50),
+	type nvarchar(4),
+	noa nvarchar(15),
+	invono nvarchar(30),
 	datea nvarchar(10),
-	tggno nvarchar(50),
-	comp nvarchar(50),
-	pno nvarchar(30),
-	product nvarchar(40),
+	tggno nvarchar(20),
+	comp nvarchar(40),
+	addr_invo nvarchar(90),
+	tel nvarchar(90),
+	productno nvarchar(30),
+	xproduct nvarchar(40),
 	unit nvarchar(8),
 	lengthb float,
 	mount float,
 	weight float,
 	price float,
 	total float,
+	pcount int,
 	qhref nvarchar(max)
 )
 insert into @result
-	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.datea,a.tggno,
-			 isnull(c.comp,''), b.productno, b.product, b.unit
-			 ,b.lengthb
-			 ,(case when a.typea='2' then -1 else 1 end)*isnull(b.mount,0)
-			 ,(case when a.typea='2' then -1 else 1 end)*isnull(b.weight,0)
-			 , b.price
-			 ,(case when a.typea='2' then -1 else 1 end)*isnull(b.total,0)
-			 ,'rc2'+b.accy
+	select '0' gno, (case when a.typea='2' then '退' else '進' end), a.noa,a.invono, a.datea, 
+		   a.tggno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit
+		   ,b.lengthb
+		   ,(case when a.typea='2' then -1 else 1 end)*b.mount
+		   ,(case when a.typea='2' then -1 else 1 end)*b.weight
+		   ,b.price
+		   ,(case when a.typea='2' then -1 else 1 end)*b.total, 0 pcount,'rc2'+b.accy
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
+		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
-		  (b.productno between @t_bproductno and @t_eproductno)
-		  order by a.tggno,b.productno,a.datea,a.noa
-		  
-insert into @result(gno,tggno,comp,pno,product,mount,weight,total)
-	select '1',tggno,MAX(comp),pno,MAX(product),sum(mount),sum(weight),sum(total) 
-	from @result group by tggno,pno
+		  (b.productno between @t_bproductno and @t_eproductno) 
+	order by a.tggno,a.datea,a.noa
 	
-insert into @result(gno,tggno,pno,mount,weight,total) 
-select '2',tggno,CHAR(255),sum(mount),sum(weight),sum(total) 
-from @result where gno='1' group by tggno
-		
+insert into @result(gno,tggno,comp,pcount,mount,weight,total)
+select '1',tggno,comp,count(pcount),sum(mount),sum(weight),sum(total) from @result group by tggno,comp
+	
+update @result  set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+select  
+	gno,type,noa,invono,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit
+	,dbo.getComma(lengthb,2)  lengthb
+	,dbo.getComma(mount,[2])  mount
+	,dbo.getComma(weight,[3])  weight
+	,dbo.getComma(price,[4])  price
+	,dbo.getComma(total,0)  total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pcount),1)),0,30)) pcount,qhref,
+	row_number()over(partition by tggno,comp order by tggno,gno,datea,noa) idno
+from @result order by tggno,gno,datea,noa;
+--***********************************************************************************
+z_rc2fe4:	--z_rc2fe4
+declare @t_accy nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bmon nvarchar(7)
+declare @t_emon nvarchar(7)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bproductno nvarchar(50)
+declare @t_eproductno nvarchar(50)
+
+set @t_accy = '[1]'
+set @t_bdate = case when '#non'=[10] then '' else [10] end
+set @t_edate = case when '#non'=[11] then char(255) else [11] end
+set @t_bmon = case when '#non'=[12] then '' else [12] end
+set @t_emon = case when '#non'=[13] then char(255) else [13] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[8] then '' else [8] end
+set @t_eproductno = case when '#non'=[9] then char(255) else [9] end
+--------------------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	type nvarchar(4),
+	noa nvarchar(15),
+	invono nvarchar(15),
+	datea nvarchar(10),
+	tggno nvarchar(20),
+	comp nvarchar(40),
+	productno nvarchar(30),
+	xproduct nvarchar(40),
+	unit nvarchar(8),
+	lengthb float,
+	mount float,
+	weight float,
+	price float,
+	total float,
+	memo nvarchar(max),
+	qhref nvarchar(max)
+)
+insert into @result
+	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.invono,a.datea,a.tggno,
+			 isnull(c.comp,''), b.productno, b.product, b.unit
+			 ,b.lengthb
+			 ,(case when a.typea='2' then -1 else 1 end)*b.mount
+			 ,(case when a.typea='2' then -1 else 1 end)*b.weight
+			 , b.price
+			 ,(case when a.typea='2' then -1 else 1 end)*b.total,b.memo,'rc2'+b.accy
+	from view_rc2s b
+	left join view_rc2 a on a.noa = b.noa
+	left join tgg c on  a.tggno = c.noa
+	where (a.datea between @t_bdate and @t_edate) and
+		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+		  (a.tggno between @t_btggno and @t_etggno) and
+		  (b.productno between @t_bproductno and @t_eproductno) 
+	order by a.tggno,b.productno,a.datea,a.noa
+	
+insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
+	select '1',tggno,comp,productno,xproduct,sum(mount),sum(weight),sum(total) from @result group by tggno,comp,productno,xproduct
+	
+insert into @result(gno,tggno,comp,productno,mount,weight,total)
+	select '2',tggno,comp,char(255),sum(mount),sum(weight),sum(total) from @result where gno='1' group by tggno,comp
+	
 update @result set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
-update @result
-set mount=abs(mount),weight=abs(weight),total=abs(total)
-where gno='0'
-
-select 
-dbo.getComma(lengthb,2)  lengthb
-,dbo.getComma(mount,[2])  mount
-,dbo.getComma(weight,[3])  weight
-,dbo.getComma(price,[4])  price
-,dbo.getComma(total,0)  total
-,*
-from @result order by tggno,pno,gno,datea;
+select gno, type, noa, datea, tggno, comp,productno, xproduct, unit,invono,memo
+		,dbo.getComma(lengthb,2)  lengthb
+		,dbo.getComma(mount,[2])  mount
+		,dbo.getComma(weight,[3])  weight
+		,dbo.getComma(price,[4])  price
+		,dbo.getComma(total,0)  total
+		,qhref,row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno
+from @result order by tggno,productno,gno,datea;
 --***********************************************************************************
