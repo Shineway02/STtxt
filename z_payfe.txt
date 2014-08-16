@@ -209,10 +209,8 @@ z_payfe01:--z_payfe01
 	------------------------------------------------------------------------------------------
 	update @tmp set tot = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)-ISNULL(payed,0)+ISNULL(unpay,0)
 	
-	declare @linecount int --每頁行數
+	declare @linecount int = 36 --每頁行數
 	declare @endcount int --總計行數
-	set @linecount = 36
-	set @endcount = 7
 	
 	declare @tggno nvarchar(20)
 	declare @money float
@@ -227,6 +225,8 @@ z_payfe01:--z_payfe01
 	declare @totpage int
 	declare @mount float
 	declare @weight float
+	declare @opay float
+	declare @unopay float
 	
 	declare @result table(
 		gno nvarchar(10),
@@ -258,7 +258,8 @@ z_payfe01:--z_payfe01
 		moneys float,
 		memo nvarchar(max),
 		totmount float,
-		totweight float
+		totweight float,
+		opay float
 	)
 	
 	declare cursor_table cursor for
@@ -271,6 +272,15 @@ z_payfe01:--z_payfe01
 		if exists(select top 1 * from @tmp1 where tggno=@tggno and mon between @t_bmon and @t_emon)
 		or exists(select top 1 * from @tmp4 where tggno=@tggno and mon between @t_bmon and @t_emon)
 		begin
+			select @opay=0,@unopay=0
+			select @opay=SUM(isnull(opay,0)),@unopay=SUM(isnull(unopay,0))
+			from pay 
+			where tggno=@tggno and (len(@t_date)=0 or datea<=@t_date) 
+			if @opay!=@unopay
+				set @endcount = 8
+			else
+				set @endcount = 7
+			
 			insert into @result(gno,pno,tggno
 				,typea,datea,accy,tablea,rc2no,productno,product,csize,unit,[weight],mount,price,moneys)
 			select '1','1',@tggno
@@ -371,6 +381,11 @@ z_payfe01:--z_payfe01
 			select '11','11',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
 			select '12','12',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			if(@opay!=@unopay)
+			begin
+				insert into @result(gno,pno,tggno,opay)
+				select '13','13',@tggno,@opay-@unopay
+			end
 			
 			select @nn = count(1) from (select rc2no from @result where tggno=@tggno and (gno='1' or gno='2') group by rc2no)a
 			select @mount=0,@weight=0
@@ -401,13 +416,14 @@ z_payfe01:--z_payfe01
 	,b.comp comp
 	,b.nick nick
 	,b.addr_comp addr
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[money],0)),1)),4,12)) b1
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[bkmoney],0)),1)),4,12)) b2
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[tax],0)),1)),4,12)) b3
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[total],0)),1)),4,12)) b4
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[payed],0)),1)),4,12)) b5
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[unpay],0)),1)),4,12)) b6
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[tot],0)),1)),4,12)) b7
+	,dbo.getComma(a.[money],0) b1
+	,dbo.getComma(a.[bkmoney],0) b2
+	,dbo.getComma(a.[tax],0) b3
+	,dbo.getComma(a.[total],0) b4
+	,dbo.getComma(a.[payed],0) b5
+	,dbo.getComma(a.[unpay],0) b6
+	,dbo.getComma(a.[tot],0) b7
+	,dbo.getComma(a.[opay],0) b8
 	,a.totmount c01
 	,a.totweight c02
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp+'</a>' d01
