@@ -33,7 +33,7 @@ declare @tmpa table(
 
 insert into @tmpa 
 select '0' gno,a.noa,a.datea,a.storeno,a.store,a.itype,a.memo,b.productno,b.product,b.unit, 
-b.lengthb,b.mount,b.weight,isnull((select top 1 aprice from uccp where noa=b.productno and datea<=a.datea order by datea desc),0),0,b.memo
+b.lengthb,b.mount,b.weight,isnull((select top 1 sprice from uccps pa left join uccp pb on pa.noa=pb.noa where pa.productno=b.productno and pb.datea<=a.datea order by pb.datea desc),0),0,b.memo
 ,0,0,0
 from view_ina a
 left join view_inas b on a.noa = b.noa

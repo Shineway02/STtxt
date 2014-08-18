@@ -33,7 +33,7 @@ declare @tmp table(
 insert into @tmp
 select '0' gno,a.noa,b.noq,a.storeno,a.store,a.datea,a.itype,(case when c.nick!='' then c.nick else left(a.comp,4) end)
 ,b.uno,b.productno,b.product,b.unit,b.lengthb,b.mount,b.weight
-,isnull((select top 1 aprice from uccp where noa=b.productno and datea<=a.datea order by datea desc),0)
+,isnull((select top 1 sprice from uccps pa left join uccp pb on pa.noa=pb.noa where pa.productno=b.productno and pb.datea<=a.datea order by pb.datea desc),0)
 ,0,b.memo,'inafe'+a.accy
 from view_ina a
 left join view_inas b on a.noa = b.noa
