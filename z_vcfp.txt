@@ -1,0 +1,96 @@
+z_vcfp01:--z_vcfp01
+	declare @t_worker nvarchar(20) = '[1]'
+	declare @t_noa nvarchar(20) = case when '#non' = [2] then '' else [2] end
+	declare @t_bdate nvarchar(10) = case when '#non' = [3] then '' else [3] end
+	declare @t_edate nvarchar(10) = case when '#non' = [4] then CHAR(255) else [4] end
+	declare @t_btggno nvarchar(20) = case when '#non' = [5] then '' else [5] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [6] then CHAR(255) else [6] end
+	----------------------------------------------------------------------------
+	declare @tmp table(
+		noa nvarchar(20),
+		tggno nvarchar(20),
+		datea nvarchar(10)
+	)
+	
+	insert into @tmp(noa,tggno,datea)
+	select noa,tggno,datea
+	from vcf 
+	where datea between @t_bdate and @t_edate
+	and isnull(tggno,'') between @t_btggno and @t_etggno
+	and (len(@t_noa)=0 or noa=@t_noa)
+	-----------------------------------------------------------------------------
+	declare @tmpa table(
+		gno nvarchar(20),
+		pno nvarchar(10),
+		typea nvarchar(10),
+		noa nvarchar(20),
+		tggno nvarchar(20),
+		datea nvarchar(10),
+		recno int,
+		memo nvarchar(max),
+		
+		productno nvarchar(20),
+		product nvarchar(50),
+		storeno nvarchar(20),
+		store nvarchar(50),
+		lengthb float,
+		unit nvarchar(20),
+		dates nvarchar(10),
+		mount float,
+		[weight] float,
+		memos nvarchar(max),
+		
+		iweight float,
+		oweight float,
+		
+		mm1 nvarchar(100),
+		mm2 nvarchar(100),
+		mm3 nvarchar(100)
+	)
+	insert into @tmpa(gno,pno)values('1','1')--入庫表頭
+	
+	insert into @tmpa(gno,pno,typea,noa,tggno,datea,recno
+		,productno,product,storeno,store,lengthb,unit,dates,mount,[weight],memos)
+	select '3','2','vcft',a.noa,a.tggno,a.datea
+		,ROW_NUMBER()over(partition by a.tggno order by b.noq)
+		,b.productno,b.product,b.storeno,b.store,b.lengthb,b.unit,b.datea,b.mount,b.[weight],b.memo
+	from @tmp a
+	left join vcft b on a.noa=b.noa
+	
+	insert into @tmpa(gno,pno)values('2','3')--出庫表頭
+	
+	insert into @tmpa(gno,pno,typea,noa,tggno,datea,recno
+		,productno,product,storeno,store,lengthb,unit,dates,mount,[weight],memos)
+	select '3','4','vcfs',a.noa,a.tggno,a.datea
+		,ROW_NUMBER()over(partition by a.tggno order by b.noq)
+		,b.productno,b.product,b.storeno,b.store,b.lengthb,b.unit,b.datea,b.mount,b.[weight],b.memo
+	from @tmp a
+	left join vcfs b on a.noa=b.noa
+	--------------------------------------------------------------------------------------------
+	declare @iweight float = 0
+	declare @oweight float = 0
+	select @iweight = SUM(ISNULL([weight],0)) from @tmpa where pno='2'
+	select @oweight = SUM(ISNULL([weight],0)) from @tmpa where pno='4'
+	
+	insert into @tmpa(gno,pno,iweight,oweight)values('4','5',@iweight,@oweight)--小計
+	
+	insert into @tmpa(gno,pno)values('5','6')
+	insert into @tmpa(gno,pno)values('6','6')
+	insert into @tmpa(gno,pno)values('7','6')
+	insert into @tmpa(gno,pno)values('8','6')
+	
+	declare @date nvarchar(max)
+	declare @comp nvarchar(max)
+	declare @tel nvarchar(max)
+	
+	select top 1 @date=a.datea,@comp=b.comp,@tel=b.tel
+	from @tmp a
+	left join tgg b on a.tggno=b.noa
+	
+	select * 
+		,@t_worker worker
+		,@date a01
+		,@comp a02
+		,@tel a03
+	from @tmpa a
+	order by a.pno,a.recno;
