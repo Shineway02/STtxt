@@ -28,12 +28,13 @@ ordp_ordc:--ordp_ordc
 		omount float,
 		mount float,
 		price float,
+		total float,
 		trandate nvarchar(10),--預定交貨日
 		tmpdate date,
 		memo nvarchar(max)
 	)
-	insert into #ordp_tmps(ordpno,ordpnoq,cno,kind,tggno,productno,product,spec,unit,omount,mount,price,memo)
-	select a.noa,a.noq,a.cno,a.kind,a.tggno,a.productno,a.product,a.spec,a.unit,a.omount,a.mount,a.price,a.memo
+	insert into #ordp_tmps(ordpno,ordpnoq,cno,kind,tggno,productno,product,spec,unit,omount,mount,price,total,memo)
+	select a.noa,a.noq,a.cno,a.kind,a.tggno,a.productno,a.product,a.spec,a.unit,a.omount,a.mount,a.price,a.total,a.memo
 	from ordps a
 	where a.noa=@t_noa
 	--最慢需求日(Ldate)減一天 才是預定交貨日(Trandate)
@@ -94,6 +95,7 @@ ordp_ordc:--ordp_ordc
 	declare @no2 nvarchar(10)
 	declare @noq nvarchar(10)
 	declare @tnoa nvarchar(20)
+	declare @total float
 	
 	declare @ordpno nvarchar(20)
 	declare @ordpnoq nvarchar(10)
@@ -109,14 +111,15 @@ ordp_ordc:--ordp_ordc
 		noa nvarchar(20),
 		cno nvarchar(20),
 		kind nvarchar(20),
-		tggno nvarchar(20)
+		tggno nvarchar(20),
+		total float
 	)
 
 	declare cursor_table cursor for
-	select cno,kind,tggno from #ordp_tmps group by cno,kind,tggno
+	select cno,kind,tggno,sum(isnull(total,0)) from #ordp_tmps group by cno,kind,tggno
 	open cursor_table
 	fetch next from cursor_table
-	into @cno,@kind,@tggno
+	into @cno,@kind,@tggno,@total
 	while(@@FETCH_STATUS <> -1)
 	begin		
 		select @noa='',@tnoa = @key + REPLACE(@odate,'/','') 
@@ -129,7 +132,7 @@ ordp_ordc:--ordp_ordc
 			set @n = (charindex(SUBSTRING(@noa,LEN(@tnoa)+1,1),@string)-1)*100+cast(RIGHT(@noa,2) as int)+1		
 			set @noa = @tnoa + SUBSTRING(@string,floor(@n/100)+1,1)+right('00'+cast(@n%100 as nvarchar),2) 
 		end
-		insert into #ordp_tmp(noa,cno,kind,tggno)values(@noa,@cno,@kind,@tggno)
+		insert into #ordp_tmp(noa,cno,kind,tggno,total)values(@noa,@cno,@kind,@tggno,@total)
 		update #ordp_tmps set noa=@noa,no2=RIGHT('000'+CAST(b.recno as nvarchar),3)	
 		from #ordp_tmps a
 		left join (select ordpno,ordpnoq
@@ -143,7 +146,7 @@ ordp_ordc:--ordp_ordc
 		where b.cno=@cno and b.kind=@kind and b.tggno=@tggno
 
 		fetch next from cursor_table
-		into @cno,@kind,@tggno
+		into @cno,@kind,@tggno,@total
 	end
 	close cursor_table
 	deallocate cursor_table
@@ -156,8 +159,8 @@ ordp_ordc:--ordp_ordc
 	-------------------------------------------------------------------------------------------
 	declare @accy nvarchar(10) = left(@datea,3)
 	set @cmd = 
-		"insert into ordc"+@accy+" (noa,datea,odate,cno,acomp,kind,tggno,tgg,nick,ordbno,memo)
-		select a.noa,@datea,@odate,a.cno,b.acomp,a.kind,a.tggno,c.comp,c.nick,@t_noa,'採購建議書【'+@t_noa+'】轉來'
+		"insert into ordc"+@accy+" (noa,datea,odate,cno,acomp,kind,tggno,tgg,nick,money,total,ordbno,memo)
+		select a.noa,@datea,@odate,a.cno,b.acomp,a.kind,a.tggno,c.comp,c.nick,a.total,a.total,@t_noa,'採購建議書【'+@t_noa+'】轉來'
 		from #ordp_tmp a
 		left join acomp b on a.cno=b.noa
 		left join tgg c on a.tggno=c.noa
@@ -166,8 +169,8 @@ ordp_ordc:--ordp_ordc
 		,@datea=@datea,@odate=@odate,@t_noa=@t_noa
 	
 	set @cmd = 
-		"insert into ordcs"+@accy+"(noa,no2,tablea,ordbno,no3,productno,product,spec,unit,omount,mount,price,trandate)
-		select noa,no2,'ordp',ordpno,ordpnoq,productno,product,spec,unit,omount,mount,price,trandate 
+		"insert into ordcs"+@accy+"(noa,no2,tablea,ordbno,no3,productno,product,spec,unit,omount,mount,price,total,trandate)
+		select noa,no2,'ordp',ordpno,ordpnoq,productno,product,spec,unit,omount,mount,price,total,trandate 
 		from #ordp_tmps"
 	execute sp_executesql @cmd
 	
