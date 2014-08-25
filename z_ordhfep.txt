@@ -1,0 +1,58 @@
+z_ordhfep01:--z_ordhfep01
+	declare @t_worker nvarchar(20) = '[1]'
+	declare @t_noa nvarchar(20) = case when '#non' = [2] then '' else [2] end
+	declare @t_bdate nvarchar(10) = case when '#non' = [3] then '' else [3] end
+	declare @t_edate nvarchar(10) = case when '#non' = [4] then CHAR(255) else [4] end
+	declare @t_btggno nvarchar(20) = case when '#non' = [5] then '' else [5] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [6] then CHAR(255) else [6] end
+	----------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		accy nvarchar(10),
+		noa nvarchar(20),
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(50),
+		datea nvarchar(10),
+		
+		noq nvarchar(10),
+		comp nvarchar(50),
+		indate nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		[weight] float,
+		price float,
+		[money] float,
+		memo nvarchar(max)
+	)
+	
+	insert into @tmp(gno,accy,noa,tggno,tgg,tel,fax,datea
+		,noq,comp,indate,productno,product,unit,mount,[weight],price,[money],memo)
+	select '1',a.accy,a.noa,a.tggno,a.tgg,a.tel,a.fax,a.datea
+		,b.noq,b.comp,b.indate,b.productno,b.product,b.unit,b.mount,b.[weight],b.price,b.[money],b.memo 
+	from view_ordh a
+	left join view_ordhs b on a.accy=b.accy
+	where (len(@t_noa)=0 or a.noa=@t_noa)
+	and ISNULL(a.tggno,'') between @t_btggno and @t_etggno
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	
+	
+	select noa a01
+		,tgg a02
+		,@t_worker a03
+		,tel a04
+		,fax a05
+		,comp b01
+		,indate b02
+		,product b03
+		,unit b04
+		,mount b05
+		,[weight] b06
+		,price b07
+		,[money] b08
+		,memo b09
+		,* 
+	from @tmp;
