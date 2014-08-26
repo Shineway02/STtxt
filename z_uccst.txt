@@ -1,4 +1,86 @@
-   
+z_uccst5:--z_uccst5
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bproductno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_eproductno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	
+	
+	declare @t_bdime float= case when '#non'=[14] then 0.000 else cast([14] as float) end
+	declare @t_edime float= case when '#non'=[15] then 999.990 else cast([15] as float) end
+	declare @t_bwidth float=case when '#non'=[12] then 0.00 else cast([12] as float)end
+	declare @t_ewidth float=case when '#non'=[13] then 9999.99 else cast([13] as float) end
+	declare @t_blength float=case when '#non'=[16] then 0.0 else cast([16] as float) end
+	declare @t_elength float=case when '#non'=[17] then 99999.9 else cast([17] as float) end
+	declare @t_bradius float=case when '#non'=[10] then 0.00 else cast([10] as float) end
+	declare @t_eradius float=case when '#non'=[11] then 9999.99 else cast([11] as float) end
+	declare @t_stype nvarchar(10) = case when '#non'=[28] then '' else [28] end -- A 製成品、B 在製品
+	declare @t_stktype nvarchar(20) = case when '#non'=[4] then '' else [4] end
+	declare @t_style nvarchar(20) = case when '#non'=[8] then '' else [8] end
+	-------------------------------------------------------------------------------------
+		declare @tmp table(
+		tablea nvarchar(20),
+		accy nvarchar(20),
+		noa nvarchar(20),
+		[action] nvarchar(20),
+		
+		uno nvarchar(50),
+		datea nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(20),
+		style nvarchar(20),
+		dime float,
+		width float,
+		lengthb float,
+		radius float,
+		size nvarchar(50),
+		mount float,
+		[weight] float,
+		sprice float,
+		sprice2 float
+	)
+	insert into @tmp(tablea,accy,noa,uno,[action],datea,productno,product,style,dime,width,lengthb,radius,size,mount,[weight],sprice,sprice2)
+	select a.tablea,a.accy,a.noa,a.uno,left(a.[action],2),a.datea,a.productno,a.product,a.style,a.dime,a.width,a.lengthb,a.radius,a.size
+		,a.mount,a.[weight],a.sprice,a.sprice2
+	from view_uccb a
+	where 1=1 
+	and datea between @t_bdate and @t_edate
+	and productno between @t_bproductno and @t_eproductno
+	and a.dime between @t_bdime and @t_edime
+	and (a.width between @t_bwidth and @t_ewidth)
+	and (@t_stktype='C3' or a.lengthb between @t_blength and @t_elength)
+	and (@t_stktype='A1' or @t_stktype='C3' or @t_stktype='A4' or a.radius between @t_bradius and @t_eradius)
+	and (len(@t_style)=0 or a.style=@t_style)
+	------------------------------------------------------------------------------------------
+	if @t_stype='A'
+	begin
+		delete @tmp 
+		from @tmp a
+		left join view_cub b on a.accy=b.accy and a.noa=b.noa
+		where a.tablea='cubu' and b.typea!='4'
+	end
+	if @t_stype='B'
+	begin
+		delete @tmp 
+		from @tmp a
+		left join view_cub b on a.accy=b.accy and a.noa=b.noa
+		where not(a.tablea='cubu' and b.typea!='4')
+	end
+	
+	select '1' gno 
+		,ROW_NUMBER()over(order by datea,style,productno,size) rr
+		,case tablea when 'inas' then 'inast'
+			when 'rc2s' then 'rc2st'
+			when 'cuts' then 'cut'
+			when 'cubu' then 'cubpi'
+			else '' end
+			+ "?noa=\'"+noa+"\' and "+cast(ROW_NUMBER()over(order by datea,style,productno,size) as nvarchar)+"=$rr?"+accy ghref 
+		,dbo.getComma(sprice,3) sp1
+		,dbo.getComma(sprice2,3) sp2
+		,* 
+	from @tmp 
+	order by datea,style,productno,size;
+	   
 z_acx02:--z_acx02
 	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
 	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
