@@ -1,11 +1,40 @@
-z_vccp1:--z_vccp1
+z_vccwp1:--z_vccwp1
+SET QUOTED_IDENTIFIER OFF 
 declare @t_bxnoa nvarchar(20)
 declare @t_exnoa nvarchar(20)
 declare @t_pageline int = 5   --------一頁幾行
 declare @t_showprice nvarchar(10)
-set @t_bxnoa = case when '#non' = [2] then '' else [2] end
-set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
-set @t_showprice = case when '#non' = [10] then 0 else [10] end
+declare @t_stype nvarchar(max) 
+set @t_stype = '[5]' 
+set @t_bxnoa = case when '#non' = [6] then '' else [6] end
+set @t_exnoa = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_showprice = case when '#non' = [8] then 0 else [8] end
+------------------------------------------------------------------------------------------
+	declare @cmd nvarchar(max) 
+	declare @string nvarchar(max)
+	declare @n int
+	--解析要計算的種類
+	declare @listStype table(
+		noa nvarchar(20),
+		namea nvarchar(max)
+	)
+	set @string = @t_stype
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @listStype select LEFT(@string,CHARINDEX('@',@string)-1),RIGHT(@string,len(@string)-CHARINDEX('@',@string))
+			end
+			break
+		end
+		insert into @listStype select LEFT(@string,CHARINDEX('@',@string)-1), SUBSTRING(LEFT(@string,@n-1),CHARINDEX('@',LEFT(@string,@n-1))+1,@n)
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+------------------------------------------------------------------------------------------
+
 declare @tmp table(
 	gno nvarchar(1),
 	idno int identity(0,1),
@@ -18,14 +47,12 @@ declare @tmp table(
 	a_cfax nvarchar(100),
 	a_caddr nvarchar(200),
 	a_noa nvarchar(30),
-	a_typea nvarchar(15),
 	a_stype nvarchar(15),
 	a_custno nvarchar(90),
 	a_comp nvarchar(90),
 	a_tel nvarchar(90),
 	a_fax nvarchar(90),
 	a_sales nvarchar(50),
-	a_sale2s nvarchar(50),
 	a_invo nvarchar(50),
 	a_title nvarchar(50),
 	a_trantype nvarchar(100),
@@ -41,26 +68,31 @@ declare @tmp table(
 	b_products nvarchar(30),
 	b_unit nvarchar(15),
 	b_mount float,
+	b_weight float,
 	b_price float,
 	b_total float,
 	b_memo nvarchar(max)
 )
+
 insert into @tmp
 	select
 		'0',
 		ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),1,1,a.cno,a.acomp,d.tel,d.fax,d.addr
-		,a.noa,a.typea,a.stype,a.custno,c.comp,a.tel,a.fax,a.sales,a.sales2,a.invono,c.invoicetitle,a.trantype,(case when a.addr2!='' then a.addr2 else a.addr end),a.datea,a.cardeal,a.memo
+		,a.noa,a.stype,a.custno,c.comp,a.tel,a.fax,a.sales,a.invono,c.invoicetitle,a.trantype
+		,(case when a.addr2!='' then a.addr2 else a.addr end),a.datea,a.cardeal,a.memo
 		--,a.tax,a.money,a.total
 		,(case when a.taxtype='1' then round(a.money*0.05,0) when a.taxtype='3' then e.tax else 0 end)
 		,(case when a.taxtype='1' then a.money when a.taxtype='3' then a.total-e.tax else a.money end)
 		,(case when a.taxtype='1' then a.money+round(a.money*0.05,0) when a.taxtype='3' then a.total else a.money end)
-		,b.uno,b.productno,b.product,b.unit,b.mount,b.price,b.total,b.memo
-	from view_vcc[1] a
-	left join view_vccs[1] b on a.noa = b.noa
+		,'',b.bccno,b.bccname,b.unit,b.mount,b.weight 
+		,b.price,b.total,b.memo
+	from vccw a
+	left join vccws b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
 	left join acomp d on a.cno=d.noa
-	outer apply(select noa,sum(round(total/1.05,0)) tax from view_vccs103 where a.noa=noa group by noa) e
+	outer apply(select noa,sum(round(total/1.05,0)) tax from vccws where a.noa=noa group by noa) e
 where (a.noa between @t_bxnoa and @t_exnoa)
+
 declare @a_noa nvarchar(30)
 declare @a_count int
 declare @idno int
@@ -90,9 +122,11 @@ begin
 end
 close cursor_table
 deallocate cursor_table
+
 update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
 declare cursor_table cursor for
-	select distinct a_noa,max(orderno),pageno,min(idno),count(*) from @tmp group by a_noa,pageno
+select distinct a_noa,max(orderno),pageno,min(idno),count(*) from @tmp group by a_noa,pageno
 open cursor_table
 fetch next from cursor_table
 into @a_noa,@orderno,@pageno,@idno,@a_count
@@ -104,16 +138,16 @@ begin
 	begin
 		while(@k > 0)
 		begin
-			insert into @tmp(gno,orderno,pageno,a_noa,a_memo,a_typea,a_comp)
-				select '0',(@orderno+1),@pageno,@a_noa,a_memo,a_typea,a_comp from @tmp where idno = @idno
+			insert into @tmp(gno,orderno,pageno,a_noa,a_memo,a_comp)
+				select '0',(@orderno+1),@pageno,@a_noa,a_memo,a_comp from @tmp where idno = @idno
 			set @k = @k-1
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_comp,a_tax,a_money,a_total)
-		select '1',(@t_pageline+1),pageno,a_noa,a_typea,a_comp,MAX(a_tax),MAX(a_money),MAX(a_total) from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_comp
-	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_memo) 
-		select '2',(@t_pageline+2),pageno,a_noa,a_typea,a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_memo
+	insert into @tmp(gno,orderno,pageno,a_noa,a_comp,a_tax,a_money,a_total)
+		select '1',(@t_pageline+1),pageno,a_noa,a_comp,MAX(a_tax),MAX(a_money),MAX(a_total) from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_comp
+	insert into @tmp(gno,orderno,pageno,a_noa,a_memo) 
+		select '2',(@t_pageline+2),pageno,a_noa,a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_memo
 	fetch next from cursor_table
 	into @a_noa,@orderno,@pageno,@idno,@a_count
 end
@@ -121,10 +155,8 @@ close cursor_table
 deallocate cursor_table
 
 --update @tmp set a_total = a_tax + a_money where gno = '1'
-update @tmp set a_typea = case a_typea when '1' then '出' when '2' then '退' else '' end
-update @tmp set a_stype = (case when a_stype='1' then '內銷'+a_typea+'貨單' when a_stype='2' then '代工'+a_typea+'貨單' 
-when a_stype='3' then '外銷'+a_typea+'貨單' when a_stype='4' and a_typea='出' then '樣品簽收單' 
-when a_stype='4' and a_typea='退' then '樣品退回單' else '' end)
+update a set a_stype =b.namea+'單'
+from @tmp a left join @listStype b on a.a_stype=b.noa
  
 if(@t_showprice = '0')
 begin
@@ -136,14 +168,16 @@ set topage=(select MAX(pageno) from @tmp where a_noa=a.a_noa)
 from @tmp a
 
 select
-	gno,a_noa,a_typea,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_sale2s,a_invo,a_title,a_trantype,a_cardeal
+	gno,a_noa,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_invo,a_title,a_trantype,a_cardeal
 	,Replace(a_memo,'chr(10)','</BR>&nbsp') a_memo,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_tax),1)),4,12)) a_tax,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_total),1)),4,12)) a_total,
+	dbo.getComma(a_tax,0)  a_tax,
+	dbo.getComma(a_money,0)  a_money,
+	dbo.getComma(a_total,0)  a_total,
 	b_productno,dbo.charbr(b_products,38) b_products,b_unit,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) b_mount,b_price,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total
+	dbo.getComma(b_mount,[2])  b_mount,
+	dbo.getComma(b_weight,[3])  b_weight,
+	dbo.getComma(b_price,[4])  b_price,
+	dbo.getComma(b_total,0)  b_total
 	,b_uno+(case when len(b_uno)>0 and len(b_memo)>0 then '<BR> &nbsp' else '' end)+b_memo  b_memo
 	,topage,pageno,a_cno,a_acomp,a_ctel,a_cfax,a_caddr
 from @tmp order by a_noa desc,pageno,gno,orderno;
