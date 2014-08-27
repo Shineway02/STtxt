@@ -5,6 +5,7 @@ import:--vccpr import
 	declare @t_custno nvarchar(20) = [3] 
 	declare @t_salesno nvarchar(20) = [4]
 	declare @tmp table(
+		[typea] [nvarchar](10) NULL,
 		[datea] [nvarchar](10) NULL,
 		[custno] [nvarchar](20) NULL,
 		[cust] [nvarchar](50) NULL,
@@ -30,31 +31,44 @@ import:--vccpr import
 		[accy] [nvarchar](10) NULL,
 		[tablea] [nvarchar](20) NULL,
 		[vccno] [nvarchar](20) NULL,
+		[vccnoq] [nvarchar](10) NULL,
 		[worker] [nvarchar](20) NULL,
 		[profit] [float] NULL,
 		[total] [float] NULL,
 		[productno] [nvarchar](20) NULL,
 		[product] [nvarchar](50) NULL,
+		[cash] [float] null,
 		[inte] [float] NULL,
-		[daya] [float] NULL
+		[daya] [float] NULL,
+		[post] [nvarchar](20) null,
+		[styleno] [nvarchar](20) null,
+		[floata] [float] null,
+		[paytype] [nvarchar](20) null
 	)
-	
-	insert into @tmp(accy,tablea,vccno,datea,custno,cust,nick,apv,trantype,tranaddr
-		,productno,product,lengthb,unit,mount,[weight],price,tranmoney,sprice,sprice2,wcost)
-	select a.accy,'vccs',a.noa,a.datea,a.custno,a.custno,a.nick,a.apv,a.trantype,a.addr2
-		,b.productno,b.product,b.lengthb,b.unit,b.mount,b.[weight],b.price,b.tranmoney,b.sprice,b.sprice2,b.wcost
-	from view_vcc a
-	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
-	where a.datea between @t_bdate and @t_edate
-	and (len(@t_custno)=0 or a.custno=@t_custno)
-	and (len(@t_salesno)=0 or a.salesno=@t_salesno)
+	begin try
+		insert into @tmp(accy,tablea,vccno,vccnoq,typea,datea,custno,cust,nick,apv,trantype,tranaddr
+			,productno,product,lengthb,unit,mount,[weight],price,total,tranmoney,tranmoney2,tranmoney3,sprice,sprice2,wcost
+			,post,[floata],[paytype],daya)
+		select a.accy,'vccs',a.noa,b.noq,a.typea,a.datea,a.custno,a.custno,a.nick,a.apv,a.trantype,a.addr2
+			,b.productno,b.product,b.lengthb,b.unit,b.mount,b.[weight],b.price,b.total,b.tranmoney,b.tranmoney2,b.tranmoney3,b.sprice,b.sprice2,b.wcost
+			,a.post,a.[floata],a.paytype
+			,case when patindex('%[0-9]%',ISNULL(a.paytype,''))>0 then CAST(substring(ISNULL(a.paytype,''),patindex('%[0-9]%',ISNULL(a.paytype,'')),len(ISNULL(a.paytype,''))-patindex('%[0-9]%',ISNULL(a.paytype,''))- patindex('%[0-9%]',reverse(ISNULL(a.paytype,'')))) as int) else 0 end
+		from view_vcc a
+		left join view_vccs b on a.accy=b.accy and a.noa=b.noa
+		where a.datea between @t_bdate and @t_edate
+		and (len(@t_custno)=0 or a.custno=@t_custno)
+		and (len(@t_salesno)=0 or a.salesno=@t_salesno)
+	end try
+	begin catch
+		--nothing
+	end catch
 	----------------------------------------------------------------
 	update @tmp set lprice=b.price
 	from @tmp a
 	outer apply (select top 1 y.* 
 		from view_vcc x 
 		left join view_vccs y on x.accy=y.accy and x.noa=y.noa 
-		where a.custno=x.custno and a.datea<=x.datea and a.productno=y.productno and a.vccno!=x.noa
+		where a.custno=x.custno and x.datea<=a.datea and a.productno=y.productno and a.vccno!=x.noa
 		order by x.datea desc) b
 	
 	update @tmp set hprice=b.price
@@ -62,7 +76,7 @@ import:--vccpr import
 	outer apply (select top 1 y.* 
 		from view_vcc x 
 		left join view_vccs y on x.accy=y.accy and x.noa=y.noa 
-		where a.custno=x.custno and a.datea<=x.datea and a.productno=y.productno and a.vccno!=x.noa
+		where a.custno=x.custno and x.datea<=a.datea and a.productno=y.productno and a.vccno!=x.noa
 		order by ISNULL(y.price,0) desc) b
 	
 	--基價
@@ -70,4 +84,47 @@ import:--vccpr import
 	from @tmp a
 	outer apply(select top 1 y.sprice from uccp x left join uccps y on x.noa=y.noa where y.productno=a.productno and x.datea<=a.datea and y.sprice!=0 order by datea desc) b
 	
+	--運費
+	update @tmp set styleno=isnull(b.styleno,''),pprice=isnull(b.saleprice,0),tranmoney=
+	case when b.styleno between 'A' and 'H' then a.mount*b.uweight 
+		when b.styleno between 'I' and 'NZ' then a.mount*case when a.sprice2>0 then a.sprice2 else a.sprice end
+		when b.styleno between 'O' and 'TZ' or b.styleno between '0' and '9Z' then case when a.sprice2>0 then a.sprice2 else a.sprice end * case when upper(a.unit)='KG' then a.[weight] else a.mount end
+		when b.styleno between 'U' and 'ZZ' or b.styleno between '0' and '9Z' then a.[weight]
+		end	
+	from @tmp a
+	left join ucc b on a.productno=b.noa
+	where len(ISNULL(a.productno,''))>0 and CHARINDEX('送達',trantype)>0
+	
+	update @tmp set tranmoney=round(a.tranmoney*b.price,0)
+	from @tmp a
+	outer apply(select top 1 * from carp where noa=a.styleno and addrno=a.post)b
+	where len(ISNULL(a.productno,''))>0 and CHARINDEX('送達',trantype)>0 and b.noa is not null
+	
+	--客戶毛利
+	update @tmp set price=case when a.sprice2 !=0 then a.sprice2 else a.sprice end + a.wcost 
+		+ case when case when UPPER(a.unit)='KG' or len(ISNULL(a.unit,''))=0 then a.[weight] else a.mount end = 0 then 0
+			else (a.tranmoney+a.tranmoney2+a.tranmoney3)/case when UPPER(a.unit)='KG' or len(ISNULL(a.unit,''))=0 then a.[weight] else a.mount end end
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	where isnull(b.profit,0)!=0
+	
+	update @tmp set price=ROUND( a.price * (1+b.profit / 100)  ,2)
+		,total = ROUND( a.price * (1+b.profit / 100)  ,2) * (case when UPPER(a.unit)='KG' or len(ISNULL(a.unit,''))=0 then a.[weight] else a.mount end)*(case isnull(a.floata,0) when 0 then 1 else a.floata end)
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	where isnull(b.profit,0)!=0
+	-------------------------------
+	update @tmp set cash = round(total *(1+daya/30)*(case when typea='2' then -1 else 1 end),0)
+		,inte = round(total*daya*0.0004*(case when typea='2' then -1 else 1 end),0)
+	
+	update @tmp set profit = round((price-case when sprice2>0 then sprice2 else sprice end - wcost)*(case when UPPER(unit)='KG' or len(ISNULL(unit,''))=0 then [weight] else mount end)
+		*(case when typea='2' then -1 else 1 end),0) - tranmoney - tranmoney2 - tranmoney3 - inte 
+	update @tmp set rate = profit / case when ISNULL(total,0)=0 then 1 else total end *100
+	update @tmp set rate = round(case when rate>999 then 999 else rate end,2)
+
+	--------------------------------
+	--update @tmp set profit = isnull((case when sprice2>0 then sprice2 else sprice end * case when UPPER(unit)='KG' or len(ISNULL(unit,''))=0 then [weight] else mount end),0)
+	--update @tmp set profit = (ISNULL(total,0) -profit)/(case when profit = 0 then 1 else profit end)*100 
+	--update @tmp set profit = case when profit>100 then 100 else profit end
+ 
 	select * from @tmp;
