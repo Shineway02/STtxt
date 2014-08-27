@@ -1,0 +1,156 @@
+z_vccewp1:--z_vccewp1
+SET QUOTED_IDENTIFIER OFF 
+declare @t_xnoa nvarchar(50)
+declare @t_stype nvarchar(max) 
+set @t_xnoa = case when '#non'=[7] then '' else [7] end
+set @t_stype = '[5]' 
+declare @cmd nvarchar(max) 
+	----------------------------------------------------------------------------------------------
+	declare @t_pageline int = 6  --------一頁幾行
+	----------------------------------------------------------------------------------------------
+	declare @string nvarchar(max)
+	declare @n int
+	--解析要計算的種類
+	declare @listStype table(
+		noa nvarchar(20),
+		namea nvarchar(max)
+	)
+	set @string = @t_stype
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @listStype select LEFT(@string,CHARINDEX('@',@string)-1),RIGHT(@string,len(@string)-CHARINDEX('@',@string))
+			end
+			break
+		end
+		insert into @listStype select LEFT(@string,CHARINDEX('@',@string)-1), SUBSTRING(LEFT(@string,@n-1),CHARINDEX('@',LEFT(@string,@n-1))+1,@n)
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	----------------------------------------------------------------------------------------------
+	
+	declare @tmp table(
+		gno nvarchar(10),
+		noa nvarchar(50),
+		stype nvarchar(50),
+		custno nvarchar(20),
+		cust nvarchar(max),
+		tel nvarchar(max),
+		fax nvarchar(max),
+		addr nvarchar(max),
+		odate nvarchar(20),
+		paytype nvarchar(20),
+		trantype nvarchar(20),
+		memo nvarchar(max),
+		carno nvarchar(max),
+		mount float,
+		[weight] float,
+		
+		no2 nvarchar(10),
+		bccno nvarchar(20),
+		bccname nvarchar(max),
+		unit nvarchar(20),
+		mounts float,
+		weights float,
+		memos nvarchar(max),
+		ordewno nvarchar(max)
+	)
+	
+	set @cmd =
+	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
+	" ,b.stype,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
+	" ,b.tel,b.fax,b.addr_post"+
+	" ,b.datea,b.paytype,b.trantype,ISNULL(b.memo,''),b.carno"+
+	" ,a.no2,a.bccno,a.bccname,a.unit,a.mount,a.[weight]"+
+	" ,a.memo,a.ordewno"+
+	" from vccews a"+
+	" left join vccew b on a.noa = b.noa"+
+	" left join cust c on b.custno = c.noa"+
+	" where b.noa is not null "+
+	" and a.noa = @t_xnoa "+
+	" order by a.noa,a.no2 "
+	
+	insert into @tmp(gno,stype,noa,custno,cust,tel,fax,addr,odate,paytype,trantype,memo,carno
+		,no2,bccno,bccname,unit,mounts,weights,memos,ordewno)
+	execute sp_executesql @cmd,N'@t_xnoa nvarchar(50)'
+	,@t_xnoa=@t_xnoa
+	
+	update a set a.stype=b.namea
+	from @tmp a left join @listStype b on a.stype= b.noa
+	----------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		insert into @tmp(noa,no2,gno,memos)
+		values(@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
+	
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while(@n%@t_pageline!=0)
+		begin
+			insert into @tmp(noa,no2,gno)values(@noa,'zzz','4')
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,fax=b.fax,addr=b.addr
+		,odate=b.odate,paytype=b.paytype,trantype=b.trantype,memo=b.memo
+		,mount=c.mount,[weight]=c.[weight],carno=b.carno
+	from @tmp a
+	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
+	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
+	
+	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	from(
+		select gno,noa,no2
+		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+		,b.rrno ttno
+		,noa a01
+		,custno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+cust a02
+		,tel a03
+		,addr a04
+		,stype a05
+		,odate a06
+		,dbo.getComma(mount,[2])  a07
+		,dbo.getComma(weight,[3])  a08
+		,memo a09
+		,trantype a10
+		,carno a11
+		
+		,isnull(bccno,'') b01 
+		,isnull(bccname,'') b02 
+		,ordewno b03 
+		,unit b05
+		,dbo.getComma(mounts,[2])  b06
+		,dbo.getComma(weights,[3])  b07
+		,memos b08
+		from @tmp a
+		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
+	)a
+	order by a.noa,a.no2;
+	
