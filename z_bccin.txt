@@ -26,7 +26,8 @@ declare @tmp  table(
 )
 
 	insert into @tmp
-	select b.storeno,'0' gno,a.noa,b.noq,a.datea,b.bccno,b.bccno,b.bccname,b.unit,b.price,b.mount,b.total
+	select b.storeno,'0' gno,a.noa,b.noq,a.datea,b.bccno,b.bccno,b.bccname,b.unit,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,(case when a.typea='2' then -1 else 1 end)*b.total
 	from bccin a
 	left join bccins b on a.noa = b.noa
 	where (a.datea between @t_bdate and @t_edate) and
@@ -126,8 +127,12 @@ declare @tmpa table (
 )
 insert into @tmpa
 select '0' gno,a.noa,b.noq,a.mon,a.tggno,a.tgg,c.tel,c.fax,c.addr_invo,a.datea,a.ordcno,
-b.bccname,b.weight,b.mount,b.unit,b.price,b.total,c.paytype,a.memo,b.memo,0,a.money,a.money,a.tax,a.total,a.worker
-,d.store,a.part,a.invono,a.buyer
+b.bccname,(case when a.typea='2' then -1 else 1 end)*b.weight,(case when a.typea='2' then -1 else 1 end)*b.mount
+,b.unit,b.price,(case when a.typea='2' then -1 else 1 end)*b.total
+,c.paytype,a.memo,b.memo,0
+,(case when a.typea='2' then -1 else 1 end)*a.money,(case when a.typea='2' then -1 else 1 end)*a.money
+,(case when a.typea='2' then -1 else 1 end)*a.tax,(case when a.typea='2' then -1 else 1 end)*a.total
+,a.worker,d.store,a.part,a.invono,a.buyer
 from bccin a
 left join bccins b on a.noa = b.noa
 left join tgg c on a.tggno = c.noa

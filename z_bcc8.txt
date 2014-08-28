@@ -32,7 +32,10 @@ declare @result table(
 )
 	--資料 
 	insert into @result 
-	select '0' gno,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,8) end,b.bccno,b.bccname,a.datea,a.noa,b.mount,b.price,b.mount2,b.unit,b.total,a.contract,c.store
+	select '0' gno,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,8) end,b.bccno,b.bccname,a.datea,a.noa
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount2,b.unit
+	,(case when a.typea='2' then -1 else 1 end)*b.total,a.contract,c.store
 	from bccin a left join bccins b on a.noa=b.noa 
 	left join store c on b.storeno = c.noa
 	left join tgg d on a.tggno=d.noa
@@ -89,7 +92,9 @@ declare @result table(
 )
 	--資料 
 	insert into @result 
-	select '0' gno,b.bccno,b.bccname,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,10) end,a.datea,a.noa,b.mount,b.price,b.mount2,b.unit,b.total,a.contract,c.store
+	select '0' gno,b.bccno,b.bccname,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,10) end,a.datea,a.noa
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price,(case when a.typea='2' then -1 else 1 end)*b.mount2
+	,b.unit,(case when a.typea='2' then -1 else 1 end)*b.total,a.contract,c.store
 	from bccin a left join bccins b on a.noa=b.noa 
 	left join store c on b.storeno = c.noa
 	left join tgg d on a.tggno=d.noa
@@ -99,7 +104,7 @@ declare @result table(
 	
 	--小計
 	insert into @result
-	select '1',bccno,'','','','','',0,0,0,'',SUM(total),'',''
+	select '1',bccno,'','','','','',sum(mount),0,sum(mount2),'',SUM(total),'',''
 	from @result
 	group by bccno
 
@@ -145,7 +150,10 @@ declare @result table(
 )
 	--資料 
 	insert into @result 
-	select '0' gno,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,8) end,b.bccno,b.bccname,a.datea,a.noa,b.mount,b.price,b.mount2,b.unit,b.total,a.contract,c.store
+	select '0' gno,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,8) end,b.bccno,b.bccname,a.datea,a.noa
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount2,b.unit
+	,(case when a.typea='2' then -1 else 1 end)*b.total,a.contract,c.store
 	from bccin a left join bccins b on a.noa=b.noa 
 	left join store c on b.storeno = c.noa
 	left join tgg d on a.tggno=d.noa
@@ -208,7 +216,10 @@ declare @result table(
 )
 	--資料 
 	insert into @result 
-	select '0' gno,a.tggno,a.tgg+' ('+a.tggno+')',b.bccno,b.bccname,b.unit,a.datea,b.mount,b.price,b.mount2,b.weight,b.total,null,c.store
+	select '0' gno,a.tggno,a.tgg+' ('+a.tggno+')',b.bccno,b.bccname,b.unit,a.datea
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount2,(case when a.typea='2' then -1 else 1 end)*b.weight
+	,(case when a.typea='2' then -1 else 1 end)*b.total,null,c.store
 	from bccin a left join bccins b on a.noa=b.noa 
 	left join store c on b.storeno = c.noa
 	where a.datea between @t_bmon+'/01' and @t_emon+'/31' and a.tggno between @t_btggno and @t_etggno  
@@ -235,7 +246,7 @@ declare @result table(
 	if (@gno=1)
 	begin
 		update @result
-		set tax=(select SUM(tax) from bccin where tggno=@tggno and datea between @t_bmon+'/01' and @t_emon+'/31')
+		set tax=(select SUM((case when typea='2' then -1 else 1 end)*tax) from bccin where tggno=@tggno and datea between @t_bmon+'/01' and @t_emon+'/31')
 		where current of bcc_table
 
 	end

@@ -129,7 +129,7 @@
 		begin
 			select top 1 @datea=b.datea,@mount1=a.mount from bcces a right join bcce b on a.noa=b.noa where a.bccno=@bccno and b.storeno=@storeno and b.datea < @t_bdate order by b.datea desc,b.noa desc
 		end
-		select @mount1 = isnull(@mount1,0) + SUM(a.mount)
+		select @mount1 = isnull(@mount1,0) + SUM((case when b.typea='2' then -1 else 1 end)*a.mount)
 		from bccins a
 		right join bccin b on a.noa=b.noa
 		where a.bccno=@bccno and b.storeno=@storeno and b.datea >@datea and b.datea<@t_bdate
@@ -148,7 +148,7 @@
 			set @datea =  right('00'+cast(YEAR(@nextdate)-1911 as nvarchar),4)+'/'+right('00'+cast(Month(@nextdate) as nvarchar),2)+'/'+right('00'+cast(Day(@nextdate) as nvarchar),2)
 			set @gno='2'
 		end
-		select @mount2 = SUM(a.mount)
+		select @mount2 = SUM((case when b.typea='2' then -1 else 1 end)*a.mount)
 		from bccins a
 		right join bccin b on a.noa=b.noa
 		where a.bccno=@bccno and b.storeno=@storeno and b.datea>=@datea and b.datea<=@t_edate
@@ -324,26 +324,26 @@ z_bcc9stb:--z_bcc9stb
 		--插入明細
 		--入料
 		insert @tmpa (gno,bccno,storeno,datea,typea,noa,mount,price)
-		select '0',b.bccno,a.storeno,a.datea,'1',a.noa,b.mount,price 
+		select '0',b.bccno,a.storeno,a.datea,(case when a.typea='2' then '2' else '1' end),a.noa,b.mount,price 
 		from bccin a left join bccins b on a.noa=b.noa
 		where b.bccno=@bccno and a.storeno=@storeno
 		and a.datea between @t_bdate and @t_edate
 		--領料
 		insert @tmpa (gno,bccno,storeno,datea,typea,noa,mount,bkbcc,sname,mechno,mech)
-		select '0',b.bccno,a.storeno,a.datea,'2',a.noa,b.mount,isnull(b.mount,0)-isnull(b.bkbcc,0),a.sname,a.mechno,a.mech 
+		select '0',b.bccno,a.storeno,a.datea,'3',a.noa,b.mount,isnull(b.mount,0)-isnull(b.bkbcc,0),a.sname,a.mechno,a.mech 
 		from bccout a left join bccouts b on a.noa=b.noa
 		where b.bccno=@bccno and a.storeno=@storeno
 		and a.datea between @t_bdate and @t_edate
 		--盤存
 		insert @tmpa (gno,bccno,storeno,datea,typea,noa,stk,price)
-		select '0',b.bccno,a.storeno,a.datea,'3',a.noa,b.mount,price 
+		select '0',b.bccno,a.storeno,a.datea,'4',a.noa,b.mount,price 
 		from bcce a left join bcces b on a.noa=b.noa
 		where b.bccno=@bccno and a.storeno=@storeno
 		and a.datea between @t_bdate and @t_edate
 		
 		--最後結存小計
 		insert @tmpa (gno,bccno,storeno,datea,typea)
-		select '1',@bccno,@storeno,char(255),'4'
+		select '1',@bccno,@storeno,char(255),'5'
 		
 		fetch next from cursor_table
 		into @bccno,@storeno
@@ -372,16 +372,19 @@ z_bcc9stb:--z_bcc9stb
 			
 		if(@gno='0' and @typeas='1')--入料
 			set @t_stk=@t_stk+isnull(@mount,0)
-		
-		if(@gno='0' and @typeas='2')--領料
-			set @t_stk=@t_stk-isnull(@bkbcc,0)
 			
-		if(@gno='0' and @typeas='3')--盤存
+		if(@gno='0' and @typeas='2')--退貨
+			set @t_stk=@t_stk-isnull(@mount,0)
+		
+		if(@gno='0' and @typeas='3')--領料
+			set @t_stk=@t_stk-isnull(@bkbcc,0)
+		
+		if(@gno='0' and @typeas='4')--盤存
 			set @t_stk=isnull(@stk,0)
 			
 		update @tmpa set stk=@t_stk where idno=@idno
 			
-		if(@gno='1' and @typeas='4')--最後結存小計
+		if(@gno='1' and @typeas='5')--最後結存小計
 		begin
 			set @t_stk=0
 		end
@@ -398,7 +401,7 @@ z_bcc9stb:--z_bcc9stb
 	left join store c on a.storeno=c.noa
 	
 	select gno,bccno,bccname,storeno,store,datea
-	,case when typea='1' then '入料' when typea='2' then '領料' when typea='3' then '盤存' else '' end stype,noa,mechno,mech
+	,case when typea='1' then '入料' when typea='2' then '退貨' when typea='3' then '領料' when typea='4' then '盤存' else '' end stype,noa,mechno,mech
 	,dbo.getComma(mount,[1]) mount
 	,dbo.getComma(bkbcc,[1]) bkbcc
 	,dbo.getComma(price,[2]) price
