@@ -101,7 +101,9 @@ z_bcc5_rs1:--z_bcc5_rs1
 	and (ISNULL(b.datea,'')<=@t_enddate)
 	
 	insert into @tmp
-	select '1','B',ISNULL(b.datea,''),a.noa+'入料',a.noq,isnull(a.storeno,''),isnull(a.bccno,''),a.bccname,isnull(a.mount,0),ISNULL(a.price,0),ISNULL(a.total,0),0,b.tgg
+	select '1','B',ISNULL(b.datea,''),a.noa+'入料',a.noq,isnull(a.storeno,''),isnull(a.bccno,''),a.bccname
+	,(case when b.typea='2' then -1 else 1 end)*isnull(a.mount,0),ISNULL(a.price,0)
+	,(case when b.typea='2' then -1 else 1 end)*ISNULL(a.total,0),0,b.tgg
 	from bccins a
 	left join bccin b on a.noa=b.noa
 	left join #store c on a.storeno=c.noa
