@@ -4,7 +4,7 @@ z_uccafe01:--z_uccafe01 銷售分析表(業務)
 	declare @t_bsalesno nvarchar(20) = case when '#non' = [3] then '' else [3] end
 	declare @t_esalesno nvarchar(20) = case when '#non' = [4] then CHAR(255) else [4] end
 	-----------------------------------------------------------------
-	declare @tmp table(
+	declare @tmpa table(
 		salesno nvarchar(20),
 		sales nvarchar(20),
 		accy nvarchar(20),
@@ -22,24 +22,42 @@ z_uccafe01:--z_uccafe01 銷售分析表(業務)
 		inte float,
 		profit float
 	)
-	insert into @tmp(salesno,sales,accy,vccno,vccnoq,typea,total,tranmoney,tranmoney2,tranmoney3,spricemoney,wcost)
-	select a.salesno,a.sales,a.accy,a.noa,b.noq,isnull(a.typea,''),b.total,b.tranmoney,b.tranmoney2,b.tranmoney3
-		,round(case when ISNULL(b.sprice2,0)>0 then b.sprice2 else b.sprice end*case when UPPER(b.unit)='KG' or len(ISNULL(b.unit,''))=0 then b.[weight] else b.mount end,0)
-		,b.wcost
+	insert into @tmpa(salesno,sales,accy,vccno,vccnoq,typea,total,tranmoney,tranmoney2,tranmoney3,spricemoney,wcost)
+	select a.salesno,a.sales,a.accy,a.noa,b.noq,isnull(a.typea,'')
+		,b.total * case when isnull(a.typea,'')='1' then 1 else -1 end
+		,b.tranmoney * case when isnull(a.typea,'')='1' then 1 else -1 end
+		,b.tranmoney2 * case when isnull(a.typea,'')='1' then 1 else -1 end
+		,b.tranmoney3 * case when isnull(a.typea,'')='1' then 1 else -1 end
+		,round(case when ISNULL(b.sprice2,0)>0 then b.sprice2 else b.sprice end*case when UPPER(b.unit)='KG' or len(ISNULL(b.unit,''))=0 then b.[weight] else b.mount end,0)* case when isnull(a.typea,'')='1' then 1 else -1 end
+		,round(ISNULL(b.wcost,0)*case when UPPER(b.unit)='KG' or len(ISNULL(b.unit,''))=0 then b.[weight] else b.mount end,0)* case when isnull(a.typea,'')='1' then 1 else -1 end
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
 	where a.datea between @t_bdate and @t_edate
 	and b.noa is not null
 	and isnull(a.salesno,'') between @t_bsalesno and @t_esalesno
 	
-	update @tmp set inte=b.inte
-	from @tmp a
+	update @tmpa set inte=b.inte
+	from @tmpa a
 	outer apply(select top 1 inte from vccprs where accy=a.accy and vccno=a.vccno and vccnoq=a.vccnoq order by noa desc) b
 	
-	update @tmp set profit = total-tranmoney-tranmoney2-tranmoney3-spricemoney-wcost-inte
+	update @tmpa set profit = total-tranmoney-tranmoney2-tranmoney3-spricemoney-wcost-inte
 	
 	---------------------------------------------------------------------------------------------------
-	select salesno,sales
+	declare @tmp table(
+		gno nvarchar(10),
+		salesno nvarchar(20),
+		sales nvarchar(20),
+		total float,
+		tranmoney1 float,
+		tranmoney2 float,
+		tranmoney3 float,
+		spricemoney float,
+		wcost float,
+		inte float,
+		profit float
+	)
+	insert into @tmp(gno,salesno,sales,total,tranmoney1,tranmoney2,tranmoney3,spricemoney,wcost,inte,profit)
+	select '1' gno,salesno,sales
 		,SUM(case when typea='1' then 1 else -1 end*isnull(total,0)) total
 		,SUM(case when typea='1' then 1 else -1 end*isnull(tranmoney,0)) tranmoney1
 		,SUM(case when typea='1' then 1 else -1 end*isnull(tranmoney2,0)) tranmoney2
@@ -48,5 +66,29 @@ z_uccafe01:--z_uccafe01 銷售分析表(業務)
 		,SUM(case when typea='1' then 1 else -1 end*isnull(wcost,0)) wcost
 		,SUM(case when typea='1' then 1 else -1 end*isnull(inte,0)) inte
 		,SUM(case when typea='1' then 1 else -1 end*isnull(profit,0)) profit
-	from @tmp 
-	group by salesno,sales;
+	from @tmpa
+	group by salesno,sales
+	insert into @tmp(gno,salesno,sales,total,tranmoney1,tranmoney2,tranmoney3,spricemoney,wcost,inte,profit)
+	select '2',CHAR(255),''
+		,SUM(case when typea='1' then 1 else -1 end*isnull(total,0)) total
+		,SUM(case when typea='1' then 1 else -1 end*isnull(tranmoney,0)) tranmoney1
+		,SUM(case when typea='1' then 1 else -1 end*isnull(tranmoney2,0)) tranmoney2
+		,SUM(case when typea='1' then 1 else -1 end*isnull(tranmoney3,0)) tranmoney3
+		,SUM(case when typea='1' then 1 else -1 end*isnull(spricemoney,0)) spricemoney
+		,SUM(case when typea='1' then 1 else -1 end*isnull(wcost,0)) wcost
+		,SUM(case when typea='1' then 1 else -1 end*isnull(inte,0)) inte
+		,SUM(case when typea='1' then 1 else -1 end*isnull(profit,0)) profit
+	from @tmpa
+
+	select * 
+		,row_number()over(order by gno,total desc) rr
+		,salesno a01
+		,sales a02
+		,dbo.getComma(total,0) a03
+		,dbo.getComma(tranmoney1,0) a04
+		,dbo.getComma(isnull(tranmoney2,0)+isnull(tranmoney3,0),0) a05
+		,dbo.getComma(spricemoney,0) a06
+		,dbo.getComma(wcost,0) a07
+		,dbo.getComma(inte,0) a08
+		,dbo.getComma(profit,0) a09
+	from @tmp order by gno,total desc;
