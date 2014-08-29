@@ -130,10 +130,10 @@ import:--vccpr import
 	left join ucc b on a.productno=b.noa
 	where len(ISNULL(a.productno,''))>0 and CHARINDEX('送達',trantype)>0
 	
-	update @tmp set tranmoney=round(a.tranmoney*b.price,0)
+	update @tmp set tranmoney=round(a.tranmoney*isnull(b.price,0),0)
 	from @tmp a
 	outer apply(select top 1 * from carp where noa=a.styleno and addrno=a.post)b
-	where len(ISNULL(a.productno,''))>0 and CHARINDEX('送達',trantype)>0 and b.noa is not null
+	where len(ISNULL(a.productno,''))>0 and CHARINDEX('送達',trantype)>0
 
 	--客戶毛利
 	update @tmp set price=case when a.sprice2 !=0 then a.sprice2 else a.sprice end + a.wcost 
