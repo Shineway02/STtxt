@@ -124,7 +124,7 @@ import:--vccpr import
 	case when b.styleno between 'A' and 'H' then a.mount*b.uweight 
 		when b.styleno between 'I' and 'NZ' then a.mount*case when a.sprice2>0 then a.sprice2 else a.sprice end
 		when b.styleno between 'O' and 'TZ' or b.styleno between '0' and '9Z' then case when a.sprice2>0 then a.sprice2 else a.sprice end * case when upper(a.unit)='KG' or len(ISNULL(a.unit,''))=0 then a.[weight] else a.mount end
-		when b.styleno between 'U' and 'ZZ' or b.styleno between '0' and '9Z' then a.[weight]
+		when b.styleno between 'U' and 'ZZ' then a.[weight]
 		end	
 	from @tmp a
 	left join ucc b on a.productno=b.noa
@@ -157,4 +157,4 @@ import:--vccpr import
 	update @tmp set rate = profit / case when ISNULL(total,0)=0 then 1 else total end *100
 	update @tmp set rate = round(case when rate>999 then 999 else rate end,2)
 
-	select * from @tmp;
+	select * from @tmp order by datea,accy,vccno,vccnoq;
