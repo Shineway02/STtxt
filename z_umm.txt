@@ -1,3 +1,46 @@
+z_umm14:--z_umm14
+	declare @t_bdate nvarchar(10) = case when '#non'=[3] then '' else [3] end
+	declare @t_edate nvarchar(10) = case when '#non'=[4] then char(255) else [4] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[5] then '' else [5] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[6] then char(255) else [6] end
+	declare @t_bmon nvarchar(10) = case when '#non'=[13] then '' else [13] end
+	declare @t_emon nvarchar(10) = case when '#non'=[14] then char(255) else [14] end
+	----------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		nick nvarchar(20),
+		salesno nvarchar(20),
+		sales nvarchar(20),
+		
+		discount float
+	)
+	insert into @tmp(gno,custno,discount)
+	select '1',ISNULL(a.custno,''),sum(isnull(b.[money],0))
+	from umm a
+	left join umms b on a.noa=b.noa
+	where LEFT(b.acc1,4)='4107'
+	and isnull(a.datea,'') between @t_bdate and @t_edate
+	and isnull(a.mon,'') between @t_bmon and @t_emon
+	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
+	group by ISNULL(a.custno,'')
+	
+	insert into @tmp(gno,discount)
+	select '2',SUM(ISNULL(discount,0))
+	from @tmp
+	
+	update @tmp set cust=b.comp,nick=b.nick,salesno=b.salesno,sales=b.sales
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	
+	select custno a01
+		,cust a02
+		,sales a03
+		,dbo.getComma(discount,0) a04
+		,* 
+	from @tmp order by gno,custno;
+	
 z_umm4:--z_umm4
 declare @t_accy nvarchar(20)
 declare @t_bxdate nvarchar(20)
