@@ -155,18 +155,18 @@ z_anavccst02:--z_anavccst02
 	update @tmp set gno='6' where profit<0 and gno='4'
 	
 	select a.*
-	,uccgano+'.'+uccganame uccga
-	,productno ppno
+	,a.uccgano+'.'+a.uccganame uccga
+	,a.productno ppno
 	,b.comp
 	,b.nick 
-	,price a1
-	,mount a2
-	,[weight] a3
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
-	,case when tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) end a6
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a7
-	,case when total=0 then 0 else cast(round(profit/total*100,2) as decimal(18,2)) end a8
+	,a.price a1
+	,a.mount a2
+	,a.[weight] a3
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) a4
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.stotal),1)),4,12)) a5
+	,case when a.tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.tranmoney),1)),4,12)) end a6
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.profit),1)),4,12)) a7
+	,case when a.total=0 then 0 else cast(round(a.profit/a.total*100,2) as decimal(18,2)) end a8
 	from @tmp a
 	left join cust b on a.custno=b.noa
 	order by case when rr1 is null then char(255) else ''end,rr1,rr2;
@@ -285,17 +285,17 @@ z_anavccst01:--z_anavccst01
 	update @tmp set gno='6' where profit<0 and gno='4'
 	
 	select a.*
-	,product pro
+	,a.product pro
 	,b.comp
 	,b.nick 
-	,price a1
-	,mount a2
+	,a.price a1
+	,a.mount a2
 	,case when a.gno='3' then CAST(cast(round(a.weight,0) as int) as nvarchar) else CAST(a.weight as nvarchar) end  a3
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a4
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,stotal),1)),4,12)) a5
-	,case when tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tranmoney),1)),4,12)) end a6
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,profit),1)),4,12)) a7
-	,case when isnull(total,0)=0  then null else cast(round(isnull(profit,0)/isnull(total,0)*100,2) as decimal(20,2)) end a8
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) a4
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.stotal),1)),4,12)) a5
+	,case when a.tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.tranmoney),1)),4,12)) end a6
+	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.profit),1)),4,12)) a7
+	,case when isnull(a.total,0)=0  then null else cast(round(isnull(a.profit,0)/isnull(a.total,0)*100,2) as decimal(20,2)) end a8
 	,ghref = 'z_unost?$uno?'
 	from @tmp a
 	left join cust b on a.custno=b.noa

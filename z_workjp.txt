@@ -1,0 +1,95 @@
+z_workjp01:--z_workjp01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_path nvarchar(max) = '[1]'
+	declare @t_noa nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_bdate nvarchar(10) = case when '#non'=[3] then '' else [3] end
+	declare @t_edate nvarchar(10) = case when '#non'=[4] then char(255) else [4] end	
+	declare @t_bodate nvarchar(10) = case when '#non'=[5] then '' else [5] end
+	declare @t_eodate nvarchar(10) = case when '#non'=[6] then char(255) else [6] end	
+	declare @t_bcustno nvarchar(10) = case when '#non'=[7] then '' else [7] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[8] then char(255) else [8] end	
+	-------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		nick nvarchar(20),
+		[site] nvarchar(max),
+		tagcolor nvarchar(max),
+		trantype nvarchar(max),
+		chktype nvarchar(max),
+		worker nvarchar(20),
+		memo nvarchar(max),
+		
+		recno int,
+		noq nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(50),
+		lengthb float,
+		mount float,
+		[weight] float,
+		timea nvarchar(20),
+		imgsrc nvarchar(max),
+		memos nvarchar(max)
+	)
+	insert into @tmp(gno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,chktype,worker,memo
+		,recno,noq,productno,product,lengthb,mount,[weight],timea,imgsrc,memos)
+	select '1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.chktype,a.worker,a.memo
+		,ROW_NUMBER()over(partition by a.noa order by b.noq)
+		,b.noq,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.timea,b.imgsrc,b.memo
+	from workj a
+	left join workjs b on a.noa=b.noa
+	where (len(@t_noa)=0 or a.noa=@t_noa)
+	and isnull(a.datea,'') between @t_bdate and @t_edate
+	and isnull(a.odate,'') between @t_bodate and @t_eodate
+	and isnull(a.custno,'') between @t_bcustno and @t_ecustno
+	-----------------------------------------------------------------------------------------------------
+	declare @t_page int = 10 -- 一頁幾行
+	declare @noa nvarchar(20)
+	declare @n int
+	
+	declare cursor_table cursor for
+	select noa,count(1) from @tmp group by noa
+    open cursor_table
+    fetch next from cursor_table
+    into @noa,@n
+    while(@@FETCH_STATUS <> -1)
+    begin
+		while @n%@t_page!=0
+		begin
+			insert into @tmp(noa,gno)values(@noa,'2')
+			set @n = @n + 1
+		end
+		
+        fetch next from cursor_table
+        into @noa,@n
+    end
+    close cursor_table
+    deallocate cursor_table
+    
+	select recno rr
+		,custno a01
+		,cust a02
+		,[site] a03
+		,datea a04
+		,odate a05
+		,worker a06
+		,tagcolor a07
+		,trantype a08
+		,chktype a09
+		
+		,productno b01
+		,product b02
+		,case when len(isnull(imgsrc,''))>0 then '<img src="'+@t_path+'/images/fe/'+imgsrc+'.jpg" style="width:100px'+char(59)+'height:100px'+char(59)+'"/>' 
+			else '<span style="display:block'+char(59)+'width:100px'+char(59)+'height:100px'+char(59)+'"></span>' end b03
+		,lengthb b04
+		,mount b05
+		,[weight] b06
+		,timea b07
+		,memos b08
+		,* 
+	from @tmp 
+	order by noa,gno,recno;
