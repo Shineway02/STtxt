@@ -1,10 +1,10 @@
 z_ummst9:--z_ummst9
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_pageline int = 30   --------一頁幾行
-	declare @t_bcustno nvarchar(35) = case when '#non'=[13] then '' else [13] end
-	declare @t_ecustno nvarchar(35) = case when '#non'=[14] then char(255) else [14] end
-	declare @t_bmon nvarchar(20) = case when '#non'=[5] then '' else [5] end
-	declare @t_emon nvarchar(20) = case when '#non'=[6] then char(255) else [6] end
+	declare @t_bcustno nvarchar(35) = case when '#non'=[5] then '' else [5] end 
+	declare @t_ecustno nvarchar(35) = case when '#non'=[6] then char(255) else [6] end
+	declare @t_bmon nvarchar(20) = case when '#non'=[13] then '' else [13] end
+	declare @t_emon nvarchar(20) = case when '#non'=[14] then char(255) else [14] end
 	--======================================================================================
 	declare @tmp1 table(
 		custno nvarchar(20),
@@ -203,6 +203,7 @@ z_ummst9:--z_ummst9
 		,b.productno,case when charindex(left(b.uno,1),'XYZ') > 0 then '廢料' else b.product end,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
 		,b.unit,b.price
 	order by a.custno,a.datea,a.noa,case when len(b.productno)=0 then CHAR(255) else b.productno end,b.productno,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
+	
 	----------------------------------------------------------------------------------------------------------
 	declare @tmpb table(
 		gno nvarchar(10),
@@ -239,7 +240,7 @@ z_ummst9:--z_ummst9
 		,recno,typea,datea,noa,productno,product,size,mount,[weight],price
 		,[money],bkmoney,tax,payed,unpay,tot)
 	select '1',a.custno,a.cust,a.zip,a.addr1,a.addr2,a.tel
-		,b.recno,b.typea,b.datea,b.noa,b.productno,b.product
+		,isnull(b.recno,0),b.typea,b.datea,b.noa,b.productno,b.product
 		,b.size,b.mount,b.[weight],b.price
 		,a.[money],a.bkmoney,a.tax,a.payed,a.unpay,a.tot 
 	from @tmp a
@@ -269,6 +270,10 @@ z_ummst9:--z_ummst9
 	insert into @tmpb(gno,recno,custno,cust,zip,addr1,addr2,tel,[money],bkmoney,tax,payed,unpay,tot)
 	select '9',0,custno,cust,zip,addr1,addr2,tel,[money],bkmoney,tax,payed,unpay,tot
 	from @tmp
+	
+	insert into @tmpb(gno,recno,custno,cust,zip,addr1,addr2,tel,[money],bkmoney,tax,payed,unpay,tot)
+	select '10',0,custno,cust,zip,addr1,addr2,tel,[money],bkmoney,tax,payed,unpay,tot
+	from @tmp
 	--------------------------------------------------------------------------------------------
 	declare @custno nvarchar(20)
 	declare @cust nvarchar(50)
@@ -279,7 +284,7 @@ z_ummst9:--z_ummst9
 	declare @n int
 	
 	declare cursor_table cursor for
-	select custno,cust,zip,addr1,addr2,tel,count(1) from @tmpb group by custno
+	select custno,cust,zip,addr1,addr2,tel,count(1) from @tmpb group by custno,cust,zip,addr1,addr2,tel
 	open cursor_table
 	fetch next from cursor_table
 	into @custno,@cust,@zip,@addr1,@addr2,@tel,@n
@@ -318,13 +323,13 @@ z_ummst9:--z_ummst9
 		,tel a06
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">第'+CAST(curpage as nvarchar)+'/'+CAST(totpage as nvarchar)+'頁</a>' d01
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@t_bmon+'至'+ @t_emon +'</a>' d02
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case typea when '1' then '出' else '退' end +'&nbsp'+CHAR(59)+ RIGHT(datea,5) +'</a>' a01
-		,noa a02
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product +'</a>' a03
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+size +'</a>' a04
-		,case when charindex('管',product)>0 then dbo.getComma(mount,0) else '' end a05
-		,case when charindex('管',product)=0 or charindex('廢料',product)=0 then dbo.getComma([weight],0) else '' end a06
-		,dbo.getComma(price,3) a07
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case typea when '1' then '出' else '退' end +'&nbsp'+CHAR(59)+ RIGHT(datea,5) +'</a>' b01
+		,noa b02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product +'</a>' b03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+size +'</a>' b04
+		,case when charindex('管',product)>0 then dbo.getComma(mount,0) else '' end b05
+		,case when charindex('管',product)=0 or charindex('廢料',product)=0 then dbo.getComma([weight],0) else '' end b06
+		,dbo.getComma(price,3) b07
 		,dbo.getComma(isnull([money],0)-isnull(bkmoney,0),0) c01--合計
 		,dbo.getComma(isnull(tax,0),0) c02--營業稅
 		,dbo.getComma(isnull([money],0)-isnull(bkmoney,0)+isnull(tax,0),0) c03--總金額
@@ -336,7 +341,7 @@ z_ummst9:--z_ummst9
 		,dbo.getComma(isnull(tot,0),0) c09--總應收款
 		,* 
 	from @tmpb 
-	order by custno,gno,recno;
+	order by custno,cast(gno as int),recno;
 	
 z_ummst03:--z_ummst03 
 	SET QUOTED_IDENTIFIER OFF 
