@@ -1,0 +1,129 @@
+z_bank3a:--z_bank3a
+SET QUOTED_IDENTIFIER OFF
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_baccno nvarchar(25) 
+declare @t_eaccno nvarchar(25) 
+set @t_bdate = case when '#non'=[2] then '' else [2] end 
+set @t_edate = case when '#non'=[3] then char(255) else [3] end 
+set @t_baccno = case when '#non'=[4] then '' else [4] end 
+set @t_eaccno = case when '#non'=[5] then char(255) else [5] end 
+------------------------------------------------------------------------------------------------------
+--讀取會計傳票的年度
+declare @listaccc table(
+	tablea nvarchar(20),
+	accy nvarchar(20),
+	yy nvarchar(10)
+)
+
+insert into @listaccc(tablea,accy,yy)
+SELECT TABLE_NAME 
+,replace(TABLE_NAME,'accc','')
+,substring(replace(TABLE_NAME,'accc',''),1,CHARINDEX('_',replace(TABLE_NAME,'accc',''))-1)
+FROM INFORMATION_SCHEMA.TABLES 
+where TABLE_NAME like 'accc[0-9][0-9][0-9]%' 
+
+delete @listaccc where not(yy between LEFT(@t_bdate,3) and LEFT(@t_edate,3))
+--------------------------------------------------------------------------------------------------------
+--輸出報表
+declare @tmp  table(
+	gno nvarchar(2),
+	idno int identity(0,1),
+	ac1 nvarchar(50),
+	mo1 nvarchar(50),
+	total1 float,
+	ac2 nvarchar(50),
+	mo2 nvarchar(50),
+	checkno nvarchar(50),
+	total2 float
+)
+
+--會計科目1112
+declare @tmpacc  table(
+	zno nvarchar(50),
+	accc2 nvarchar(50),
+	accc4 nvarchar(50),
+	accc5 nvarchar(50),
+	accc6 nvarchar(50),
+	accc7 nvarchar(50),
+	accc8 float
+)
+
+--收入
+declare @tmpacca  table(
+	idno int identity(0,1),
+	accc5 nvarchar(50),
+	ac1 nvarchar(50),
+	mo1 nvarchar(50),
+	total1 float
+)
+--支出
+declare @tmpaccd  table(
+	idno int identity(0,1),
+	accc5 nvarchar(50),
+	ac2 nvarchar(50),
+	mo2 nvarchar(50),
+	checkno nvarchar(50),
+	total2 float
+)
+
+--抓取在日期內的會計內容
+	declare @tablea nvarchar(20)
+	declare @tableas nvarchar(20)
+	declare @tableacc nvarchar(20)
+	declare @accy nvarchar(10)
+	declare @yy nvarchar(10)
+	
+	declare cursor_table cursor for
+	select tablea,replace(tablea,'accc','acccs'),replace(tablea,'accc','acc'),accy,yy from @listaccc
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas,@tableacc,@accy,@yy
+	while(@@FETCH_STATUS <> -1)
+	begin
+		insert @tmpacc
+		EXEC("select zno,'"+@yy+"/'+accc2,accc4,accc5,accc6,accc7,accc8 
+		from "+@tableas+" where ('"+@yy+"/'+accc2 between '"+@t_bdate+"' and '"+@t_edate+"') 
+		and left(accc5,4)='1112' and accc5 between '"+@t_baccno+"' and '"+@t_eaccno+"' ")	
+		
+		fetch next from cursor_table
+		into @tablea,@tableas,@tableacc,@accy,@yy
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
+	insert @tmpacca
+	select accc5,case when replace(replace(accc6,'銀行存款-',''),'銀行存款','')='' then '銀行存款' else replace(replace(accc6,'銀行存款-',''),'銀行存款','') end
+	,accc7,accc8 from @tmpacc where accc4='借' order by accc5
+
+	insert @tmpaccd --zno=uf accc7才是支票號碼
+	select accc5,case when replace(replace(accc6,'銀行存款-',''),'銀行存款','')='' then '銀行存款' else replace(replace(accc6,'銀行存款-',''),'銀行存款','') end
+	,case when zno!='uf' then accc7 else '' end, case when zno='uf' then accc7 else '' end,accc8 
+	from @tmpacc where accc4='貸' order by accc5
+
+	
+	if(select COUNT(*) from @tmpacca)>=(select COUNT(*) from @tmpaccd)
+	begin
+		insert @tmp (gno,ac1,mo1,total1,ac2,mo2,checkno,total2)
+		select '0',ac1,mo1,total1,ac2,mo2,checkno,total2 from @tmpacca a left join @tmpaccd b on a.idno=b.idno
+	end
+	else
+	begin
+		insert @tmp (gno,ac1,mo1,total1,ac2,mo2,checkno,total2)
+		select '0',ac1,mo1,total1,ac2,mo2,checkno,total2 from @tmpacca a right join @tmpaccd b on a.idno=b.idno
+	end
+	
+	if((select count(*) from @tmp)>0)
+	begin
+		insert @tmp (gno,total1,total2)
+		select '1',isnull((select SUM(total1) from @tmpacca),0),isnull((select SUM(total2) from @tmpaccd),0)
+	end
+	
+	
+select 
+dbo.getComma(total1,0) total1,
+dbo.getComma(total2,0) total2,
+*
+from @tmp order by idno;
+-----------------------------------------------------------------------------------------------------------------
