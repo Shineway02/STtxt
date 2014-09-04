@@ -187,21 +187,26 @@ z_ummst9:--z_ummst9
 		mount float,
 		[weight] float,
 		price float,
-		total float
+		total float,
+		
+		vcctax float,
+		vcctotal float
 	)
 	insert into @tmpa(recno,custno,noa,datea,typea
-		,productno,product,size,unit,mount,[weight],price,total)	
+		,productno,product,size,unit,mount,[weight],price,total
+		,vcctax,vcctotal)	
 	select ROW_NUMBER()over(partition by a.custno order by a.datea,a.noa,case when len(b.productno)=0 then CHAR(255) else b.productno end,b.productno,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius))
 		,a.custno,a.noa,a.datea,a.typea
 		,b.productno,case when charindex(left(b.uno,1),'XYZ') > 0 then '廢料' else b.product end,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
 		,b.unit,SUM(ISNULL(b.mount,0)),SUM(ISNULL(b.[weight],0)),b.price,SUM(ISNULL(b.total,0))
+		,ISNULL(a.tax,0),ISNULL(a.total,0)
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
 	where a.custno between @t_bcustno and @t_ecustno
 	and a.mon between @t_bmon and @t_emon
 	group by a.custno,a.noa,a.typea,a.datea
 		,b.productno,case when charindex(left(b.uno,1),'XYZ') > 0 then '廢料' else b.product end,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
-		,b.unit,b.price
+		,b.unit,b.price,ISNULL(a.tax,0),ISNULL(a.total,0)
 	order by a.custno,a.datea,a.noa,case when len(b.productno)=0 then CHAR(255) else b.productno end,b.productno,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
 	
 	----------------------------------------------------------------------------------------------------------
@@ -227,6 +232,8 @@ z_ummst9:--z_ummst9
 		mount float,
 		[weight] float,
 		price float,
+		vcctax float,
+		vcctotal float,
 		
 		[money] float,
 		bkmoney float,
@@ -237,11 +244,11 @@ z_ummst9:--z_ummst9
 	)
 	
 	insert into @tmpb(gno,custno,cust,zip,addr1,addr2,tel
-		,recno,typea,datea,noa,productno,product,size,mount,[weight],price
+		,recno,typea,datea,noa,productno,product,size,mount,[weight],price,vcctax,vcctotal
 		,[money],bkmoney,tax,payed,unpay,tot)
 	select '1',a.custno,a.cust,a.zip,a.addr1,a.addr2,a.tel
 		,isnull(b.recno,0),b.typea,b.datea,b.noa,b.productno,b.product
-		,b.size,b.mount,b.[weight],b.price
+		,b.size,b.mount,b.[weight],b.price,b.vcctax,b.vcctotal
 		,a.[money],a.bkmoney,a.tax,a.payed,a.unpay,a.tot 
 	from @tmp a
 	left join @tmpa b on a.custno=b.custno
@@ -330,6 +337,8 @@ z_ummst9:--z_ummst9
 		,case when charindex('管',product)>0 then dbo.getComma(mount,0) else '' end b05
 		,case when charindex('運費',product)>0 then '' when charindex('管',product)=0 or charindex('廢料',product)>0 then dbo.getComma([weight],0) else '' end b06
 		,dbo.getComma(price,3) b07
+		,case when ROW_NUMBER()over(partition by custno,noa order by recno)=1 and gno='1' then dbo.getComma(vcctax,0) else '' end b08 
+		,case when ROW_NUMBER()over(partition by custno,noa order by recno)=1 and gno='1' then dbo.getComma(vcctotal,0) else '' end b09
 		,dbo.getComma(isnull([money],0)-isnull(bkmoney,0),0) c01--合計
 		,dbo.getComma(isnull(tax,0),0) c02--營業稅
 		,dbo.getComma(isnull([money],0)-isnull(bkmoney,0)+isnull(tax,0),0) c03--總金額
