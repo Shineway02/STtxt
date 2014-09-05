@@ -495,6 +495,7 @@ insert into @tmp
 	where (left(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end,6)=left(@t_datea,6)) and 
 			 ((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)<=@t_datea) and
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and 
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)
 	group by e.salesgroup,a.salesno,a.sales
 update a
@@ -1454,6 +1455,7 @@ insert into @tmp(gno,pageno,orderby,order2,salesgroup,salesno,saless,wk01_money,
 	left join sss e on a.salesno=e.noa
 	where left((case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),6) = left((select top 1 bdatea from @weeklist),6) and
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and 
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno)			 
 	group by e.salesgroup,a.salesno,a.sales
 update a
