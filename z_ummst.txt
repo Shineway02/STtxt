@@ -195,7 +195,7 @@ z_ummst9:--z_ummst9
 	insert into @tmpa(recno,custno,noa,datea,typea
 		,productno,product,size,unit,mount,[weight],price,total
 		,vcctax,vcctotal)	
-	select ROW_NUMBER()over(partition by a.custno order by a.datea,a.noa,case when len(b.productno)=0 then CHAR(255) else b.productno end,b.productno,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius))
+	select ROW_NUMBER()over(partition by a.custno order by a.datea,a.noa,Min(b.noq))
 		,a.custno,a.noa,a.datea,a.typea
 		,b.productno,case when charindex(left(b.uno,1),'XYZ') > 0 then '廢料' else b.product end,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
 		,b.unit,SUM(ISNULL(b.mount,0)),SUM(ISNULL(b.[weight],0)),b.price,SUM(ISNULL(b.total,0))
@@ -207,7 +207,7 @@ z_ummst9:--z_ummst9
 	group by a.custno,a.noa,a.typea,a.datea
 		,b.productno,case when charindex(left(b.uno,1),'XYZ') > 0 then '廢料' else b.product end,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
 		,b.unit,b.price,ISNULL(a.tax,0),ISNULL(a.total,0)
-	order by a.custno,a.datea,a.noa,case when len(b.productno)=0 then CHAR(255) else b.productno end,b.productno,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
+	order by a.custno,a.datea,a.noa,Min(b.noq)
 	
 	----------------------------------------------------------------------------------------------------------
 	declare @tmpb table(
