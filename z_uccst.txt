@@ -17,8 +17,9 @@ z_uccst5:--z_uccst5
 	declare @t_stype nvarchar(10) = case when '#non'=[28] then '' else [28] end -- A 製成品、B 在製品
 	declare @t_stktype nvarchar(20) = case when '#non'=[4] then '' else [4] end
 	declare @t_style nvarchar(20) = case when '#non'=[8] then '' else [8] end
+	declare @t_action nvarchar(max) = case when '#non'=[38] then '' else [38] end
 	-------------------------------------------------------------------------------------
-		declare @tmp table(
+	declare @tmp table(
 		tablea nvarchar(20),
 		accy nvarchar(20),
 		noa nvarchar(20),
@@ -29,6 +30,7 @@ z_uccst5:--z_uccst5
 		productno nvarchar(20),
 		product nvarchar(20),
 		style nvarchar(20),
+		kind nvarchar(20),
 		dime float,
 		width float,
 		lengthb float,
@@ -37,10 +39,11 @@ z_uccst5:--z_uccst5
 		mount float,
 		[weight] float,
 		sprice float,
-		sprice2 float
+		sprice2 float,
+		sprice3 float
 	)
-	insert into @tmp(tablea,accy,noa,uno,[action],datea,productno,product,style,dime,width,lengthb,radius,size,mount,[weight],sprice,sprice2)
-	select a.tablea,a.accy,a.noa,a.uno,left(a.[action],2),a.datea,a.productno,a.product,a.style,a.dime,a.width,a.lengthb,a.radius,a.size
+	insert into @tmp(tablea,accy,noa,uno,[action],datea,productno,product,style,kind,dime,width,lengthb,radius,size,mount,[weight],sprice,sprice2)
+	select a.tablea,a.accy,a.noa,a.uno,left(a.[action],2),a.datea,a.productno,a.product,a.style,a.kind,a.dime,a.width,a.lengthb,a.radius,a.size
 		,a.mount,a.[weight],a.sprice,a.sprice2
 	from view_uccb a
 	where 1=1 
@@ -50,7 +53,25 @@ z_uccst5:--z_uccst5
 	and (a.width between @t_bwidth and @t_ewidth)
 	and (@t_stktype='C3' or a.lengthb between @t_blength and @t_elength)
 	and (@t_stktype='A1' or @t_stktype='C3' or @t_stktype='A4' or a.radius between @t_bradius and @t_eradius)
+	and (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
 	and (len(@t_style)=0 or a.style=@t_style)
+	------------------------------------------------------------------------------------------
+	insert into @tmp(tablea,accy,noa,uno,[action],datea,productno,product,style,kind,dime,width,lengthb,radius,size,mount,[weight],sprice,sprice2,sprice3)
+	select 'vccs',a.accy,a.noa,a.uno,'出貨',b.datea,c.productno,c.product,c.style,c.kind,a.dime,c.width,c.lengthb,c.radius,a.size
+		,a.mount,a.[weight],c.sprice,c.sprice2
+		,case when isnull(a.[weight],0)!=0 then a.total/a.[weight] else a.price end
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
+	left join view_uccb c on a.uno=c.uno
+	where len(isnull(a.uno,''))>0
+	and b.datea between @t_bdate and @t_edate
+	and c.productno between @t_bproductno and @t_eproductno
+	and c.dime between @t_bdime and @t_edime
+	and (c.width between @t_bwidth and @t_ewidth)
+	and (@t_stktype='C3' or c.lengthb between @t_blength and @t_elength)
+	and (@t_stktype='A1' or @t_stktype='C3' or @t_stktype='A4' or c.radius between @t_bradius and @t_eradius)
+	and (len(@t_stktype) = 0 or upper(c.kind) = @t_stktype)
+	and (len(@t_style)=0 or c.style=@t_style)
 	------------------------------------------------------------------------------------------
 	if @t_stype='A'
 	begin
@@ -73,12 +94,16 @@ z_uccst5:--z_uccst5
 			when 'rc2s' then 'rc2st'
 			when 'cuts' then 'cut'
 			when 'cubu' then 'cubpi'
+			when 'vccs' then 'vccst'
 			else '' end
 			+ "?noa=\'"+noa+"\' and "+cast(ROW_NUMBER()over(order by datea,style,productno,size) as nvarchar)+"=$rr?"+accy ghref 
 		,dbo.getComma(sprice,3) sp1
 		,dbo.getComma(sprice2,3) sp2
+		,dbo.getComma(sprice3,3) sp3
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' ppt
 		,* 
 	from @tmp 
+	where len(@t_action)=0 or CHARINDEX(tablea,@t_action)>0
 	order by datea,style,productno,size;
 	   
 z_acx02:--z_acx02
