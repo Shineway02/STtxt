@@ -1,0 +1,51 @@
+z_cub_xyp1:--z_cub_xyp1
+	declare @t_accy nvarchar(max)
+	declare @t_bxnoa nvarchar(50)
+	declare @t_exnoa nvarchar(50)
+	
+	set @t_accy = '[1]'
+	set @t_bxnoa = case when '#non'=[6] then '' else [6] end
+	set @t_exnoa = case when '#non'=[7] then CHAR(255) else [7] end
+	
+	---------------------------------------------------------------------------------------
+	declare @result table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		noq nvarchar(50),
+		datea nvarchar(10),
+		ordeno nvarchar(50),
+		custno nvarchar(100),
+		comp nvarchar(100),
+		pno nvarchar(50),
+		product nvarchar(150),
+		amemo nvarchar(MAX),
+		tggno nvarchar(100),
+		tggs nvarchar(100),
+		processno nvarchar(100),
+		processs nvarchar(100),
+		mount float,
+		need nvarchar(MAX),
+		bmemo nvarchar(MAX),
+		uno nvarchar(50),
+		ucc nvarchar(150)
+	)
+	
+	insert into @result
+	select '0'gno,a.noa,b.noq,a.datea,a.ordeno+'_'+a.no2,a.custno,a.comp,a.productno,a.product,a.memo
+	,b.tggno,b.tgg,b.processno,b.process,b.mount,b.need,b.memo,'',''
+	from view_cub a left join view_cubs b on a.noa=b.noa
+	where a.noa between @t_bxnoa and @t_exnoa
+	
+	insert into @result
+	select '2' gno,a.noa,b.noq,a.datea,a.ordeno+'_'+a.no2,a.custno,a.comp,a.productno,a.product,a.memo
+	,'','','','',b.mount,'',b.memo,b.productno,b.product
+	from view_cub a left join view_cubt b on a.noa=b.noa
+	where a.noa between @t_bxnoa and @t_exnoa and b.noa!=''
+	
+	insert into @result (gno,noa)
+	select '1',noa from @result where gno='2' group by noa
+	
+	
+	select *
+	from @result order by noa,gno,noq;
+--*******************************************************************************************************
