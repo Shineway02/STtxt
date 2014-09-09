@@ -41,7 +41,9 @@ insert into @tmp
 	from umm um 
 	left join umms us on um.noa=us.noa 
 	left join view_vcc vcc on (us.vccno=vcc.noa) 
-	left join cust cust on (cust.noa=substring(us.vccno,0,charindex('-',us.vccno))) or (vcc.custno=cust.noa) or (um.custno=cust.noa)
+	left join cust cust on (cust.noa=substring(us.vccno,0,charindex('-',us.vccno))) 
+	--or (vcc.custno=cust.noa) or (um.custno=cust.noa)
+	or ((case when um.custno!='' then um.custno else vcc.custno end)=cust.noa )
 	left join sss sss on ((charindex('-',us.vccno)>0) and (cust.salesno=sss.noa)) or ((charindex('-',us.vccno)<=0) and (vcc.salesno=sss.noa)) 
 	where --(isnull(rtrim(ltrim(us.vccno)),'') != '') and 
 	noq!='' and
