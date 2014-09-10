@@ -1,0 +1,34 @@
+z_bankma:--z_bankma
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+set @t_bdate = case when '#non' = [2] then '' else [2] end
+set @t_edate = case when '#non' = [3] then CHAR(255) else [3] end
+
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(25),
+	indate nvarchar(10),
+	type nvarchar(90),
+	enddate nvarchar(10),
+	bmoney float,
+	tmoney float,
+	undate nvarchar(10),
+	emoney float
+)
+
+insert @tmp
+select '0',noa,indate,type,enddate,money,money3,undate,money2
+from bankm where (enddate between @t_bdate and @t_edate)
+
+if((select count(*) from @tmp)>0)
+begin
+	insert @tmp(gno,bmoney)
+	select '1',sum(bmoney) from @tmp
+end
+	
+select 
+dbo.getComma(bmoney,0) bmoney,
+dbo.getComma(tmoney,0) tmoney,
+dbo.getComma(emoney,0) emoney,
+*
+from @tmp order by gno,noa;
