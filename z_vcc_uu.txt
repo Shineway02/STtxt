@@ -1,6 +1,10 @@
 z_vcc_uu1:--z_vcc_uu1
 declare @t_year nvarchar(10)
 set @t_year = [17]
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -113,7 +117,10 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0)
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0) 
 	group by e.salesgroup,a.salesno,e.namea,a.custno,c.nick,b.productno,d.product,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
+	
 insert into @tmp
 	select
 		'0',case when @t_xshowvalue='2' then '金額' else '數量' end,0,a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
@@ -124,6 +131,7 @@ insert into @tmp
 	from @tmp a
 	where gno='99'
 	group by a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
+	
 if(@t_xshowvalue='3')
 begin
 	insert into @tmp
@@ -137,9 +145,12 @@ begin
 		where gno='99'
 		group by a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products
 end
+
 delete @tmp where gno='99'
+
 update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
 update @tmp set motal = t01+t02+t03+t04+t05+t06+t07+t08+t09+t10+t11+t12
+
 insert into @tmp
 	select
 		'1',case when @t_xshowvalue='2' then '金額' else '數量' end,2,a.salesgroup,a.salesno,a.saless,'' custno,'' custs,'' productno,'' products,
@@ -150,6 +161,7 @@ insert into @tmp
 	from @tmp a
 	where gno='0' and orderby=0
 	group by a.salesgroup,a.salesno,a.saless
+	
 if(@t_xshowvalue='3')
 begin
 	insert into @tmp
@@ -163,8 +175,10 @@ begin
 		where gno='0' and orderby=1
 		group by a.salesgroup,a.salesno,a.saless
 end
+
 insert into @tmp(gno,orderby,salesgroup,salesno,saless)
 	select '2',4,a.salesgroup,a.salesno,a.saless from @tmp a group by a.salesgroup,a.salesno,a.saless
+	
 select
 	a.gno,a.showmemo smo,a.orderby,a.salesgroup,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products,
 	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.m01),1)),4,12)) end m01,
@@ -199,6 +213,10 @@ order by a.salesgroup,a.salesno,a.saless,gno,a.custno,a.custs,a.productno,a.orde
 z_vcc_uu2:--z_vcc_uu2
 declare @t_year nvarchar(10)
 set @t_year = [17]
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -309,6 +327,8 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0)
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0) 
 	group by e.salesgroup,a.salesno,e.namea,b.productno,d.product,(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
 insert into @tmp
 	select
@@ -396,6 +416,10 @@ order by a.salesgroup,a.salesno,a.saless,gno,a.productno,a.orderby;
 z_vcc_uu3:--z_vcc_uu3
 declare @t_datea nvarchar(10)
 set @t_datea = case when '#non'=[19] then '' else [19] end
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -468,6 +492,8 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0)
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0) 
 	order by e.salesgroup,a.salesno,e.namea,a.custno,c.nick,b.productno,d.product,
 				(case when len(isnull(a.kind,''))=9 then a.kind else a.datea end),
 				a.noa,a.typea
@@ -624,6 +650,10 @@ order by a.pageno,a.orderby,a.salesgroup,a.salesno,a.saless,a.order2,a.gno;
 z_vcc_uu4:--z_vcc_uu4
 declare @t_mon nvarchar(10)
 set @t_mon = case when '#non'=[20] then '' else [20] end
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -740,6 +770,7 @@ insert into @tmp
 		'' wkn01,'' wkn02,'' wkn03,'' wkn04,'' wkn05
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
+	left join cust f on a.custno = f.noa
 	left join ucc d on d.noa=b.productno
 	left join sss e on a.salesno=e.noa
 	outer apply(select top 1 * from @weeklist where (case when len(isnull(a.kind,''))=9 then a.kind else a.datea end) between bdatea and edatea) c
@@ -753,6 +784,9 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(f.addr_comp,'')!='' then f.addr_comp when isnull(f.addr_invo,'')!='' then f.addr_invo else isnull(f.addr_home,'') end))>0) 
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(f.addr_comp,'')!='' then f.addr_comp when isnull(f.addr_invo,'')!='' then f.addr_invo else isnull(f.addr_home,'') end))>0)  
+			 
 insert into @tmp
 	select
 		'0',a.salesgroup,a.salesno,a.saless,a.productno,a.products,
@@ -796,6 +830,10 @@ declare @t_emon nvarchar(10)
 set @t_bmon = case when '#non'=[21] then '' else [21] end
 set @t_emon = case when '#non'=[22] then char(255) else [22] end
 set @t_stype = case when '#non'='[2]' then '' else '[2]' end
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -881,6 +919,8 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0)
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0) 
 	order by (case when len(isnull(a.kind,''))=9 then a.kind else a.datea end)
 insert into @tmp(gno,mount,free,total)
 	select
@@ -900,6 +940,10 @@ declare @t_stype nvarchar(max)
 declare @t_split_Tmp nvarchar(max)
 set @t_datea = case when '#non'=[19] then '' else [19] end
 set @t_stype = case when '#non'='[2]' then '' else '[2]' end
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -979,6 +1023,8 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0)
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0) 
 insert into @tmp
 	select
 		'6',0,1,1,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
@@ -1094,6 +1140,10 @@ declare @t_getWeekmon nvarchar(10)
 set @t_week = case when '#non'=[18] then '01' else [18] end
 set @t_year = case when '#non'=[17] then '01' else [17] end
 set @t_stype = case when '#non'='[2]' then '' else '[2]' end
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------*
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -1177,6 +1227,8 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0)
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0) 
 insert into @tmp
 	select
 		'6',0,1,0,'' datea,'' typea,'' stype,'' custno,'' custs,'' productno,'' products,
@@ -1299,6 +1351,10 @@ declare @t_mon nvarchar(10)
 declare @t_week nvarchar(10)
 set @t_mon = case when '#non'=[20] then '' else [20] end
 set @t_week = case when '#non'=[18] then '01' else [18] end
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------* 
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -1419,6 +1475,7 @@ insert into @tmp
 		'' wkn01,'' wkn02,'' wkn03,'' wkn04,'' wkn05
 	from view_vcc a
 	left join view_vccs b on a.noa = b.noa
+	left join cust f on a.custno = f.noa
 	left join ucc d on d.noa=b.productno
 	left join sss e on a.salesno=e.noa
 	outer apply(select top 1 * from @weeklist where (case when len(isnull(a.kind,''))=9 then a.kind else a.datea end) between bdatea and edatea) c
@@ -1432,6 +1489,8 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or e.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or e.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(f.addr_comp,'')!='' then f.addr_comp when isnull(f.addr_invo,'')!='' then f.addr_invo else isnull(f.addr_home,'') end))>0) 
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(f.addr_comp,'')!='' then f.addr_comp when isnull(f.addr_invo,'')!='' then f.addr_invo else isnull(f.addr_home,'') end))>0)  
 insert into @tmp
 	select
 		'2',0,1,0,a.salesgroup,a.salesno,a.saless,a.productno,a.products,
@@ -1600,6 +1659,10 @@ declare @t_bdatea nvarchar(35)
 declare @t_edatea nvarchar(35)
 set @t_bdatea = case when '#non'=[23] then '' else [23] end
 set @t_edatea = case when '#non'=[24] then char(255) else [24] end
+declare @t_city nvarchar(50)
+declare @t_area nvarchar(50)
+set @t_city = case when '#non'=[25] then '' else [25] end
+set @t_area = case when '#non'=[26] then '' else [26] end
 ---------------------------------------------------------* 
 declare @t_xstype nvarchar(30)
 declare @t_xgroupano nvarchar(30)
@@ -1671,6 +1734,8 @@ insert into @tmp
 			 (len(@t_xsalesgroup)=0 or f.salesgroup=@t_xsalesgroup) and
 			 (len(@t_xpartno)=0 or f.partno=@t_xpartno) and
 			 (d.tggno between @t_btggno and @t_etggno)
+			 and (len(@t_city)=0 or charindex(@t_city,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0)
+			 and (len(@t_area)=0 or charindex(@t_area,(case when isnull(c.addr_comp,'')!='' then c.addr_comp when isnull(c.addr_invo,'')!='' then c.addr_invo else isnull(c.addr_home,'') end))>0) 
 			 
 insert into @tmp(gno,productno,products,mount,free,discount,total)
 	select
