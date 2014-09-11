@@ -31,7 +31,7 @@ declare @tmp table(
 insert into @tmp 
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq)
 ,0,0,'',a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.addr2 else a.addr end
-,b.store,a.salesno,a.sales,b.productno,b.product,b.mount,b.unit,b.price,b.total
+,b.store,a.salesno,a.sales,b.productno,b.product+' '+isnull(b.spec,''),b.mount,b.unit,b.price,b.total
 from view_vcc a left join view_vccs b on a.noa=b.noa
 where a.noa between @t_bxnoa and @t_exnoa
 
