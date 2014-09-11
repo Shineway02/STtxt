@@ -1,0 +1,75 @@
+orde:-- workj -> orde 
+	--一張鋼筋加工單 只會產生一張訂單
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @workjno nvarchar(20) = [1]
+	------------------------------------------------------------------------------------------------
+	declare @accy nvarchar(20)
+	declare @ordeno nvarchar(20)
+	select  top 1 @accy=accy,@ordeno =noa from view_ordes where quatno=@workjno
+	if len(@ordeno)!=0
+	begin
+		--訂單若結案則不異動
+		if exists(select * from view_orde where accy=@accy and noa=@ordeno and isnull(enda,0)=1)
+		or exists(select * from view_ordes where accy=@accy and noa=@ordeno and isnull(enda,0)=1)
+		begin
+			return
+		end
+	end
+	--刪除訂單，重新產生
+	set @cmd  = "delete orde"+@accy+" where noa=@ordeno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20)',@ordeno=@ordeno
+	set @cmd  = "delete ordes"+@accy+" where noa=@ordeno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20)',@ordeno=@ordeno
+	
+	--quatno  no3
+	set @cmd=
+	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick)
+	select @ordeno,odate,odate,custno,cust,nick
+	from workj where noa=@workjno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
+	
+	set @cmd=
+	"insert into ordes"+@accy+"(noa,no2,productno,product,unit,lengthb,[weight],mount,price,total,quatno,no3)
+	select @ordeno,ROW_NUMBER()over(order by a.noq)
+		,a.productno,a.product,b.unit,b.lengthb,a.[weight],a.mount,b.price
+		,round(case when UPPER(b.unit)='KG' or len(b.unit)=0 then a.[weight] else a.mount end * b.price,0)
+		,a.noa,a.noq
+	from workjs a 
+	left join conts b on a.contno=b.noa and a.contnoq=b.noq
+	where a.noa=@workjno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
+	;
+
+cont:-- cont -> workj	
+	declare @workjno nvarchar(20) = [1]
+	declare @custno nvarchar(20) = [2]
+	
+	declare @tmp table(
+		contno nvarchar(20),
+		contnoq nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		[weight] float,
+		price float,
+		total float,
+		xmount float,
+		xweight float
+	) 
+	
+	insert into @tmp(contno,contnoq,productno,product,unit,mount,[weight],price,total)
+	select a.noa,b.noq,b.productno,b.product,b.unit,b.mount,b.[weight],b.price,b.total
+	from cont a
+	left join conts b on a.noa=b.noa
+	where isnull(a.enda,0)!=1
+	and ISNULL(b.enda,0)!=1
+	and a.tggno=@custno
+	
+	update @tmp set xmount=isnull(b.mount,0),xweight=isnull(b.[weight],0)
+	from @tmp a
+	outer apply(select SUM(ISNULL(mount,0)) mount,SUM(ISNULL([mount],0)) [weight] 
+		from workjs where contno=a.contno and contnoq=a.contnoq and noa!=@workjno) b
+	
+	select * from @tmp where mount-xmount>0 and weight-xweight>0;
