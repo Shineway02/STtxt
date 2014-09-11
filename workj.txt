@@ -12,7 +12,9 @@ orde:-- workj -> orde
 		--訂單若結案則不異動
 		if exists(select * from view_orde where accy=@accy and noa=@ordeno and isnull(enda,0)=1)
 		or exists(select * from view_ordes where accy=@accy and noa=@ordeno and isnull(enda,0)=1)
+		begin
 			return
+		end
 	end
 	--刪除訂單，重新產生
 	set @cmd  = "delete orde"+@accy+" where noa=@ordeno"
