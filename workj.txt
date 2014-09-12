@@ -178,7 +178,7 @@ orde:-- workj -> orde
 	
 	set @cmd=
 	"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total,quatno,no3,tablea,enda,cancel,c1,notv)
-	select @ordeno,ROW_NUMBER()over(order by a.noq),c.odate,c.custno
+	select @ordeno,right('000'+cast(ROW_NUMBER()over(order by a.noq) as nvarchar),3),c.odate,c.custno
 		,a.productno,a.product,b.unit,b.lengthb,a.[weight],a.mount,b.price
 		,round(case when UPPER(b.unit)='KG' or len(b.unit)=0 then a.[weight] else a.mount end * b.price,0)
 		,a.noa,a.noq,'workj',0,0,0
