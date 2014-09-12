@@ -41,19 +41,20 @@ orde:-- workj -> orde
 	
 	--quatno  no3
 	set @cmd=
-	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick)
-	select @ordeno,odate,odate,custno,cust,nick
+	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick,isproj,stype,enda,cancel)
+	select @ordeno,odate,odate,custno,cust,nick,1,'1',0,0
 	from workj where noa=@workjno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
 	
 	set @cmd=
-	"insert into ordes"+@accy+"(noa,no2,productno,product,unit,lengthb,[weight],mount,price,total,quatno,no3,tablea)
-	select @ordeno,ROW_NUMBER()over(order by a.noq)
+	"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total,quatno,no3,tablea,enda,cancel)
+	select @ordeno,ROW_NUMBER()over(order by a.noq),c.odate,c.custno
 		,a.productno,a.product,b.unit,b.lengthb,a.[weight],a.mount,b.price
 		,round(case when UPPER(b.unit)='KG' or len(b.unit)=0 then a.[weight] else a.mount end * b.price,0)
-		,a.noa,a.noq,'workj'
+		,a.noa,a.noq,'workj',0,0
 	from workjs a 
 	left join conts b on a.contno=b.noa and a.contnoq=b.noq
+	left join workj c on a.noa=c.noa
 	where a.noa=@workjno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
 	
