@@ -11,6 +11,7 @@ z_workjp01:--z_workjp01
 	-------------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(10),
+		pno nvarchar(10),
 		noa nvarchar(20),
 		datea nvarchar(10),
 		odate nvarchar(10),
@@ -35,9 +36,9 @@ z_workjp01:--z_workjp01
 		imgsrc nvarchar(max),
 		memos nvarchar(max)
 	)
-	insert into @tmp(gno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,chktype,worker,memo
+	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,chktype,worker,memo
 		,recno,noq,productno,product,lengthb,mount,[weight],timea,imgsrc,memos)
-	select '1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.chktype,a.worker,a.memo
+	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.chktype,a.worker,a.memo
 		,ROW_NUMBER()over(partition by a.noa order by b.noq)
 		,b.noq,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.timea,b.imgsrc,b.memo
 	from workj a
@@ -46,6 +47,12 @@ z_workjp01:--z_workjp01
 	and isnull(a.datea,'') between @t_bdate and @t_edate
 	and isnull(a.odate,'') between @t_bodate and @t_eodate
 	and isnull(a.custno,'') between @t_bcustno and @t_ecustno
+	-----------------------------------------------------------------------------------------------------
+	update @tmp set gno='3',memos=case when c.noa is null then '未產生訂單' else'訂單【'+c.noa+'】未核准'end
+	from @tmp a
+	left join view_ordes b on b.quatno=a.noa and b.no3=a.noq
+	left join view_orde c on b.accy=c.accy and b.noa=c.noa
+	where len(isnull(c.apv,''))=0
 	-----------------------------------------------------------------------------------------------------
 	declare @t_page int = 7 -- 一頁幾行
 	declare @noa nvarchar(20)
@@ -60,7 +67,7 @@ z_workjp01:--z_workjp01
     begin
 		while @n%@t_page!=0
 		begin
-			insert into @tmp(noa,gno)values(@noa,'2')
+			insert into @tmp(noa,gno,pno)values(@noa,'2','2')
 			set @n = @n + 1
 		end
 		
@@ -92,4 +99,4 @@ z_workjp01:--z_workjp01
 		,memos b08
 		,* 
 	from @tmp 
-	order by noa,gno,recno;
+	order by noa,pno,recno;
