@@ -164,20 +164,31 @@ select custno,SUM(money),mon from (
 --group by aa.custno,bb.salesno,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
 --union all
 --vcc =前期未收-前期已收月結
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
-	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
+	where len(vccno)>8 and right(vccno,4)!='-TAX' 
+	group by left(vccno,len(vccno)-7),right(vccno,6)
+	having right(vccno,6)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
+	and  left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)
+	),0) money
 	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
 	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) ,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
+	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
 --vcca=前期全部稅額-前期已收稅額
 	union all
-	select ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon and left(vccno,len(vccno)-11)=ca.custno),0)
-	,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)mon
+	select ca.custno	,SUM(isnull(ca.tax,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
+	where len(vccno)>8 and right(vccno,4)='-TAX'  
+	group by left(vccno,len(vccno)-11),left(right(vccno,10),6) 
+	having left(right(vccno,10),6)=(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
+	and left(vccno,len(vccno)-11)=ca.custno),0)
+	,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end) mon
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) ,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
+	group by ca.custno,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
 --union all
 --cara
 --select ca.carownerno,ca.sssno,outmoney-inmoney,ca.mon
@@ -191,7 +202,6 @@ declare @tmp table(
 	gno nvarchar(1),
 	custno nvarchar(20),
 	comp nvarchar(50),
-	salesno nvarchar(30),
 	namea nvarchar(30),
 	money float,
 	total float,
@@ -206,18 +216,23 @@ select '9',custno,SUM(money),0,0 from (
 	--select aa.custno,bb.salesno,SUM(isnull(unpay,0)) money from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon group by  aa.custno,bb.salesno
 	--union all
 	--vcc 前期未收-前期已收月結
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
-	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon 
+	group by left(vccno,len(vccno)-7) having
+	left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
 	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
 	 --vcca 前期全部稅額-前期已收稅額
 	union all
-	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon and left(vccno,len(vccno)-11)=ca.custno),0)
+	select  ca.custno
+	,SUM(isnull(ca.tax,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon 
+	group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0)
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end)
+	group by ca.custno
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
@@ -231,18 +246,18 @@ select '9',custno,0,SUM(total),0 from (
 	--select aa.custno,bb.salesno,SUM(isnull(total,0)) total from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
 	--union all
 	--vcc =本期應收金額
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0)) total
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
+	from view_vcc aa left join cust bb on aa.custno=bb.noa 
+	where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) 
 	--vcca =本期應收稅額
 	union all
-	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,SUM(isnull(ca.tax,0))
+	select  ca.custno,SUM(isnull(ca.tax,0))
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end)
+	group by ca.custno
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,sum(outmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
@@ -255,19 +270,21 @@ select '9',custno,0,0,SUM(payed) from (
 	--select aa.custno,bb.salesno,SUM(isnull(payed,0)) payed from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
 	--union all
 	--vcc 本期已付
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*payed,0))
-	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6) between @t_bsmon and @t_esmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) payed
+	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6) between @t_bsmon and @t_esmon 
+	group by left(vccno,len(vccno)-7) having left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) payed
 	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
 	--vcca 本期稅額已付
 	union all
-	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,0+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6) between @t_bsmon and @t_esmon and left(vccno,len(vccno)-11)=ca.custno),0)
+	select  ca.custno
+	,0+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6) between @t_bsmon and @t_esmon
+	group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0)
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end)
+	group by ca.custno
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,sum(inmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
@@ -275,10 +292,10 @@ select '9',custno,0,0,SUM(payed) from (
 
 --結果
 insert into @tmp (gno,custno,money,total,payed)
-select '0',custno,SUM(money),SUM(total),SUM(payed) from @tmp group by custno,salesno order by custno
+select '0',custno,SUM(money),SUM(total),SUM(payed) from @tmp group by custno order by custno
 --總計
 insert into @tmp
-select '3'gno,'ZZZZZZZZZ','','','',sum(money),sum(total),sum(payed),'' from @tmp where gno='0'
+select '3'gno,char(255),'','',sum(money),sum(total),sum(payed),'' from @tmp where gno='0'
 
 delete @tmp where gno='0'
 
@@ -286,26 +303,30 @@ delete @tmp where gno='0'
 insert into @tmp (gno,custno,money,total,payed,memo)
 select '1',a.custno,SUM(a.money),SUM(a.total),SUM(a.payed),b.mon+'：'+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b.money),1)),4,12))
 from @tmp a left join @tmpa b on a.custno=b.custno where gno='9'
-group by a.custno,salesno,b.mon,b.money order by a.custno
+group by a.custno,b.mon,b.money order by a.custno
 
 delete @tmp where gno='9'
 
-update @tmp
-set gno='2'
-where custno+'_'+ left(isnull(memo,''),6) not in
-(select custno+'_'+ MIN(left(isnull(memo,''),6)) from @tmp where gno='1' group by custno)
-and gno!='3'
+--update @tmp
+--set gno='2'
+--where custno+'_'+ left(isnull(memo,''),6) not in
+--(select custno+'_'+ MIN(left(isnull(memo,''),6)) from @tmp where gno='1' group by custno) and gno!='3'
+
+update a 
+set gno='2' 
+from @tmp a where custno+'_'+ left(isnull(memo,''),6) != 
+(select top 1 custno+'_'+ left(isnull(memo,''),6) from @tmp where gno='1' and a.custno=custno order by left(isnull(memo,''),6)) 
+and gno!='3' 
 
 delete @tmp where money=0 and total=0 and payed=0
 update @tmp
 set comp=(select top 1 nick from ((select nick from cust where noa=custno union select namea from carOwner where noa=custno union select namea from sss where noa=custno))tmp)
-,namea=(select namea from sss where noa=salesno)
 
 select gno,custno,comp,memo
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,payed),1)),4,12)) payed
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money+total-payed),1)),4,12)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),4,30)) payed
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),4,30)) unpay
 from @tmp a order by custno,gno,memo;
 --********************************************************************************
 z_umm6:--z_umm6
@@ -1715,10 +1736,10 @@ insert into @tmp
 select '1'gno,'','',salesno,'',sum(money),sum(total),sum(payed) from @tmp group by salesno
 
 select gno,custno,comp,salesno saleno,namea sales
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,payed),1)),4,12)) payed
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money+total-payed),1)),4,12)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),4,30)) payed
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),4,30)) unpay
 from @tmp order by salesno,gno,custno;
 --********************************************************************************
 z_umm13:--z_umm13
