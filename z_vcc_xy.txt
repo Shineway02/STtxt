@@ -28,14 +28,15 @@ declare @tmp table(
 
 insert @tmp
 select '0',a.custno,MAX(c.comp),b.storeno2,MAX(d.store),b.productno,MAX(e.product)
-,sum(isnull(tranmoney2,0))-sum(isnull(tranmoney3,0)) 
+,sum(isnull(b.tranmoney2,0))-sum(isnull(b.tranmoney3,0)) 
 from view_vcc a left join view_vccs b on a.noa=b.noa 
 left join cust c on a.custno=c.noa left join store d on b.storeno2=d.noa
 left join ucc e on b.productno=e.noa  
-where a.custno between @t_bcust and @t_ecust 
-and b.productno between @t_bucc and @t_eucc
-and b.storeno2 between @t_bstore and @t_estore
+where isnull(a.custno,'') between @t_bcust and @t_ecust 
+and isnull(b.productno,'') between @t_bucc and @t_eucc
+and isnull(b.storeno2,'') between @t_bstore and @t_estore
 and a.datea<=@t_enddate and b.productno!=''
+and (isnull(b.tranmoney2,0)!=0 or isnull(b.tranmoney3,0)!=0)
 group by a.custno,b.storeno2,b.productno
 
 delete @tmp where stkmount=0
@@ -102,17 +103,17 @@ select a.accy,a.datea,'1' typea,a.custno,c.comp,b.storeno2,d.store,b.productno,e
 from view_vcc a left join view_vccs b on a.noa=b.noa 
 left join cust c on a.custno=c.noa left join store d on b.storeno2=d.noa
 left join ucc e on b.productno=e.noa  
-where a.custno between @t_bcust and @t_ecust 
-and b.productno between @t_bucc and @t_eucc
-and a.datea<=@t_edate and b.productno!='' and b.tranmoney2!=0
+where isnull(a.custno,'') between @t_bcust and @t_ecust 
+and isnull(b.productno,'') between @t_bucc and @t_eucc
+and a.datea<=@t_edate and b.productno!='' and isnull(b.tranmoney2,0)!=0
 union all
 select a.accy,a.datea,'2' typea,a.custno,c.comp,b.storeno2,d.store,b.productno,e.product,a.noa,tranmoney3 
 from view_vcc a left join view_vccs b on a.noa=b.noa 
 left join cust c on a.custno=c.noa left join store d on b.storeno2=d.noa
 left join ucc e on b.productno=e.noa  
-where a.custno between @t_bcust and @t_ecust 
-and b.productno between @t_bucc and @t_eucc
-and a.datea<=@t_edate and b.productno!='' and b.tranmoney3!=0
+where isnull(a.custno,'') between @t_bcust and @t_ecust 
+and isnull(b.productno,'') between @t_bucc and @t_eucc
+and a.datea<=@t_edate and b.productno!='' and isnull(b.tranmoney3,0)!=0
 )tmp order by custno,productno,datea,storeno2,typea
 
 insert @tmp (gno,idno,accy,datea,typea,custno,comp,storeno,stores,productno,products,vccno,mount,stkmount)
