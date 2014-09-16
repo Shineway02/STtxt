@@ -8,6 +8,9 @@ orde:-- workj -> orde
 	declare @accy nvarchar(20)
 	declare @ordeno nvarchar(20)
 	select  top 1 @accy=accy,@ordeno =noa from view_ordes where quatno=@workjno
+	if len(isnull(@ordeno,''))=0
+		select  @accy=ordeaccy,@ordeno = ordeno from workj where noa=@workjno
+	
 	if len(@ordeno)!=0
 	begin
 		--訂單若結案則不異動
@@ -196,7 +199,9 @@ orde:-- workj -> orde
 	where a.noa=@ordeno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
 	
-	select '匯出訂單【'+@ordeno+'】' msg;
+	update workj set ordeaccy=@accy,ordeno=@ordeno where noa=@workjno
+	
+	select '匯出訂單【'+@ordeno+'】' msg,@accy ordeaccy,@ordeno ordeno;
 
 cont:-- cont -> workj	
 	declare @workjno nvarchar(20) = [1]
