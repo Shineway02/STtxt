@@ -5,22 +5,22 @@ z_umm14:--z_umm14
 	declare @t_ecustno nvarchar(20) = case when '#non'=[6] then char(255) else [6] end
 	declare @t_bmon nvarchar(10) = case when '#non'=[13] then '' else [13] end
 	declare @t_emon nvarchar(10) = case when '#non'=[14] then char(255) else [14] end
+	declare @t_project nvarchar(50)=case when '#non' = '[26]' then '' else '[26]' end
 	----------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(10),
-		custno nvarchar(20),
-		cust nvarchar(50),
-		nick nvarchar(20),
-		salesno nvarchar(20),
-		sales nvarchar(20),
-		
+		custno nvarchar(50),
+		cust nvarchar(100),
+		nick nvarchar(100),
+		salesno nvarchar(50),
+		sales nvarchar(100),
 		discount float
 	)
 	insert into @tmp(gno,custno,discount)
 	select '1',ISNULL(a.custno,''),sum(isnull(b.[money],0))
 	from umm a
 	left join umms b on a.noa=b.noa
-	where LEFT(b.acc1,4)='4107'
+	where LEFT(b.acc1,4)=(case when @t_project='FE' then '4107' else '4106' end)
 	and isnull(a.datea,'') between @t_bdate and @t_edate
 	and isnull(a.mon,'') between @t_bmon and @t_emon
 	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
@@ -164,20 +164,31 @@ select custno,SUM(money),mon from (
 --group by aa.custno,bb.salesno,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
 --union all
 --vcc =前期未收-前期已收月結
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
-	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
+	where len(vccno)>8 and right(vccno,4)!='-TAX' 
+	group by left(vccno,len(vccno)-7),right(vccno,6)
+	having right(vccno,6)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
+	and  left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)
+	),0) money
 	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
 	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) ,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
+	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
 --vcca=前期全部稅額-前期已收稅額
 	union all
-	select ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon and left(vccno,len(vccno)-11)=ca.custno),0)
-	,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)mon
+	select ca.custno	,SUM(isnull(ca.tax,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
+	where len(vccno)>8 and right(vccno,4)='-TAX'  
+	group by left(vccno,len(vccno)-11),left(right(vccno,10),6) 
+	having left(right(vccno,10),6)=(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
+	and left(vccno,len(vccno)-11)=ca.custno),0)
+	,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end) mon
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) ,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
+	group by ca.custno,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
 --union all
 --cara
 --select ca.carownerno,ca.sssno,outmoney-inmoney,ca.mon
@@ -191,7 +202,6 @@ declare @tmp table(
 	gno nvarchar(1),
 	custno nvarchar(20),
 	comp nvarchar(50),
-	salesno nvarchar(30),
 	namea nvarchar(30),
 	money float,
 	total float,
@@ -206,18 +216,23 @@ select '9',custno,SUM(money),0,0 from (
 	--select aa.custno,bb.salesno,SUM(isnull(unpay,0)) money from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon group by  aa.custno,bb.salesno
 	--union all
 	--vcc 前期未收-前期已收月結
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
-	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon 
+	group by left(vccno,len(vccno)-7) having
+	left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
 	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
 	 --vcca 前期全部稅額-前期已收稅額
 	union all
-	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon and left(vccno,len(vccno)-11)=ca.custno),0)
+	select  ca.custno
+	,SUM(isnull(ca.tax,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon 
+	group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0)
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end)
+	group by ca.custno
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
@@ -231,18 +246,18 @@ select '9',custno,0,SUM(total),0 from (
 	--select aa.custno,bb.salesno,SUM(isnull(total,0)) total from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
 	--union all
 	--vcc =本期應收金額
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0)) total
-	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
+	from view_vcc aa left join cust bb on aa.custno=bb.noa 
+	where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) 
 	--vcca =本期應收稅額
 	union all
-	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,SUM(isnull(ca.tax,0))
+	select  ca.custno,SUM(isnull(ca.tax,0))
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end)
+	group by ca.custno
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,sum(outmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
@@ -255,19 +270,21 @@ select '9',custno,0,0,SUM(payed) from (
 	--select aa.custno,bb.salesno,SUM(isnull(payed,0)) payed from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
 	--union all
 	--vcc 本期已付
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*payed,0))
-	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6) between @t_bsmon and @t_esmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) payed
+	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6) between @t_bsmon and @t_esmon 
+	group by left(vccno,len(vccno)-7) having left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) payed
 	from view_vcc aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
 	--vcca 本期稅額已付
 	union all
-	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
-	,0+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6) between @t_bsmon and @t_esmon and left(vccno,len(vccno)-11)=ca.custno),0)
+	select  ca.custno
+	,0+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6) between @t_bsmon and @t_esmon
+	group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0)
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
-	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end)
+	group by ca.custno
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,sum(inmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
@@ -275,10 +292,10 @@ select '9',custno,0,0,SUM(payed) from (
 
 --結果
 insert into @tmp (gno,custno,money,total,payed)
-select '0',custno,SUM(money),SUM(total),SUM(payed) from @tmp group by custno,salesno order by custno
+select '0',custno,SUM(money),SUM(total),SUM(payed) from @tmp group by custno order by custno
 --總計
 insert into @tmp
-select '3'gno,'ZZZZZZZZZ','','','',sum(money),sum(total),sum(payed),'' from @tmp where gno='0'
+select '3'gno,char(255),'','',sum(money),sum(total),sum(payed),'' from @tmp where gno='0'
 
 delete @tmp where gno='0'
 
@@ -286,26 +303,30 @@ delete @tmp where gno='0'
 insert into @tmp (gno,custno,money,total,payed,memo)
 select '1',a.custno,SUM(a.money),SUM(a.total),SUM(a.payed),b.mon+'：'+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b.money),1)),4,12))
 from @tmp a left join @tmpa b on a.custno=b.custno where gno='9'
-group by a.custno,salesno,b.mon,b.money order by a.custno
+group by a.custno,b.mon,b.money order by a.custno
 
 delete @tmp where gno='9'
 
-update @tmp
-set gno='2'
-where custno+'_'+ left(isnull(memo,''),6) not in
-(select custno+'_'+ MIN(left(isnull(memo,''),6)) from @tmp where gno='1' group by custno)
-and gno!='3'
+--update @tmp
+--set gno='2'
+--where custno+'_'+ left(isnull(memo,''),6) not in
+--(select custno+'_'+ MIN(left(isnull(memo,''),6)) from @tmp where gno='1' group by custno) and gno!='3'
+
+update a 
+set gno='2' 
+from @tmp a where custno+'_'+ left(isnull(memo,''),6) != 
+(select top 1 custno+'_'+ left(isnull(memo,''),6) from @tmp where gno='1' and a.custno=custno order by left(isnull(memo,''),6)) 
+and gno!='3' 
 
 delete @tmp where money=0 and total=0 and payed=0
 update @tmp
 set comp=(select top 1 nick from ((select nick from cust where noa=custno union select namea from carOwner where noa=custno union select namea from sss where noa=custno))tmp)
-,namea=(select namea from sss where noa=salesno)
 
 select gno,custno,comp,memo
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,payed),1)),4,12)) payed
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money+total-payed),1)),4,12)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),4,30)) payed
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),4,30)) unpay
 from @tmp a order by custno,gno,memo;
 --********************************************************************************
 z_umm6:--z_umm6
@@ -894,7 +915,7 @@ begin
 	update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 	--已收款
 	update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0)
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0)
 	+isnull((select SUM(ub.paysale) from umm ua left join umms ub on ua.noa=ub.noa where CHARINDEX(a.custno,ub.vccno)>0 and left (ua.datea,6)  between @t_bmon and @t_emon),0)
 	from @result a where a.gno='1'
 	--前期
@@ -1011,7 +1032,7 @@ end
 update @tmp set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0)
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0)
 	+isnull((select SUM(ub.paysale) from umm ua left join umms ub on ua.noa=ub.noa where CHARINDEX(a.custno,ub.vccno)>0 and left(ua.datea,6)  < @t_bmon ),0)
 from @tmp a where a.gno='1'
 
@@ -1099,72 +1120,86 @@ if(@t_showunpay='0')
 begin
 	insert into @result
 		select '0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
-			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
 		       b.mount, b.weight, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
-		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
+		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
-		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		where (a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
-			  (a.salesno between @t_bsalesno and @t_esalesno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
 			  (b.productno between @t_bproductno and @t_eproductno)
 		union all --無發票系統
-		select '0' gno, '稅' typea, noa, CHAR(255) noq, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-			   (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
-			   0 mount, 0 weight, 0 price, (case when typea!='1' then -1 else 1 end) * tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
-		from view_vcc
+		select '0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+			   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) * tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+		from view_vcc a
+		left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
 		where tax > 0 and (taxtype='1' or taxtype='5') and
-			  (datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  ( (case when custno2!='' then custno2 else custno end) between @t_bcustno and @t_ecustno) and
-			  (salesno between @t_bsalesno and @t_esalesno)
+			  (a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 		union all --有發票系統
-		select '0' gno, '稅' typea, noa, '' noq, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-			   custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
-			   0 mount, 0 weight, 0 price, tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
-		from vcca
+		select '0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   a.custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+			   0 mount, 0 weight, 0 price, a.tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,c.salesno,c.sales
+		from vcca a
+		left join cust c on a.custno = c.noa 
 		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
-				(datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  (custno between @t_bcustno and @t_ecustno)
+				(a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  (a.custno between @t_bcustno and @t_ecustno) and
+			  (c.salesno between @t_bsalesno and @t_esalesno)
 		order by custno,gno,mon,datea,noa,noq
 end
 else
 begin
 	insert into @result
 	select '0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
-			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
 		       b.mount, b.weight, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
-		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
+		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
-		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
-			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
-			  (a.salesno between @t_bsalesno and @t_esalesno) and
+			  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
 			  (b.productno between @t_bproductno and @t_eproductno)
 		union all --無發票系統
-		select '0' gno, '稅' typea, noa, CHAR(255) noq, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-			   (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
-			   0 mount, 0 weight, 0 price, (case when typea!='1' then -1 else 1 end) *tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
-		from view_vcc
-		where tax > 0 and (taxtype='1' or taxtype='5') and
-			  (datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  ( (case when custno2!='' then custno2 else custno end) between @t_bcustno and @t_ecustno) and
-			  (salesno between @t_bsalesno and @t_esalesno)
+		select '0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   (case when a.custno2!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+			   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) *a.tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+		from view_vcc a
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
+			  (a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 		union all --有發票系統
-		select '0' gno, '稅' typea, noa, '' noq, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
+		select '0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
 			   custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
-			   0 mount, 0 weight, 0 price, tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
-		from vcca
-		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
-				(datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  (custno between @t_bcustno and @t_ecustno)
+			   0 mount, 0 weight, 0 price, a.tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,c.salesno,c.sales
+		from vcca a
+		left join cust c on a.custno = c.noa 
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
+				(a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  (a.custno between @t_bcustno and @t_ecustno) and 
+			  (c.salesno between @t_bsalesno and @t_esalesno)
 		order by custno,gno,mon,datea,noa,noq
 end
 
@@ -1243,7 +1278,7 @@ begin
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umms ub
 				where charindex(a.custno+'-',ub.vccno)>0
 				and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' between @t_bdate and @t_edate
@@ -1283,33 +1318,40 @@ declare @tmp table(
 )
 insert into @tmp
 	select '0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
-		    (case when a.custno2!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+		    (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
 	       b.mount, b.weight, b.price, b.total, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
-	       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales
+	       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
 	from view_vccs b
 	left join view_vcc a on a.noa = b.noa
-	left join cust c on  a.custno = c.noa
+	left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)  = c.noa
 	where ((a.datea < @t_bdate ) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
-		  and ( (case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
-		  and (a.salesno between @t_bsalesno and @t_esalesno)
+		  and ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+		  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 		  and (b.productno between @t_bproductno and @t_eproductno)
 	union all
-	select '0' gno, '稅' typea, noa, CHAR(255) noq, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-		    (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
-		   0 mount, 0 weight, 0 price, (case when typea!='1' then -1 else 1 end) *tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount,'',''
-	from view_vcc
+	select '0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+		    (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+		   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) *a.tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+		   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+	from view_vcc a
+	left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)  = c.noa
 	where tax > 0 and (taxtype='1' or taxtype='5')
-		  and ((datea < @t_bdate) or ((case when isnull(mon,'')='' then left(datea,6) else mon end) < @t_bmon))
-		  and ((case when custno2!='' then custno2 else custno end) between @t_bcustno and @t_ecustno)
-		  and (salesno between @t_bsalesno and @t_esalesno)
+		  and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon))
+		  and ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+		  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 	union all
-	select '0' gno, '稅' typea, noa, '' noq, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
+	select '0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
 		   custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
-		   0 mount, 0 weight, 0 price, tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount	,'',''
-	from vcca
-	where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3)
-		and ((datea < @t_bdate) or ((case when isnull(mon,'')='' then left(datea,6) else mon end) < @t_bmon ))
-		and  (custno between @t_bcustno and @t_ecustno)
+		   0 mount, 0 weight, 0 price, a.tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			,c.salesno,c.sales
+	from vcca a
+	left join cust c on a.custno = c.noa 
+	where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3)
+		and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
+		and  (a.custno between @t_bcustno and @t_ecustno) and
+		(c.salesno between @t_bsalesno and @t_esalesno)
 	order by custno,gno,mon,datea,noa,noq
 
 set @t_custno = '#zzzz#zzzz'
@@ -1374,7 +1416,7 @@ update @tmp set typea = (case typea when '1' then '出' else '退' end) where ty
 
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umms ub
 				where charindex(a.custno+'-',ub.vccno)>0
 				and (SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' < @t_bdate
@@ -1715,10 +1757,10 @@ insert into @tmp
 select '1'gno,'','',salesno,'',sum(money),sum(total),sum(payed) from @tmp group by salesno
 
 select gno,custno,comp,salesno saleno,namea sales
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,payed),1)),4,12)) payed
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money+total-payed),1)),4,12)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),4,30)) payed
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),4,30)) unpay
 from @tmp order by salesno,gno,custno;
 --********************************************************************************
 z_umm13:--z_umm13
@@ -1779,83 +1821,108 @@ if(@t_showunpay='0')
 begin
 	insert into @result
 		select '0' gno,0 pageno,0 totpage,0 orderno, a.typea, a.noa noa,isnull(a.invono,'') invoiceno, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
-			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, '', '','','',
+			   (case when isnull(a.custno2,'')!='' then isnull(a.custno2,'') else a.custno end) custno, '', '','','',
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1,payed,unpay, 0 total2
-		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales,'vcc'
+		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+		       ,'vcc'
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
 		where (a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
-			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
-			  (a.salesno between @t_bsalesno and @t_esalesno)
-		group by a.typea, a.noa,a.invono,a.datea,a.mon,a.custno2,a.custno,a.salesno2,a.salesno,a.sales2,a.sales,payed,unpay
+			  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+		group by a.typea, a.noa,a.invono,a.datea,a.mon,a.custno2,a.custno
+		,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) 
+		,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end) 
+		,payed,unpay
 		union all --無發票系統
-		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, noa,invono, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-			   (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2,'','','vcc'
-		from view_vcc
-		where tax > 0 and (taxtype='1' or taxtype='5') and
-			  (datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  ( (case when custno2!='' then custno2 else custno end) between @t_bcustno and @t_ecustno) and
-			  (salesno between @t_bsalesno and @t_esalesno)
+		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, a.noa,a.invono, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   (case when a.custno2!='' then a.custno2 else a.custno end), '' comp, '' addr_invo,'' serial, '' tel,
+			   0 total, 0 money, 0 back, (case when a.typea!='1' then -1 else 1 end) *a.tax tax, 0 total1, 0 pay, 0 unpay, 0 total2
+			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+			   ,'vcc'
+		from view_vcc a
+		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
+			  (a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 		union all --有發票系統
-		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, vccno,noa, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-			   custno, '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2,'','','vcca'
-		from vcca
-		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
-				(datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  (custno between @t_bcustno and @t_ecustno)
+		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, a.vccno,a.noa, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   a.custno, '' comp, '' addr_invo,'' serial, '' tel,
+			   0 total, 0 money, 0 back, a.tax, 0 total1, 0 pay, 0 unpay, 0 total2,c.salesno,c.sales
+			   ,'vcca'
+		from vcca a left join cust c on a.custno=c.noa
+		where a.tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
+				(a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  (a.custno between @t_bcustno and @t_ecustno) and 
+			  (c.salesno between @t_bsalesno and @t_esalesno)
 		order by custno,gno,mon,datea,noa
 end
 else
 begin
 	insert into @result
 	select '0' gno,0 pageno,0 totpage,0 orderno, a.typea, a.noa noa,isnull(a.invono,''), a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
-			   (case when a.custno2!='' then a.custno2 else a.custno end) custno, '', '','', '',
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, '', '','', '',
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1,payed,unpay, 0 total2
-		       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales,'vcc'
+		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+		       ,'vcc'
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
-		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
-			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
-			  (a.salesno between @t_bsalesno and @t_esalesno)
-		group by a.typea, a.noa,a.invono,a.datea,a.mon,a.custno2,a.custno,a.salesno2,a.salesno,a.sales2,a.sales,payed,unpay
+			  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+		group by a.typea, a.noa,a.invono,a.datea,a.mon,a.custno2,a.custno
+		,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) 
+		,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end) 
+		,payed,unpay
 		union all --無發票系統
-		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, noa,invono, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-			   (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2,'','','vcc'
-		from view_vcc
-		where tax > 0 and (taxtype='1' or taxtype='5') and
-			  (datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  ( (case when custno2!='' then custno2 else custno end) between @t_bcustno and @t_ecustno) and
-			  (salesno between @t_bsalesno and @t_esalesno)
+		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, a.noa,a.invono, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp, '' addr_invo,'' serial, '' tel,
+			   0 total, 0 money, 0 back, (case when a.typea!='1' then -1 else 1 end) *a.tax tax, 0 total1, 0 pay, 0 unpay, 0 total2
+			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+			   ,'vcc'
+		from view_vcc a
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
+			  (a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 		union all --有發票系統
-		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, vccno,noa, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-			   custno, '' comp, '' addr_invo,'' serial, '' tel,
-			   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2,'','','vcca'
-		from vcca
-		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
-				(datea between @t_bdate and @t_edate)and
-			  ((case when isnull(mon,'')='' then left(datea,6) else mon end) between @t_bmon and @t_emon) and
-			  (custno between @t_bcustno and @t_ecustno)
+		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, a.vccno,a.noa, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   a.custno, '' comp, '' addr_invo,'' serial, '' tel,
+			   0 total, 0 money, 0 back, a.tax, 0 total1, 0 pay, 0 unpay, 0 total2,c.salesno,c.sales
+			   ,'vcca'
+		from vcca a 
+		left join cust c on  a.custno = c.noa
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
+				(a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  (a.custno between @t_bcustno and @t_ecustno) and 
+			  (c.salesno between @t_bsalesno and @t_esalesno)
 		order by custno,gno,mon,datea,noa
 end
 
 delete @result where custno not in (select distinct noa from cust where typea between @t_bcusttype and @t_ecusttype)
 
-update a
-set tax=isnull(b.total,0),comp=isnull(c.comp,''),addr_invo=isnull(c.addr_invo,''),serial=isnull(c.serial,''),tel=isnull(c.tel,'')
-from @result a left join cust c on a.custno = c.noa
-outer apply(select sum(total) total from @result where noa=a.noa and (typea='稅')) b
+update a 
+set tax=isnull(b.tax,0),comp=isnull(c.comp,''),addr_invo=isnull(c.addr_invo,''),serial=isnull(c.serial,''),tel=isnull(c.tel,'') 
+from @result a left join cust c on a.custno = c.noa 
+outer apply(select sum(tax) tax from @result where noa=a.noa and (typea='稅')) b 
+where isnull(a.noa,'')!=''
 
-delete @result where (typea='稅')
+delete @result where (typea='稅') and isnull(noa,'')!=''
+
 declare @gno nvarchar(10)
 declare @typea nvarchar(20)
 declare @noa nvarchar(50)
@@ -1937,7 +2004,7 @@ begin
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umm ua left join umms ub on ua.noa=ub.noa
 				where charindex(a.custno+'-',ub.vccno)>0
 				and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' between @t_bdate and @t_edate
@@ -1974,33 +2041,44 @@ declare @tmp table(
 
 insert into @tmp
 	select '0' gno, a.typea, a.noa noa,a.invono invoiceno, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else isnull(a.mon,'') end) mon,
-		    (case when a.custno2!='' then a.custno2 else a.custno end) custno,'','','','', 
+		    (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno,'','','','', 
 	       sum(b.total), 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2
-	       ,(case when a.salesno2!='' then a.salesno2 else a.salesno end) salesno,(case when a.sales2!='' then a.sales2 else a.sales end)sales,'vcc'
+	       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
+			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+	       ,'vcc'
 	from view_vccs b
 	left join view_vcc a on a.noa = b.noa
-	left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
+	left join cust c on (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 	where ((a.datea < @t_bdate ) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
-		  and ( (case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
-		  and (a.salesno between @t_bsalesno and @t_esalesno)
-	group by a.typea, a.noa,a.invono,a.datea,a.mon,a.custno2,a.custno,a.salesno2,a.salesno,a.sales2,a.sales
+		  and ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+		  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+	group by a.typea, a.noa,a.invono,a.datea,a.mon,a.custno2,a.custno
+	,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) 
+	,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end) 
 	union all
-	select '0' gno, '稅' typea, noa,invono,datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-		    (case when custno2!='' then custno2 else custno end), '' comp, '' addr_invo,'' serial, '' tel,
-		    tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2,'','','vcc'
-	from view_vcc
-	where tax > 0 and (taxtype='1' or taxtype='5')
-		  and ((datea < @t_bdate) or ((case when isnull(mon,'')='' then left(datea,6) else mon end) < @t_bmon))
-		  and ((case when custno2!='' then custno2 else custno end) between @t_bcustno and @t_ecustno)
-		  and (salesno between @t_bsalesno and @t_esalesno)
+	select '0' gno, '稅' typea, a.noa,a.invono,a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+		    (case when a.custno2!='' then a.custno2 else a.custno end), '' comp, '' addr_invo,'' serial, '' tel,
+		    0 total, 0 money, 0 back, (case when a.typea!='1' then -1 else 1 end) *a.tax tax, 0 total1, 0 pay, 0 unpay, 0 total2
+		    ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
+			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+		    ,'vcc'
+	from view_vcc a
+	left join cust c on (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+	where tax > 0 and (a.taxtype='1' or a.taxtype='5')
+		  and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon))
+		  and ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+		  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 	union all
-	select '0' gno, '稅' typea, vccno,noa, datea, (case when isnull(mon,'')='' then left(datea,6) else mon end),
-		   custno, '' comp, '' addr_invo,'' serial, '' tel,
-		   tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2,'','','vcca'
-	from vcca
-	where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3)
-		and ((datea < @t_bdate) or ((case when isnull(mon,'')='' then left(datea,6) else mon end) < @t_bmon ))
-		and  (custno between @t_bcustno and @t_ecustno)
+	select '0' gno, '稅' typea, a.vccno,a.noa, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+		   a.custno, '' comp, '' addr_invo,'' serial, '' tel,
+		   0 total, 0 money, 0 back, a.tax, 0 total1, 0 pay, 0 unpay, 0 total2,c.salesno,c.sales
+		   ,'vcca'
+	from vcca a
+	left join cust c on a.custno = c.noa
+	where a.tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3)
+		and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
+		and  (a.custno between @t_bcustno and @t_ecustno)and 
+			  (c.salesno between @t_bsalesno and @t_esalesno)
 	order by custno,gno,mon,datea,noa
 	
 delete @tmp where custno not in (select noa from cust where typea between @t_bcusttype and @t_ecusttype)
@@ -2067,7 +2145,7 @@ update @tmp set typea = (case typea when '1' then '出' else '退' end) where ty
 
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umms ub 
 				where charindex(a.custno+'-',ub.vccno)>0
 				and (SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' < @t_bdate
@@ -2095,10 +2173,10 @@ where custno not in (select distinct custno from @result) and gno='1' and (total
 update @result set total1=total,total2=total+tax where gno='0'
 update @result set total2=total1+unpay-pay where gno='1'
 
-update @result set total1=total1-pay 
-,money=case when pay>=(isnull(money,0)-isnull(back,0)) then 0 else isnull(money,0)-isnull(back,0)-isnull(pay,0) end 
-,tax=case when pay>=isnull(money,0)-isnull(back,0) then isnull(tax,0)-(isnull(pay,0)-isnull(money,0)+isnull(back,0)) else isnull(tax,0) end 
-where gno='1' 
+--update @result set total1=total1-pay 
+--,money=case when pay>=(isnull(money,0)-isnull(back,0)) then 0 else isnull(money,0)-isnull(back,0)-isnull(pay,0) end 
+--,tax=case when pay>=isnull(money,0)-isnull(back,0) then isnull(tax,0)-(isnull(pay,0)-isnull(money,0)+isnull(back,0)) else isnull(tax,0) end 
+--where gno='1' 
 
 --當本期區間內沒有未收就不顯示
 if(@t_showunpay='1')
@@ -2123,7 +2201,7 @@ declare @nowOrder int = 0
 declare @thisPageno int = 0
 set @t_custno = '#zzzz#zzzz'
 declare cursor_table cursor for
-	select idno,gno,custno from @result where gno != '3' order by custno
+	select idno,gno,custno from @result where gno != '3' order by custno,datea
 open cursor_table
 fetch next from cursor_table
 into @idno,@gno,@custno
@@ -2223,10 +2301,12 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,back),1)),4,30)) back
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and gno='0' then -1 else 1 end)*tax),1)),4,30)) tax
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and gno='0' then -1 else 1 end)*total1),1)),4,30)) total1
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,tax),1)),4,30)) tax
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and typea!='稅' and gno='0' then -1 else 1 end)*total1),1)),4,30)) total1
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pay),1)),4,30)) pay
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and gno='0' then -1 else 1 end)*unpay),1)),4,30)) unpay
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and gno='0' then -1 else 1 end)*total2),1)),4,30)) total2
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and typea!='稅' and gno='0' then -1 else 1 end)*unpay),1)),4,30)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and typea!='稅' and gno='0' then -1 else 1 end)*total2),1)),4,30)) total2
 	,(select count(*) from @result where (gno='0') and (custno=a.custno)) pcount
 from @result a order by custno,totpage,pageno,orderno,mon,datea,case when noa='前期帳款' then '0' else noa end,idno;
+
+--********************************************************************************************
