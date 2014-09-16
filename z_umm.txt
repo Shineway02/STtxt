@@ -915,7 +915,7 @@ begin
 	update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 	--已收款
 	update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0)
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0)
 	+isnull((select SUM(ub.paysale) from umm ua left join umms ub on ua.noa=ub.noa where CHARINDEX(a.custno,ub.vccno)>0 and left (ua.datea,6)  between @t_bmon and @t_emon),0)
 	from @result a where a.gno='1'
 	--前期
@@ -1032,7 +1032,7 @@ end
 update @tmp set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0)
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0)
 	+isnull((select SUM(ub.paysale) from umm ua left join umms ub on ua.noa=ub.noa where CHARINDEX(a.custno,ub.vccno)>0 and left(ua.datea,6)  < @t_bmon ),0)
 from @tmp a where a.gno='1'
 
@@ -1278,7 +1278,7 @@ begin
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umms ub
 				where charindex(a.custno+'-',ub.vccno)>0
 				and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' between @t_bdate and @t_edate
@@ -1416,7 +1416,7 @@ update @tmp set typea = (case typea when '1' then '出' else '退' end) where ty
 
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umms ub
 				where charindex(a.custno+'-',ub.vccno)>0
 				and (SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' < @t_bdate
@@ -2004,7 +2004,7 @@ begin
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umm ua left join umms ub on ua.noa=ub.noa
 				where charindex(a.custno+'-',ub.vccno)>0
 				and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' between @t_bdate and @t_edate
@@ -2145,7 +2145,7 @@ update @tmp set typea = (case typea when '1' then '出' else '退' end) where ty
 
 --已收款
 update a
-	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where custno=a.custno)),0) --本期單據以沖金額
+	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @tmp where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 	+isnull((select SUM(ub.paysale) from umms ub 
 				where charindex(a.custno+'-',ub.vccno)>0
 				and (SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' < @t_bdate
