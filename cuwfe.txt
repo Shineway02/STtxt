@@ -54,10 +54,10 @@ begin
 	while CHARINDEX('chr(10)',@memo)>0
 	begin
 		set @t_memo=LEFT(@memo,CHARINDEX('chr(10)',@memo)-1)
-		if(CHARINDEX(CHAR(59),@t_memo)>0) --原料/餘料
+		if(CHARINDEX(',',@t_memo)>0) --原料/餘料
 		begin
 			insert #tmp(workjno,uno)
-			select  LEFT(@t_memo,CHARINDEX(CHAR(59),@t_memo)-1),SUBSTRING(@t_memo,CHARINDEX(CHAR(59),@t_memo)+1,LEN(@t_memo))
+			select  LEFT(@t_memo,CHARINDEX(',',@t_memo)-1),SUBSTRING(@t_memo,CHARINDEX(',',@t_memo)+1,LEN(@t_memo))
 		end
 		else --成品
 		begin
@@ -68,10 +68,10 @@ begin
 		set @memo=SUBSTRING(@memo,CHARINDEX('chr(10)',@memo)+7,LEN(@memo))
 	end
 	
-	if(CHARINDEX(CHAR(59),@memo)>0) --原料/餘料
+	if(CHARINDEX(',',@memo)>0) --原料/餘料
 	begin
 		insert #tmp(workjno,uno)
-		select  LEFT(@memo,CHARINDEX(CHAR(59),@memo)-1),SUBSTRING(@memo,CHARINDEX(CHAR(59),@memo)+1,LEN(@memo))
+		select  LEFT(@memo,CHARINDEX(',',@memo)-1),SUBSTRING(@memo,CHARINDEX(',',@memo)+1,LEN(@memo))
 	end
 	else --成品
 	begin
