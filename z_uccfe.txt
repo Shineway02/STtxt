@@ -441,24 +441,24 @@ order by storeno,gno,pno
 ;
 --*****************************************************************************************	
 z_uccfe4:--z_uccfe4  
-declare @t_bpno nvarchar(50) 
-declare @t_epno nvarchar(50)  
-declare @t_btggno nvarchar(50) 
-declare @t_etggno nvarchar(50)  
-
-set @t_bpno = case when '#non'=[7] then '' else [7] end
-set @t_epno = case when '#non'=[8] then char(255) else [8] end
-set @t_btggno = case when '#non'=[11] then '' else [11] end
-set @t_etggno = case when '#non'=[12] then char(255) else [12] end
-
---******************************************************************
-
-select '0' gno
-,dbo.getComma(uweight,[3]) uweight
-,dbo.getComma(inprice,[4]) inprice
-,dbo.getComma(saleprice,[4]) saleprice
-,dbo.getComma(safemount,[2]) safemount
-,* from ucc where (noa between @t_bpno and @t_epno) and (tggno between @t_btggno and @t_etggno)
-order by noa
-;
---*****************************************************************************************	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bpno nvarchar(50) = case when '#non'=[7] then '' else [7] end
+	declare @t_epno nvarchar(50) = case when '#non'=[8] then char(255) else [8] end 
+	declare @t_btggno nvarchar(50) = case when '#non'=[11] then '' else [11] end
+	declare @t_etggno nvarchar(50) = case when '#non'=[12] then char(255) else [12] end  
+	
+	select '1' gno 
+	,ROW_NUMBER()over(order by noa) rr
+	,"uccfe?noa=\'"+noa+"\' and "+cast(ROW_NUMBER()over(order by noa) as nvarchar)+"=$rr?" ghref 
+	,dbo.getComma(uweight,2) uweight 
+	,dbo.getComma(inprice,4) inprice 
+	,dbo.getComma(saleprice,4) saleprice 
+	,dbo.getComma(safemount,2) safemount 
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' ppp
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+tgg+'</a>' ttt
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+memo+'</a>' mmm
+	,* 
+	from ucc 
+	where (noa between @t_bpno and @t_epno) 
+	and (isnull(tggno,'') between @t_btggno and @t_etggno) 
+	order by noa;
