@@ -10,6 +10,8 @@ z_ordhfep01:--z_ordhfep01
 		gno nvarchar(10),
 		accy nvarchar(10),
 		noa nvarchar(20),
+		cno nvarchar(20),
+		acomp nvarchar(50),
 		tggno nvarchar(20),
 		tgg nvarchar(50),
 		tel nvarchar(50),
@@ -33,9 +35,9 @@ z_ordhfep01:--z_ordhfep01
 		mm3 nvarchar(max)
 	)
 	
-	insert into @tmp(gno,accy,noa,tggno,tgg,tel,fax,datea,memo
+	insert into @tmp(gno,accy,noa,cno,acomp,tggno,tgg,tel,fax,datea,memo
 		,noq,comp,indate,productno,product,unit,mount,[weight],price,[money],memos)
-	select '1',a.accy,a.noa,a.tggno,a.tgg,a.tel,a.fax,a.datea,a.memo
+	select '1',a.accy,a.noa,a.cno,a.acomp,a.tggno,a.tgg,a.tel,a.fax,a.datea,a.memo
 		,b.noq,b.comp,b.indate,b.productno,b.product,b.unit,b.mount,b.[weight],b.price,b.[money],b.memo 
 	from view_ordh a
 	left join view_ordhs b on a.accy=b.accy
@@ -43,20 +45,20 @@ z_ordhfep01:--z_ordhfep01
 	and ISNULL(a.tggno,'') between @t_btggno and @t_etggno
 	and ISNULL(a.datea,'') between @t_bdate and @t_edate
 	--備註只印前三行
-	insert into @tmp(gno,accy,noa,tggno,tgg,tel,fax,datea,memo,mm1)
-	select '2',accy,noa,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,0,CHARINDEX('chr(10)',memo)),'chr(10)',space(1))
+	insert into @tmp(gno,accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,mm1)
+	select '2',accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,0,CHARINDEX('chr(10)',memo)),'chr(10)',space(1))
 	from @tmp
-	group by accy,noa,tggno,tgg,tel,fax,datea,memo
+	group by accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo
 	
-	insert into @tmp(gno,accy,noa,tggno,tgg,tel,fax,datea,memo,mm2)
-	select '3',accy,noa,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,CHARINDEX('chr(10)',memo)+7,CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)-CHARINDEX('chr(10)',memo)-7),'chr(10)',space(1))
+	insert into @tmp(gno,accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,mm2)
+	select '3',accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,CHARINDEX('chr(10)',memo)+7,CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)-CHARINDEX('chr(10)',memo)-7),'chr(10)',space(1))
 	from @tmp
-	group by accy,noa,tggno,tgg,tel,fax,datea,memo
+	group by accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo
 	
-	insert into @tmp(gno,accy,noa,tggno,tgg,tel,fax,datea,memo,mm3)
-	select '4',accy,noa,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)+7,len(memo)-CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)-6),'chr(10)',space(1))
+	insert into @tmp(gno,accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,mm3)
+	select '4',accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)+7,len(memo)-CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)-6),'chr(10)',space(1))
 	from @tmp
-	group by accy,noa,tggno,tgg,tel,fax,datea,memo
+	group by accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo
 	
 	select noa a01
 		,tgg a02
