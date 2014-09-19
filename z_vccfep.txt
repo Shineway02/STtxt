@@ -16,6 +16,8 @@ z_vccfep01:--z_vccfep01
 		custno nvarchar(20),
 		cust nvarchar(50),
 		addr nvarchar(50),
+		cno nvarchar(20),
+		acomp nvarchar(50),
 		
 		productno nvarchar(20),
 		product nvarchar(50),
@@ -29,43 +31,52 @@ z_vccfep01:--z_vccfep01
 	)
 	
 	insert into @tmp(gno,pno,recno,accy,noa,datea,custno,cust,addr
+		,cno,acomp
 		,productno,product,unit,price,lengthb,mount,[weight],[money],memo)
 	select '1','1',ROW_NUMBER()over(partition by a.noa order by b.noq)
 		,a.accy,a.noa,a.datea,a.custno,a.custno,a.addr2
+		,a.cno,a.acomp
 		,b.productno,b.product,b.unit,b.price,b.lengthb,b.mount,b.[weight],b.total,b.memo
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
 	where (len(@t_noa)=0 or @t_noa=a.noa)
 	and ISNULL(a.datea,'') between @t_bdate and @t_edate
 	---------------------------------------------------------------
-	insert into @tmp (gno,pno,noa,mount,[weight],[money])
-	select '3','3',noa,sum(isnull(mount,'')),sum(isnull([weight],'')),sum(isnull([money],''))
+	insert into @tmp (gno,pno,noa,datea,custno,cust,addr,cno,acomp,mount,[weight],[money])
+	select '3','3',noa,datea,custno,cust,addr,cno,acomp,sum(isnull(mount,'')),sum(isnull([weight],'')),sum(isnull([money],''))
 	from @tmp
-	group by noa
+	group by noa,datea,custno,cust,addr,cno,acomp
 	
 	---------------------------------------------------------------
 	declare @t_pageline int = 15 --一頁幾行
 	declare @noa nvarchar(20)
+	declare @datea nvarchar(20)
+	declare @custno nvarchar(20)
+	declare @cust nvarchar(50)
+	declare @addr nvarchar(100)
+	declare @cno nvarchar(20)
+	declare @acomp nvarchar(50)
 	declare @n int
 	declare @recno int
 	
 	declare cursor_table cursor for
-	select noa,count(1),max(recno) from @tmp group by noa
+	select noa,datea,custno,cust,addr,cno,acomp
+		,count(1),max(recno) from @tmp group by noa,datea,custno,cust,addr,cno,acomp
 	open cursor_table
 	fetch next from cursor_table
-	into @noa,@n,@recno
+	into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
 	while(@@FETCH_STATUS <> -1)
 	begin		
 		while @n%@t_pageline !=0
 		begin
 			set @recno = @recno + 1
-			insert into @tmp(gno,pno,noa,recno)
-			values('2','2',@noa,@recno)
+			insert into @tmp(gno,pno,noa,datea,custno,cust,addr,cno,acomp,recno)
+			values('2','2',@noa,@datea,@custno,@cust,@addr,@cno,@acomp,@recno)
 			set @n=@n+1
 		end
 		
 		fetch next from cursor_table
-		into @noa,@n,@recno
+		into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
 	end
 	close cursor_table
 	deallocate cursor_table
@@ -87,6 +98,7 @@ z_vccfep01:--z_vccfep01
 		,a.cust b02
 		,a.addr b03
 		,a.* 
+		,a.acomp xxxx
 	from @tmp a
 	order by a.noa,a.pno,a.recno;
 	
