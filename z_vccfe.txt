@@ -18,6 +18,7 @@ declare @t_acomp nvarchar(MAX)='[3]'
 declare @qhref_acomp nvarchar(10) ='fe'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 -------------------------------------------------------------------------------------------------------
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -44,6 +45,8 @@ declare @result table(
 	typea nvarchar(12),
 	datea nvarchar(10),
 	mon nvarchar(7),
+	cno nvarchar(20),
+	acomp nvarchar(50),
 	custno nvarchar(30),
 	comp nvarchar(90),
 	productno nvarchar(30),
@@ -62,7 +65,8 @@ declare @result table(
 	itotal float
 )
 insert into @result
-	select '91' gno, a.noa noa, b.noq noq, a.typea typea, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.custno, a.comp, b.productno, b.product, b.unit, 
+	select '91' gno, a.noa noa, b.noq noq, a.typea typea, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end)
+		,b.cno,b.acomp, a.custno, a.comp, b.productno, b.product, b.unit, 
 		   b.lengthb,b.mount, b.weight, b.price, b.total,'vcc'+@qhref_acomp+'?noa=$noa?'+a.accy
 		   ,a.invono,v.datea,v.money,v.tax,v.total
 	from view_vccs b
@@ -79,6 +83,7 @@ insert into @result
 		  and (len(@t_salesgroup)=0 or s.salesgroup=@t_salesgroup)
 		  and (c.tggno between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 		  and (len(@t_partno)=0 or s.partno=@t_partno)
+		  and (len(@t_cno)=0 or @t_cno=a.cno)
 	order by a.datea,gno,noa,noq
 	
 if(@t_showinvono='1')
