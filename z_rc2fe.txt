@@ -1,12 +1,11 @@
 ﻿z_rc2fe1:--z_rc2fe1
 declare @t_accy nvarchar(10)
-declare @t_cno nvarchar(50)
+declare @t_cno nvarchar(max) = case when '#non'=[5] then '' else [5] end
 declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
 
 --*********************************************************************
 set @t_accy = '[1]'
-set @t_cno = case when '#non'=[5] then '' else [5] end
 set @t_bdate = case when '#non'=[12] then '' else [12] end
 set @t_edate = case when '#non'=[13] then char(255) else [13] end
 ---------------------------------------------------------------------------------------------------------------
@@ -67,6 +66,7 @@ from @tmp order by gno,datea,noa,noq;
 --***********************************************************************************
 z_rc2fe2:--z_rc2fe2
 declare @t_accy nvarchar(10)
+declare @t_cno nvarchar(max) = case when '#non'=[5] then '' else [5] end
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bproductno nvarchar(50)
@@ -107,6 +107,7 @@ insert into @result
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  (b.productno between @t_bproductno and @t_eproductno)
+		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by b.productno,gno,a.datea,a.noa
 	
 insert into @result(gno,productno,xproduct,mount,total)
@@ -128,6 +129,7 @@ from @result order by productno,xproduct,gno,datea,noa;
 --***********************************************************************************
 z_rc2fe3:--z_rc2fe3
 declare @t_accy nvarchar(10)
+declare @t_cno nvarchar(max) = case when '#non'=[5] then '' else [5] end
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bmon nvarchar(7)
@@ -183,6 +185,7 @@ insert into @result
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
 		  (b.productno between @t_bproductno and @t_eproductno) 
+		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by a.tggno,a.datea,a.noa
 	
 insert into @result(gno,tggno,comp,pcount,mount,weight,total)
@@ -203,6 +206,7 @@ from @result order by tggno,gno,datea,noa;
 --***********************************************************************************
 z_rc2fe4:	--z_rc2fe4
 declare @t_accy nvarchar(10)
+declare @t_cno nvarchar(max) = case when '#non'=[5] then '' else [5] end
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bmon nvarchar(7)
@@ -256,6 +260,7 @@ insert into @result
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
 		  (b.productno between @t_bproductno and @t_eproductno) 
+		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by a.tggno,b.productno,a.datea,a.noa
 	
 insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
