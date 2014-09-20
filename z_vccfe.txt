@@ -145,6 +145,7 @@ declare @t_salesgroup nvarchar(100)
 declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -189,6 +190,7 @@ declare @tmp table(
 			 and (len(@t_typea)=0 or isnull(d.typea,'null') = @t_typea) and (len(@t_stype)=0 or a.stype = @t_stype) 
 			 and (d.tggno between @t_btggno and @t_etggno)
 			 and (len(@vcctypea)=0 or a.typea = @vcctypea) 
+			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by b.productno,b.product,a.custno,c.nick,c.comp
 	
 	insert into @tmp 
@@ -228,6 +230,7 @@ z_vccfe3:--z_vccfe3
 	declare @qhref_acomp nvarchar(10) ='fe'
 	declare @vcctypea nvarchar(10) =''
 	declare @t_partno nvarchar(30)
+	declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 	---------------------------------------------------------------------------------------------------------
 	set @t_bdate = case when '#non'=[4] then '' else [4] end
 	set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -298,6 +301,7 @@ z_vccfe3:--z_vccfe3
 		  and (len(@t_salesgroup)=0 or s.salesgroup=@t_salesgroup)
 		  and (d.tggno between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 		  and (len(@t_partno)=0 or s.partno=@t_partno)
+		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by custno,productno,gno,datea,noa,noq
 
 	--***********************************************************************
@@ -496,6 +500,7 @@ declare @t_salesgroup nvarchar(100)
 declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -541,6 +546,7 @@ declare @tmp table(
 			 and (len(@t_groupano)=0 or d.groupano = @t_groupano)
 			 and (len(@t_typea)=0 or isnull(d.typea,'null') = @t_typea) and (len(@t_stype)=0 or a.stype = @t_stype) 
 			 and (d.tggno between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
+			and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by b.productno,b.product,a.custno,c.nick,c.comp
 	
 	insert into @tmp 
@@ -581,6 +587,7 @@ declare @t_acomp nvarchar(MAX)='[3]'
 declare @qhref_acomp nvarchar(10) ='fe'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -641,6 +648,7 @@ insert into @result
 		  and (len(@t_salesgroup)=0 or s.salesgroup=@t_salesgroup)
 		  and (d.tggno between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 		  and (len(@t_partno)=0 or s.partno=@t_partno)
+		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by custno,gno,mon,datea,noa,noq
 	
 insert into @result(gno,custno,pcount,mount,weight,total)
@@ -685,6 +693,7 @@ declare @t_salesgroup nvarchar(100)
 declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -730,6 +739,7 @@ insert into @tmp
 			 (a.custno between @t_bcustno and @t_ecustno) and (len(@t_groupano)=0 or d.groupano = @t_groupano)
 			 and (len(@t_typea)=0 or isnull(d.typea,'null') = @t_typea) and (len(@t_stype)=0 or a.stype = @t_stype) 
 			 and (d.tggno between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
+			and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.custno,c.nick,c.comp,case when isnull(a.mon,'')!='' then a.mon else left(a.datea,6) end
 	
 insert into @tmp(gno,custno,custs,mon,mount,weight,total,tax) 
@@ -767,6 +777,7 @@ declare @t_acomp nvarchar(MAX)='[3]'
 declare @qhref_acomp nvarchar(10) ='fe'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -838,6 +849,7 @@ set @t_partno = case when '#non' = [21] then '' else [21] end
 		  and (d.tggno between @t_btggno and @t_etggno)
 		  and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 		  and (len(@t_partno)=0 or s.partno=@t_partno)
+		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by productno,gno,datea,noa,noq
 
 	--***********************************************************************
@@ -951,6 +963,7 @@ declare @t_salesgroup nvarchar(100)
 declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -995,6 +1008,7 @@ insert into @tmp
 			 and (len(@t_stype)=0 or a.stype = @t_stype) 
 			 and (d.tggno between @t_btggno and @t_etggno)
 			 and (len(@vcctypea)=0 or a.typea = @vcctypea) 
+			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by b.productno,b.product,case when charindex('永勝',@t_acomp)>0 then left(a.datea,6) when isnull(a.mon,'')!='' then a.mon else left(a.datea,6) end
 	
 	insert into @tmp(gno,productno,products,mon,mount,weight,total)
@@ -1051,6 +1065,7 @@ set @t_salesgroup = case when '#non' = [19] then '' else [19] end
 set @t_showinvono = case when '#non' = [22] then 0 else [22] end
 set @vcctypea = case when '#non' = [20] then '' else [20] end
 set @t_partno = case when '#non' = [21] then '' else [21] end
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 --------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -1088,6 +1103,7 @@ insert into @tmp
 			 and (d.tggno between @t_btggno and @t_etggno)
 			 and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 			 and (len(@t_partno)=0 or s.partno=@t_partno)
+			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by a.salesno,a.datea
 	
 insert into @tmp(gno,salesno,salesname,mount,weight,total)
@@ -1129,6 +1145,7 @@ declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -1177,6 +1194,7 @@ insert into @tmp
 			and (d.tggno between @t_btggno and @t_etggno)
 			and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 			and (len(@t_partno)=0 or s.partno=@t_partno)
+			and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.salesno,a.sales,case when isnull(a.mon,'')!='' then a.mon else left(a.datea,6) end
 	
 	insert into @tmp(gno,salesno,salesname,mon,mount,weight,total)
@@ -1215,6 +1233,7 @@ declare @t_acomp nvarchar(MAX)='[3]'
 declare @qhref_acomp nvarchar(10) ='fe'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -1269,6 +1288,7 @@ insert into @tmp
 			 and (d.tggno between @t_btggno and @t_etggno)
 			 and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 			 and (len(@t_partno)=0 or s.partno=@t_partno)
+			 and(len(@t_cno)=0 or a.cno=@t_cno)
 	order by a.salesno,b.productno
 	
 insert into @tmp(gno,salesno,salesname,mount,weight,total)
@@ -1312,6 +1332,7 @@ declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -1362,6 +1383,7 @@ insert into @tmp
 			 and (d.tggno between @t_btggno and @t_etggno)
 			 and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 			 and (len(@t_partno)=0 or s.partno=@t_partno)
+			 and(len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.salesno,a.sales,b.productno,b.product
 	order by a.salesno,b.productno
 	
@@ -1397,6 +1419,7 @@ declare @t_acomp nvarchar(MAX)='[3]'
 declare @qhref_acomp nvarchar(10) ='fe'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -1456,6 +1479,7 @@ insert into @tmp
 			 and (d.tggno between @t_btggno and @t_etggno)
 			 and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 			 and (len(@t_partno)=0 or s.partno=@t_partno)
+			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by a.salesno,a.custno,b.productno
 	
 insert into @tmp(gno,salesno,salesname,mount,weight,total)
@@ -1498,6 +1522,7 @@ declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -1551,6 +1576,7 @@ insert into @tmp
 			and (d.tggno between @t_btggno and @t_etggno)
 			and (len(@vcctypea)=0 or a.typea = @vcctypea)
 			and (len(@t_partno)=0 or s.partno=@t_partno)
+			and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.salesno,a.sales,a.custno,c.nick,c.comp,b.productno,b.product
 	order by a.salesno,a.custno,b.productno
 	
@@ -1585,6 +1611,7 @@ declare @t_acomp nvarchar(MAX)='[3]'
 declare @qhref_acomp nvarchar(10) ='fe'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -1642,6 +1669,7 @@ insert into @tmp
 			 and (len(@t_salesgroup)=0 or s.salesgroup=@t_salesgroup)
 			 and (d.tggno between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 			 and (len(@t_partno)=0 or s.partno=@t_partno)
+			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by b.productno,b.product,a.salesno,a.sales,a.custno,c.nick,c.comp,a.datea,a.noa,a.typea
 	
 insert into @tmp(gno,productno,products,mount,weight,total)
@@ -1684,6 +1712,7 @@ declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
+declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -1737,6 +1766,7 @@ insert into @tmp
 			 and (d.tggno between @t_btggno and @t_etggno)
 			 and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 			 and (len(@t_partno)=0 or s.partno=@t_partno)
+			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by b.productno,b.product,a.salesno,a.sales,a.custno,c.nick,c.comp
 	order by b.productno,b.product,a.salesno,a.sales,a.custno,c.nick,c.comp
 	
