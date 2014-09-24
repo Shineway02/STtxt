@@ -173,6 +173,9 @@ z_ummst9:--z_ummst9
 		substring(c.addr_home,CHARINDEX(road,c.addr_home)+len(road),len(c.addr_home)) yaddr 
 		from road where CHARINDEX(road,c.addr_home)>0 and CHARINDEX(city,c.addr_home)>0 order by road desc) d
 	------------------------------------------------------------------------------------------
+	--當月有帳款的才顯示
+	delete @tmp where [money]=0 and bkmoney=0 and tax=0 and total=0 --and payed=0 and unpay=0 and tot=0
+	
 	--出貨明細
 	declare @tmpa table(
 		recno int,
