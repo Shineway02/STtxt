@@ -462,7 +462,7 @@ begin
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
-		where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and 
+		where (a.datea between @t_bdate and @t_edate) and isnull(a.total,0)-isnull(a.payed,0)>0 and 
 			  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  (a.salesno between @t_bsalesno and @t_esalesno) and
