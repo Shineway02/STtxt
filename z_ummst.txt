@@ -974,13 +974,13 @@ z_ummst01:--z_ummst01
 	group by custno
 
 	declare cursor_table cursor for
-	select custno,SUM(ISNULL(a.[money],0)-ISNULL(a.paysale,0))
+	select b.custno,SUM(ISNULL(a.[money],0)-ISNULL(a.paysale,0))
 	from umms a
 	left join umm b on a.noa=b.noa
 	where b.noa is not null
 	or b.custno between @t_bcustno and @t_ecustno
 	and b.datea <= @t_edate
-	group by custno
+	group by b.custno
 	open cursor_table
 	fetch next from cursor_table
 	into @custno,@opay
