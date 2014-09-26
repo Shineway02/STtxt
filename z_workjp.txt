@@ -34,13 +34,14 @@ z_workjp01:--z_workjp01
 		[weight] float,
 		timea nvarchar(20),
 		imgsrc nvarchar(max),
+		imgdata nvarchar(max),
 		memos nvarchar(max)
 	)
 	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,chktype,worker,memo
-		,recno,noq,productno,product,lengthb,mount,[weight],timea,imgsrc,memos)
+		,recno,noq,productno,product,lengthb,mount,[weight],timea,imgsrc,imgdata,memos)
 	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.chktype,a.worker,a.memo
 		,ROW_NUMBER()over(partition by a.noa order by b.noq)
-		,b.noq,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.timea,b.imgsrc,b.memo
+		,b.noq,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.timea,b.imgsrc,b.imgdata,b.memo
 	from workj a
 	left join workjs b on a.noa=b.noa
 	where (len(@t_noa)=0 or a.noa=@t_noa)
@@ -90,7 +91,8 @@ z_workjp01:--z_workjp01
 		
 		,productno b01
 		,product b02
-		,case when len(isnull(imgsrc,''))>0 then '<img src="'+@t_path+'/images/fe/'+imgsrc+'.jpg" style="width:82px'+char(59)+'height:82px'+char(59)+'"/>' 
+		--,case when len(isnull(imgsrc,''))>0 then '<img src="'+@t_path+'/images/fe/'+imgsrc+'.jpg" style="width:82px'+char(59)+'height:82px'+char(59)+'"/>'
+		,case when len(isnull(imgsrc,''))>0 then '<img src="'+imgdata+'" style="width:82px'+char(59)+'height:82px'+char(59)+'"/>' 
 			else '<span style="display:block'+char(59)+'width:100px'+char(59)+'height:100px'+char(59)+'"></span>' end b03
 		,lengthb b04
 		,mount b05
