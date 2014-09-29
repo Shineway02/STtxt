@@ -1,0 +1,88 @@
+z_vccd_rs1:--z_vccd_rs1
+SET QUOTED_IDENTIFIER OFF
+declare @cmd nvarchar(max)
+declare @t_kind nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_buno nvarchar(50)
+declare @t_euno nvarchar(50)
+declare @t_rem nvarchar(20)
+
+set @t_kind = case when '#non' = [4] then '' else [4] end
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+set @t_buno = case when '#non' = [7] then '' else [7] end
+set @t_euno = case when '#non' = [8] then CHAR(255) else [8] end
+set @t_rem = case when '#non' = [9] then '0' else [9] end
+--**************************************************************
+declare @tmp table(
+	gno nvarchar(10),
+	typea nvarchar(20),
+	xuno nvarchar(50),
+	uno nvarchar(50),
+	datea nvarchar(20),
+	productno nvarchar(50),
+	products nvarchar(100),
+	unit nvarchar(10),
+	spec nvarchar(100),
+	size nvarchar(100),
+	mount float,
+	weight float,
+	eweight float,
+	vweight float,
+	price float,
+	comp nvarchar(100),
+	rc2money float,
+	vccmoney float
+)
+
+--進貨
+insert @tmp (gno,typea,xuno,uno,datea,productno,products,unit,spec,size,mount,weight,eweight,price,rc2money)
+select '0','進貨',b.uno,b.uno,a.datea,b.productno,b.product,b.unit,b.spec,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
+,b.mount,b.weight,isnull((select SUM(eweight) from uccy where uno like b.uno+'%'),0),b.price
+,(case when charindex('管',b.product)>0 then b.mount else b.weight end)*b.price
+from view_rc2 a left join view_rc2s b on a.noa=b.noa 
+where b.uno!='' and (b.uno between @t_buno and @t_euno) and (a.datea between @t_bdate and @t_edate) and a.kind=@t_kind
+
+insert @tmp (gno,typea,xuno,uno,datea,productno,products,unit,spec,size,mount,weight,eweight,price,rc2money)
+select '0','進貨',b.uno,b.uno,a.datea,b.productno,b.product,b.unit,b.spec,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
+,b.mount,b.weight,isnull((select SUM(eweight) from uccy where uno like b.uno+'%'),0),b.price
+,(case when charindex('管',b.product)>0 then b.mount else b.weight end)*b.price
+from view_ina a left join view_inas b on a.noa=b.noa 
+where b.uno!='' and (b.uno between @t_buno and @t_euno) and (a.datea between @t_bdate and @t_edate) and a.kind=@t_kind
+
+--出貨
+insert @tmp (gno,typea,xuno,uno,datea,comp,productno,products,unit,spec,size,mount,weight,price,vccmoney,vweight)
+select '1','銷貨',c.uno,b.uno,a.datea,a.comp,b.productno,b.product,b.unit,b.spec,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
+,(case when a.typea='2' then -1 else 1 end)*b.mount,(case when a.typea='2' then -1 else 1 end)*b.weight,b.price,b.total,b.weight
+from view_vcc a left join view_vccs b on a.noa=b.noa
+outer apply (select uno from @tmp where gno='0') c
+where b.uno like c.uno+'%'
+
+--餘料明細
+if(@t_rem='1')
+begin
+	insert @tmp (gno,typea,xuno,uno,productno,products,unit,spec,size,eweight)
+	select '2','餘料',c.uno,a.uno,b.productno,b.product,b.unit,b.spec,b.size,a.eweight
+	from uccy a left  join view_uccb b on a.uno=b.uno
+	outer apply (select uno from @tmp where gno='0') c
+	where a.uno like c.uno+'%' and a.eweight>0
+end
+
+--成本
+insert @tmp (gno,xuno,rc2money,vccmoney,vweight,unit)
+select '3',xuno,isnull(SUM(rc2money),0),isnull(SUM(vccmoney),0),isnull(SUM(vweight),0),MAX(unit) from @tmp 
+where gno in ('0','1') group by xuno
+
+select 
+dbo.getComma(mount,[1]) mount,
+dbo.getComma(weight,[2]) weight,
+dbo.getComma(eweight,[2]) eweight,
+dbo.getComma(vweight,[2]) vweight,
+dbo.getComma(price,[3]) price,
+dbo.getComma(rc2money,0) rc2money,
+dbo.getComma(vccmoney,0) vccmoney,
+* 
+from @tmp order by xuno,gno,datea
+;
+--**********************************************************************************
