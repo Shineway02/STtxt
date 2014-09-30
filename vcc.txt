@@ -34,16 +34,18 @@ vccfe_apv:--vccfe_apv
 		set @cmd = "update vcc"+@t_accy+" set apvmemo = '出貨單價為0' where noa=@t_vccno"
 		execute sp_executesql @cmd,N'@t_vccno nvarchar(max)',@t_vccno=@t_vccno
 		insert into @tmp(apvmemo,apv)values('出貨單價為0','')
+		select * from @tmp
 		return
 	end
 	--退貨
 	if exists(select top 1 * from view_vcc 
 		where accy=@t_accy and noa=@t_vccno
-		and not([money]=0 and tax=0 and total=0))                                                
+		and not([money]=0 and tax=0 and total=0) and typea!='1')                                                
 	begin
 		set @cmd = "update vcc"+@t_accy+" set apvmemo = '退貨' where noa=@t_vccno"
 		execute sp_executesql @cmd,N'@t_vccno nvarchar(max)',@t_vccno=@t_vccno
 		insert into @tmp(apvmemo,apv)values('退貨','')
+		select * from @tmp
 		return
 	end
 	--呆帳  
@@ -59,7 +61,11 @@ vccfe_apv:--vccfe_apv
 		execute sp_executesql @cmd,N'@t_vccno nvarchar(max),@t_mon nvarchar(20),@t_unpay float'
 			,@t_vccno=@t_vccno,@t_mon=@t_mon,@t_unpay=@t_unpay		
 		insert into @tmp(apvmemo,apv)values('呆帳'+@t_mon+'：'+dbo.getComma(@t_unpay,0),'')
+		select * from @tmp
 		return 
 	end
-	insert into @tmp(apvmemo,apv)values('','*')
+	set @cmd = "update vcc"+@t_accy+" set apvmemo = '自動核准',apv='*' where noa=@t_vccno"
+	execute sp_executesql @cmd,N'@t_vccno nvarchar(max)',@t_vccno=@t_vccno
+	insert into @tmp(apvmemo,apv)values('自動核准','*')
+	select * from @tmp
 	return;
