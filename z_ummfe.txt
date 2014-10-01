@@ -52,7 +52,7 @@ z_ummfe03:--z_ummfe03
 	declare @t_bbmon nvarchar(20)
 	begin try
 		set @date = convert(date,cast(cast(left(@t_bmon,3)as int)+1911 as nvarchar)+right(@t_bmon,3)+'/01') 
-		set @date = DATEADD(MM,-3,@date) 
+		set @date = DATEADD(MM,-2,@date) 
 		set @t_bbmon = right('000'+cast(year(@date)-1911 as nvarchar),3)+'/'+right('00'+cast(month(@date) as nvarchar),2) 
 	end try
 	begin catch
@@ -227,7 +227,7 @@ z_ummfe03:--z_ummfe03
 		from @tmp group by cno,coin,custno)b
 	on a.cno=b.cno and a.coin=b.coin and a.custno=b.custno
 	-----------------------------------------------------------------------------------------------
-	declare @t_pageline int = 35 -- 一頁幾行
+	declare @t_pageline int = 36 -- 一頁幾行
 	declare @cno nvarchar(20)
 	declare @custno nvarchar(20)
 	declare @coin nvarchar(20)
@@ -249,9 +249,13 @@ z_ummfe03:--z_ummfe03
 			begin
 				insert into @tmp(gno,pno,cno,coin,custno)values('3',3,@cno,@coin,@custno)
 				set @m = @m+1
+				set @n = @n+1
 			end
-			insert into @tmp(gno,pno,cno,coin,custno)values('4',4,@cno,@coin,@custno)
-			set @n = @n+1
+			if @n%@t_pageline!=0
+			begin
+				insert into @tmp(gno,pno,cno,coin,custno)values('4',4,@cno,@coin,@custno)
+				set @n = @n+1
+			end
 		end
 		
 		fetch next from cursor_table
@@ -301,7 +305,7 @@ z_ummfe02:--z_ummfe02
 	declare @t_bbmon nvarchar(20)
 	begin try
 		set @date = convert(date,cast(cast(left(@t_bmon,3)as int)+1911 as nvarchar)+right(@t_bmon,3)+'/01') 
-		set @date = DATEADD(MM,-3,@date) 
+		set @date = DATEADD(MM,-2,@date) 
 		set @t_bbmon = right('000'+cast(year(@date)-1911 as nvarchar),3)+'/'+right('00'+cast(month(@date) as nvarchar),2) 
 	end try
 	begin catch
