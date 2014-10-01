@@ -1,6 +1,6 @@
 z_ummst9:--z_ummst9
 	SET QUOTED_IDENTIFIER OFF
-	declare @t_pageline int = 30   --------一頁幾行
+	declare @t_pageline int = 28   --------一頁幾行
 	declare @t_bcustno nvarchar(35) = case when '#non'=[5] then '' else [5] end 
 	declare @t_ecustno nvarchar(35) = case when '#non'=[6] then char(255) else [6] end
 	declare @t_bmon nvarchar(20) = case when '#non'=[13] then '' else [13] end
@@ -330,9 +330,9 @@ z_ummst9:--z_ummst9
 		,zip a03
 		,addr1 a04
 		,addr2 a05
-		,tel a06
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">電　　話：'+tel +'</a>' a06
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">第'+CAST(curpage as nvarchar)+'/'+CAST(totpage as nvarchar)+'頁</a>' d01
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@t_bmon+'至'+ @t_emon +'</a>' d02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">日期區間：'+@t_bmon+'至'+ @t_emon +'</a>' d02
 		,case when ROW_NUMBER()over(partition by custno,noa order by recno)=1 and gno='1' then '<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case typea when '1' then '出' else '退' end +'&nbsp'+CHAR(59)+ RIGHT(datea,5) +'</a>' else '' end b01
 		,case when ROW_NUMBER()over(partition by custno,noa order by recno)=1 and gno='1' then noa else '' end b02
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product +'</a>' b03
