@@ -1,3 +1,104 @@
+vccfe_save:--vccfe_save
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_accy nvarchar(20) =[1]
+	declare @t_noa nvarchar(20) = [2]
+	declare @t_typea nvarchar(20) = [3]
+	declare @t_custno nvarchar(20) = [4]
+	declare @t_date nvarchar(20) = [5]
+	declare @t_mon nvarchar(20) = [6]
+	declare @t_total nvarchar(20) = [7]
+	
+	declare @checker nvarchar(max) = ''
+	-----------------------------------------------------------------------------------------
+	if exists(select * from sign where zno=@t_noa and enda='Y')
+	begin
+		select top 1 @checker=checker from sign where zno=@t_noa and enda='Y'
+		select '' msg,@checker checker
+	end
+	------------------------------------------------------------------------------------------
+	--退貨
+	if(@t_typea != '1')
+	begin
+		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
+		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total,'退貨核準') 
+		
+		select '【退貨】需核準，已發送簽核。' msg,'' checker
+		return
+	end
+	
+	--35天未收
+	declare @date date = convert(date, cast(cast(left(@t_date,3) as int)+1911 as nvarchar)+right(@t_date,6))
+	select @date = DATEADD(MM,-1,@date)
+	select @date = DATEADD(DD,-35,@date)
+	declare @bmon nvarchar(20)= right('000'+cast(year(@date)-1911 as nvarchar),3)
+		+'/'+right('00'+cast(month(@date) as nvarchar),2) 
+	declare @total float = 0
+	select @total = SUM(case when typea='1' then 1 else -1 end *isnull(total,0))
+	from view_vcc 
+	where not(accy=@t_accy and noa=@t_noa)
+	and custno=@t_custno
+	and mon=@t_mon
+	
+	declare @money float = 0
+	declare @tax float = 0
+	declare @pay float = 0
+	
+	select @money = SUM(isnull(total,0))
+	from view_vcc
+	where custno=@t_custno 
+	and mon=@bmon
+	and total!=0
+	
+	select @tax = SUM(ISNULL(tax,0))
+	from vcca
+	where custno=@t_custno
+	and left(datea,6)=@bmon
+	
+	select @tax = @tax + SUM(ISNULL(-b.tax,0))
+	from vccb a
+	left join vccbs b on a.noa=b.noa
+	where LEFT(a.datea,6)=@bmon
+	and b.custno = @t_custno
+	
+	select @pay=SUM(ISNULL(paysale,0))
+	from umms 
+	where mon=@bmon
+	and custno=@t_custno
+	
+	if(@money+@tax)>@pay
+	begin
+		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
+		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total,'35天未收') 
+		
+		select '【35天未收】需核準，已發送簽核。' msg,'' checker
+		return
+	end
+	--呆帳  
+	set @date = convert(date, cast(cast(left(@t_mon,3) as int)+1911 as nvarchar)+right(@t_mon,3)+'/01')
+	select @date = DATEADD(MM,-3,@date)
+	
+	set @bmon = right('000'+cast(year(@date)-1911 as nvarchar),3)
+		+'/'+right('00'+cast(month(@date) as nvarchar),2)
+	
+	declare @unpay float = 0
+	declare @paymon float = ''
+	select top 1 @paymon=mon,@unpay=unpay from cust_2s
+	where noa=@t_custno
+	and mon<=@bmon and unpay!=0
+	order by mon desc
+	
+	if (LEN(@paymon)>0)
+	begin
+		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
+		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total,'呆帳'+@paymon+'：'+dbo.getComma(@unpay,0)) 
+		
+		select '【呆帳】需核準，已發送簽核。' msg,'' checker
+		return                                                                                                                                                                      
+	end
+	
+	select '' msg,'自動核准' checker
+	return 
+
 vccfe_apv:--vccfe_apv	
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_accy nvarchar(20) = [1]
