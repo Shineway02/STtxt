@@ -605,11 +605,11 @@ from @tmp
 where gno='1'
 
 select gno,sno,namea,partno,part,job,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),4,12)) addh00,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh00),1)),2,12)) addh00,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add0m),1)),4,12)) add0m,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),4,12))addh461,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh461),1)),2,12))addh461,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add461m),1)),4,12)) add461m,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),4,12)) addh462,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,addh462),1)),2,12)) addh462,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,add462m),1)),4,12)) add462m,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,
 (select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and @t_xperson = person order by noa desc) worker
@@ -2207,3 +2207,134 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) 
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5,
 (select top 1 worker from salary where @t_xmon = mon and @t_xkind = monkind and person = '時薪' order by noa desc) worker,memo
 from @tmp;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+z_salary15:--z_salary15
+declare @t_year nvarchar(20) 
+declare @t_bsssno nvarchar(20) 
+declare @t_esssno nvarchar(20) 
+
+set @t_year = case when '#non' = [11] then '' else [11] end
+set @t_bsssno = case when '#non' = [4] then '' else [4] end
+set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
+
+create table #tmpa( 
+	gno nvarchar(1),  
+	recno int,
+	title nvarchar(20),
+	sssno nvarchar(20), 
+	namea nvarchar(20), 
+	a float, 
+	b float, 
+	c float, 
+	d float, 
+	e float, 
+	f float, 
+	g float, 
+	h float, 
+	i float, 
+	j float, 
+	k float, 
+	l float, 
+	m float
+) 
+--a,b,c,d,e,f,g,h,i->都是1~12月欄位 
+declare @list table( 
+	recno int, 
+	[namea] nvarchar(20), 
+	[list] nvarchar(MAX) 
+) 
+
+
+declare @lists nvarchar(MAX) 
+declare @namea nvarchar(20) 
+declare @recno int
+declare @cmd nvarchar(max) 
+
+declare @sssno nvarchar(20)
+declare @sssnamea nvarchar(20)
+declare @person nvarchar(20)
+
+declare sss_table cursor for 
+select noa,namea,person from sss where noa between @t_bsssno and @t_esssno
+and (noa in (select sno from salarys where left(mon,3)=@t_year))
+open sss_table 
+fetch next from sss_table 
+into @sssno,@sssnamea,@person
+while(@@FETCH_STATUS <> -1) 
+begin 
+	delete @list
+	--插入要計算的欄位名稱 
+	
+	insert into @list (recno,namea,list) values(01,'加班 HR<2','b.addh2_1')
+	insert into @list (recno,namea,list) values(02,'加班 HR>2','b.addh2_2')
+	insert into @list (recno,namea,list) values(03,'加班費','b.addmoney')
+	insert into @list (recno,namea,list) values(04,'假日加班時數','ROUND((b.addh100),0)')
+	insert into @list (recno,namea,list) values(05,'假日加班費','ROUND((b.addh100*b.ostand),0)')
+	insert into @list (recno,namea,list) values(06,'超過46 HR<2','b.addh46_1')
+	insert into @list (recno,namea,list) values(07,'超過46 HR>2','b.addh46_1') 
+	insert into @list (recno,namea,list) values(08,'超過46 HR加班費','ROUND((b.addh46_1*1.33*b.ostand),0)+ROUND((b.addh46_2*1.66*b.ostand),0)')
+	insert into @list (recno,namea,list) values(09,'加班費總計','b.addmoney+ROUND((b.addh100*b.ostand),0)+ROUND((b.addh46_1*1.33*b.ostand),0)+ROUND((b.addh46_2*1.66*b.ostand),0)')
+
+	declare cursor_table cursor for 
+	select namea,list,recno from @list 
+	open cursor_table 
+	fetch next from cursor_table 
+	into @namea,@lists,@recno
+	while(@@FETCH_STATUS <> -1) 
+	begin 
+		set @cmd = 'insert into #tmpa (gno,recno,title,a,b,c,d,e,f,g,h,i,j,k,l,sssno,namea) values(''0'','+cast(@recno as  nvarchar(20))+','''+@namea+''', 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/01'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/02'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/03'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/04'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/05'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/06'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/07'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/08'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/09'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/10'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/11'' and b.sno='''+@sssno+'''),0), 
+		isnull((select sum('+@lists+') from salarys b where b.mon='''+@t_year+'/12'' and b.sno='''+@sssno+'''),0),'''+@sssno+''','''+@sssnamea+''')' 
+
+		EXECUTE sp_executesql @cmd 
+
+		fetch next from cursor_table 
+		into @namea,@lists,@recno
+	end 
+	close cursor_table 
+	deallocate cursor_table 
+	
+	fetch next from sss_table 
+	into @sssno,@sssnamea,@person
+end 
+close sss_table 
+deallocate sss_table 
+
+update #tmpa
+set m=a+b+c+d+e+f+g+h+i+j+k+l
+
+insert #tmpa (gno,recno,sssno)
+select '1',99,sssno from #tmpa group by sssno
+
+select gno,namea,title,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a),1)),4,12)) a, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b),1)),4,12)) b, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,c),1)),4,12)) c, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,d),1)),4,12)) d, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,e),1)),4,12)) e, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,f),1)),4,12)) f, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,g),1)),4,12)) g, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,h),1)),4,12)) h,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,i),1)),4,12)) i,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,j),1)),4,12)) j,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,k),1)),4,12)) k, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,l),1)),4,12)) l,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,m),1)),4,12)) m 
+from #tmpa order by sssno,gno,recno
+
+--刪除暫存資料庫 
+IF OBJECT_ID('tempdb..#tmpa')is not null 
+BEGIN 
+drop table #tmpa
+END ;
