@@ -47,7 +47,8 @@ z_uccfe1:--z_uccfe1
 	,0,isnull(b.safemount,0)
 	,isnull((select top 1 datea from view_ucces where productno=a.productno and datea<=@t_stkdate order by datea desc),'')
 	,0,0,0
-	from (select productno,sum(mount) mount,sum(weight) weight from stkucc(@t_stkdate,'','') s group by productno) a
+	from (select productno,sum(mount) mount,sum(weight) weight from stkucc(@t_stkdate,'','') s group by productno 
+	having sum(mount)>0 and sum(weight)>0) a
 	left join ucc b on a.productno=b.noa
 	where b.noa!='' and (a.productno between @t_bproductno and @t_eproductno)
 	
@@ -131,7 +132,7 @@ z_uccfe2:--z_uccfe2
 	
 	insert into @result
 	select
-		'0' gno, ROW_NUMBER()over(order by R1.productno,R1.datea,R1.typea)as recno,R1.*, 0 totmount, 0 totweight,''
+		'1' gno, ROW_NUMBER()over(order by R1.productno,R1.datea,R1.typea)as recno,R1.*, 0 totmount, 0 totweight,''
 	from(
 		select storeno,store,productno,product xproduct,isnull(datea,'') datea,'ZZ' typea,'盤點' typec, 
 		       noa,'' comp, unit, mount mount, weight weight,'uccefe?noa=$noa?'+accy qhref
@@ -275,7 +276,7 @@ z_uccfe2:--z_uccfe2
 		if @t_productno!=@productno and @t_productno!='@#S(DJ#SH!@'
 		begin
 			insert into @result
-			select '1' gno,-1 recno,'','',@t_productno,'' xproduct,'' datea,'zz' typea,'小計' typec, 
+			select '2' gno,-1 recno,'','',@t_productno,'' xproduct,'' datea,'zz' typea,'小計' typec, 
 				   '' noa,'' comp, '' unit, @t_mount mount, @t_weight weight,'', @t_totmount totmount, @t_totweight totweight,''
 		end
 		if @t_productno!=@productno
@@ -324,7 +325,7 @@ z_uccfe2:--z_uccfe2
 	if @t_productno!='@#S(DJ#SH!@'
 	begin
 		insert into @result
-		select '1' gno,-1 recno,'','',@t_productno,'' xproduct,'' datea,'zz' typea,'小計' typec, 
+		select '2' gno,-1 recno,'','',@t_productno,'' xproduct,'' datea,'zz' typea,'小計' typec, 
 			   '' noa,'' comp, '' unit, @t_mount mount, @t_weight weight,'', @t_totmount totmount, @t_totweight totweigh,''
 	end
 	
@@ -367,7 +368,7 @@ z_uccfe2:--z_uccfe2
 	,dbo.getComma(totmount,[2]) totmount
 	,dbo.getComma(totweight,[3]) totweight
 	,*
-	from @result where (gno='1' or (gno='0' and datea between @t_bdate and @t_edate)) 
+	from @result where (gno='2' or (gno='1' and datea between @t_bdate and @t_edate)) 
 	order by productno, gno, recno;
 	
 --*****************************************************************************************	
@@ -409,7 +410,7 @@ insert into @tmp
 select '0',a.storeno,a.store,a.productno,a.product,b.unit,a.mount,a.weight
 ,isnull((select top 1 sprice from uccps pa left join uccp pb on pa.noa=pb.noa where pa.productno=a.productno and pb.datea<=@t_stkdate order by pb.datea desc),0)
 ,0,b.safemount,0
-from stkucc(@t_stkdate,'','') a left join ucc b on a.productno = b.noa
+from (select * from stkucc(@t_stkdate,'','') where mount>0 and weight>0) a left join ucc b on a.productno = b.noa
 where ( a.storeno between @t_bstoreno and @t_estoreno) and ( a.productno between @t_bpno and @t_epno)
 and b.noa !=''
 
