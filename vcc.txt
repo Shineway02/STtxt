@@ -1,71 +1,111 @@
-vccfe_apv:--vccfe_apv	
+vccfe_save:--vccfe_save
 	SET QUOTED_IDENTIFIER OFF
-	declare @t_accy nvarchar(20) = [1]
-	declare @t_vccno nvarchar(20) = [2]
-
-	declare @tmp table(
-		apvmemo nvarchar(max),
-		apv nvarchar(20)
-	)
-		
-	declare @cmd nvarchar(max)
+	declare @t_accy nvarchar(20) =[1]
+	declare @t_noa nvarchar(20) = [2]
+	declare @t_typea nvarchar(20) = [3]
+	declare @t_custno nvarchar(20) = [4]
+	declare @t_date nvarchar(20) = [5]
+	declare @t_mon nvarchar(20) = [6]
+	declare @t_total nvarchar(20) = case when len([7])=0 then 0 else cast([7] as float) end 
+	
 	-----------------------------------------------------------------------------------------
-	declare @t_date nvarchar(10)
-	declare @t_custno nvarchar(20)
-	declare @t_productno nvarchar(20)
-	declare @t_price float
-		
-	select @t_date=datea,@t_custno=custno
-	from view_vcc
-	where accy=@t_accy
-	and noa=@t_vccno
-	
-	declare @date date = convert(date, cast(cast(left(@t_date,3) as int)+1911 as nvarchar)+right(@t_date,6))
-	select @date = DATEADD(MM,-3,@date)
-	
-	declare @t_bmon nvarchar(20)= right('000'+cast(year(@date)-1911 as nvarchar),3)
-		+'/'+right('00'+cast(month(@date) as nvarchar),2) 
-	------------------------------------------------------------------------------------------------
-	--出貨單價為0
-	if exists(select top 1 * from view_vccs 
-		where accy=@t_accy and noa=@t_vccno 
-		and not(mount=0 and [weight]=0) and price=0)
+	declare @checker nvarchar(max) = '' 
+	declare @memo nvarchar(max) = ''
+	select top 1 @checker=checker,@memo=memo from sign where zno=@t_noa
+	if exists(select * from sign where zno=@t_noa and enda='Y')
 	begin
-		set @cmd = "update vcc"+@t_accy+" set apvmemo = '出貨單價為0' where noa=@t_vccno"
-		execute sp_executesql @cmd,N'@t_vccno nvarchar(max)',@t_vccno=@t_vccno
-		insert into @tmp(apvmemo,apv)values('出貨單價為0','')
-		select * from @tmp
+		select '' msg,@checker checker,@memo memo
 		return
 	end
-	--退貨
-	if exists(select top 1 * from view_vcc 
-		where accy=@t_accy and noa=@t_vccno
-		and not([money]=0 and tax=0 and total=0) and typea!='1')                                                
+	if exists(select * from sign where zno=@t_noa and enda!='Y')
 	begin
-		set @cmd = "update vcc"+@t_accy+" set apvmemo = '退貨' where noa=@t_vccno"
-		execute sp_executesql @cmd,N'@t_vccno nvarchar(max)',@t_vccno=@t_vccno
-		insert into @tmp(apvmemo,apv)values('退貨','')
-		select * from @tmp
+		select '尚未核准。' msg,'' checker,'' memo
+		return
+	end
+	------------------------------------------------------------------------------------------
+	declare @nick nvarchar(20)=''
+	select @nick = nick from cust where noa=@t_custno
+	
+	--退貨
+	if(@t_typea != '1')
+	begin
+		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
+		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total
+			,'退貨核準：'+@t_date+' 【'+@nick+'】 退貨金額：'+dbo.getComma(@t_total,0)) 
+		
+		select '【退貨】需核準，已發送簽核。' msg,'' checker,'' memo
+		return
+	end
+	
+	--35天未收
+	declare @date date = convert(date, cast(cast(left(@t_date,3) as int)+1911 as nvarchar)+right(@t_date,6))
+	select @date = DATEADD(MM,-1,@date)
+	select @date = DATEADD(DD,-35,@date)
+	declare @bmon nvarchar(20)= right('000'+cast(year(@date)-1911 as nvarchar),3)
+		+'/'+right('00'+cast(month(@date) as nvarchar),2) 
+	declare @total float = 0
+	select @total = SUM(case when typea='1' then 1 else -1 end *isnull(total,0))
+	from view_vcc 
+	where not(accy=@t_accy and noa=@t_noa)
+	and custno=@t_custno
+	and mon=@t_mon
+	
+	declare @money float = 0
+	declare @tax float = 0
+	declare @pay float = 0
+	
+	select @money = SUM(isnull(total,0))
+	from view_vcc
+	where custno=@t_custno 
+	and mon=@bmon
+	and total!=0
+	
+	select @tax = SUM(ISNULL(tax,0))
+	from vcca
+	where custno=@t_custno
+	and left(datea,6)=@bmon
+	
+	select @tax = @tax + SUM(ISNULL(-b.tax,0))
+	from vccb a
+	left join vccbs b on a.noa=b.noa
+	where LEFT(a.datea,6)=@bmon
+	and b.custno = @t_custno
+	
+	select @pay=SUM(ISNULL(paysale,0))
+	from umms 
+	where mon=@bmon
+	and custno=@t_custno
+	
+	if(@money+@tax)>@pay
+	begin
+		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
+		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total
+			,'35天未收：【'+@nick+'】 未收金額：'+dbo.getComma((@money+@tax)-@pay,0)+' 出貨日期：'+@t_date+' 出貨金額：'+dbo.getComma(@t_total,0)) 
+		
+		select '【35天未收】需核準，已發送簽核。' msg,'' checker,'' memo
 		return
 	end
 	--呆帳  
-	declare @t_mon nvarchar(max) = ''
-	declare @t_unpay float = 0
-	select top 1 @t_mon=mon,@t_unpay=unpay from cust_2s
-	where noa=@t_custno
-	and mon<=@t_bmon and unpay!=0
+	set @date = convert(date, cast(cast(left(@t_mon,3) as int)+1911 as nvarchar)+right(@t_mon,3)+'/01')
+	select @date = DATEADD(MM,-3,@date)
 	
-	if (LEN(@t_mon)>0)
+	set @bmon = right('000'+cast(year(@date)-1911 as nvarchar),3)
+		+'/'+right('00'+cast(month(@date) as nvarchar),2)
+	
+	declare @unpay float = 0
+	select top 1 @unpay=sum(isnull(unpay,0)) from cust_2s
+	where noa=@t_custno
+	and mon<=@bmon and unpay!=0
+	
+	if (LEN(@unpay)>0)
 	begin
-		set @cmd = "update vcc"+@t_accy+" set apvmemo = '呆帳'+@t_mon+'：'+dbo.getComma(@t_unpay,0) where noa=@t_vccno"
-		execute sp_executesql @cmd,N'@t_vccno nvarchar(max),@t_mon nvarchar(20),@t_unpay float'
-			,@t_vccno=@t_vccno,@t_mon=@t_mon,@t_unpay=@t_unpay		
-		insert into @tmp(apvmemo,apv)values('呆帳'+@t_mon+'：'+dbo.getComma(@t_unpay,0),'')
-		select * from @tmp
-		return 
+		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
+		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total
+			,'呆帳：【'+@nick+'】 呆帳金額：'+dbo.getComma(@unpay,0)+' 出貨日期：'+@t_date+' 出貨金額：'+dbo.getComma(@t_total,0)) 
+		
+		select '【呆帳】需核準，已發送簽核。' msg,'' checker,'' memo
+		return                                                                                                                                                                      
 	end
-	set @cmd = "update vcc"+@t_accy+" set apvmemo = '自動核准',apv='*' where noa=@t_vccno"
-	execute sp_executesql @cmd,N'@t_vccno nvarchar(max)',@t_vccno=@t_vccno
-	insert into @tmp(apvmemo,apv)values('自動核准','*')
-	select * from @tmp
-	return;
+	
+	select '' msg,'*' checker,'自動核准' memo
+	return; 
