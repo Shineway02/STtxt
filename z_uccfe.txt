@@ -89,7 +89,7 @@ z_uccfe2:--z_uccfe2
 	update #z_uccfe2 set product=ISNULL(b.product,''),store=ISNULL(c.store,'')
 	from #z_uccfe2 a
 	left join ucc b on a.productno=b.noa
-	left join store c on a.storeno=b.noa
+	left join store c on a.storeno=c.noa
 	--本期
 	------------UCCE
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -425,7 +425,7 @@ z_uccfe1:--z_uccfe1
 	update #z_uccfe1 set product=ISNULL(b.product,''),store=ISNULL(c.store,'')
 	from #z_uccfe1 a
 	left join ucc b on a.productno=b.noa
-	left join store c on a.storeno=b.noa
+	left join store c on a.storeno=c.noa
 	-------------------------------------------------------------------------------------------
 	update #z_uccfe1 set price = ISNULL(b.sprice,0),[money]=ISNULL(a.mount*b.sprice,0)
 	from #z_uccfe1 a
