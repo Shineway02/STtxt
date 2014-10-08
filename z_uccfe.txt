@@ -39,6 +39,16 @@ z_uccfe2:--z_uccfe2
 	--declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
 	-----------------------------------------------------------------------------------------------------
 	declare @bbdate nvarchar(20) = dbo.AD2ChineseEraName(dateadd(DD,-1,dbo.ChineseEraName2AD(@t_bdate)))
+	
+	--前期
+	declare @tmpa table(
+		productno nvarchar(20),
+		storeno nvarchar(20),
+		mount float,
+		[weight] float
+	)
+	insert into @tmpa
+	execute dbo.stkucc2 @bbdate,@t_bstoreno,@t_estoreno,@t_bproductno,@t_eproductno
 	-----------------------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_uccfe2')is not null
 	BEGIN
@@ -66,17 +76,20 @@ z_uccfe2:--z_uccfe2
 	)
 	create index product on #z_uccfe2(productno)
 	create index noa on #z_uccfe2(accy,tablea,noa,noq)
-	
-	--前期
-	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight]
+
+	insert into #z_uccfe2(gno,pno,productno,storeno,datea,[action],n,mount,[weight]
 		,accy,tablea,noa,noq)
-	select '1','01',productno,product,@bbdate,'前期',1,sum(mount),sum([weight])
+	select '1','01',productno,storeno,@bbdate,'前期',1,mount,[weight]
 		,'','stkucc',productno,''
-	from stkucc(@bbdate,'','') 
+	from @tmpa
 	where productno between @t_bproductno and @t_eproductno
-	and store between @t_bstoreno and @t_estoreno
-	group by productno,product
-	having not(sum(mount)=0 and sum([weight])=0)
+	and storeno between @t_bstoreno and @t_estoreno
+	and not(mount=0 and [weight]=0)
+	
+	update #z_uccfe2 set product=ISNULL(b.product,''),store=ISNULL(c.store,'')
+	from #z_uccfe2 a
+	left join ucc b on a.productno=b.noa
+	left join store c on a.storeno=b.noa
 	--本期
 	------------UCCE
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -89,8 +102,9 @@ z_uccfe2:--z_uccfe2
 		,a.accy,'ucce',a.noa,b.noq
 	from view_ucce a
 	left join view_ucces b on a.noa=b.noa
-	where b.productno between @t_bproductno and @t_eproductno
-	and a.storeno between @t_bstoreno and @t_estoreno
+	where len(ISNULL(b.productno,''))>0
+	and b.productno between @t_bproductno and @t_eproductno
+	and isnull(a.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	---------------------------------------------------------------------------------------------
@@ -107,7 +121,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -123,7 +137,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	----委入
@@ -140,7 +154,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	--CUT
@@ -157,7 +171,7 @@ z_uccfe2:--z_uccfe2
 	where  not(a.gmount=0 and a.[gweight]=0)
 	and len(ISNULL(a.productno,''))>0
 	and a.productno between @t_bproductno and @t_eproductno
-	and a.storeno between @t_bstoreno and @t_estoreno
+	and isnull(a.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -174,7 +188,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	--cub
@@ -192,7 +206,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.gmount=0 and b.[gweight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -209,7 +223,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	--委出
@@ -226,7 +240,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -242,7 +256,7 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -258,11 +272,12 @@ z_uccfe2:--z_uccfe2
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and b.storeno between @t_bstoreno and @t_estoreno
+	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	--------------------------------------------------------------------------
 	declare @productno nvarchar(20)
+	declare @storeno nvarchar(20)
 	declare @accy nvarchar(10)
 	declare @tablea nvarchar(20)
 	declare @noa nvarchar(20)
@@ -274,21 +289,20 @@ z_uccfe2:--z_uccfe2
 	declare @totweight float	
 	declare @recno int
 	
-	declare @t_pageline int = 40 -- 一頁幾行
-	declare @m int
+	
 		
 	declare cursor_table cursor for
-	select productno,count(1) from #z_uccfe2 group by productno
+	select productno,storeno from #z_uccfe2 group by productno,storeno
 	open cursor_table
 	fetch next from cursor_table
-	into @productno,@m
+	into @productno,@storeno
 	while(@@FETCH_STATUS <> -1)
 	begin
 		select @totmount=0,@totweight=0,@recno=1
 		
 		declare cursor_table2 cursor for
 		select accy,tablea,noa,noq,n,mount,[weight] 
-		from #z_uccfe2 where productno =@productno
+		from #z_uccfe2 where productno =@productno and storeno=@storeno
 		order by datea,pno
 		open cursor_table2
 		fetch next from cursor_table2
@@ -308,35 +322,57 @@ z_uccfe2:--z_uccfe2
 		end
 		close cursor_table2
 		deallocate cursor_table2
-		
+
+		insert into #z_uccfe2(gno,productno,storeno,recno,datea,totmount,totweight)
+		select '3',@productno,@storeno,@recno,CHAR(255),@totmount,@totweight
+	
+		fetch next from cursor_table
+		into @productno,@storeno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	insert into #z_uccfe2(gno,productno,storeno,datea,totmount,totweight)
+	select '4',productno,CHAR(255),CHAR(255),SUM(totmount),SUM(totweight)
+	from #z_uccfe2 where gno='3' 
+	group by productno
+	----------------------------------------------------------------------------------
+	declare @t_pageline int = 40 -- 一頁幾行
+	declare @m int
+	
+	declare cursor_table cursor for
+	select productno,count(1)from #z_uccfe2 group by productno
+	open cursor_table
+	fetch next from cursor_table
+	into @productno,@m
+	while(@@FETCH_STATUS <> -1)
+	begin
 		while @m%@t_pageline!=0
 		begin
-			insert into #z_uccfe2(gno,productno,datea)
-			values('3',@productno,CHAR(255))
+			insert into #z_uccfe2(gno,productno,storeno,datea)
+			values('5',@productno,CHAR(255),CHAR(255))
 			set @m = @m + 1
 		end
-	
+		
 		fetch next from cursor_table
 		into @productno,@m
 	end
 	close cursor_table
 	deallocate cursor_table
-	
-	--日期	情形	倉庫	數  量	重  量	結存數量	結存重量
-
+	------------------------------------------------------------------------
 	select * 
 		,case tablea when 'stkucc' then '' else tablea+"?noa=\'"+noa+"\' and "+cast(recno as nvarchar)+"=$rr?"+accy end ghref
 		,productno b01
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' b02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(product,''))=0 then productno else [product] end+'</a>' b02
 		,recno rr
 		,datea a01
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[action]+'</a>' a02
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[store]+'</a>' a03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(store,''))=0 then storeno else [store] end+'</a>' a03
 		,dbo.getComma(mount,2) a04
 		,dbo.getComma([weight],2) a05
 		,dbo.getComma(totmount,2) a06
 		,dbo.getComma(totweight,2) a07
-	from #z_uccfe2 order by productno,datea,recno
+	from #z_uccfe2 order by productno,storeno,datea,recno,pno
 
 	drop table #z_uccfe2;
 
@@ -351,6 +387,15 @@ z_uccfe1:--z_uccfe1
 	declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
 	------------------------------------------------------------------------------------
+	--前期
+	declare @tmpa table(
+		productno nvarchar(20),
+		storeno nvarchar(20),
+		mount float,
+		[weight] float
+	)
+	insert into @tmpa
+	execute dbo.stkucc2 @t_enddate,@t_bstoreno,@t_estoreno,@t_bproductno,@t_eproductno 
 	------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_uccfe1')is not null
 	BEGIN
@@ -364,22 +409,23 @@ z_uccfe1:--z_uccfe1
 		store nvarchar(50),
 		productno nvarchar(20),
 		product nvarchar(50),
-		spec nvarchar(50),
-		style nvarchar(50),
-		unit nvarchar(20),
 		mount float,
 		[weight] float,
 		price float,
 		[money] float
 	)
-	insert into #z_uccfe1(gno,recno,storeno,store,productno,product,spec,style,unit,mount,[weight])
+	insert into #z_uccfe1(gno,recno,storeno,productno,mount,[weight])
 	select '1',ROW_NUMBER()over(partition by productno order by storeno)
-		,storeno,store,productno,product,spec,style,unit,mount,[weight]
-	from stkucc(@t_enddate,'','') 
+		,storeno,productno,mount,[weight]
+	from @tmpa
 	where not(mount=0 and [weight]=0)
 	and productno between @t_bproductno and @t_eproductno
-	and store between @t_bstoreno and @t_estoreno
+	and storeno between @t_bstoreno and @t_estoreno
 	
+	update #z_uccfe1 set product=ISNULL(b.product,''),store=ISNULL(c.store,'')
+	from #z_uccfe1 a
+	left join ucc b on a.productno=b.noa
+	left join store c on a.storeno=b.noa
 	-------------------------------------------------------------------------------------------
 	update #z_uccfe1 set price = ISNULL(b.sprice,0),[money]=ISNULL(a.mount*b.sprice,0)
 	from #z_uccfe1 a
@@ -420,4 +466,5 @@ z_uccfe1:--z_uccfe1
 		,dbo.getComma([money],0) a07
 	from #z_uccfe1 order by productno,recno
 	drop table #z_uccfe1;
+
 
