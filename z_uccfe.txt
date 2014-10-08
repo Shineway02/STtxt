@@ -1,3 +1,32 @@
+z_uccfe3:--z_uccfe3
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bproductno nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_eproductno nvarchar(20) = case when '#non'=[2] then char(255) else [2] end
+	--declare @t_bstoreno nvarchar(20) = case when '#non'=[3] then '' else [3] end
+	--declare @t_estoreno nvarchar(20) = case when '#non'=[4] then char(255) else [4] end
+	--declare @t_enddate nvarchar(10) = case when '#non'=[5] then '' else [5] end
+	--declare @t_bdate nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	--declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	--declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
+	-----------------------------------------------------------------------------------------------------
+	select *
+		,'1' gno 
+		,ROW_NUMBER()over(order by noa) rr
+		,"uccfe?noa=\'"+noa+"\' and "+cast(ROW_NUMBER()over(order by noa) as nvarchar)+"=$rr?" ghref
+		,noa a01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[product]+'</a>' a02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[unit]+'</a>' a03
+		,dbo.getComma(uweight,2) a04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(ISNULL(tgg,''))=0 then tggno else tgg end+'</a>' a05
+		,dbo.getComma(inprice,3) a06
+		,dbo.getComma(saleprice,3) a07
+		,dbo.getComma(safemount,0) a08
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[styleno]+'</a>' a09
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[memo]+'</a>' a10
+	from ucc
+	where noa between @t_bproductno and @t_eproductno
+	order by noa;
+
 z_uccfe2:--z_uccfe2 
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_bproductno nvarchar(20) = case when '#non'=[1] then '' else [1] end
@@ -55,13 +84,12 @@ z_uccfe2:--z_uccfe2
 	select '2','02',b.productno,b.product,a.datea
 		,'盤點'
 		,1
-		,b.emount,b.[eweight]
+		,b.mount,b.[weight]
 		,a.storeno,a.store
 		,a.accy,'ucce',a.noa,b.noq
 	from view_ucce a
 	left join view_ucces b on a.noa=b.noa
-	where  not(b.mount=0 and b.[weight]=0)
-	and b.productno between @t_bproductno and @t_eproductno
+	where b.productno between @t_bproductno and @t_eproductno
 	and a.storeno between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
