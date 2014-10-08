@@ -692,63 +692,37 @@ declare @tmp table(
 	oinvoice_weight float, ----已開發票重 > vccas.數量
 	uninvoice_weight float, ----未開發票重 > 出貨重量-已開發票重
 	unsales_money float, ----未開銷貨收入 > if vcc.type = 退 *-1 if len(會計傳票)=0 then vcc.應收 else 0
-	unsales_tax float ----未開銷項稅額 > if vcc.type = 退 *-1  if len(會計傳票)=0 then vcc.稅額 else 0
+	unsales_tax float, ----未開銷項稅額 > if vcc.type = 退 *-1  if len(會計傳票)=0 then vcc.稅額 else 0
+	dmoney float,	---1123會計借方 
+	cmoney float,	---1123會計貸方
+	acmoney float,	---會計餘額 (含上期)
+	unpay float	--未收餘額CUST_2S
 )
-
---insert into @tmp
---	select
---		'0',(case when a.custno2!='' then a.custno2 else a.custno end) custno,d.nick,sum(a.money),sum(a.tax),
---		case when sum(b.gweight) > 0 then sum(b.gweight) else sum(b.weight) end,
---		isnull(sum(c.money),0),isnull(sum(a.money)-sum(c.money),0),isnull(sum(a.tax)-sum(c.tax),0),isnull(sum(e.mount),0),0,
---		sum((case when a.typea ='2' then (-1) else 1 end)*(case when len(a.accno) = 0 then a.money else 0 end)),
---		sum((case when a.typea ='2' then (-1) else 1 end)*(case when len(a.accno) = 0 then a.tax else 0 end))
---	from view_vcc a
---	left join (
---		select
---			(case when b.custno2!='' then b.custno2 else b.custno end) custno
---			,sum((case when a.typea ='2' then (-1) else 1 end)*a.gweight) gweight,
---			sum((case when a.typea ='2' then (-1) else 1 end)*a.weight) weight
---		from view_vccs a
---		left join view_vcc b on a.noa = b.noa
---		where a.datea between @t_bdate and @t_edate
---		group by (case when b.custno2!='' then b.custno2 else b.custno end)
---	) b on a.custno = b.custno
---	left join (
---		select a.custno,sum(a.money) money,sum(a.tax) tax from vcca a
---		where a.datea between @t_bdate and @t_edate
---		group by a.custno
---	) c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.custno
---	left join (
---		select a.custno,sum(b.mount) mount from vcca a
---		left join vccas b on a.noa = b.noa
---		where a.datea between @t_bdate and @t_edate
---		group by a.custno
---	) e on (case when a.custno2!='' then a.custno2 else a.custno end) = e.custno
---	left join (select noa,comp,nick from cust union select noa,namea,namea nick from sss) d on (case when a.custno2!='' then a.custno2 else a.custno end) = d.noa
---	where (case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno
---	and a.datea between @t_bdate and @t_edate
---	group by (case when a.custno2!='' then a.custno2 else a.custno end),d.nick
---update @tmp set uninvoice_weight = vcc_weight-oinvoice_weight
 
 
 insert into @tmp
-select '0', a.custno
-,(select nick from cust where noa=a.custno union select namea nick from sss where noa=a.custno and  noa not in (select noa from cust))
-,isnull((select SUM(total) from view_vcc where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(case when taxtype='1' then round(money*0.05,0) when taxtype='3' then round(total/1.05*0.05,0) else 0 end) from view_vcc where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when va.typea='1' then 1 else -1 end)*(case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc va left join view_vccs vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(total) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(total) from view_vcc where custno=a.custno and datea between @t_bdate and @t_edate),0)-isnull((select SUM(total) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(case when taxtype='1' then round(money*0.05,0) when taxtype='3' then round(total/1.05*0.05,0) else 0 end) from view_vcc where custno=a.custno and datea between @t_bdate and @t_edate),0)-isnull((select SUM(tax) from vcca where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM(vb.mount) from vcca va left join vccas vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc va left join view_vccs vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
--isnull((select SUM(vb.mount) from vcca va left join vccas vb on va.noa=vb.noa where va.custno=a.custno and va.datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then total else 0 end) from view_vcc where custno=a.custno and datea between @t_bdate and @t_edate),0)
-,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then tax else 0 end) from view_vcc where custno=a.custno and datea between @t_bdate and @t_edate),0)
+select '0', (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)
+,(select nick from cust where noa=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) union select namea nick from sss where noa=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and  noa not in (select noa from cust))
+,isnull((select SUM(total) from view_vcc where custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(case when taxtype='1' then round(money*0.05,0) when taxtype='3' then round(total/1.05*0.05,0) else 0 end) from view_vcc where custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM((case when va.typea='1' then 1 else -1 end)*(case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc va left join view_vccs vb on va.noa=vb.noa where (case when isnull(va.custno2,'')!='' then va.custno2 else va.custno end)=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and va.datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(total) from vcca where custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(total) from view_vcc where (case when isnull(custno2,'')!='' then custno2 else custno end)=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)-isnull((select SUM(total) from vcca where custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(case when taxtype='1' then round(money*0.05,0) when taxtype='3' then round(total/1.05*0.05,0) else 0 end) from view_vcc where custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)-isnull((select SUM(tax) from vcca where custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(vb.mount) from vcca va left join vccas vb on va.noa=vb.noa where va.custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and va.datea between @t_bdate and @t_edate),0)
+,isnull((select SUM((case when vb.gweight>0 then vb.gweight else vb.weight end)) from view_vcc va left join view_vccs vb on va.noa=vb.noa where (case when isnull(va.custno2,'')!='' then va.custno2 else va.custno end)=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and va.datea between @t_bdate and @t_edate),0)
+-isnull((select SUM(vb.mount) from vcca va left join vccas vb on va.noa=vb.noa where va.custno=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and va.datea between @t_bdate and @t_edate),0)
+,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then total else 0 end) from view_vcc where (case when isnull(custno2,'')!='' then custno2 else custno end) =(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM((case when typea='1' then 1 else -1 end)*case when len(accno)=0 then tax else 0 end) from view_vcc where (case when isnull(custno2,'')!='' then custno2 else custno end)=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) and datea between @t_bdate and @t_edate),0)
+,isnull((select SUM(dmoney) from view_acccs[9] where accc5 like '1123%' and (accy+'/'+accc2 between @t_bdate and @t_edate) and right(accc5,len((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)))=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)),0)
+,isnull((select SUM(cmoney) from view_acccs[9] where accc5 like '1123%' and (accy+'/'+accc2 between @t_bdate and @t_edate) and right(accc5,len((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)))=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)),0)
+,isnull((select SUM(dmoney-cmoney) from acccs[9] where accc5 like '1123%' and ('[10]/'+accc2 <= @t_edate) and right(accc5,len((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)))=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)),0)
+,isnull((select sum(unpay) from cust_2s where mon<left(@t_bdate,6) and noa=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)),0)
++isnull((select sum(unpay) from view_vcc where (datea between left(@t_bdate,6)+'/01' and @t_edate) and noa=(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)),0)
 from view_vcc a
-where a.custno between @t_bcustno and @t_ecustno
+where (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno
 and a.datea between @t_bdate and @t_edate
-group by a.custno
+group by (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)
 
 select
 	gno,custno,comp,
@@ -761,7 +735,11 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,oinvoice_weight),1)),4,12)) oinvoice_weight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,uninvoice_weight),1)),4,12)) uninvoice_weight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unsales_money),1)),4,12)) unsales_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unsales_tax),1)),4,12)) unsales_tax
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unsales_tax),1)),4,12)) unsales_tax,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,dmoney),1)),4,12)) dmoney,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,cmoney),1)),4,12)) cmoney,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,acmoney),1)),4,12)) acmoney,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unpay),1)),4,12)) unpay
 from @tmp;
 --*******************************************************************************************
 z_umm9:--z_umm9 ref:z_vcc4
