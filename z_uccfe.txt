@@ -1,4 +1,4 @@
-z_uccfe3:--z_uccfe3
+z_uccfe4:--z_uccfe4
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_bproductno nvarchar(20) = case when '#non'=[1] then '' else [1] end
 	declare @t_eproductno nvarchar(20) = case when '#non'=[2] then char(255) else [2] end
@@ -27,6 +27,115 @@ z_uccfe3:--z_uccfe3
 	where noa between @t_bproductno and @t_eproductno
 	order by noa;
 
+z_uccfe3:--z_uccfe3 
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bproductno nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_eproductno nvarchar(20) = case when '#non'=[2] then char(255) else [2] end
+	declare @t_bstoreno nvarchar(20) = case when '#non'=[3] then '' else [3] end
+	declare @t_estoreno nvarchar(20) = case when '#non'=[4] then char(255) else [4] end
+	declare @t_enddate nvarchar(10) = case when '#non'=[5] then '' else [5] end
+	--declare @t_bdate nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	--declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	--declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
+	------------------------------------------------------------------------------------
+	--前期
+	declare @tmpa table(
+		productno nvarchar(20),
+		storeno nvarchar(20),
+		mount float,
+		[weight] float
+	)
+	insert into @tmpa
+	execute dbo.stkucc2 @t_enddate,@t_bstoreno,@t_estoreno,@t_bproductno,@t_eproductno 
+	------------------------------------------------------------------------------------
+	IF OBJECT_ID('tempdb..#z_uccfe3')is not null
+	BEGIN
+		drop table #z_uccfe3
+	END
+	create table #z_uccfe3(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		pp int,
+		qq int,
+		storeno nvarchar(20),
+		store nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		mount float,
+		[weight] float,
+		price float,
+		[money] float
+	)
+	insert into #z_uccfe3(gno,pno,recno,storeno,productno,mount,[weight])
+	select '1','1',ROW_NUMBER()over(partition by storeno order by productno)
+		,storeno,productno,mount,[weight]
+	from @tmpa
+	where not(mount=0 and [weight]=0)
+	and productno between @t_bproductno and @t_eproductno
+	and storeno between @t_bstoreno and @t_estoreno
+	
+	update #z_uccfe3 set product=ISNULL(b.product,''),store=ISNULL(c.store,'')
+	from #z_uccfe3 a
+	left join ucc b on a.productno=b.noa
+	left join store c on a.storeno=c.noa
+	-------------------------------------------------------------------------------------------
+	update #z_uccfe3 set price = ISNULL(b.sprice,0),[money]=ISNULL(a.mount*b.sprice,0)
+	from #z_uccfe3 a
+	outer apply(select top 1 y.sprice
+		from uccp x
+		left join uccps y on x.noa=y.noa
+		where y.productno=a.productno and x.datea<=@t_enddate
+		order by x.datea desc) b
+	---------------------------------------------------------------------------------------------
+	insert into #z_uccfe3(gno,pno,recno,storeno,store,mount,[weight],[money])
+	select '2','2',MAX(recno)+1,storeno,store,sum(mount),sum([weight]),sum(isnull([money],0))
+	from #z_uccfe3
+	where gno = '1'
+	group by storeno,store	
+	---------------------------------------------------------------------------------------------
+	declare @t_pageline int = 40
+	declare @storeno nvarchar(20)
+	declare @n int
+	
+	update #z_uccfe3 set pp = floor((a.recno-1)/@t_pageline) + 1
+		,qq = floor((b.recno-1)/@t_pageline) + 1
+	from #z_uccfe3 a
+	left join (select * from #z_uccfe3 where gno='2')b on a.storeno=b.storeno 
+	
+	declare cursor_table cursor for
+	select storeno,count(1) from #z_uccfe3 group by storeno
+	open cursor_table
+	fetch next from cursor_table
+	into @storeno,@n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while @n%@t_pageline!=0
+		begin
+			insert into #z_uccfe3(gno,pno,recno,storeno)
+			values('3','3',0,@storeno)
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @storeno,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select * 
+		,recno rr
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">倉庫：'+storeno +'&nbsp'+char(59)+store+'</a>' title
+		,storeno a01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+store+'</a>' a02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+productno+'</a>' a03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' a04
+		,dbo.getComma(mount,0) a05
+		,dbo.getComma([weight],2) a06
+		,dbo.getComma(price,2) a07
+		,dbo.getComma([money],0) a08
+	from #z_uccfe3 order by storeno,pno,recno
+	drop table #z_uccfe3;
+	
 z_uccfe2:--z_uccfe2 
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_bproductno nvarchar(20) = case when '#non'=[1] then '' else [1] end
