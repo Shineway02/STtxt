@@ -54,6 +54,7 @@ z_anavccst02:--z_anavccst02
 		gno nvarchar(10),
 		noa nvarchar(20),
 		noq nvarchar(10),
+		typea nvarchar(10),
 		datea nvarchar(20),
 		custno nvarchar(20),
 		salesno nvarchar(20),
@@ -77,57 +78,30 @@ z_anavccst02:--z_anavccst02
 		profit float,
 		rate float
 	)
-	declare @tablea nvarchar(20)
-	declare @tableas nvarchar(20)
-	-----------------------------------------------------------------
-	declare @listvcc table(
-		tablea nvarchar(20),
-		tableas nvarchar(20)
-	)
-	insert into @listvcc(tablea,tableas)
-	SELECT TABLE_NAME 
-	,replace(TABLE_NAME,'vcc','vccs')
-	FROM INFORMATION_SCHEMA.TABLES 
-	where TABLE_NAME like 'vcc[0-9][0-9][0-9]'
-	-----------------------------------------------------------------
-	declare cursor_table cursor for
-	select tablea,tableas from @listvcc
-	open cursor_table
-	fetch next from cursor_table
-	into @tablea,@tableas
-	while(@@FETCH_STATUS <> -1)
-	begin
-		set @cmd =
-		" select '2',a.noa,a.noq,b.custno,b.salesno,isnull(d.groupano,''),isnull(e.namea,''),a.productno,a.product,a.style,a.uno"+
-		" ,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
-		" ,a.class,a.spec"+
-		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
-		--" ,round(case when charindex('支',a.unit)>0 then isnull(a.mount,0) else isnull(a.[weight],0) end * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
-		--sprice都是重量
-		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
-		" ,case when g.[weight]=0 then -99999 else round(b.tranmoney*a.[weight]/g.[weight],0) end"+
-		" from "+@tableas+" a"+
-		" left join "+@tablea+" b on a.noa=b.noa"+
-		" left join view_uccb c on a.uno=c.uno "+
-		" left join ucc d on a.productno=d.noa"+
-		" left join uccga e on d.groupano=e.noa"+
-		" left join #item f on d.groupano=f.noa"+
-		" outer apply (select sum(isnull([weight],0)) [weight] from "+@tableas+" where noa=a.noa and dime!=0) g"+
-		" where b.noa is not null"+
-		" and isnull(b.typea,'0')='1'"+
-		" and len(isnull(a.uno,''))>0"+
-		" and isnull(b.datea,'') between @t_bdate and @t_edate"+
-		" and isnull(b.custno,'') between @t_bcustno and @t_ecustno"+
-		" and ((len(isnull(d.groupano,''))=0 and exists(select * from #item where len(noa)=0)) or f.noa is not null)"
-		
-		insert into @tmp(gno,noa,noq,custno,salesno,uccgano,uccganame,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal,tranmoney)
-		execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bcustno nvarchar(20),@t_ecustno nvarchar(20)'
-		,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bcustno=@t_bcustno,@t_ecustno=@t_ecustno
-		fetch next from cursor_table
-		into @tablea,@tableas
-	end
-	close cursor_table
-	deallocate cursor_table
+	insert into @tmp(gno,noa,noq,typea,custno,salesno,uccgano,uccganame,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal,tranmoney)
+	select '2',a.noa,a.noq,isnull(b.typea,'0'),b.custno,b.salesno,isnull(d.groupano,''),isnull(e.namea,''),a.productno,a.product,a.style,a.uno
+	,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))
+	,a.class,a.spec
+	,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)
+	,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)
+	,case when g.[weight]=0 then -99999 else round(b.tranmoney*a.[weight]/g.[weight],0) end
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
+	left join view_uccb c on a.uno=c.uno 
+	left join ucc d on a.productno=d.noa
+	left join uccga e on d.groupano=e.noa
+	left join #item f on d.groupano=f.noa
+	outer apply (select sum(isnull([weight],0)) [weight] from view_vccs where accy=a.accy and noa=a.noa and (len(isnull(uno,''))>0 or dime!=0)) g
+	where b.noa is not null
+	and (len(isnull(a.uno,''))>0 or a.dime!=0)
+	and isnull(b.datea,'') between @t_bdate and @t_edate
+	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
+	and ((len(isnull(d.groupano,''))=0 and exists(select * from #item where len(noa)=0)) or f.noa is not null)
+	
+	update @tmp set [weight] = case when typea='1' then 1 else -1 end * [weight] 
+		,mount = case when typea='1' then 1 else -1 end * [mount] 
+		,total = case when typea='1' then 1 else -1 end * [total] 
+		,stotal = case when typea='1' then 1 else -1 end * [stotal] 
 	
 	update @tmp set profit = total-stotal-tranmoney,rate = case when total=0 then 0 else round((total-stotal-tranmoney)/total*100,0) end
 	
@@ -191,6 +165,7 @@ z_anavccst01:--z_anavccst01
 		gno nvarchar(10),
 		noa nvarchar(20),
 		noq nvarchar(10),
+		typea nvarchar(10),
 		datea nvarchar(20),
 		custno nvarchar(20),
 		salesno nvarchar(20),
@@ -207,57 +182,56 @@ z_anavccst01:--z_anavccst01
 		price float,
 		total float,
 		sprice float,
+		floata float,
+		vcctranmoney float,
+		vccweight float,
 		stotal float,
 		tranmoney float,
 		profit float,
 		rate float
 	)
-	declare @tablea nvarchar(20)
-	declare @tableas nvarchar(20)
-	-----------------------------------------------------------------
-	declare @listvcc table(
-		tablea nvarchar(20),
-		tableas nvarchar(20)
-	)
-	insert into @listvcc(tablea,tableas)
-	SELECT TABLE_NAME 
-	,replace(TABLE_NAME,'vcc','vccs')
-	FROM INFORMATION_SCHEMA.TABLES 
-	where TABLE_NAME like 'vcc[0-9][0-9][0-9]'
-	-----------------------------------------------------------------
-	declare cursor_table cursor for
-	select tablea,tableas from @listvcc
-	open cursor_table
-	fetch next from cursor_table
-	into @tablea,@tableas
-	while(@@FETCH_STATUS <> -1)
-	begin
-		--運費都平均分攤
-		set @cmd =
-		" select '2',a.noa,a.noq,b.custno,b.salesno,a.productno,a.product,a.style,a.uno"+
-		" ,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))"+
-		" ,a.class,a.spec"+
-		" ,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0)"+
-		" ,round(isnull(a.[weight],0) * isnull(c.sprice,0) * case when isnull(b.floata,0)=0 then 1 else b.floata end,0)"+
-		" ,case when d.[weight]=0 then -99999 else round(b.tranmoney*a.[weight]/d.[weight],0) end"+
-		" from "+@tableas+" a"+
-		" left join "+@tablea+" b on a.noa=b.noa"+
-		" left join view_uccb c on a.uno=c.uno "+
-		" outer apply (select sum(isnull([weight],0)) [weight] from "+@tableas+" where noa=a.noa and (len(isnull(uno,''))>0 or dime!=0)) d"+
-		" where b.noa is not null"+
-		" and isnull(b.typea,'0')='1'"+
-		" and len(isnull(a.uno,''))>0"+
-		" and isnull(b.datea,'') between @t_bdate and @t_edate"+
-		" and isnull(b.custno,'') between @t_bcustno and @t_ecustno"
-		+" and (@t_kind='全部' or (@t_kind='鋼捲' and b.kind!='B2') or (@t_kind='鋼管' and b.kind='B2') )"
-		insert into @tmp(gno,noa,noq,custno,salesno,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal,tranmoney)
-		execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bcustno nvarchar(20),@t_ecustno nvarchar(20),@t_kind nvarchar(max)'
-		,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bcustno=@t_bcustno,@t_ecustno=@t_ecustno,@t_kind=@t_kind
-		fetch next from cursor_table
-		into @tablea,@tableas
-	end
-	close cursor_table
-	deallocate cursor_table
+
+	--運費都平均分攤
+	insert into @tmp(gno,noa,noq,typea,datea,custno,salesno,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total
+		,sprice,floata,vcctranmoney,vccweight)
+	select '2',a.noa,a.noq,isnull(b.typea,'0'),isnull(b.datea,'0'),b.custno,b.salesno,a.productno,a.product,a.style,a.uno
+	,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))
+	,a.class,a.spec
+	,a.unit,a.[weight],a.mount,a.price,a.total,isnull(c.sprice,0),b.floata,b.tranmoney,d.[weight]
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
+	left join view_uccb c on a.uno=c.uno
+	outer apply (select sum(isnull([weight],0)) [weight] from view_vccs where accy=a.accy and noa=a.noa and (len(isnull(uno,''))>0 or dime!=0)) d
+	where b.noa is not null
+	and (len(isnull(a.uno,''))>0 or a.dime!=0)
+	and isnull(b.datea,'') between @t_bdate and @t_edate
+	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
+	and (@t_kind='全部' or (@t_kind='鋼捲' and b.kind!='B2') or (@t_kind='鋼管' and b.kind='B2') )
+	
+
+	update @tmp set sprice=isnull(b.sprice,0)
+	from @tmp a
+	outer apply(select top 1 z.sprice
+		from view_vcc x 
+		left join view_vccs y on x.accy=y.accy and x.noa=y.noa
+		left join view_uccb z on y.uno=z.uno
+		where isnull(x.typea,'0')='1' 
+		and a.noa!=y.noa 
+		and a.custno=x.custno
+		and a.datea>=x.datea
+		and a.csize=replace(case when len(y.size)>0 then y.size when len(z.size)>0 then z.size else dbo.csize(y.style,y.dime,y.width,y.lengthb,y.radius) end,'~#$',char(39))
+		order by x.datea,x.noa
+		) b
+	where a.typea!='1'
+	
+	update @tmp set stotal = round(isnull(a.[weight],0) * isnull(a.sprice,0) * case when isnull(a.floata,0)=0 then 1 else a.floata end,0)
+		,tranmoney =case when a.[vccweight]=0 then -99999 else round(a.vcctranmoney*a.[weight]/a.[vccweight],0) end
+	from @tmp a
+	
+	update @tmp set [weight] = case when typea='1' then 1 else -1 end * [weight] 
+		,mount = case when typea='1' then 1 else -1 end * [mount] 
+		,total = case when typea='1' then 1 else -1 end * [total] 
+		,stotal = case when typea='1' then 1 else -1 end * [stotal] 
 	
 	update @tmp set profit = total-stotal-tranmoney,rate = case when total=0 then 0 else round((total-stotal-tranmoney)/total*100,0) end
 	
@@ -300,7 +274,6 @@ z_anavccst01:--z_anavccst01
 	from @tmp a
 	left join cust b on a.custno=b.noa
 	order by case when rr1 is null then char(255) else ''end,rr1,rr2;
-
 
 z_anavccst1:--z_anavccst1
 declare @t_bdate nvarchar(10)
