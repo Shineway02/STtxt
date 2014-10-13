@@ -566,6 +566,8 @@ z_uccfe1:--z_uccfe1
 	)
 	insert into @tmpa
 	execute dbo.stkucc2 @t_enddate,@t_bstoreno,@t_estoreno,@t_bproductno,@t_eproductno 
+	--select productno,storeno,mount,[weight]
+	--from dbo.stkucc(@t_enddate,'','')
 	------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_uccfe1')is not null
 	BEGIN
@@ -579,6 +581,7 @@ z_uccfe1:--z_uccfe1
 		store nvarchar(50),
 		productno nvarchar(20),
 		product nvarchar(50),
+		unit nvarchar(20),
 		mount float,
 		[weight] float,
 		price float,
@@ -592,12 +595,15 @@ z_uccfe1:--z_uccfe1
 	and productno between @t_bproductno and @t_eproductno
 	and storeno between @t_bstoreno and @t_estoreno
 	
-	update #z_uccfe1 set product=ISNULL(b.product,''),store=ISNULL(c.store,'')
+	
+	update #z_uccfe1 set product=ISNULL(b.product,''),unit=UPPER(ISNULL(b.unit,'')),store=ISNULL(c.store,'')
 	from #z_uccfe1 a
 	left join ucc b on a.productno=b.noa
 	left join store c on a.storeno=c.noa
+	
 	-------------------------------------------------------------------------------------------
-	update #z_uccfe1 set price = ISNULL(b.sprice,0),[money]=ISNULL(a.mount*b.sprice,0)
+	update #z_uccfe1 set price = ISNULL(b.sprice,0)
+		,[money]=ISNULL(case when a.unit='KG' or a.unit='公斤' or len(isnull(a.unit,''))=0 then a.[weight] else a.mount end*b.sprice,0)
 	from #z_uccfe1 a
 	outer apply(select top 1 y.sprice
 		from uccp x
@@ -606,16 +612,18 @@ z_uccfe1:--z_uccfe1
 		order by x.datea desc) b
 	
 	---------------------------------------------------------------------------------------------
-	insert into #z_uccfe1(gno,recno,productno,product,mount,[weight],price,[money])
-	select '2',0,productno,product,sum(mount),sum([weight]),price,sum(isnull([money],0))
+	insert into #z_uccfe1(gno,recno,productno,product,unit,mount,[weight],price,[money])
+	select '2',0,productno,product,unit,sum(mount),sum([weight]),price,sum(isnull([money],0))
 	from #z_uccfe1
-	where gno = '1'
-	group by productno,product,price
+	where gno = '1' 
+	and (mount>0 and [weight]>0)
+	group by productno,product,unit,price
 	
 	insert into #z_uccfe1(gno,recno,productno,mount,[weight],[money])
 	select '3',0,CHAR(255),sum(mount),sum([weight]),sum(isnull([money],0))
 	from #z_uccfe1
-	where gno = '1'
+	where gno = '1' 
+	and (mount>0 and [weight]>0)
 	---------------------------------------------------------------------------------------------
 	if len(@t_option01)=0
 		delete #z_uccfe1 where gno='1'
