@@ -3,7 +3,8 @@
 	declare @t_bnoa nvarchar(20) = case when '#non' = [2] then '' else [2] end
 	declare @t_enoa nvarchar(20) = case when '#non' = [3] then char(255) else [3] end
 	
-	declare @t_pageline int = 9 -- 一頁幾行
+	declare @t_pageline int = 10 -- 一頁幾行
+	-----------------------------------------------------------------------------
 	-----------------------------------------------------------------------------
 	declare @noa nvarchar(20)
 	declare @datea nvarchar(10)
@@ -58,6 +59,9 @@
 		fax nvarchar(max),
 		addr nvarchar(max),
 		memo nvarchar(max),
+		memo1 nvarchar(max),
+		memo2 nvarchar(max),
+		memo3 nvarchar(max),
 		
 		uno nvarchar(30),
 		productno nvarchar(20),
@@ -74,7 +78,7 @@
 		,uno,productno,product,class,size,spec,mount,[weight],memos)
 	select '1','1',a.noa,isnull(a.datea,''),isnull(a.typea,''),isnull(a.kind,''),isnull(d.kind,''),isnull(a.trantype,'')
 		,isnull(a.custno,''),isnull(a.comp,''),isnull(c.tel,''),isnull(c.fax,''),isnull(c.addr_fact,'')
-		,replace(isnull(a.memo,''),'chr(10)','<BR>')
+		,isnull(a.memo,'')
 		,b.uno,b.productno,b.product,b.class
 		,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
 		,b.spec,b.gmount,b.[gweight],b.memo
@@ -93,25 +97,65 @@
 		,custno,comp,tel,fax,addr,memo
 	
 	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
-	select '3','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+	select '6','5',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
 	from @tmp 
 	group by noa,datea,typea,kind,ckind,trantype
 		,custno,comp,tel,fax,addr,memo
 	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
-	select '4','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+	select '7','5',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
 	from @tmp 
 	group by noa,datea,typea,kind,ckind,trantype
 		,custno,comp,tel,fax,addr,memo
 	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
-	select '5','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+	select '8','5',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
 	from @tmp 
 	group by noa,datea,typea,kind,ckind,trantype
 		,custno,comp,tel,fax,addr,memo
-	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
-	select '6','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+		
+	declare @memo nvarchar(max)
+	declare @memo1 nvarchar(max)
+	declare @memo2 nvarchar(max)
+	declare @memo3 nvarchar(max)
+	
+	declare cursor_table cursor for
+	select noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
 	from @tmp 
 	group by noa,datea,typea,kind,ckind,trantype
 		,custno,comp,tel,fax,addr,memo
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr,@memo
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		select @memo1='',@memo2='',@memo3=''
+		if(CHARINDEX('chr(10)',@memo)>0)
+		begin
+			set @memo1 = LEFT(@memo,CHARINDEX('chr(10)',@memo)-1)
+			set @memo = right(@memo,LEN(@memo)-LEN(@memo1)-7)
+			if(CHARINDEX('chr(10)',@memo)>0)
+			begin
+				set @memo2 = LEFT(@memo,CHARINDEX('chr(10)',@memo)-1)
+				set @memo3 = right(@memo,LEN(@memo)-LEN(@memo2)-7)
+			end
+			else
+				set @memo2 = @memo
+		end
+		else
+			set @memo1=@memo
+		insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo1)
+		select '3','4',@noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr,@memo1
+		
+		insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo2)
+		select '4','4',@noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr,@memo2
+		
+		insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo3)
+		select '5','4',@noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr,@memo3
+		
+		fetch next from cursor_table
+		into @noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr,@memo
+	end
+	close cursor_table
+	deallocate cursor_table
 	-------------------------------------------------------------------------------
 	declare cursor_table cursor for
 	select noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,count(1) 
@@ -124,7 +168,7 @@
 		while @n%@t_pageline != 0
 		begin
 			insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr)
-			values('7','2',@noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr)
+			values('9','2',@noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr)
 			set @n=@n+1
 		end
 		fetch next from cursor_table
@@ -144,6 +188,9 @@
 	,a.spec a5
 	,a.mount a6
 	,a.[weight] a7 
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo1+'</a>' mm1
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo2+'</a>' mm2
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo3+'</a>' mm3
 	from @tmp a 
 	left join(select noa,COUNT(1) n from @tmp group by noa) b on a.noa=b.noa
 	order by a.noa,a.pno;
