@@ -22,6 +22,7 @@ z_workjp01:--z_workjp01
 		tagcolor nvarchar(max),
 		trantype nvarchar(max),
 		chktype nvarchar(max),
+		tolerance nvarchar(max),
 		worker nvarchar(20),
 		memo nvarchar(max),
 		
@@ -29,6 +30,8 @@ z_workjp01:--z_workjp01
 		noq nvarchar(10),
 		productno nvarchar(20),
 		product nvarchar(50),
+		spec nvarchar(20),
+		num nvarchar(20),
 		lengthb float,
 		mount float,
 		[weight] float,
@@ -37,9 +40,9 @@ z_workjp01:--z_workjp01
 		imgdata nvarchar(max),
 		memos nvarchar(max)
 	)
-	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,chktype,worker,memo
+	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,chktype,tolerance,worker,memo
 		,recno,noq,productno,product,lengthb,mount,[weight],imgdata,memos)
-	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.chktype,a.worker,a.memo
+	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.chktype,a.tolerance,a.worker,a.memo
 		,ROW_NUMBER()over(partition by a.noa order by b.noq)
 		,b.noq,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.imgdata,b.memo
 	from workj a
@@ -49,16 +52,47 @@ z_workjp01:--z_workjp01
 	and isnull(a.odate,'') between @t_bodate and @t_eodate
 	and isnull(a.custno,'') between @t_bcustno and @t_ecustno
 	-----------------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(20)
+	declare @product nvarchar(max)
+	declare @spec nvarchar(20)
+	declare @num nvarchar(20)
+	declare @n int
+	
+	declare cursor_table cursor for
+	select noa,noq,product from @tmp
+    open cursor_table
+    fetch next from cursor_table
+    into @noa,@noq,@product
+    while(@@FETCH_STATUS <> -1)
+    begin
+		select @spec='',@num=''
+		set @n = CHARINDEX('SD',@product)
+		if @n>0
+		begin
+			set @product = rtrim(Ltrim(SUBSTRING(@product,@n+2,LEN(@product))))
+			set @n = CHARINDEX(SPACE(1),@product)
+			if @n>0
+			begin
+				set @spec = left(@product,@n-1)
+				set @num = rtrim(Ltrim(RIGHT(@product,LEN(@product)-len(@spec))))
+			end
+		end
+		update @tmp set spec=@spec,num=@num where noa=@noa and noq=@noq
+        fetch next from cursor_table
+        into @noa,@noq,@product
+    end
+    close cursor_table
+    deallocate cursor_table
+	-----------------------------------------------------------------------------------------------------
 	update @tmp set gno='3',memos=case when c.noa is null then '未產生訂單' else'訂單【'+c.noa+'】未核准'end
 	from @tmp a
 	left join view_ordes b on b.quatno=a.noa and b.no3=a.noq
 	left join view_orde c on b.accy=c.accy and b.noa=c.noa
 	where len(isnull(c.apv,''))=0
 	-----------------------------------------------------------------------------------------------------
-	declare @t_page int = 10 -- 一頁幾行
-	declare @noa nvarchar(20)
-	declare @n int
-	
+	declare @t_page int = 28 -- 一頁幾行
+
 	declare cursor_table cursor for
 	select noa,count(1) from @tmp group by noa
     open cursor_table
@@ -87,12 +121,12 @@ z_workjp01:--z_workjp01
 		,worker a06
 		,tagcolor a07
 		,trantype a08
-		,chktype a09
+		,tolerance a09
 		
-		,productno b01
-		,product b02
-		,case when len(isnull(imgdata,''))>0 then '<img src="'+imgdata+'" style="width:80px'+char(59)+'height:80px'+char(59)+'"/>' 
-			else '<span style="display:block'+char(59)+'width:60px'+char(59)+'height:60px'+char(59)+'"></span>' end b03
+		,spec b01
+		,num b02
+		,case when len(isnull(imgdata,''))>0 then '<img src="'+imgdata+'" style="width:100px'+char(59)+'height:25px'+char(59)+'"/>' 
+			else '<span style="display:block'+char(59)+'width:80px'+char(59)+'height:20px'+char(59)+'"></span>' end b03
 		,lengthb b04
 		,mount b05
 		,[weight] b06
