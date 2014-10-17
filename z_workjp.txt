@@ -10,6 +10,8 @@ z_workjp01:--z_workjp01
 	declare @t_ecustno nvarchar(20) = case when '#non'=[8] then char(255) else [8] end	
 	-------------------------------------------------------------------------------------------------
 	declare @tmp table(
+		ppx int,
+		qqx int,
 		gno nvarchar(10),
 		pno nvarchar(10),
 		noa nvarchar(20),
@@ -111,6 +113,12 @@ z_workjp01:--z_workjp01
     end
     close cursor_table
     deallocate cursor_table
+    
+    
+    update @tmp set ppx = floor((recno-1)/@t_page)+1
+    update @tmp set qqx = b.ppx
+    from @tmp a
+    outer apply (select max(ppx) ppx from @tmp where noa=a.noa) b
     
 	select recno rr
 		,custno a01
