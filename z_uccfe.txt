@@ -1,7 +1,37 @@
 z_uccfe5:--z_uccfe5  批號庫存表
+	declare @t_bdate nvarchar(20) = '103/01/01'
+	declare @t_edate nvarchar(20) = '103/10/30'
+	declare @t_bproductno nvarchar(20) = ''
+	declare @t_eproductno nvarchar(20) = char(255)
 
+	declare @tmp table(
+		gno nvarchar(10),
+		uno nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		mount float,
+		[weight] float
+	)
 	
-	;
+	insert into @tmp(uno,productno,product,mount,[weight])
+	execute dbo.stkucc3 @t_bdate,@t_edate
+	
+	delete @tmp where not isnull(productno,'') between @t_bproductno and @t_eproductno
+	update @tmp set gno='1'
+	
+	insert into @tmp(gno,productno,mount,[weight])
+	select '2',CHAR(255),SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0))
+	from @tmp
+	
+	select ROW_NUMBER()over(order by gno,productno,uno) rr
+		,productno a01
+		,product a02
+		,uno a03
+		,dbo.getComma(mount,0) a04
+		,dbo.getComma([weight],0) a05 
+		,* 
+	from @tmp 
+	order by gno,productno,uno;
 
 z_uccfe4:--z_uccfe4
 	SET QUOTED_IDENTIFIER OFF
