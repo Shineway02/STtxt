@@ -80,6 +80,8 @@ z_workjp01:--z_workjp01
 			begin
 				set @spec = left(@product,@n-1)
 				set @num = rtrim(Ltrim(RIGHT(@product,LEN(@product)-len(@spec))))
+				if CHARINDEX('#',@num)>0
+					set @num = LEFT(@num,CHARINDEX('#',@num))
 			end
 		end
 		update @tmp set spec=@spec,num=@num where noa=@noa and noq=@noq

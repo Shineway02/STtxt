@@ -527,6 +527,8 @@ z_uccfe2:--z_uccfe2
 	declare @totmount float
 	declare @totweight float	
 	declare @recno int
+	declare @date nvarchar(20)
+	declare @curdate nvarchar(20)
 	
 	declare cursor_table cursor for
 	select productno,storeno from #z_uccfe2 group by productno,storeno
@@ -538,24 +540,37 @@ z_uccfe2:--z_uccfe2
 		select @totmount=0,@totweight=0,@recno=1
 		
 		declare cursor_table2 cursor for
-		select accy,tablea,noa,noq,n,mount,[weight] 
+		select accy,tablea,noa,noq,n,mount,[weight],datea
 		from #z_uccfe2 where productno =@productno and storeno=@storeno
 		order by datea,pno
 		open cursor_table2
 		fetch next from cursor_table2
-		into @accy,@tablea,@noa,@noq,@n,@mount,@weight
+		into @accy,@tablea,@noa,@noq,@n,@mount,@weight,@curdate
 		while(@@FETCH_STATUS <> -1)
 		begin
 			if @tablea='ucce'
-				select @totmount=@mount,@totweight=@weight
+			begin
+				if @date=@curdate
+				begin
+					select @totmount=@totmount+@mount,@totweight=@totweight+@weight
+				end
+				else
+				begin
+					select @totmount=@mount,@totweight=@weight
+					set @date=@curdate
+				end
+			end
 			else
+			begin
 				select @totmount=@totmount+@mount*@n,@totweight=@totweight+@weight*@n
+				set @date=@curdate
+			end
 		
 			update #z_uccfe2 set totmount = @totmount,totweight=@totweight,recno=@recno
 			where accy=@accy and tablea=@tablea and noa=@noa and noq=@noq and productno =@productno and storeno=@storeno
 			set @recno = @recno + 1
 			fetch next from cursor_table2
-			into @accy,@tablea,@noa,@noq,@n,@mount,@weight
+			into @accy,@tablea,@noa,@noq,@n,@mount,@weight,@curdate
 		end
 		close cursor_table2
 		deallocate cursor_table2
