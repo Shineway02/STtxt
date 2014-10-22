@@ -258,7 +258,7 @@ z_uccfe2:--z_uccfe2
 		,case a.typea when '1' then '進貨' else '進退' end
 		,case a.typea when '1' then 1 else -1 end
 		,b.mount,b.[weight]
-		,b.storeno,b.store
+		,isnull(b.storeno,''),b.store
 		,a.accy,'rc2fe',a.noa,b.noq
 	from view_rc2 a
 	left join view_rc2s b on a.noa=b.noa
@@ -274,7 +274,7 @@ z_uccfe2:--z_uccfe2
 		,'入庫'
 		,1
 		,b.mount,b.[weight]
-		,a.storeno,a.store
+		,isnull(a.storeno,''),a.store
 		,a.accy,'inafe',a.noa,b.noq
 	from view_ina a
 	left join view_inas b on a.noa=b.noa
@@ -290,7 +290,7 @@ z_uccfe2:--z_uccfe2
 		,'調出'
 		,-1
 		,b.mount,b.[weight]
-		,a.storeno,a.store
+		,isnull(a.storeno,''),a.store
 		,a.accy,'cngfe_Ｘ',a.noa,b.noq
 	from view_cng a
 	left join view_cngs b on a.noa=b.noa
@@ -306,7 +306,7 @@ z_uccfe2:--z_uccfe2
 		,'調入'
 		,1
 		,b.mount,b.[weight]
-		,a.storeinno,a.store
+		,isnull(a.storeinno,''),a.store
 		,a.accy,'cngfe_Ｚ',a.noa,b.noq
 	from view_cng a
 	left join view_cngs b on a.noa=b.noa
@@ -354,7 +354,7 @@ z_uccfe2:--z_uccfe2
 		,case a.typea when '1' then '委入' else '委入退' end
 		,case a.typea when '1' then 1 else -1 end
 		,b.mount,b.[weight]
-		,b.storeno,b.store
+		,isnull(b.storeno,''),b.store
 		,a.accy,'workdfe',a.noa,b.noq
 	from view_workd a
 	left join view_workds b on a.noa=b.noa
@@ -371,7 +371,7 @@ z_uccfe2:--z_uccfe2
 		,'裁剪領料'
 		,-1
 		,a.gmount,a.[gweight]
-		,a.storeno,c.store
+		,isnull(a.storeno,''),c.store
 		,a.accy,'cut_Ｚ',a.noa,''
 	from view_cut a
 	left join store c on a.storeno=c.noa
@@ -387,7 +387,7 @@ z_uccfe2:--z_uccfe2
 		,'裁剪入庫'
 		,1
 		,b.mount,b.[weight]
-		,b.storeno,c.store
+		,isnull(b.storeno,''),c.store
 		,a.accy,'cut_Ｘ',a.noa,b.noq
 	from view_cut a
 	left join view_cuts b on a.noa=b.noa
@@ -405,7 +405,7 @@ z_uccfe2:--z_uccfe2
 		,'派令領料'
 		,-1
 		,b.gmount,b.[gweight]
-		,b.storeno,c.store
+		,isnull(b.storeno,''),c.store
 		,a.accy,'cub_Ｚ',a.noa,b.noq
 	from view_cub a
 	left join view_cubt b on a.noa=b.noa
@@ -422,7 +422,7 @@ z_uccfe2:--z_uccfe2
 		,'派令入庫'
 		,1
 		,b.mount,b.[weight]
-		,b.storeno,c.store
+		,isnull(b.storeno,''),c.store
 		,a.accy,'cub_Ｘ',a.noa,b.noq
 	from view_cub a
 	left join view_cubu b on a.noa=b.noa
@@ -440,7 +440,7 @@ z_uccfe2:--z_uccfe2
 		,case a.typea when '1' then '委出' else '委出退' end
 		,case a.typea when '1' then -1 else 1 end
 		,b.mount,b.[weight]
-		,b.storeno,b.store
+		,isnull(b.storeno,''),b.store
 		,a.accy,'workcfe',a.noa,b.noq
 	from view_workc a
 	left join view_workcs b on a.noa=b.noa
@@ -456,14 +456,14 @@ z_uccfe2:--z_uccfe2
 		,'領料'
 		,-1
 		,b.mount,b.[weight]
-		,a.storeno,a.store
+		,isnull(a.storeno,''),a.store
 		,a.accy,'getfe',a.noa,b.noq
 	from view_get a
 	left join view_gets b on a.noa=b.noa
 	where  not(b.mount=0 and b.[weight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
-	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
+	and isnull(a.storeno,'') between @t_bstoreno and @t_estoreno
 	and a.datea between @t_bdate and @t_edate
 	
 	insert into #z_uccfe2(gno,pno,productno,product,datea,[action],n,mount,[weight],storeno,store
@@ -472,7 +472,7 @@ z_uccfe2:--z_uccfe2
 		,case a.typea when '1' then '出貨' else '出退' end
 		,case a.typea when '1' then -1 else 1 end
 		,b.mount,b.[weight]
-		,b.storeno,b.store
+		,isnull(b.storeno,''),b.store
 		,a.accy,'vccfe',a.noa,b.noq
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
@@ -507,7 +507,7 @@ z_uccfe2:--z_uccfe2
 		
 		declare cursor_table2 cursor for
 		select accy,tablea,noa,noq,n,mount,[weight] 
-		from #z_uccfe2 where productno =@productno and storeno=@storeno
+		from #z_uccfe2 where gno='1' and productno =@productno and storeno=@storeno
 		order by datea,pno
 		open cursor_table2
 		fetch next from cursor_table2
@@ -520,7 +520,7 @@ z_uccfe2:--z_uccfe2
 				select @totmount=@totmount+@mount*@n,@totweight=@totweight+@weight*@n
 		
 			update #z_uccfe2 set totmount = @totmount,totweight=@totweight,recno=@recno
-			where accy=@accy and tablea=@tablea and noa=@noa and noq=@noq
+			where accy=@accy and tablea=@tablea and noa=@noa and noq=@noq and productno =@productno and storeno=@storeno
 			set @recno = @recno + 1
 			fetch next from cursor_table2
 			into @accy,@tablea,@noa,@noq,@n,@mount,@weight
@@ -651,14 +651,14 @@ z_uccfe1:--z_uccfe1
 	select '2',0,productno,product,unit,sum(mount),sum([weight]),price,sum(isnull([money],0))
 	from #z_uccfe1
 	where gno = '1' 
-	and (mount>0 and [weight]>0)
+--	and (mount>0 and [weight]>0)
 	group by productno,product,unit,price
 	
 	insert into #z_uccfe1(gno,recno,productno,mount,[weight],[money])
 	select '3',0,CHAR(255),sum(mount),sum([weight]),sum(isnull([money],0))
 	from #z_uccfe1
 	where gno = '1' 
-	and (mount>0 and [weight]>0)
+--	and (mount>0 and [weight]>0)
 	---------------------------------------------------------------------------------------------
 	if len(@t_option01)=0
 		delete #z_uccfe1 where gno='1'
