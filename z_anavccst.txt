@@ -1,3 +1,125 @@
+z_anavccst03:--z_anavccst03
+	SET QUOTED_IDENTIFIER OFF
+	
+	declare @t_bproductno nvarchar(20) = case when '#non'=[10] then '' else [10] end
+	declare @t_eproductno nvarchar(20) = case when '#non'=[11] then char(255) else [11] end
+	declare @t_bdime float = 0
+	declare @t_edime float = 999
+	declare @t_bwidth float = 0
+	declare @t_ewidth float = 999
+	
+	begin try
+		set @t_bdime = cast([12] as float)
+		set @t_edime = cast([13] as float)
+		set @t_bwidth = cast([14] as float)
+		set @t_bwidth = cast([15] as float)
+	end try
+	begin catch
+		--nothing
+	end catch
+	------------------------------------------------------------------------------------------
+	declare @tmpa table(
+		accy nvarchar(20),
+		ordeno nvarchar(20),
+		no2 nvarchar(10),
+		productno nvarchar(20),
+		dime float,
+		width float,
+		mount float,
+		[weight] float,
+		gmount float,
+		gweight float,
+		emount float,
+		eweight float
+	)
+	--前提：訂單編號不會重覆
+	insert into @tmpa (accy,ordeno,no2,productno,dime,width,mount,[weight])
+	select '',a.noa,b.no2,b.productno,b.dime,b.width,b.mount,b.[weight]
+	from view_orde a
+	left join view_ordes b on a.accy=b.accy and a.noa=b.noa
+	where b.noa is not null
+	and LEFT(a.kind,1)='A'
+	and isnull(a.enda,0)=0 and isnull(a.cancel,0)=0  
+	and ISNULL(b.enda,0)=0 and isnull(b.cancel,0)=0
+	and b.productno between @t_bproductno and @t_eproductno
+	and b.dime between @t_bdime and @t_edime
+	and b.width between @t_bwidth and @t_ewidth
+	--group by b.productno,b.dime,b.width
+	
+	update @tmpa set gmount=ISNULL(b.mount,0),gweight=ISNULL(b.[weight],0)
+	from @tmpa a
+	outer apply (select SUM(mount) mount,SUM([weight]) [weight] from view_vccs where ordeno=a.ordeno and no2=a.no2) b
+	update @tmpa set emount = cast(mount as decimal(10,3))-cast(gmount as decimal(10,3))
+		,eweight = cast([weight] as decimal(10,3))-cast(gweight as decimal(10,3))
+	------------------------------------------------------------------------------------------------
+	declare @tmpb table(
+		productno nvarchar(20),
+		dime float,
+		width float,
+		mount float,
+		[weight] float
+	)
+	insert into @tmpb(productno,dime,width,mount,[weight])
+	select productno,dime,width,SUM(emount),SUM([eweight])
+	from @tmpa
+	group by productno,dime,width
+	having not(SUM(emount)=0 and SUM([eweight])=0)
+	------------------------------------------------------------------------------------------------
+	declare @tmpc table(
+		productno nvarchar(20),
+		dime float,
+		width float,
+		mount float,
+		[weight] float
+	)
+	insert into @tmpc(productno,dime,width,mount,[weight])
+	select b.productno,b.dime,b.width,SUM(a.emount) mount,SUM(a.[eweight]) [weight]
+	from uccy a
+	left join view_uccb b on a.uno=b.uno
+	where b.uno is not null
+	and LEFT(b.kind,1)='A'
+	and b.productno between @t_bproductno and @t_eproductno
+	and b.dime between @t_bdime and @t_edime
+	and b.width between @t_bwidth and @t_ewidth
+	group by b.productno,b.dime,b.width
+	having not(SUM(a.emount)=0 and SUM(a.[eweight])=0)
+	------------------------------------------------------------------------------------------------
+	declare @tmpd table(
+		gno nvarchar(20),
+		recno int,
+		productno nvarchar(20),
+		product nvarchar(50),
+		dime float,
+		width float,
+		mount1 float,
+		weight1 float,
+		mount2 float,
+		weight2 float
+	)
+	insert into @tmpd(gno,recno,productno,dime,width,mount1,[weight1],mount2,[weight2])
+	select '1',ROW_NUMBER()over(order by productno,dime,width),productno,dime,width,SUM(mount1),SUM(weight1),SUM(mount2),SUM(weight2)
+	from(
+		select productno,dime,width,mount mount1,[weight] weight1,0 mount2,0 weight2 from @tmpb
+		union all
+		select productno,dime,width,0,0,mount,[weight] from @tmpc)a
+	group by productno,dime,width
+	
+	update @tmpd set product=b.product
+	from @tmpd a
+	left join ucc b on a.productno=b.noa
+	
+	select recno rr
+		,productno b01
+		,product b02
+		,dime b03
+		,width b04
+		,dbo.getComma(mount1,3) b05
+		,dbo.getComma(weight1,3) b06
+		,dbo.getComma(mount2,3) b07
+		,dbo.getComma(weight2,3) b08
+		,* 
+	from @tmpd
+
 z_anavccst02:--z_anavccst02
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
