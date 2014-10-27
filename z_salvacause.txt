@@ -13,6 +13,7 @@ set @t_bydate = case when '#non'=[4] then '' else [4] end
 set @t_eydate = case when '#non'=[5] then char(255) else [5] end
 set @t_bsssno = case when '#non'=[6] then '' else [6] end
 set @t_esssno = case when '#non'=[7] then char(255) else [7] end
+
 select '0' gno,* ,@t_bdate xbdate,@t_edate xedate
 from salvacause
 where (LEN(@t_xnoa) = 0 or @t_xnoa = noa) and
@@ -226,4 +227,113 @@ IF OBJECT_ID('tempdb..#tmp')is not null
 BEGIN
 	drop table #tmp
 END
+;
+-----------------------------------------------------------------------------------------------
+z_salvacausest3:--z_salvacausest3
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+declare @t_show nvarchar(20)
+
+set @t_bsssno = case when '#non'=[6] then '' else [6] end
+set @t_esssno = case when '#non'=[7] then char(255) else [7] end
+set @t_show = case when '#non'=[8] then '0' else [8] end
+
+declare @now_date nvarchar(10)--現在日期
+set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
+--------------------------------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(50),
+		sssno nvarchar(50),
+		namea nvarchar(50),
+		phour float,
+		used float,
+		total float,
+		pdate nvarchar(50),
+		edate nvarchar(50),
+		vnoa nvarchar(50),
+		vhour float
+)
+
+insert @tmp(gno,sssno,namea,phour,used,total)
+select '0',a.sssno,MAX(b.namea),sum(a.special),sum(a.used),sum(a.special-a.used) 
+from dbo.carryforwards([9],'','') a left join sss b on a.sssno=b.noa
+where (@now_date between a.datea and a.enddate) and (a.sssno between @t_bsssno and @t_esssno)
+group by a.sssno
+
+insert @tmp(gno,sssno,namea,pdate,phour,used,total,edate)
+select '1',a.sssno,b.namea,a.datea,a.special,a.used,a.special-a.used,a.enddate
+from dbo.carryforwards([9],'','') a left join sss b on a.sssno=b.noa
+where (@now_date between a.datea and a.enddate) and (a.sssno between @t_bsssno and @t_esssno)
+
+--顯示扣抵明細
+declare @tmpa table(
+		sssno nvarchar(50),
+		namea nvarchar(50),
+		vnoa nvarchar(50),
+		pdate nvarchar(50),
+		vhour float
+)
+
+declare @sssno nvarchar(MAX)
+declare @namea nvarchar(MAX)
+declare @noa nvarchar(MAX)
+declare @carryforwards nvarchar(MAX)
+declare @t_carryforwards nvarchar(MAX)
+declare @datea nvarchar(MAX)
+declare @hours nvarchar(MAX)
+
+if(charindex('2',@t_show)>0)
+begin
+
+	declare cursor_table cursor for
+	select sssno,namea,noa,carryforwards from salvacause where carryforwards!=''
+	open cursor_table
+	fetch next from cursor_table
+	into @sssno,@namea,@noa,@carryforwards
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @t_carryforwards=@carryforwards
+		while(charindex(',',@t_carryforwards)>0)
+		begin
+			
+			set @datea=dbo.split(@t_carryforwards,',',0)
+			set @hours=dbo.split(@t_carryforwards,',',1)
+			
+			if((select count(*) from @tmp where gno='1' and sssno=@sssno and pdate=@datea)>0)
+			begin
+					insert @tmp(gno,sssno,namea,pdate,vnoa,vhour)
+					select '2',@sssno,@namea,@datea,@noa,@hours
+			end
+			
+			insert @tmpa
+			select @sssno,@namea,@noa,@datea,@hours
+			
+			set @t_carryforwards=substring(@t_carryforwards,len(@datea+','+@hours+',')+1,len(@t_carryforwards))
+		end
+		
+		fetch next from cursor_table
+		into @sssno,@namea,@noa,@carryforwards
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+
+--顯示顯示換休明細
+if(charindex('1',@t_show)=0)
+begin
+	delete @tmp where gno='1'
+end
+
+select 
+dbo.getComma(phour,1) phour,
+dbo.getComma(used,1) used,
+dbo.getComma(total,1) total,
+dbo.getComma(vhour,1) vhour,
+pdate+'  ('+edate+')' pedate,
+'salvacause?noa=$vnoa?' ghref,
+* 
+from @tmp 
+order by sssno,pdate,gno
+
 ;
