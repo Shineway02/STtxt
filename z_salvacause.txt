@@ -1,0 +1,229 @@
+﻿z_salvacausest1:--z_salvacausest1
+declare @t_xnoa nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bydate nvarchar(10)
+declare @t_eydate nvarchar(10)
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+set @t_xnoa = case when '#non' = [1] then '' else [1] end
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bydate = case when '#non'=[4] then '' else [4] end
+set @t_eydate = case when '#non'=[5] then char(255) else [5] end
+set @t_bsssno = case when '#non'=[6] then '' else [6] end
+set @t_esssno = case when '#non'=[7] then char(255) else [7] end
+select '0' gno,* ,@t_bdate xbdate,@t_edate xedate
+from salvacause
+where (LEN(@t_xnoa) = 0 or @t_xnoa = noa) and
+(datea between @t_bydate and @t_eydate) 
+and ((bdate between @t_bdate and @t_edate) or (edate between @t_bdate and @t_edate) 
+or (@t_bdate between bdate and edate) or (@t_edate between bdate and edate))
+ and (sssno between @t_bsssno and @t_esssno);
+-------------------------------------------------------------------------------------------------------------------------------
+z_salvacausest2:--z_salvacausest2
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bydate nvarchar(10)
+declare @t_eydate nvarchar(10)
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bydate = case when '#non'=[4] then '' else [4] end
+set @t_eydate = case when '#non'=[5] then char(255) else [5] end
+set @t_bsssno = case when '#non'=[6] then '' else [6] end
+set @t_esssno = case when '#non'=[7] then char(255) else [7] end
+
+SET QUOTED_IDENTIFIER OFF
+declare @cmd nvarchar(max) 
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+   drop table #tmpa
+END
+
+IF OBJECT_ID('tempdb..#tmpb')is not null
+BEGIN
+   drop table #tmpb
+END
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+	
+declare @htype table(
+		idno int,
+		htypeno nvarchar(50),
+		namea nvarchar(50)
+)
+
+insert @htype select ROW_NUMBER() over(order by noa),noa,namea from salhtype order by noa
+
+--資料
+create table #tmpa(
+	sssno nvarchar(50),
+	namea nvarchar(50),
+	htype nvarchar(50),
+	hr_used float
+)
+
+--插入有請假的統計
+insert #tmpa
+select sssno
+,(case when isnull((select top 1 namea from sss where noa=a.sssno),'')='' then MAX(namea) else (select top 1 namea from sss where noa=a.sssno) end)
+,htype,SUM(hr_used) 
+from salvacause a
+where noa between @t_bsssno and @t_esssno
+and ((bdate between @t_bdate and @t_edate) or (edate between @t_bdate and @t_edate) 
+or (@t_bdate between bdate and edate) or (@t_edate between bdate and edate))
+group by sssno,htype
+
+--插入有請假但沒有其他假的內容
+insert #tmpa
+select a.sssno,a.namea,b.noa,0 from 
+(select sssno,MAX(namea)namea from #tmpa group by sssno) a
+left join salhtype b on 1=1
+where a.sssno+'_'+b.noa not in (select sssno+'_'+htype from #tmpa)
+
+--插入沒請假的在職員工
+insert #tmpa
+select a.noa,a.namea,b.noa,0 from sss a left join salhtype b on 1=1
+where a.noa not in (select sssno from #tmpa group by sssno)
+and a.noa between @t_bsssno and @t_esssno
+and isnull(outdate,'')=''
+
+--插入遲到早退的且不存在的員工
+insert #tmpa
+select a.sssno,a.namea,b.noa,0 from(
+select sssno,MAX(namea) namea from salpresents where sssno not in (select sssno from #tmpa group by sssno) group by sssno)a
+left join salhtype b on 1=1
+
+--遲到和早退 資料--用於打卡機客戶
+create table #tmpb(
+	typea nvarchar(50),
+	sssno nvarchar(50),
+	scount float
+)
+
+insert #tmpb
+select '早退',sssno,COUNT(*) from salpresents
+where noa between @t_bdate and @t_edate and charindex('早退',memo)>0
+group by sssno
+
+insert #tmpb
+select '遲到',sssno,COUNT(*) from salpresents
+where noa between @t_bdate and @t_edate and charindex('遲到',memo)>0
+group by sssno
+
+
+--結果
+create table #tmp(
+	gno nvarchar(1),
+	st int,
+	sssno nvarchar(50),
+	namea nvarchar(50),
+	ht int,
+	htyp0 nvarchar(50),
+	htyp1 nvarchar(50),
+	htyp2 nvarchar(50),
+	htyp3 nvarchar(50),
+	htyp4 nvarchar(50),
+	htyp5 nvarchar(50),
+	htyp6 nvarchar(50),
+	htyp7 nvarchar(50),
+	htyp8 nvarchar(50),
+	htyp9 nvarchar(50),
+	h0 float,
+	h1 float,
+	h2 float,
+	h3 float,
+	h4 float,
+	h5 float,
+	h6 float,
+	h7 float,
+	h8 float,
+	h9 float
+)
+
+declare @hidno nvarchar(50)
+declare @htypeno nvarchar(50)
+declare @namea nvarchar(50)
+
+declare htype_table cursor for
+select idno-1,htypeno,namea from @htype order by idno
+open htype_table
+fetch next from htype_table
+into @hidno,@htypeno,@namea
+while(@@FETCH_STATUS <> -1)
+begin
+	
+	set @cmd=
+	"insert #tmp(gno,sssno,namea,ht,htyp"+cast((@hidno%10)as nvarchar(10))+",h"+cast((@hidno%10) as nvarchar(10))+")
+	select '9',sssno,namea,"+cast(@hidno/10 as nvarchar(10))+",'"+@namea+"',hr_used 
+	from #tmpa where htype='"+@htypeno+"'"
+	execute sp_executesql @cmd
+	
+	--有用打卡機的客戶 遲到和早退要另外抓
+	
+	if(@namea='遲到' or @namea='早退')
+	set @cmd=
+	"update a
+	set h"+cast((@hidno%10) as nvarchar(10))+"=isnull((select scount from #tmpb where sssno=a.sssno and typea='"+@namea+"'),0)
+	from #tmp a"
+	execute sp_executesql @cmd
+	
+	fetch next from htype_table
+	into @hidno,@htypeno,@namea
+end
+close htype_table
+deallocate htype_table
+
+insert #tmp (gno,ht,sssno,namea,htyp0,htyp1,htyp2,htyp3,htyp4,htyp5,htyp6,htyp7,htyp8,htyp9,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9)
+select '0',ht,sssno,MAX(namea),MAX(htyp0),MAX(htyp1),MAX(htyp2),MAX(htyp3)
+,MAX(htyp4),MAX(htyp5),MAX(htyp6),MAX(htyp7),MAX(htyp8),MAX(htyp9)
+,SUM(h0),SUM(h1),SUM(h2),SUM(h3),SUM(h4),SUM(h5),SUM(h6),SUM(h7),SUM(h8),SUM(h9)
+from #tmp group by ht,sssno
+
+delete #tmp where gno='9'
+
+insert #tmp (gno,sssno,ht,st,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9)
+select '1',CHAR(255),ht,MAX(st),SUM(h0),SUM(h1),SUM(h2),SUM(h3),SUM(h4),SUM(h5),SUM(h6),SUM(h7),SUM(h8),SUM(h9)
+from #tmp group by ht
+
+--分頁用
+update a
+set st=((b.sidno-1)/36)
+from #tmp a
+left join (select ROW_NUMBER() over(order by sssno) sidno,sssno from #tmp group by sssno)b
+on a.sssno=b.sssno
+	
+select 
+dbo.getComma(h0,1) h0,
+dbo.getComma(h1,1) h1,
+dbo.getComma(h2,1) h2,
+dbo.getComma(h3,1) h3,
+dbo.getComma(h4,1) h4,
+dbo.getComma(h5,1) h5,
+dbo.getComma(h6,1) h6,
+dbo.getComma(h7,1) h7,
+dbo.getComma(h8,1) h8,
+dbo.getComma(h9,1) h9,
+*
+from #tmp order by st,ht,sssno,gno
+
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+   drop table #tmpa
+END
+
+IF OBJECT_ID('tempdb..#tmpb')is not null
+BEGIN
+   drop table #tmpb
+END
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+;
