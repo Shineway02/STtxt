@@ -23,6 +23,8 @@ z_workjp01:--z_workjp01
 		[site] nvarchar(max),
 		tagcolor nvarchar(max),
 		trantype nvarchar(max),
+		trantype1 nvarchar(max),
+		trantype2 nvarchar(max),
 		chktype nvarchar(max),
 		tolerance nvarchar(max),
 		worker nvarchar(20),
@@ -42,9 +44,9 @@ z_workjp01:--z_workjp01
 		imgdata nvarchar(max),
 		memos nvarchar(max)
 	)
-	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,chktype,tolerance,worker,memo
+	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,trantype1,trantype2,chktype,tolerance,worker,memo
 		,recno,noq,productno,product,lengthb,mount,[weight],imgdata,memos)
-	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.chktype,a.tolerance,a.worker,a.memo
+	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.trantype1,a.trantype2,a.chktype,a.tolerance,a.worker,a.memo
 		,ROW_NUMBER()over(partition by a.noa order by b.noq)
 		,b.noq,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.imgdata,b.memo
 	from workj a
@@ -78,6 +80,8 @@ z_workjp01:--z_workjp01
 			begin
 				set @spec = left(@product,@n-1)
 				set @num = rtrim(Ltrim(RIGHT(@product,LEN(@product)-len(@spec))))
+				if CHARINDEX('#',@num)>0
+					set @num = LEFT(@num,CHARINDEX('#',@num))
 			end
 		end
 		update @tmp set spec=@spec,num=@num where noa=@noa and noq=@noq
@@ -126,10 +130,12 @@ z_workjp01:--z_workjp01
 		,[site] a03
 		,datea a04
 		,odate a05
-		,worker a06
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+worker+'</a>' a06
 		,tagcolor a07
-		,trantype a08
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+trantype+'</a>' a08
 		,tolerance a09
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+trantype1+'</a>' a10
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+trantype2+'</a>' a11
 		
 		,spec b01
 		,num b02
