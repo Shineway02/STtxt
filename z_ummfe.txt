@@ -62,7 +62,11 @@ z_ummfe03:--z_ummfe03
 		set @t_bbmon = char(255)
 	end catch
 	---------------------------------------------------------------------
-	declare @tmp table(
+	IF OBJECT_ID('tempdb..#z_ummfe03')is not null
+	BEGIN
+		drop table #z_ummfe03
+	END
+	create table #z_ummfe03(
 		gno nvarchar(10),
 		pno int,
 		recno int,
@@ -94,8 +98,9 @@ z_ummfe03:--z_ummfe03
 		price float,
 		moneys float		
 	)
+	create index noa on #z_ummfe03(cno,coin,custno)
 	--只顯示本期有出貨的
-	insert into @tmp(gno,pno,recno,cno,coin,custno
+	insert into #z_ummfe03(gno,pno,recno,cno,coin,custno
 		,datea,typea,tablea,accy,noa,[money],tax,product,unit,mount,price,moneys,vccCount,xx)
 	select '1',1,ROW_NUMBER()over(partition by a.cno,a.coin,a.custno order by a.noa,b.noq)
 		,isnull(a.cno,''),isnull(a.coin,''),isnull(a.custno,'')
@@ -108,80 +113,81 @@ z_ummfe03:--z_ummfe03
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
 	where (len(@t_cno)=0 or a.cno=@t_cno)
-	and case when len(ISNULL(a.custno2,''))>0 then a.custno2 else a.custno end between @t_bcustno and @t_ecustno
+	and case when len(ISNULL(a.custno2,''))>0 then a.custno2 else isnull(a.custno,'') end between @t_bcustno and @t_ecustno
 	and a.mon between @t_bmon and @t_emon
 	--------------------------------------------------------------------------------------------
-	insert into @tmp(gno,pno,cno,coin,custno
-		,datea,typea,tablea,accy,noa,tax)
-	select '2',2,cno,'',custno
-		,datea,'稅','vcca','',noa,[tax]
+	insert into #z_ummfe03(gno,pno,cno,coin,custno
+		,datea,typea,tablea,accy,noa,tax,xx)
+	select '2',2,isnull(cno,''),'',isnull(custno,'')
+		,datea,'稅','vcca','',noa,[tax],1
 	from vcca 
-	where custno between @t_bcustno and @t_ecustno
+	where isnull(custno,'') between @t_bcustno and @t_ecustno
 	and LEFT(datea,6) between @t_bmon and @t_emon
+	and taxtype!='6' --作廢
 	--------------------------------------------------------------------------------------------
 	--頁尾小計
 	--出貨金額：
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '5',5,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno
 	
 	--退貨金額：
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '6',6,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno
 	
 	--稅    額：
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '7',7,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno	
 		
 	--本期應收：
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '8',8,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno	
 		
 	--已收金額：
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '9',9,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno	
 		
 	--前期未收：
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '10',10,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno	
 	
 	--呆帳
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '11',11,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno
 		
 	--應收總計：	
-	insert into @tmp(gno,pno,cno,coin,custno)
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '12',12,cno,coin,custno 
-	from @tmp
+	from #z_ummfe03
 	group by cno,coin,custno
 	
 	--------------------------------------------------------------------------------------------
-	update @tmp set sale=b.sale,bksale=b.bksale,taxsale=b.taxsale
-	from @tmp a
+	update #z_ummfe03 set sale=b.sale,bksale=b.bksale,taxsale=b.taxsale
+	from #z_ummfe03 a
 	left join(
 		select cno,coin,custno
 		,SUM(case typea when '出' then ISNULL([money],0) else 0 end) sale
 		,SUM(case typea when '退' then ISNULL([money],0) else 0 end) bksale
 		,SUM(case typea when '退' then -ISNULL([tax],0) else ISNULL([tax],0) end) taxsale
-		from @tmp
+		from #z_ummfe03
 		group by cno,coin,custno
 	)b on a.cno=b.cno and a.coin=b.coin and a.custno=b.custno
 
-	update @tmp set totsale=b.totsale, pay=b.pay, unpay1=b.unpay 
-	from @tmp a
+	update #z_ummfe03 set totsale=b.totsale, pay=b.pay, unpay1=b.unpay 
+	from #z_ummfe03 a
 	left join (
 		select cno,coin,noa,SUM(isnull(sale,0)) sale,SUM(isnull(tax,0)) tax
 		,SUM(isnull(totsale,0)) totsale,SUM(isnull(pay,0)) pay,SUM(isnull(unpay,0)) unpay
@@ -193,8 +199,8 @@ z_ummfe03:--z_ummfe03
 		group by cno,coin,noa
 	)b on a.cno=b.cno and a.coin=b.coin and a.custno=b.noa
 	
-	update @tmp set unpay2=b.unpay 
-	from @tmp a
+	update #z_ummfe03 set unpay2=b.unpay 
+	from #z_ummfe03 a
 	left join (
 		select cno,coin,noa,SUM(isnull(sale,0)) sale,SUM(isnull(tax,0)) tax
 		,SUM(isnull(totsale,0)) totsale,SUM(isnull(pay,0)) pay,SUM(isnull(unpay,0)) unpay
@@ -206,8 +212,8 @@ z_ummfe03:--z_ummfe03
 		group by cno,coin,noa
 	)b on a.cno=b.cno and a.coin=b.coin and a.custno=b.noa
 	
-	update @tmp set unpay3=b.unpay 
-	from @tmp a
+	update #z_ummfe03 set unpay3=b.unpay 
+	from #z_ummfe03 a
 	left join (
 		select cno,coin,noa,SUM(isnull(sale,0)) sale,SUM(isnull(tax,0)) tax
 		,SUM(isnull(totsale,0)) totsale,SUM(isnull(pay,0)) pay,SUM(isnull(unpay,0)) unpay
@@ -219,12 +225,12 @@ z_ummfe03:--z_ummfe03
 		group by cno,coin,noa
 	)b on a.cno=b.cno and a.coin=b.coin and a.custno=b.noa
 	
-	update @tmp set total = ISNULL(unpay1,0)+ISNULL(unpay2,0)+ISNULL(unpay3,0)
+	update #z_ummfe03 set total = ISNULL(unpay1,0)+ISNULL(unpay2,0)+ISNULL(unpay3,0)
 	
-	update @tmp set vccCount=b.nn
-	from @tmp a
+	update #z_ummfe03 set vccCount=b.nn
+	from #z_ummfe03 a
 	left join (select cno,coin,custno,SUM(vcccount)nn
-		from @tmp group by cno,coin,custno)b
+		from #z_ummfe03 group by cno,coin,custno)b
 	on a.cno=b.cno and a.coin=b.coin and a.custno=b.custno
 	-----------------------------------------------------------------------------------------------
 	declare @t_pageline int = 36 -- 一頁幾行
@@ -235,7 +241,7 @@ z_ummfe03:--z_ummfe03
 	declare @m int
 	
 	declare cursor_table cursor for
-	select cno,custno,coin,count(1) from @tmp group by cno,custno,coin
+	select cno,custno,coin,count(1) from #z_ummfe03 group by cno,custno,coin
 	open cursor_table
 	fetch next from cursor_table
 	into @cno,@custno,@coin,@n
@@ -247,13 +253,13 @@ z_ummfe03:--z_ummfe03
 		begin
 			if @m = 1
 			begin
-				insert into @tmp(gno,pno,cno,coin,custno)values('3',3,@cno,@coin,@custno)
+				insert into #z_ummfe03(gno,pno,cno,coin,custno)values('3',3,@cno,@coin,@custno)
 				set @m = @m+1
 				set @n = @n+1
 			end
 			if @n%@t_pageline!=0
 			begin
-				insert into @tmp(gno,pno,cno,coin,custno)values('4',4,@cno,@coin,@custno)
+				insert into #z_ummfe03(gno,pno,cno,coin,custno)values('4',4,@cno,@coin,@custno)
 				set @n = @n+1
 			end
 		end
@@ -288,10 +294,11 @@ z_ummfe03:--z_ummfe03
 		,dbo.getComma(isnull(a.[unpay3],0),0) c07
 		,dbo.getComma(isnull(a.[total],0),0) c08
 		,a.* 
-	from @tmp a 
+	from #z_ummfe03 a 
 	left join acomp b on a.cno=b.noa
 	left join cust c on a.custno = c.noa
-	order by a.custno,a.cno,a.coin,a.pno,a.recno;
+	order by a.custno,a.cno,a.coin,a.pno,a.recno
+	drop table #z_ummfe03;
 
 z_ummfe02:--z_ummfe02
 	SET QUOTED_IDENTIFIER OFF
