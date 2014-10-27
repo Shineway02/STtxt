@@ -471,12 +471,13 @@ z_uccfe2:--z_uccfe2
 	select '2','14',b.productno,b.product,a.datea
 		,case a.typea when '1' then '出貨' else '出退' end
 		,case a.typea when '1' then -1 else 1 end
-		,b.mount,b.[weight]
+		,case ISNULL(b.gmount,0) when 0 then isnull(b.mount,0) else b.gmount end
+		,case ISNULL(b.gweight,0) when 0 then isnull(b.[weight],0) else b.gweight end
 		,isnull(b.storeno,''),b.store
 		,a.accy,'vccfe',a.noa,b.noq
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
-	where  not(b.mount=0 and b.[weight]=0)
+	where  not(b.mount=0 and b.[weight]=0 and b.gmount=0 and b.[gweight]=0)
 	and len(ISNULL(b.productno,''))>0
 	and b.productno between @t_bproductno and @t_eproductno
 	and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
