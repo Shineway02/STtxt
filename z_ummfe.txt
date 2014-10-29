@@ -58,13 +58,13 @@ z_ummfe06:--z_ummfe06
 	create table #z_ummfe06(
 		custno nvarchar(20),
 		acc1a nvarchar(20), --會計應收  1123
-		acc1b nvarchar(20),--會計預收  2123
+		acc1b nvarchar(20),--會計預收  2131
 		acc1c nvarchar(20)--會計呆帳  8144
 	)
 	insert into #z_ummfe06(custno,acc1a,acc1b,acc1c)
 	select noa
 		,case when len(isnull(uacc1,''))=0 then '1123.'+noa else uacc1 end
-		,'2123.'+noa
+		,'2131.'+noa
 		,'8144.'+noa
 	from cust 
 	where noa between @t_bcustno and @t_ecustno
@@ -86,7 +86,7 @@ z_ummfe06:--z_ummfe06
 			when d.custno is not null then d.custno
 			else e.custno end
 		,SUM(case when c.custno is null then 0 else ISNULL(b.dmoney,0)-ISNULL(b.cmoney,0)end)
-		,SUM(case when d.custno is null then 0 else ISNULL(b.dmoney,0)-ISNULL(b.cmoney,0)end)
+		,SUM(case when d.custno is null then 0 else ISNULL(b.cmoney,0)-ISNULL(b.dmoney,0)end)
 		,SUM(case when e.custno is null then 0 else ISNULL(b.dmoney,0)-ISNULL(b.cmoney,0)end)
 		from accc"+@accy+" a
 		left join acccs"+@accy+" b on a.accc3=b.accc3 
@@ -147,7 +147,7 @@ z_ummfe06:--z_ummfe06
 		,SUM(ISNULL(a.unpay2,0))
 		,SUM(ISNULL(a.acccmoney1,0))
 		,SUM(ISNULL(a.acccmoney2,0))
-		,SUM(ISNULL(a.unpay1,0)-ISNULL(a.acccmoney1,0))
+		,SUM(ISNULL(a.unpay1,0)+ISNULL(a.unpay2,0)-ISNULL(a.acccmoney1,0)-ISNULL(a.acccmoney2,0))
 		,SUM(ISNULL(a.opay,0))
 		,SUM(ISNULL(a.acccmoney3,0))
 		,SUM(ISNULL(a.opay,0)-ISNULL(a.acccmoney3,0))
