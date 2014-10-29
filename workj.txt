@@ -181,28 +181,47 @@ orde:-- workj -> orde
 	
 	--quatno  no3
 	set @cmd=
-	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick,isproj,stype,enda,cancel,apv)
-	select @ordeno,odate,odate,custno,cust,nick,1,'1',0,0,'*'
+	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick,isproj,stype,enda,cancel,apv,trantype,memo2)
+	select @ordeno,odate,odate,custno,cust,nick,1,'1',0,0,'*',trantype,trantype2
 	from workj where noa=@workjno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
-	
-	set @cmd=
-	"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total,quatno,no3,tablea,enda,cancel,c1,notv)
-	select @ordeno,right('000'+cast(ROW_NUMBER()over(order by a.noq) as nvarchar),3),c.odate,c.custno
-		,a.productno,a.product,b.unit,a.lengthb,a.[weight],a.mount,b.price
-		,round(case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end * b.price,0)
-		,a.noa,a.noq,'workj',0,0,0
-		,case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end
-	from workjs a 
-	left join conts b on a.contno=b.noa and a.contnoq=b.noq
-	left join workj c on a.noa=c.noa
-	where a.noa=@workjno"
+	-------------------------------------------------------------------------------------------
+	--合併productno
+	set @cmd =
+	"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total
+		,quatno,no3,tablea,enda,cancel,c1,notv)
+	select @ordeno,right('000'+cast(ROW_NUMBER()over(order by a.productno) as nvarchar),3)
+		,c.datea,c.custno,a.productno,a.product,a.unit,0,a.[weight],a.mount,a.price,a.total
+		,'','','workj',0,0,0,a.notv
+	from(
+		select a.productno,a.product,isnull(b.unit,'') unit,isnull(b.price,0) price
+			,SUM(a.[weight]) [weight],SUM(a.mount) mount
+			,sum(round(case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end * isnull(b.price,0),0)) total
+			,sum(case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end) notv
+		from workjs a
+		left join conts b on a.contno=b.noa and a.contnoq=b.noq
+		where a.noa=@workjno
+		group by a.productno,a.product,b.unit,b.price) a
+	left join workj c on noa=@workjno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
-	
+	--------------------------------------------------------------------------------------------
+	--set @cmd=
+	--"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total,quatno,no3,tablea,enda,cancel,c1,notv)
+	--select @ordeno,right('000'+cast(ROW_NUMBER()over(order by a.noq) as nvarchar),3),c.odate,c.custno
+	--	,a.productno,a.product,b.unit,a.lengthb,a.[weight],a.mount,b.price
+	--	,round(case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end * b.price,0)
+	--	,a.noa,a.noq,'workj',0,0,0
+	--	,case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end
+	--from workjs a 
+	--left join conts b on a.contno=b.noa and a.contnoq=b.noq
+	--left join workj c on a.noa=c.noa
+	--where a.noa=@workjno"
+	--execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
+	--------------------------------------------------------------------------------------------
 	set @cmd=
-	"update orde103 set [money] = b.total,tax = ROUND(b.total*0.05,0),total=b.total+ROUND(b.total*0.05,0)
-	from orde103 a
-	outer apply (select SUM(total) total from ordes103 where noa=a.noa) b
+	"update orde"+@accy+" set [money] = b.total,tax = ROUND(b.total*0.05,0),total=b.total+ROUND(b.total*0.05,0)
+	from orde"+@accy+" a
+	outer apply (select SUM(total) total from ordes"+@accy+" where noa=a.noa) b
 	where a.noa=@ordeno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
 	
