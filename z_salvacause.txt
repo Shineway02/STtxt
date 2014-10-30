@@ -86,7 +86,7 @@ select a.sssno,a.namea,b.noa,0 from
 (select sssno,MAX(namea)namea from #tmpa group by sssno) a
 left join salhtype b on 1=1
 where a.sssno+'_'+b.noa not in (select sssno+'_'+htype from #tmpa)
-and a.sssno between @t_bsssno and @t_esssno 
+--and a.sssno between @t_bsssno and @t_esssno 
 
 --插入沒請假的在職員工
 insert #tmpa
@@ -127,26 +127,38 @@ create table #tmp(
 	sssno nvarchar(50),
 	namea nvarchar(50),
 	ht int,
-	htyp0 nvarchar(50),
-	htyp1 nvarchar(50),
-	htyp2 nvarchar(50),
-	htyp3 nvarchar(50),
-	htyp4 nvarchar(50),
-	htyp5 nvarchar(50),
-	htyp6 nvarchar(50),
-	htyp7 nvarchar(50),
-	htyp8 nvarchar(50),
-	htyp9 nvarchar(50),
-	h0 float,
-	h1 float,
-	h2 float,
-	h3 float,
-	h4 float,
-	h5 float,
-	h6 float,
-	h7 float,
-	h8 float,
-	h9 float
+	htyp00 nvarchar(50),
+	htyp01 nvarchar(50),
+	htyp02 nvarchar(50),
+	htyp03 nvarchar(50),
+	htyp04 nvarchar(50),
+	htyp05 nvarchar(50),
+	htyp06 nvarchar(50),
+	htyp07 nvarchar(50),
+	htyp08 nvarchar(50),
+	htyp09 nvarchar(50),
+	htyp10 nvarchar(50),
+	htyp11 nvarchar(50),
+	htyp12 nvarchar(50),
+	htyp13 nvarchar(50),
+	htyp14 nvarchar(50),
+	htyp15 nvarchar(50),
+	h00 float,
+	h01 float,
+	h02 float,
+	h03 float,
+	h04 float,
+	h05 float,
+	h06 float,
+	h07 float,
+	h08 float,
+	h09 float,
+	h10 float,
+	h11 float,
+	h12 float,
+	h13 float,
+	h14 float,
+	h15 float
 )
 
 declare @hidno nvarchar(50)
@@ -162,8 +174,8 @@ while(@@FETCH_STATUS <> -1)
 begin
 	
 	set @cmd=
-	"insert #tmp(gno,sssno,namea,ht,htyp"+cast((@hidno%10)as nvarchar(10))+",h"+cast((@hidno%10) as nvarchar(10))+")
-	select '9',sssno,namea,"+cast(@hidno/10 as nvarchar(10))+",'"+@namea+"',hr_used 
+	"insert #tmp(gno,sssno,namea,ht,htyp"+right('00'+cast((@hidno%16)as nvarchar(10)),2)+",h"+right('00'+cast((@hidno%16)as nvarchar(10)),2)+")
+	select '9',sssno,namea,"+cast((@hidno/16)as nvarchar(10))+",'"+@namea+"',hr_used 
 	from #tmpa where htype='"+@htypeno+"'"
 	execute sp_executesql @cmd
 	
@@ -172,7 +184,7 @@ begin
 	if(@namea='遲到' or @namea='早退')
 	set @cmd=
 	"update a
-	set h"+cast((@hidno%10) as nvarchar(10))+"=isnull((select scount from #tmpb where sssno=a.sssno and typea='"+@namea+"'),0)
+	set h"+right('00'+cast((@hidno%16)as nvarchar(10)),2)+"=isnull((select scount from #tmpb where sssno=a.sssno and typea='"+@namea+"'),0)
 	from #tmp a"
 	execute sp_executesql @cmd
 	
@@ -182,36 +194,49 @@ end
 close htype_table
 deallocate htype_table
 
-insert #tmp (gno,ht,sssno,namea,htyp0,htyp1,htyp2,htyp3,htyp4,htyp5,htyp6,htyp7,htyp8,htyp9,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9)
-select '0',ht,sssno,MAX(namea),MAX(htyp0),MAX(htyp1),MAX(htyp2),MAX(htyp3)
-,MAX(htyp4),MAX(htyp5),MAX(htyp6),MAX(htyp7),MAX(htyp8),MAX(htyp9)
-,SUM(h0),SUM(h1),SUM(h2),SUM(h3),SUM(h4),SUM(h5),SUM(h6),SUM(h7),SUM(h8),SUM(h9)
+insert #tmp (gno,ht,sssno,namea
+,htyp00,htyp01,htyp02,htyp03,htyp04,htyp05,htyp06,htyp07,htyp08,htyp09,htyp10,htyp11,htyp12,htyp13,htyp14,htyp15
+,h00,h01,h02,h03,h04,h05,h06,h07,h08,h09,h10,h11,h12,h13,h14,h15)
+
+select '0',ht,sssno,MAX(namea)
+,MAX(htyp00),MAX(htyp01),MAX(htyp02),MAX(htyp03),MAX(htyp04),MAX(htyp05),MAX(htyp06)
+,MAX(htyp07),MAX(htyp08),MAX(htyp09),MAX(htyp10),MAX(htyp11),MAX(htyp12),MAX(htyp13),MAX(htyp14),MAX(htyp15)
+,SUM(h00),SUM(h01),SUM(h02),SUM(h03),SUM(h04),SUM(h05),SUM(h06),SUM(h07),SUM(h08),SUM(h09)
+,SUM(h10),SUM(h11),SUM(h12),SUM(h13),SUM(h14),SUM(h15)
 from #tmp group by ht,sssno
 
 delete #tmp where gno='9'
 
-insert #tmp (gno,sssno,ht,st,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9)
-select '1',CHAR(255),ht,MAX(st),SUM(h0),SUM(h1),SUM(h2),SUM(h3),SUM(h4),SUM(h5),SUM(h6),SUM(h7),SUM(h8),SUM(h9)
+insert #tmp (gno,sssno,ht,st,h00,h01,h02,h03,h04,h05,h06,h07,h08,h09,h10,h11,h12,h13,h14,h15)
+select '1',CHAR(255),ht,MAX(st)
+,SUM(h00),SUM(h01),SUM(h02),SUM(h03),SUM(h04),SUM(h05),SUM(h06),SUM(h07),SUM(h08),SUM(h09)
+,SUM(h10),SUM(h11),SUM(h12),SUM(h13),SUM(h14),SUM(h15)
 from #tmp group by ht
 
 --分頁用
 update a
-set st=((b.sidno-1)/36)
+set st=((b.sidno-1)/26)
 from #tmp a
 left join (select ROW_NUMBER() over(order by sssno) sidno,sssno from #tmp group by sssno)b
 on a.sssno=b.sssno
 	
 select 
-dbo.getComma(h0,1) h0,
-dbo.getComma(h1,1) h1,
-dbo.getComma(h2,1) h2,
-dbo.getComma(h3,1) h3,
-dbo.getComma(h4,1) h4,
-dbo.getComma(h5,1) h5,
-dbo.getComma(h6,1) h6,
-dbo.getComma(h7,1) h7,
-dbo.getComma(h8,1) h8,
-dbo.getComma(h9,1) h9,
+dbo.getComma(h00,1) h00,
+dbo.getComma(h01,1) h01,
+dbo.getComma(h02,1) h02,
+dbo.getComma(h03,1) h03,
+dbo.getComma(h04,1) h04,
+dbo.getComma(h05,1) h05,
+dbo.getComma(h06,1) h06,
+dbo.getComma(h07,1) h07,
+dbo.getComma(h08,1) h08,
+dbo.getComma(h09,1) h09,
+dbo.getComma(h10,1) h10,
+dbo.getComma(h11,1) h11,
+dbo.getComma(h12,1) h12,
+dbo.getComma(h13,1) h13,
+dbo.getComma(h14,1) h14,
+dbo.getComma(h15,1) h15,
 *
 from #tmp order by st,ht,sssno,gno
 
