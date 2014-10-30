@@ -86,6 +86,7 @@ select a.sssno,a.namea,b.noa,0 from
 (select sssno,MAX(namea)namea from #tmpa group by sssno) a
 left join salhtype b on 1=1
 where a.sssno+'_'+b.noa not in (select sssno+'_'+htype from #tmpa)
+and a.sssno between @t_bsssno and @t_esssno 
 
 --插入沒請假的在職員工
 insert #tmpa
@@ -99,6 +100,7 @@ insert #tmpa
 select a.sssno,a.namea,b.noa,0 from(
 select sssno,MAX(namea) namea from salpresents where sssno not in (select sssno from #tmpa group by sssno) group by sssno)a
 left join salhtype b on 1=1
+where a.sssno between @t_bsssno and @t_esssno 
 
 --遲到和早退 資料--用於打卡機客戶
 create table #tmpb(

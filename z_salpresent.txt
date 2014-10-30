@@ -91,3 +91,91 @@ insert into @tmp (gno,noa,w133,w166,w100,spec)
 select '1',noa,sum(w133),sum(w166),sum(w100),sum(spec) from @tmp group by noa
 select * from @tmp order by noa,gno,sssno
 ;
+---------------------------------------------------------------------------------------------------------------------------------------------
+z_salpresentst3:--z_salpresentst3
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bsssno nvarchar(50)
+declare @t_esssno nvarchar(50)
+declare @t_bpartno nvarchar(50)
+declare @t_epartno nvarchar(50)
+declare @t_workhour nvarchar(50)
+declare @t_late nvarchar(50)
+declare @t_early nvarchar(50)
+declare @t_bresthour nvarchar(50)
+declare @t_eresthour nvarchar(50)
+declare @t_typea nvarchar(50)
+
+set @t_bdate = case when '#non' = [1] then '' else [1] end
+set @t_edate = case when '#non' = [2] then CHAR(255) else [2] end
+set @t_bsssno = case when '#non' = [4] then '' else [4] end
+set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bpartno = case when '#non' = [6] then '' else [6] end
+set @t_epartno = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_workhour = case when '#non' = [8] then '168' else [8] end
+set @t_late = case when '#non' = [9] then '0' else [9] end
+set @t_early = case when '#non' = [10] then '0' else [10] end
+set @t_bresthour = case when '#non' = [11] then '12:00' else [11] end
+set @t_eresthour = case when '#non' = [12] then '13:00' else [12] end
+set @t_typea = case when '#non' = [13] then '' else [13] end
+-----------------------------------------------------------------------------------------------------------------
+declare @tmp table( 
+	gno nvarchar(1), 
+	sssno nvarchar(50), 
+	namea nvarchar(50), 
+	partno nvarchar(50), 
+	part nvarchar(50), 
+	hours float, 
+	late float, 
+	early float, 
+	forget float, 
+	fulls nvarchar(50) 
+) 
+
+--插入員工
+insert @tmp(gno,sssno,namea,partno,part)
+select '0',noa,namea,partno,part from sss where noa between @t_bsssno and @t_esssno
+and isnull(partno,'') between @t_bpartno and @t_epartno
+and (typea=@t_typea or len(@t_typea)=0)
+
+
+declare @tmpa table( 
+	sssno nvarchar(50), 
+	hours float, 
+	late float, 
+	early float, 
+	forget float
+)
+
+insert @tmpa
+select sssno
+,sum(round((cast(datediff(MINUTE,cast(cast(left(a.noa,3)as int)+1911 as nvarchar(10))+right(a.noa,6)+' '+a.clockin,cast(cast(left((case when a.clockout<a.clockin then dbo.q_cdn(a.noa,1) else a.noa end),3)as int)+1911 as nvarchar(10))+right((case when a.clockout<a.clockin then dbo.q_cdn(a.noa,1) else a.noa end),6)+' '+a.clockout) as float)/60),1)
+-(case when a.clockin>@t_bresthour or a.clockout<@t_eresthour then 0 else round((cast(datediff(MINUTE,cast(cast(left('103/01/01',3)as int)+1911 as nvarchar(10))+right('103/01/01',6)+' '+@t_bresthour,cast(cast(left((case when @t_eresthour<@t_bresthour then dbo.q_cdn('103/01/01',1) else '103/01/01' end),3)as int)+1911 as nvarchar(10))+right((case when @t_eresthour<@t_bresthour then dbo.q_cdn('103/01/01',1) else '103/01/01' end),6)+' '+@t_eresthour) as float)/60),1) end))
+,sum(case when CHARINDEX('遲到',a.memo)>0 then 1 else 0 end)
+,sum(case when CHARINDEX('早退',a.memo)>0 then 1 else 0 end),0
+from salpresents a left join sss b on a.sssno=b.noa
+where a.noa between @t_bdate and @t_edate and a.clockin!='' and a.clockout!=''
+and a.sssno between @t_bsssno and @t_esssno
+and isnull(b.partno,'') between @t_bpartno and @t_epartno
+and (b.typea=@t_typea or len(@t_typea)=0)
+group by sssno
+
+--排除假日
+update a
+set forget=(select COUNT(*) from salpresents sa left join salpresent sb on sa.noa=sb.noa 
+where sa.sssno=a.sssno and (sa.noa between @t_bdate and @t_edate) 
+and (((isnull(sa.clockin,'')='' or isnull(sa.clockin,'')='') and sb.holiday=0)
+or (sb.holiday=1 and charindex('打卡資料錯誤',memo)>0)))
+from @tmpa a
+
+--沒有打卡的資料就保持null
+update a
+set hours=b.hours,late=b.late,early=b.early,forget=b.forget
+from @tmp a left join @tmpa b on a.sssno=b.sssno
+
+update @tmp
+set fulls=(case when cast(@t_workhour as float)<=hours and cast(@t_late as float)>=late and cast(@t_early as float)>=early then 'V' else '' end)
+where hours is not null
+
+select * from @tmp order by sssno
+;
