@@ -45,12 +45,9 @@ and isnull(c.partno,'') between @t_bpartno and @t_epartno
 update @tmp set  ptotl=prevyeartime-usedtime
 
 --年資 
-update @tmp 
-set senior = ( 
-case when (CAST(left(indate,3) as int)=0) then '未滿一月' else ( 
-case when (@year-CAST(left(indate,3) as int)) >0 then cast((@year-CAST(left(indate,3) as int)) as nvarchar) + ' 年 ' else '' end + 
-case when (12-CAST(right(left(indate,6),2) as int)) >0 then cast((12-CAST(right(left(indate,6),2) as int)) as nvarchar) + ' 月' else '' end ) 
-end) 
+update a
+set senior = isnull((select seniority from dbo.seniority('','') where sssno=a.sssno),'')
+from @tmp a
 
 --插入部門小計
 insert into @tmp (gno,partno,part,inday,outday,boutday,total,prevyeartime,usedtime,ptotl,nextyeartime)

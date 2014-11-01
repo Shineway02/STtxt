@@ -407,12 +407,9 @@ and isnull(b.sssno,'') between @t_bsssno and @t_esssno
 update @tmp set  ptotl=prevyeartime-usedtime
 
 --年資 
-update @tmp 
-set senior = ( 
-case when (CAST(left(indate,3) as int)=0) then '未滿一月' else ( 
-case when (@year-CAST(left(indate,3) as int)) >0 then cast((@year-CAST(left(indate,3) as int)) as nvarchar) + ' 年 ' else '' end + 
-case when (12-CAST(right(left(indate,6),2) as int)) >0 then cast((12-CAST(right(left(indate,6),2) as int)) as nvarchar) + ' 月' else '' end ) 
-end) 
+update a
+set senior = isnull((select seniority from dbo.seniority('','') where sssno=a.sssno),'')
+from @tmp a
 
 insert into @tmp (gno,partno,inday,outday,boutday,total,prevyeartime,usedtime,ptotl,nextyeartime)
 select '1' gno,char(255),sum(inday),sum(outday),sum(boutday),sum(total),sum(prevyeartime),sum(usedtime),sum(ptotl),sum(nextyeartime)
