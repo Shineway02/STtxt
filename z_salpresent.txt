@@ -129,6 +129,7 @@ declare @tmp table(
 	late float, 
 	early float, 
 	forget float, 
+	vaca float,
 	fulls nvarchar(50) 
 ) 
 
@@ -144,7 +145,8 @@ declare @tmpa table(
 	hours float, 
 	late float, 
 	early float, 
-	forget float
+	forget float,
+	vaca float
 )
 
 insert @tmpa
@@ -152,7 +154,7 @@ select sssno
 ,sum(round((cast(datediff(MINUTE,cast(cast(left(a.noa,3)as int)+1911 as nvarchar(10))+right(a.noa,6)+' '+a.clockin,cast(cast(left((case when a.clockout<a.clockin then dbo.q_cdn(a.noa,1) else a.noa end),3)as int)+1911 as nvarchar(10))+right((case when a.clockout<a.clockin then dbo.q_cdn(a.noa,1) else a.noa end),6)+' '+a.clockout) as float)/60),1)
 -(case when a.clockin>@t_bresthour or a.clockout<@t_eresthour then 0 else round((cast(datediff(MINUTE,cast(cast(left('103/01/01',3)as int)+1911 as nvarchar(10))+right('103/01/01',6)+' '+@t_bresthour,cast(cast(left((case when @t_eresthour<@t_bresthour then dbo.q_cdn('103/01/01',1) else '103/01/01' end),3)as int)+1911 as nvarchar(10))+right((case when @t_eresthour<@t_bresthour then dbo.q_cdn('103/01/01',1) else '103/01/01' end),6)+' '+@t_eresthour) as float)/60),1) end))
 ,sum(case when CHARINDEX('遲到',a.memo)>0 then 1 else 0 end)
-,sum(case when CHARINDEX('早退',a.memo)>0 then 1 else 0 end),0
+,sum(case when CHARINDEX('早退',a.memo)>0 then 1 else 0 end),0,0
 from salpresents a left join sss b on a.sssno=b.noa
 where a.noa between @t_bdate and @t_edate and a.clockin!='' and a.clockout!=''
 and a.sssno between @t_bsssno and @t_esssno
@@ -161,20 +163,23 @@ and (b.typea=@t_typea or len(@t_typea)=0)
 group by sssno
 
 --排除假日
-update a
+update a 
 set forget=(select COUNT(*) from salpresents sa left join salpresent sb on sa.noa=sb.noa 
 where sa.sssno=a.sssno and (sa.noa between @t_bdate and @t_edate) 
-and (((isnull(sa.clockin,'')='' or isnull(sa.clockin,'')='') and sb.holiday=0)
-or (sb.holiday=1 and charindex('打卡資料錯誤',memo)>0)))
-from @tmpa a
+and (((isnull(sa.clockin,'')='' or isnull(sa.clockin,'')='') and sb.holiday=0) 
+or (sb.holiday=1 and charindex('打卡資料錯誤',memo)>0))
+and sa.noa not between b.bdate and b.edate) 
+,vaca=(select COUNT(*) from salvacause where sssno=a.sssno and hr_used>=8 and (bdate between @t_bdate and @t_edate) and (hname='事假' or hname='病假' or hname='生理假'))
+from @tmpa a 
+outer apply (select bdate,edate from salvacause where sssno=a.sssno and hr_used>=8 and (bdate between @t_bdate and @t_edate))b
 
 --沒有打卡的資料就保持null
 update a
-set hours=b.hours,late=b.late,early=b.early,forget=b.forget
+set hours=b.hours,late=b.late,early=b.early,forget=b.forget,vaca=b.vaca
 from @tmp a left join @tmpa b on a.sssno=b.sssno
 
 update @tmp
-set fulls=(case when cast(@t_workhour as float)<=hours and cast(@t_late as float)>=late and cast(@t_early as float)>=early then 'V' else '' end)
+set fulls=(case when cast(@t_workhour as float)<=hours and cast(@t_late as float)>=late and cast(@t_early as float)>=early and isnull(vaca,0)=0 then 'V' else '' end)
 where hours is not null
 
 select * from @tmp order by sssno

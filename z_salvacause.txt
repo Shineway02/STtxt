@@ -185,7 +185,7 @@ begin
 	begin
 		set @cmd="update a
 		set h"+right('00'+cast((@hidno%16)as nvarchar(10)),2)+"=isnull((select scount from #tmpb where sssno=a.sssno and typea='"+@namea+"'),0)
-		from #tmp a"
+		from #tmp a where htyp"+right('00'+cast((@hidno%16)as nvarchar(10)),2)+"='"+@namea+"'"
 		execute sp_executesql @cmd
 	end
 	
