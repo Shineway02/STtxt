@@ -33,8 +33,9 @@ begin
 		+RIGHT(@datea,6)
 	set @t_weekday=DATEPART(WEEKDAY, @datea)-1
 	
-	if(@t_weekday!=6 and @t_weekday!=0
-		and (right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)+RIGHT(@datea,6)) not in (select noa from holiday where isnull(iswork,0)=0))
+	if((@t_weekday!=6 and @t_weekday!=0
+		and (right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)+RIGHT(@datea,6)) not in (select noa from holiday where isnull(iswork,0)=0)
+		)or (right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)+RIGHT(@datea,6)) in (select noa from holiday where isnull(iswork,0)=1) )
 		set @day1=@day1+1
 		
 	set @datea= CONVERT (VARCHAR(7), DATEADD(d, DATEDIFF(d,0,@datea)+1,0),12 )+0890000
