@@ -170,7 +170,7 @@ select custno,SUM(money),mon from (
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
 	,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))
 	-ISNULL((select sum(paysale) from umms a left join view_vcc b on a.vccno=b.noa 
-	where b.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)),0)
+	where (case when b.custno2!='' then b.custno2 else b.custno end)=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)),0)
 	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
 	where len(vccno)>8 and right(vccno,4)!='-TAX' 
 	group by left(vccno,len(vccno)-7),right(vccno,6)
@@ -227,7 +227,7 @@ select '9',custno,SUM(money),0,0 from (
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
 	,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))
 	-ISNULL((select sum(paysale) from umms a left join view_vcc b on a.vccno=b.noa 
-	where b.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)<@t_bsmon),0)
+	where (case when b.custno2!='' then b.custno2 else b.custno end)=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)<@t_bsmon),0)
 	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon 
 	group by left(vccno,len(vccno)-7) having
 	left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0))*coin.floata money
