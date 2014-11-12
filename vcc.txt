@@ -14,7 +14,7 @@ vccfe_save:--vccfe_save
 	select top 1 @checker=checker,@memo=memo from sign where zno=@t_noa
 	if exists(select * from sign where zno=@t_noa and enda='Y')
 	begin
-		select top 1 '' msg,checker,left(memo,charindex('#',memo)-1) memo from sign where zno=@t_noa and enda='Y'
+		select top 1 '' msg,checker,case when charindex('#',memo)>0 then left(memo,charindex('#',memo)-1) else @memo end memo from sign where zno=@t_noa and enda='Y'
 		return
 	end
 	if exists(select * from sign where zno=@t_noa and enda!='Y')
@@ -111,7 +111,7 @@ vccfe_save:--vccfe_save
 			,checker,sender,zno,zno2,memochecker 
 			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
 		select @t_noa,@t_date,'TIME','N',@memo,'vcc','',''
-			,'軒威電腦','sender',@t_noa,'vcc;noa;'+@t_accy+';',''
+			,'軒威電腦','sender',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
 			,'','','',''
 	end
 	else
@@ -122,7 +122,7 @@ vccfe_save:--vccfe_save
 			,checker,sender,zno,zno2,memochecker 
 			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
 		select @t_noa,@t_date,'TIME','Y',@memo,'vcc','',''
-			,'電腦核准','',@t_noa,'vcc;noa;'+@t_accy+';',''
+			,'電腦核准','',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
 			,'','','',''
 	end
 	return; 
