@@ -6,15 +6,15 @@ vccfe_save:--vccfe_save
 	declare @t_custno nvarchar(20) = [4]
 	declare @t_date nvarchar(20) = [5]
 	declare @t_mon nvarchar(20) = [6]
-	declare @t_total nvarchar(20) = case when len([7])=0 then 0 else cast([7] as float) end 
-	
+	declare @t_worker nvarchar(20) = [7]
+	declare @t_total nvarchar(20) = case when len([8])=0 then 0 else cast([8] as float) end 
 	-----------------------------------------------------------------------------------------
 	declare @checker nvarchar(max) = '' 
 	declare @memo nvarchar(max) = ''
 	select top 1 @checker=checker,@memo=memo from sign where zno=@t_noa
 	if exists(select * from sign where zno=@t_noa and enda='Y')
 	begin
-		select '' msg,@checker checker,@memo memo
+		select top 1 '' msg,checker,case when charindex('#',memo)>0 then left(memo,charindex('#',memo)-1) else @memo end memo from sign where zno=@t_noa and enda='Y'
 		return
 	end
 	if exists(select * from sign where zno=@t_noa and enda!='Y')
@@ -23,18 +23,17 @@ vccfe_save:--vccfe_save
 		return
 	end
 	------------------------------------------------------------------------------------------
+	declare @isBack int = 0
+	declare @is35 int = 0
+	declare @isUnpay int = 0
+	
 	declare @nick nvarchar(20)=''
 	select @nick = nick from cust where noa=@t_custno
 	
 	--退貨
 	if(@t_typea != '1')
 	begin
-		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
-		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total
-			,'退貨核準：'+@t_date+' 【'+@nick+'】 退貨金額：'+dbo.getComma(@t_total,0)) 
-		
-		select '【退貨】需核準，已發送簽核。' msg,'' checker,'' memo
-		return
+		set @isBack = 1
 	end
 	
 	--35天未收
@@ -78,12 +77,7 @@ vccfe_save:--vccfe_save
 	
 	if(@money+@tax)>@pay
 	begin
-		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
-		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total
-			,'35天未收：【'+@nick+'】 未收金額：'+dbo.getComma((@money+@tax)-@pay,0)+' 出貨日期：'+@t_date+' 出貨金額：'+dbo.getComma(@t_total,0)) 
-		
-		select '【35天未收】需核準，已發送簽核。' msg,'' checker,'' memo
-		return
+		set @is35 = 1
 	end
 	--呆帳  
 	set @date = convert(date, cast(cast(left(@t_mon,3) as int)+1911 as nvarchar)+right(@t_mon,3)+'/01')
@@ -99,13 +93,36 @@ vccfe_save:--vccfe_save
 	
 	if (LEN(@unpay)>0)
 	begin
-		insert into adpro(noa,style,tggno,datea,mon,[weight],memo)
-		values(@t_noa,@t_typea,@t_custno,@t_date,@t_mon,@t_total
-			,'呆帳：【'+@nick+'】 呆帳金額：'+dbo.getComma(@unpay,0)+' 出貨日期：'+@t_date+' 出貨金額：'+dbo.getComma(@t_total,0)) 
-		
-		select '【呆帳】需核準，已發送簽核。' msg,'' checker,'' memo
-		return                                                                                                                                                                      
+		set @isUnpay = 1	                                                                                                                                                                   
 	end
-	
-	select '' msg,'*' checker,'自動核准' memo
+	-------------------------------------------------------------------------------------------
+	set @memo = case when @isBack=1 then '【退貨】' else '' end
+	if @is35=1
+		set @memo = @memo + case when LEN(@memo)>0 then ',' else '' end + '【35天未收】'
+	if @isUnpay=1
+		set @memo = @memo + case when LEN(@memo)>0 then ',' else '' end + '【呆帳】'
+	-------------------------------------------------------------------------------------------
+	if LEN(@memo)>0
+	begin
+		select @memo+'需核準，已發送簽核。' msg,'' checker,@memo memo
+		
+		set @memo = @memo +'#'+'【客戶】'+@nick+ '【出貨日期】'+@t_date+'【出貨金額】'+dbo.getComma(@t_total,0)
+		insert into sign (noa,datea,timea,enda,memo,form,partno,part
+			,checker,sender,zno,zno2,memochecker 
+			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
+		select @t_noa,@t_date,'TIME','N',@memo,'vcc','',''
+			,'軒威電腦','sender',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
+			,'','','',''
+	end
+	else
+	begin
+		select '' msg,'電腦' checker,'' memo
+		
+		insert into sign (noa,datea,timea,enda,memo,form,partno,part
+			,checker,sender,zno,zno2,memochecker 
+			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
+		select @t_noa,@t_date,'TIME','Y',@memo,'vcc','',''
+			,'電腦核准','',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
+			,'','','',''
+	end
 	return; 
