@@ -1818,26 +1818,30 @@ z_vccfe17:--z_vccfe17
 	)
 	
 	insert into @tmpa (custno,money,mon)
-	select custno,SUM(money),mon from (
+	select noa,unpay,mon from cust_2s where noa between @t_bcustno and @t_ecustno
+	and mon < @t_bvmon
+	
+	--select custno,SUM(money),mon from (
 	--vcc =前期未收-前期已收月結
-		select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-		,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))
-		-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bvmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
-		,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
-		from view_vcc aa left join cust bb on aa.custno=bb.noa 
-		where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bvmon 
-		and (left(isnull(kind,''),4)!='健勞勞退')
-		group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
+	--	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
+	--	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))
+	--	-ISNULL((select sum(paysale) from umms a left join view_vcc b on a.vccno=b.noa where (case when b.custno2!='' then b.custno2 else b.custno end)=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)),0)
+	--	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
+	--	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
+	--	from view_vcc aa left join cust bb on aa.custno=bb.noa 
+	--	where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bvmon 
+	--	and (left(isnull(kind,''),4)!='健勞勞退')
+	--	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
 	--vcca=前期全部稅額-前期已收稅額
-		union all
-		select ca.custno
-		,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bvmon and left(vccno,len(vccno)-11)=ca.custno),0)
-		,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)mon
-		from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-		where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bvmon and ([2]!=3)
-		and (ca.taxtype='1' or ca.taxtype='5')
-		group by ca.custno,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
-	)tmp where custno between @t_bcustno and @t_ecustno group by custno,mon
+	--	union all
+	--	select ca.custno
+	--	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bvmon and left(vccno,len(vccno)-11)=ca.custno),0)
+	--	,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)mon
+	--	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
+	--	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bvmon and ([2]!=3)
+	--	and (ca.taxtype='1' or ca.taxtype='5')
+	--	group by ca.custno,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
+	--)tmp where custno between @t_bcustno and @t_ecustno group by custno,mon
 	
 	delete @tmpa where money=0
 	--------------------顯示每個月份應收金額 end---------------------------------------------------------------------------------------
@@ -1894,19 +1898,20 @@ z_vccfe17:--z_vccfe17
 		   (case when a.custno2!='' then a.custno2 else a.custno end) custno
 		   , isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit, 
 	       b.mount, b.weight, b.price, b.total, a.money money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 unvcc,'','', 0 total2, 0 btotal
-	       ,'' unmon,'' paymemo,0 opay,'' acomp,0,0,0,0,0,'','','','', 0 pcount,'vcc?noa=$noa?'+a.accy
+	       ,'' unmon,'' paymemo,0 opay,'' acomp,0,0,0,0,0,'','','','', 0 pcount,'vccfe?noa=$noa?'+a.accy
 	from view_vccs b
 	left join view_vcc a on a.noa = b.noa
 	left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
 	where (a.datea between @t_bvdate and @t_evdate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bvmon and @t_evmon) 
+		  and ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) 
 	union all --無發票系統
 	select '0' gno, '稅' typea, noa, CHAR(255) noq, datea, (case when mon='' then left(datea,6) else mon end), 
 		    (case when custno2!='' then custno2 else custno end),  
 		     (case when custno2!='' then comp2 else comp end),
 		     '' addr_invo, '' tel, '' productno, '稅額' product, '' unit, 
 		   0 mount, 0 weight, 0 price, tax, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 unvcc,'','', 0 total2, 0 btotal
-		   ,'' unmon,'' paymemo,0 opay,'' acomp,0,0,0,0,0,'','','','', 0 pcount,'vcc?noa=$noa?'
+		   ,'' unmon,'' paymemo,0 opay,'' acomp,0,0,0,0,0,'','','','', 0 pcount,'vccfe?noa=$noa?'
 	from view_vcc
 	where tax > 0 and (taxtype='1' or taxtype='5') and
 		  (datea between @t_bvdate and @t_evdate)and
@@ -2120,7 +2125,7 @@ z_vccfe17:--z_vccfe17
 					begin
 						if(isnull((select paytype from cust where noa=@t_custno and CHARINDEX('天',paytype)>0),'')!='')
 						begin
-							set @endday=(select SUBSTRING(paytype,patindex('%[0-9]%',paytype),len(paytype)-1) from cust where noa=@t_custno and CHARINDEX('天',paytype)>0)
+							set @endday=(select SUBSTRING(REPLACE(paytype,' ',''),patindex('%[0-9]%',REPLACE(paytype,' ','')),len(REPLACE(paytype,' ',''))-patindex('%[0-9]%',REPLACE(paytype,' ',''))-1) from cust where noa=@t_custno and CHARINDEX('天',paytype)>0)
 							
 							set @enddate=(select cast(CONVERT (VARCHAR(7),DATEADD(day, -1+@endday, convert(datetime,(convert(char(7),dateadd(month,1,
 							case when @t_evmon !='' then cast(cast(LEFT(@t_evmon,3)as int)+1911 as nvarchar(10))+'/'+right(@t_evmon,2)+'/01' 
@@ -2341,7 +2346,7 @@ z_vccfe17:--z_vccfe17
 			begin
 				if(isnull((select paytype from cust where noa=@t_custno and CHARINDEX('天',paytype)>0),'')!='')
 				begin
-					set @endday=(select SUBSTRING(paytype,patindex('%[0-9]%',paytype),len(paytype)-1) from cust where noa=@t_custno and CHARINDEX('天',paytype)>0)
+					set @endday=(select SUBSTRING(REPLACE(paytype,' ',''),patindex('%[0-9]%',REPLACE(paytype,' ','')),len(REPLACE(paytype,' ',''))-patindex('%[0-9]%',REPLACE(paytype,' ',''))-1) from cust where noa=@t_custno and CHARINDEX('天',paytype)>0)
 					
 					set @enddate=(select cast(CONVERT (VARCHAR(7),DATEADD(day, -1+@endday, convert(datetime,(convert(char(7),dateadd(month,1,
 					case when @t_evmon !='' then cast(cast(LEFT(@t_evmon,3)as int)+1911 as nvarchar(10))+'/'+right(@t_evmon,2)+'/01' 
@@ -2416,7 +2421,7 @@ z_vccfe17:--z_vccfe17
 	update a
 	set unpay=isnull((select sum(money) from @tmpa where custno=a.custno),0)
 	,pcount=(select count(*) from (select noa from @result where a.custno=custno and typea!='稅' and gno='0' group by noa) tmp)
-	from @result a where a.gno>='1'
+	from @result a where a.gno>='1' and a.gno!='7'
 	
 	update @result
 	set total2=total1+unpay-pay 

@@ -345,6 +345,7 @@ select gno,custno,comp,memo
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),4,30)) payed
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),4,30)) unpay
+	,case when @t_xcoin!='' then '_'+@t_xcoin else '' end coin
 from @tmp a order by custno,gno,memo;
 --********************************************************************************
 z_umm6:--z_umm6
@@ -1466,7 +1467,7 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pay),1)),4,30)) pay
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),4,30)) unpay
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total2),1)),4,30)) total2
-	,pcount
+	,pcount,case when @t_xcoin!='' then '_'+@t_xcoin else '' end coin
 from @result a order by custno,gno,mon,datea,noa,noq;
 --**************************************************************************************************
 z_umm11:--z_umm11
