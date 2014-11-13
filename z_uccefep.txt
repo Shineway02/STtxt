@@ -109,22 +109,22 @@ declare @spricetmp1 table(
 	productno nvarchar(50),
 	sprice float
 )
+
 declare @spricetmp2 table(
 	productno nvarchar(50),
 	sprice float
 )
-insert @spricetmp1
-select noa,sprice from uccps where noa+'_'+datea in (select noa+'_'+MAX(datea) from uccps where datea<=@t_uccedate group by noa)
-insert @spricetmp2
-select noa,sprice from uccps where noa+'_'+datea in (select noa+'_'+MAX(datea) from uccps where datea<=@t_stkdate group by noa)
 
-
+insert @spricetmp1 
+select productno,sprice from uccps where productno+'_'+datea+'_'+noq in (select productno+'_'+MAX(datea+'_'+noq) from uccps where datea<=@t_uccedate group by productno) 
+insert @spricetmp2 
+select productno,sprice from uccps where productno+'_'+datea+'_'+noq in (select productno+'_'+MAX(datea+'_'+noq) from uccps where datea<=@t_stkdate group by productno)
+ 
 update a
 set dmount=mount-emount,dweight=weight-eweight
-,sprice1=(select sprice from @spricetmp1 where a.productno=productno)--盤點
-,sprice2=(select sprice from @spricetmp2 where a.productno=productno)--庫存
+,sprice1=isnull((select sprice from @spricetmp1 where a.productno=productno),0)--盤點
+,sprice2=isnull((select sprice from @spricetmp2 where a.productno=productno),0)--庫存
 from @tmp a 
-
 
 update @tmp
 set umoney=(case when UPPER(unit)='KG' then weight else mount end)*sprice1
