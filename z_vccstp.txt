@@ -22,7 +22,7 @@ z_vccstp03:--z_vccstp03
 		noq nvarchar(10),
 		custno nvarchar(20),
 		nick nvarchar(20),
-		uno nvarchar(20),
+		uno nvarchar(50),
 		style nvarchar(10),
 		productno nvarchar(20),
 		product nvarchar(40),
@@ -477,7 +477,7 @@ begin
 			where inas.uno=b.uno
 		) d
 		where (a.noa between @t_bxnoa and @t_exnoa) and (len(@t_stype) = 0 or a.stype = @t_stype)
-		group by d.itype,b.ordeno,b.no2,a.kind,a.stype,a.noa,a.typea,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
+		group by case when isnull(d.itype,'')='3' then '寄庫' else '' end,b.ordeno,b.no2,a.kind,a.stype,a.noa,a.typea,a.datea,a.custno,a.comp,a.tel,a.post,a.addr,a.post2,a.addr2,a.cardeal,a.carno,
 					a.memo,a.money,a.tax,a.total,b.spec,b.product,b.size,a.kind,b.dime,b.width,b.lengthb,b.radius,b.style,
 					b.price,a.trantype,left(uno,1)
 /*
