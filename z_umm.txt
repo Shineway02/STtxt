@@ -531,10 +531,10 @@ update @tmp
 set comp=(select top 1 nick from ((select nick from cust where noa=custno union select namea from carOwner where noa=custno union select namea from sss where noa=custno))tmp)
 
 select gno,custno,comp,memo
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),4,30)) payed
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),4,30)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),(case when coin!='' then 0 else 4 end),30)) money
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),(case when coin!='' then 0 else 4 end),30)) total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),(case when coin!='' then 0 else 4 end),30)) payed
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),(case when coin!='' then 0 else 4 end),30)) unpay
 	,case when coin!='' then '_'+coin else '' end coin
 from @tmp a order by coin,custno,gno,memo;
 --********************************************************************************
@@ -1835,14 +1835,14 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,back),1)),4,30)) back
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,tax),1)),4,30)) tax
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total1),1)),4,30)) total1
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pay),1)),4,30)) pay
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),4,30)) unpay
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total2),1)),4,30)) total2
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),(case when coin!='' then 0 else 4 end),30)) total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),(case when coin!='' then 0 else 4 end),30)) money
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,back),1)),(case when coin!='' then 0 else 4 end),30)) back
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,tax),1)),(case when coin!='' then 0 else 4 end),30)) tax
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total1),1)),(case when coin!='' then 0 else 4 end),30)) total1
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pay),1)),(case when coin!='' then 0 else 4 end),30)) pay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),(case when coin!='' then 0 else 4 end),30)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total2),1)),(case when coin!='' then 0 else 4 end),30)) total2
 	,pcount,case when coin!='' then '_'+coin else '' end coin 
 from @result a order by custno,coin,gno,mon,datea,noa,noq;
 --**************************************************************************************************
