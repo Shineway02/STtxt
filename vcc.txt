@@ -124,6 +124,9 @@ vccfe_save:--vccfe_save
 	if @isUnpay=1
 		set @memo = @memo + case when LEN(@memo)>0 then ',' else '' end + '【呆帳】'
 	-------------------------------------------------------------------------------------------
+	set @checker = ''
+	select @checker = checker from signform where UPPER(noa)='VCC'
+	
 	if LEN(@memo)>0
 	begin
 		select @memo+'需核準，已發送簽核。' msg,'' checker,@memo memo,@t_noa noa
@@ -133,7 +136,7 @@ vccfe_save:--vccfe_save
 			,checker,sender,zno,zno2,memochecker 
 			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
 		select @t_noa,@t_date,'TIME','N',@memo,'vcc','',''
-			,'軒威電腦','sender',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
+			,@checker,'sender',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
 			,'','','',''
 	end
 	else
