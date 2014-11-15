@@ -9,18 +9,40 @@ vccfe_save:--vccfe_save
 	declare @t_worker nvarchar(20) = [7]
 	declare @t_total nvarchar(20) = case when len([8])=0 then 0 else cast([8] as float) end 
 	-----------------------------------------------------------------------------------------
+	-----------------------------------------------------------------------------------------
 	declare @checker nvarchar(max) = '' 
 	declare @memo nvarchar(max) = ''
-	select top 1 @checker=checker,@memo=memo from sign where zno=@t_noa
-	if exists(select * from sign where zno=@t_noa and enda='Y')
+	if len(@t_noa)>0
 	begin
-		select top 1 '' msg,checker,case when charindex('#',memo)>0 then left(memo,charindex('#',memo)-1) else @memo end memo from sign where zno=@t_noa and enda='Y'
-		return
+		select top 1 @checker=checker,@memo=memo from sign where zno=@t_noa
+		if exists(select * from sign where zno=@t_noa and enda='Y')
+		begin
+			select top 1 '' msg,checker
+				,case when charindex('#',memo)>0 then left(memo,charindex('#',memo)-1) else @memo end memo 
+				,@t_noa noa
+				from sign where zno=@t_noa and enda='Y'
+			return
+		end
+		if exists(select * from sign where zno=@t_noa and enda!='Y')
+		begin
+			select '尚未核准。' msg,'' checker,'' memo,@t_noa noa
+			return
+		end
 	end
-	if exists(select * from sign where zno=@t_noa and enda!='Y')
+	------------------------------------------------------------------------------------------
+	declare @string nvarchar(max) = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	declare @n int
+	declare @noq nvarchar(10)
+	select @t_noa = MAX(noa) from sign where LEFT(noa,7) = REPLACE(@t_date,'/','')
+	if LEN(ISNULL(@t_noa,''))=0
 	begin
-		select '尚未核准。' msg,'' checker,'' memo
-		return
+		set @t_noa = REPLACE(@t_date,'/','')+'001'
+	end
+	else
+	begin
+		set @n = (charindex(left(RIGHT(@t_noa,3),1),@string)-1)*100 + cast(RIGHT(@t_noa,2) as int)+1
+		set @noq = SUBSTRING(@string,FLOOR(@n/100)+1,1)+right('00'+cast(@n%100 as nvarchar),2)
+		set @t_noa = REPLACE(@t_date,'/','')+@noq
 	end
 	------------------------------------------------------------------------------------------
 	declare @isBack int = 0
@@ -102,22 +124,25 @@ vccfe_save:--vccfe_save
 	if @isUnpay=1
 		set @memo = @memo + case when LEN(@memo)>0 then ',' else '' end + '【呆帳】'
 	-------------------------------------------------------------------------------------------
+	set @checker = ''
+	select @checker = checker from signform where UPPER(noa)='VCC'
+	
 	if LEN(@memo)>0
 	begin
-		select @memo+'需核準，已發送簽核。' msg,'' checker,@memo memo
+		select @memo+'需核準，已發送簽核。' msg,'' checker,@memo memo,@t_noa noa
 		
 		set @memo = @memo +'#'+'【客戶】'+@nick+ '【出貨日期】'+@t_date+'【出貨金額】'+dbo.getComma(@t_total,0)
 		insert into sign (noa,datea,timea,enda,memo,form,partno,part
 			,checker,sender,zno,zno2,memochecker 
 			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
 		select @t_noa,@t_date,'TIME','N',@memo,'vcc','',''
-			,'軒威電腦','sender',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
+			,@checker,'sender',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
 			,'','','',''
 	end
 	else
 	begin
-		select '' msg,'電腦' checker,'' memo
-		
+		select '' msg,'電腦' checker,'' memo,@t_noa noa
+		print @t_noa
 		insert into sign (noa,datea,timea,enda,memo,form,partno,part
 			,checker,sender,zno,zno2,memochecker 
 			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
