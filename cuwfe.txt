@@ -118,7 +118,7 @@ begin
 	--成品
 	EXEC("insert cubu"+@accy+" (noa,datea,noq,productno,product,lengthb,mount,weight,memo,storeno,store)
 	select '"+@cubno+"','"+@datea+"',right('000'+cast(ROW_NUMBER()over(order by a.workjno,a.noq) as nvarchar(10)),3)
-	,b.productno,b.product,b.lengthb,b.mount,b.weight,b.memo,b.storeno,b.store
+	,b.productno,b.product,b.lengthb,b.mount,b.weight,b.memo,'',''--,b.storeno,b.store
 	from #tmp a left join workjs b on a.workjno=b.noa and a.noq=b.noq 
 	where a.noq!='' and b.noa!=''
 	")
