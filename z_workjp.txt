@@ -100,7 +100,9 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
     close cursor_table
     deallocate cursor_table
 	-----------------------------------------------------------------------------------------------------
-	update @tmp set gno='3',memos=case when c.noa is null then '未產生訂單' else'訂單【'+c.noa+'】未核准'end
+	update @tmp set gno='3'
+		,imgdata=''
+		,memos=case when c.noa is null then '未產生訂單' else'訂單【'+c.noa+'】未核准'end
 	from @tmp a
 	left join view_orde c on a.ordeaccy=c.accy and a.ordeno=c.noa
 	where len(isnull(c.apv,''))=0
