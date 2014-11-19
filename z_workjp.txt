@@ -34,6 +34,7 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 		
 		recno int,
 		noq nvarchar(10),
+		place nvarchar(20),
 		productno nvarchar(20),
 		product nvarchar(50),
 		spec nvarchar(20),
@@ -50,11 +51,11 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 		totweight float
 	)
 	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,trantype1,trantype2,chktype,tolerance,worker,memo
-		,recno,noq,productno,product,lengthb,mount,[weight],imgdata,memos
+		,recno,noq,place,productno,product,lengthb,mount,[weight],imgdata,memos
 		,ordeaccy,ordeno)
 	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.trantype1,a.trantype2,a.chktype,a.tolerance,a.worker,a.memo
 		,ROW_NUMBER()over(partition by a.noa order by b.noq)
-		,b.noq,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.imgdata,b.memo
+		,b.noq,b.place,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.imgdata,b.memo
 		,a.ordeaccy,a.ordeno
 	from workj a
 	left join workjs b on a.noa=b.noa
@@ -159,6 +160,8 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 		,memos b08
 		,totmount c01
 		,[totweight] c02
+		
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+place+'</a>' d01
 		,* 
 	from @tmp a
 	order by noa,pno,recno;
