@@ -59,3 +59,258 @@ dbo.getComma(utotal,0) utotal,
 *
 from @tmp order by gno,datea,carno,custno,noq;
 --**************************************************************************************************************
+z_vcce_xyp2:--z_vcce_xyp2
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bcust nvarchar(20)
+declare @t_ecust nvarchar(20)
+declare @t_bdriver nvarchar(20)
+declare @t_edriver nvarchar(20)
+declare @t_carno nvarchar(20)
+
+set @t_bdate = case when '#non' = [2] then '' else [2] end
+set @t_edate = case when '#non' = [3] then CHAR(255) else [3] end
+set @t_bcust = case when '#non' = [4] then '' else [4] end
+set @t_ecust = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bdriver = case when '#non' = [6] then '' else [6] end
+set @t_edriver = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_carno = case when '#non' = [8] then '' else [8] end
+--------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(1),
+	datea nvarchar(20),
+	noa nvarchar(30),
+	noq nvarchar(20),
+	carno nvarchar(20),
+	driverno nvarchar(50),
+	driver nvarchar(100),
+	custno nvarchar(50),
+	comp nvarchar(100),
+	productno nvarchar(100),
+	product nvarchar(100),
+	vccno nvarchar(50),
+	vccnoq nvarchar(50),
+	vcctypea nvarchar(50),
+	mount float,
+	memo nvarchar(MAX)
+)
+
+
+insert into @tmp
+select case when c.typea='1' then '2' else '5' end gno,a.datea,a.noa,b.noq,a.carno,a.driverno,a.driver
+,c.custno,c.comp,d.productno,d.product,c.noa,d.noq,c.typea,d.mount,d.memo
+from view_vcce a left join view_vcces b on a.noa=b.noa left join view_vcc c on b.ordeno=c.noa
+left join view_vccs d on c.noa=d.noa
+where a.datea between @t_bdate and @t_edate 
+and isnull(c.custno,'') between @t_bcust and @t_ecust
+and a.driverno between @t_bdriver and @t_edriver
+and (len(@t_carno)=0 or a.carno=@t_carno)
+
+
+declare @tmpa table(
+	idno int identity(0,1),
+	pageno int,
+	gno nvarchar(1),
+	datea nvarchar(20),
+	noa nvarchar(30),
+	noq nvarchar(20),
+	carno nvarchar(20),
+	driverno nvarchar(50),
+	driver nvarchar(100),
+	custno nvarchar(50),
+	comp nvarchar(100),
+	productno nvarchar(100),
+	product nvarchar(100),
+	vccno nvarchar(50),
+	vccnoq nvarchar(50),
+	vcctypea nvarchar(50),
+	mount float,
+	memo nvarchar(MAX)
+)
+
+declare @driverno nvarchar(MAX)
+declare @t_driverno nvarchar(MAX)='XXXXXX'
+declare @driver nvarchar(MAX)
+declare @vccno nvarchar(MAX)
+declare @vccnoq nvarchar(MAX)
+declare @gno nvarchar(10)
+declare @t_gno nvarchar(10)
+declare @vcc2count int --退貨筆數
+declare @vcc2now_count int --已寫入退貨筆數
+declare @vcccount int=1 --目前筆數
+declare @page int=30 --一張筆數
+declare @now_page int=1--目前頁數
+
+declare cursor_table cursor for
+select driverno,driver,gno,vccno,vccnoq from @tmp order by datea,driverno,gno,custno,vccno
+open cursor_table
+fetch next from cursor_table
+into @driverno,@driver,@gno,@vccno,@vccnoq
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@t_driverno!=@driverno)
+	begin
+		if(@t_driverno!='XXXXXX')
+		begin
+			if(@t_gno='2')
+			begin
+				if(@vcccount%@page<@page-1)
+				begin
+					while(@vcccount%@page<@page-1)
+					begin
+						insert @tmpa(pageno,driverno,gno)
+						select @now_page,@t_driverno,'2'
+						set @vcccount=@vcccount+1
+					end
+				end
+				insert into @tmpa (gno,pageno,driverno,mount)
+				select '3',@now_page,@driverno,SUM(mount) from @tmp where gno='2' and driverno=@t_driverno
+			end
+			
+			if(@t_gno='5')
+			begin
+				if(@vcccount%@page<@page)
+				begin
+					while(@vcccount%@page>0)
+					begin
+						insert @tmpa(pageno,driverno,gno)
+						select @now_page,@t_driverno,'5'
+						set @vcccount=@vcccount+1
+					end
+				end
+			end
+		
+			insert @tmpa(gno,pageno,driverno)
+			select '6',@now_page,@t_driverno
+			set @now_page=@now_page+1
+		end
+		
+		insert @tmpa(gno,pageno,driverno,driver,datea)
+		select '1',@now_page,@driverno,@driver,''
+		set @vcccount=1
+	end
+	
+	if(@vcccount%@page=0)
+	begin
+		insert @tmpa(gno,pageno,driverno)
+		select '6',@now_page,@driverno
+		set @now_page=@now_page+1
+		if (@t_gno='2')
+		begin
+			insert @tmpa(gno,pageno,driverno,driver,datea)
+			select '1',@now_page,@driverno,@driver,''
+			set @vcccount=1
+		end
+		if (@t_gno='5')
+		begin
+			insert @tmpa(gno,pageno,driverno,driver,datea)
+			select '4',@now_page,@driverno,@driver,''
+			set @vcccount=2
+		end
+	end
+	
+	if(@gno='2')
+	begin
+		insert @tmpa
+		select @now_page,* from @tmp where vccno=@vccno and vccnoq=@vccnoq and driverno=@driverno
+	end
+	
+	if(@gno='5')
+	begin
+		set @vcc2count=(select count(*) from @tmp where driverno=@driverno and gno='5')
+		set @vcc2now_count=(select count(*) from @tmpa where driverno=@driverno and gno='5')
+		
+		if(@vcc2now_count=0)--未寫入退貨
+		begin
+			if(@vcccount%@page<@page-3-@vcc2count)
+			begin
+				while(@vcccount%@page<@page-3-@vcc2count)
+				begin
+					insert @tmpa(pageno,driverno,gno)
+					select @now_page,@driverno,'2'
+					set @vcccount=@vcccount+1
+				end
+			end
+		
+			insert into @tmpa (gno,pageno,driverno,driver,mount)
+			select '3',@now_page,@driverno,@driver,SUM(mount) from @tmp where gno='2' and driverno=@driverno
+			set @vcccount=@vcccount+1
+			
+			if(@vcccount%@page>@page-2-@vcc2count or @vcccount%@page=0)
+			begin
+				while(@vcccount%@page>0)
+				begin
+					insert @tmpa(pageno,driverno,gno)
+					select @now_page,@driverno,'7'
+					set @vcccount=@vcccount+1
+				end
+				insert @tmpa(gno,pageno,driverno)
+				select '6',@now_page,@t_driverno
+				set @now_page=@now_page+1
+				
+			end
+			
+			insert into @tmpa (gno,pageno,driverno,driver)
+			select '4',@now_page,@driverno,@driver
+			
+			set @vcccount=@vcccount+2
+		end
+		
+		insert @tmpa
+		select @now_page,* from @tmp where vccno=@vccno and vccnoq=@vccnoq and driverno=@driverno
+	end
+	
+	set @vcccount=@vcccount+1
+	set @t_driverno=@driverno
+	set @t_gno=@gno
+	
+	fetch next from cursor_table
+	into @driverno,@driver,@gno,@vccno,@vccnoq
+end
+close cursor_table
+deallocate cursor_table
+
+--做最後的動作
+if(@t_driverno!='XXXXXX')
+begin
+	if(@t_gno='2')
+	begin
+		if(@vcccount%@page<@page-1 and @vcccount%@page!=0)
+		begin
+			while(@vcccount%@page<@page-1)
+			begin
+				insert @tmpa(pageno,driverno,gno)
+				select @now_page,@driverno,'2'
+				set @vcccount=@vcccount+1
+			end
+		end
+	
+		insert into @tmpa (gno,pageno,driverno,mount)
+		select '3',@now_page,@driverno,SUM(mount) from @tmp where gno='2' and driverno=@t_driverno
+	end
+	
+	if(@t_gno='5')
+	begin
+		if(@vcccount%@page<@page and @vcccount%@page!=0)
+		begin
+			while(@vcccount%@page<@page)
+			begin
+				insert @tmpa(pageno,driverno,gno)
+				select @now_page,@driverno,'5'
+				set @vcccount=@vcccount+1
+			end
+		end
+	end
+	
+	insert @tmpa(gno,pageno,driverno)
+	select '6',@now_page,@driverno
+end
+
+
+
+select 
+case when @t_bdate=@t_edate then @t_bdate else @t_bdate+'~'+@t_edate end mdate,
+dbo.getComma(mount,0) mount,
+*
+from @tmpa order by idno;
+--**************************************************************************************************************
