@@ -1,0 +1,136 @@
+z_workvp01:--z_workvp01	
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+
+	declare @tmp table(
+		gno nvarchar(10),
+		recno int,
+		noa nvarchar(20),
+		noq nvarchar(10),
+		uno nvarchar(30),
+		datea nvarchar(20),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		lengthb float,
+		[weight] float,
+		mount float,
+		pmount float,
+		sss1 nvarchar(20),
+		sss2 nvarchar(20),
+		sss3 nvarchar(20),
+		sss4 nvarchar(20),
+		sss5 nvarchar(20),
+		mechno nvarchar(20),
+		mech nvarchar(40),
+		avgkg float,
+		memo nvarchar(max),
+		spec nvarchar(20),
+		num nvarchar(20)
+	)
+	insert into @tmp(gno,recno,noa,noq,uno,datea,custno,cust,productno,product
+		,lengthb,weight,mount,pmount,mechno,mech,avgkg,memo)
+	select '1',ROW_NUMBER()over(order by a.noa,b.noq)
+		,a.noa,b.noq,b.uno,b.datea,b.custno,b.cust,b.productno,b.product
+		,b.lengthb,b.weight,b.mount,b.pmount,b.mechno,b.mech,b.avgkg,b.memo
+	from workv a
+	left join workvs b on a.noa=b.noa
+	order by a.noa,b.noq
+	----------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(20)
+	declare @product nvarchar(max)
+	declare @spec nvarchar(20)
+	declare @num nvarchar(20)
+	declare @n int
+	
+	declare cursor_table cursor for
+	select noa,noq,product from @tmp
+    open cursor_table
+    fetch next from cursor_table
+    into @noa,@noq,@product
+    while(@@FETCH_STATUS <> -1)
+    begin
+		select @spec='',@num=''
+		set @n = CHARINDEX('SD',@product)
+		if @n>0
+		begin
+			set @product = rtrim(Ltrim(SUBSTRING(@product,@n+2,LEN(@product))))
+			set @n = CHARINDEX(SPACE(1),@product)
+			if @n>0
+			begin
+				set @spec = left(@product,@n-1)
+				set @num = rtrim(Ltrim(RIGHT(@product,LEN(@product)-len(@spec))))
+				if CHARINDEX('#',@num)>0
+					set @num = LEFT(@num,CHARINDEX('#',@num))
+			end
+		end
+		update @tmp set spec=@spec,num=@num where noa=@noa and noq=@noq
+        fetch next from cursor_table
+        into @noa,@noq,@product
+    end
+    close cursor_table
+    deallocate cursor_table
+	
+	update @tmp set sss1= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 1
+	
+	update @tmp set sss2= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 2
+	
+	update @tmp set sss3= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 3
+	
+	update @tmp set sss4= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 4
+	
+	update @tmp set sss5= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 5
+	--------------------------------------------------------------------------------------------------
+	insert into @tmp(gno,noa,noq,datea,weight,mount)
+	select '2',CHAR(255),CHAR(255),CHAR(255),SUM(ISNULL(weight,0)),SUM(ISNULL(mount,0))
+	from @tmp
+	
+	select a.recno rr
+		,a.uno a01
+		,a.datea a02
+		,case when len(ISNULL(b.nick,''))>0 then b.nick else a.cust end a03
+		,a.num a04
+		,a.lengthb a05
+		,a.weight a06
+		,a.mount a07
+		,a.pmount a08
+		,a.sss1 a09
+		,a.sss2 a10
+		,a.sss3 a11
+		,a.sss4 a12
+		,a.sss5 a13
+		,a.mech a14
+		,a.avgkg a15
+		,a.memo a16
+		,a.* 
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	order by a.gno,a.noa,a.noq;
