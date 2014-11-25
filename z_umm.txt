@@ -2301,7 +2301,7 @@ begin
 		order by custno,gno,mon,datea,noa
 end
 
-delete @result where custno not in (select distinct noa from cust where typea between @t_bcusttype and @t_ecusttype)
+delete @result where custno not in (select distinct noa from cust where isnull(typea,'') between @t_bcusttype and @t_ecusttype)
 
 update a 
 set tax=isnull(b.tax,0),comp=isnull(c.comp,''),addr_invo=isnull(c.addr_invo,''),serial=isnull(c.serial,''),tel=isnull(c.tel,'') 
@@ -2576,7 +2576,7 @@ from @tmp where gno='1' and custno in (select custno from @result group by custn
 
 --預收
 update a
-set pay=(select SUM( opay - unopay) total from umm where custno=a.custno)
+set pay=isnull((select SUM( opay - unopay) total from umm where custno=a.custno),0)
 from @result a where gno='1'
 update @result set gno='3' where gno='1'
 ----------------------------------------------------
