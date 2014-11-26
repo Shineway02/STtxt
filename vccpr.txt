@@ -142,7 +142,7 @@ import:--vccpr import
 	update #vccpr_import set tranmoney=round(a.tranmoney*isnull(b.price,0),0)
 	from #vccpr_import a
 	outer apply(select top 1 * from carp where noa=a.styleno and addrno=a.post)b
-	where len(ISNULL(a.productno,''))>0 and CHARINDEX('送達',trantype)>0
+	where len(ISNULL(a.productno,''))>0 and CHARINDEX('送達',a.trantype)>0
 
 	--客戶毛利
 	update #vccpr_import set price=case when a.sprice2 !=0 then a.sprice2 else a.sprice end + a.wcost 

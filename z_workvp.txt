@@ -445,6 +445,8 @@ z_workvp01:--z_workvp01
 		,b.lengthb,b.weight,b.mount,b.pmount,b.mechno,b.mech,b.avgkg,b.memo
 	from workv a
 	left join workvs b on a.noa=b.noa
+	where (len(@t_noa)=0 or a.noa=@t_noa)
+	and b.datea between @t_bdate and @t_edate
 	order by a.noa,b.noq
 	----------------------------------------------------------------------
 	declare @noa nvarchar(20)
