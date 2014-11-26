@@ -4,7 +4,7 @@ z_workvp02:--z_workvp02
 	declare @t_bsssno nvarchar(20) = case when '#non'=[4] then '' else [4] end
 	declare @t_esssno nvarchar(20) = case when '#non'=[5] then char(255) else [5] end
 	------------------------------------------------------------------------------------------
-	------------------------------------------------------------------------------------------
+		------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(10),
 		pno nvarchar(10),
@@ -72,13 +72,13 @@ z_workvp02:--z_workvp02
 	declare @mechno nvarchar(20)
 	
 	declare cursor_table cursor for
-	select isnull(c.sssno,''),isnull(c.namea,''),isnull(b.datea,''),sum(isnull(b.avgkg,0)),isnull(d.price,0),isnull(b.mechno,'')
+	select isnull(c.sssno,''),isnull(c.namea,''),isnull(b.datea,''),sum(isnull(b.avgkg,0)),isnull(b.price,0),isnull(b.mechno,'')
 	from workv a
 	left join workvs b on a.noa=b.noa
 	left join workvt c on a.noa=c.noa and b.noq=c.noq
 	left join mech d on b.mechno=d.noa
 	where b.noa is not null and c.noa is not null
-	group by isnull(c.sssno,''),isnull(c.namea,''),isnull(b.datea,''),isnull(d.price,0),isnull(b.mechno,'')
+	group by isnull(c.sssno,''),isnull(c.namea,''),isnull(b.datea,''),isnull(b.price,0),isnull(b.mechno,'')
 	open cursor_table
 	fetch next from cursor_table
 	into @sssno,@namea,@datea,@weight,@price,@mechno
@@ -92,112 +92,112 @@ z_workvp02:--z_workvp02
 		if @mechno = '02'
 		begin
 			update @tmp set w01 = ISNULL(w01,0)+ @weight
-				,m01 = round((ISNULL(w01,0)+ @weight)*@price,0) 
+				,m01 = round((ISNULL(w01,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end
 		----剪台
 		if @mechno = '01'
 		begin
 			update @tmp set w02 = ISNULL(w02,0)+ @weight
-				,m02 = round((ISNULL(w02,0)+ @weight)*@price,0) 
+				,m02 = round((ISNULL(w02,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end		
 		----理貨 	
 		if @mechno = '04' or @mechno = '05' or @mechno = '06'
 		begin
 			update @tmp set w03 = ISNULL(w03,0)+ @weight
-				,m03 = round((ISNULL(w03,0)+ @weight)*@price,0) 
+				,m03 = round((ISNULL(w03,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end	
 		----D19-2  
 		if @mechno = '11'
 		begin
 			update @tmp set w04 = ISNULL(w04,0)+ @weight
-				,m04 = round((ISNULL(w04,0)+ @weight)*@price,0) 
+				,m04 = round((ISNULL(w04,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end			
 		----D19-5  
 		if @mechno = '10'
 		begin
 			update @tmp set w05 = ISNULL(w05,0)+ @weight
-				,m05 = round((ISNULL(w05,0)+ @weight)*@price,0) 
+				,m05 = round((ISNULL(w05,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end			
 		----D25-4  
 		if @mechno = '09'
 		begin
 			update @tmp set w06 = ISNULL(w06,0)+ @weight
-				,m06 = round((ISNULL(w06,0)+ @weight)*@price,0) 
+				,m06 = round((ISNULL(w06,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end			
 		----D25-5  
 		if @mechno = '08'
 		begin
 			update @tmp set w07 = ISNULL(w07,0)+ @weight
-				,m07 = round((ISNULL(w07,0)+ @weight)*@price,0) 
+				,m07 = round((ISNULL(w07,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end			
 		----D32-2  
 		if @mechno = '07'
 		begin
 			update @tmp set w08 = ISNULL(w08,0)+ @weight
-				,m08 = round((ISNULL(w08,0)+ @weight)*@price,0) 
+				,m08 = round((ISNULL(w08,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end			
 		----D10	
 		if @mechno = '12'
 		begin
 			update @tmp set w09 = ISNULL(w09,0)+ @weight
-				,m09 = round((ISNULL(w09,0)+ @weight)*@price,0) 
+				,m09 = round((ISNULL(w09,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end		
 		----D13	
 		if @mechno = '13'
 		begin
 			update @tmp set w10 = ISNULL(w10,0)+ @weight
-				,m10 = round((ISNULL(w10,0)+ @weight)*@price,0) 
+				,m10 = round((ISNULL(w10,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end	
 		----傳統曲
 		if @mechno = '14'
 		begin
 			update @tmp set w11 = ISNULL(w11,0)+ @weight
-				,m11 = round((ISNULL(w11,0)+ @weight)*@price,0) 
+				,m11 = round((ISNULL(w11,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end			
 		----傳統口
 		if @mechno = '16'
 		begin
 			update @tmp set w12 = ISNULL(w12,0)+ @weight
-				,m12 = round((ISNULL(w12,0)+ @weight)*@price,0) 
+				,m12 = round((ISNULL(w12,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end		
 		----傳統圓
 		if @mechno = '15'
 		begin
 			update @tmp set w13 = ISNULL(w13,0)+ @weight
-				,m13 = round((ISNULL(w13,0)+ @weight)*@price,0) 
+				,m13 = round((ISNULL(w13,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end		
 		----砂輪機
 		if @mechno = '17'
 		begin
 			update @tmp set w14 = ISNULL(w14,0)+ @weight
-				,m14 = round((ISNULL(w14,0)+ @weight)*@price,0) 
+				,m14 = round((ISNULL(w14,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end			
 		----鋸床	
 		if @mechno = '18'
 		begin
 			update @tmp set w15 = ISNULL(w15,0)+ @weight
-				,m15 = round((ISNULL(w15,0)+ @weight)*@price,0) 
+				,m15 = round((ISNULL(w15,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end		
 		----虎頭剪
 		if @mechno = '03'
 		begin
 			update @tmp set w16 = ISNULL(w16,0)+ @weight
-				,m16 = round((ISNULL(w16,0)+ @weight)*@price,0) 
+				,m16 = round((ISNULL(w16,0)+ @weight)*@price/1000,0) 
 			where sssno=@sssno and datea=@datea
 		end	
 		fetch next from cursor_table
