@@ -123,6 +123,30 @@ z_workvp03:--z_workvp03
 	from @tmpb
 	group by mon
 	
+	----------------------------------------------------------------------------------------------------
+	declare @t_page int = 30 -- 一頁幾行
+	declare @mon nvarchar(20)
+	declare @n int
+	
+	declare cursor_table cursor for
+	select mon,count(1) from @tmpb group by mon
+	open cursor_table
+	fetch next from cursor_table
+	into @mon,@n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while @n%@t_page!=0
+		begin
+			insert into @tmpb(gno,pno,mon)values('3','3',@mon)
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @mon,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
 	select recno rr
 		,total totm 
 		,* 
