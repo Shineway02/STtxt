@@ -407,10 +407,18 @@ z_workvp02:--z_workvp02
 	select recno rr,total totm, * from @tmp order by datea,gno,sssno;
 
 z_workvp01:--z_workvp01	
+	SET QUOTED_IDENTIFIER OFF
 	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
 	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
 	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
-
+	declare @t_bsssno nvarchar(20) = case when '#non'=[4] then '' else [4] end
+	declare @t_esssno nvarchar(20) = case when '#non'=[5] then char(255) else [5] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) =  case when '#non'=[7] then char(255) else [7] end
+	declare @t_bproductno nvarchar(20) = case when '#non'=[8] then '' else [8] end
+	declare @t_eproductno nvarchar(20) =  case when '#non'=[9] then char(255) else [9] end
+	declare @t_uno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+	
 	declare @tmp table(
 		gno nvarchar(10),
 		recno int,
@@ -447,6 +455,10 @@ z_workvp01:--z_workvp01
 	left join workvs b on a.noa=b.noa
 	where (len(@t_noa)=0 or a.noa=@t_noa)
 	and b.datea between @t_bdate and @t_edate
+	and b.productno between @t_bproductno and @t_eproductno
+	and b.custno between @t_bcustno and @t_ecustno
+	and exists(select * from workvt where noa=a.noa and noq=b.noq and sssno between @t_bsssno and @t_esssno)
+	and (len(@t_uno)=0 or b.uno=@t_uno)
 	order by a.noa,b.noq
 	----------------------------------------------------------------------
 	declare @noa nvarchar(20)
@@ -524,6 +536,7 @@ z_workvp01:--z_workvp01
 	from @tmp
 	
 	select a.recno rr
+		,"workv?noa=\'"+a.noa+"\' and "+cast(a.recno as nvarchar)+"=$rr?" ghref
 		,a.uno a01
 		,a.datea a02
 		,case when len(ISNULL(b.nick,''))>0 then b.nick else a.cust end a03
