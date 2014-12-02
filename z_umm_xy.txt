@@ -197,3 +197,217 @@ from @result order by custno,gno,datea,noa,noq
 ;
 
 --********************************************************************************************
+z_umm_xy2:--z_umm_xy2
+declare @t_mon nvarchar(7)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+
+set @t_mon = case when '#non'=[1] then '' else [1] end
+set @t_bcustno = case when '#non'=[4] then '' else [4] end
+set @t_ecustno = case when '#non'=[5] then char(255) else [5] end
+declare @t_pageline int = 32   --------一頁幾行
+-------------------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(4),
+	typea nvarchar(4),
+	noa nvarchar(15),
+	datea nvarchar(10),
+	mon nvarchar(7),
+	custno nvarchar(30),
+	comp nvarchar(100),
+	post nvarchar(MAX),
+	addr nvarchar(MAX),
+	tel nvarchar(90),
+	serial nvarchar(90),
+	salesno nvarchar(30),
+	saless nvarchar(30),
+	money float,
+	tax float,
+	taxtype float,
+	total float,
+	payed float,
+	unpay float,
+	primary key (gno,custno,noa)
+)
+
+insert into @tmp
+select  '0',a.typea, a.noa, a.datea , (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon
+		,(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,'') comp
+		, isnull(c.zip_home,'') post, isnull(c.addr_home,'') addr, isnull(c.tel,'') tel,isnull(c.serial,'')serial
+		,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+		,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+		,a.money,case when  (select count(*) from ucca )>0 then (select sum(tax) from vcca where vccno=a.noa) else a.tax end
+		,a.taxtype,a.total,0 payed,0 unpay
+	from view_vcc a left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+	where ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_mon) and
+		  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) 
+		order by (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end),a.mon,a.datea,a.noa
+
+update @tmp
+set total=(case when  (select count(*) from ucca )>0 then money+(case when taxtype='1' then tax else 0 end) else total end)
+,money=(case when  (select count(*) from ucca )>0 then total-(case when taxtype='3' then tax else 0 end) else money end)
+
+update @tmp
+set total=(case when typea='1' then 1 else -1 end)*total
+,tax=(case when typea='1' then 1 else -1 end)*tax
+,money=(case when typea='1' then 1 else -1 end)*money
+
+insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed)
+select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total)
+,isnull((select SUM(ub.paysale) from umms ub left join umm ua on ua.noa=ub.noa where ua.mon<@t_mon and (case when ua.custno!='' then ua.custno else ua.custno2 end)=a.custno),0)
+from @tmp a
+group by a.custno
+
+delete @tmp where gno='0'
+update @tmp set unpay=total-payed where gno='1'
+
+-------------------------------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	typea nvarchar(4),
+	noa nvarchar(15),
+	noq nvarchar(3),
+	datea nvarchar(10),
+	mon nvarchar(7),
+	custno nvarchar(30),
+	comp nvarchar(100),
+	xcustno nvarchar(100),
+	xcomp nvarchar(100),
+	post nvarchar(MAX),
+	addr nvarchar(MAX),
+	tel nvarchar(90),
+	serial nvarchar(90),
+	salesno nvarchar(30),
+	sales nvarchar(30),
+	
+	productno nvarchar(50),
+	product nvarchar(100),
+	spec nvarchar(100),
+	unit nvarchar(8),
+	mount float,
+	price float,
+	money float,
+	amoney float,
+	tax float,
+	taxtype float,
+	total float,
+	paysale float,
+	discounts float,
+	payed float,
+	punpay float,
+	unpay float,
+	counts float,
+	primary key (custno,xcustno,gno,mon,datea,noa,noq)
+)
+
+insert into @result
+select '0' gno, a.typea, a.noa, b.noq, a.datea , (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon
+		,(case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,'') comp
+		,a.custno,a.comp
+		, isnull(c.zip_home,'') post, isnull(c.addr_home,'') addr,isnull(c.tel,'') tel,isnull(c.serial,'')serial 
+		,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+		,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+		,b.productno, b.product,b.spec, b.unit,b.mount,b.price,b.total money,a.money
+		,case when  (select count(*) from ucca )>0 then (select sum(tax) from vcca where vccno=a.noa) else a.tax end
+		,a.taxtype,a.total,0 paysale,0 discounts,a.payed payed,0 punpay,a.unpay,0
+	from view_vccs b left join view_vcc a on a.noa = b.noa 
+	left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+	where ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) = @t_mon) and
+		  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) 
+		order by (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end),gno,a.mon,a.datea,a.noa,b.noq
+
+update @result
+set total=(case when  (select count(*) from ucca )>0 then amoney+(case when taxtype='1' then tax else 0 end) else total end)
+,amoney=(case when  (select count(*) from ucca )>0 then total-(case when taxtype='3' then tax else 0 end) else amoney end)
+
+insert @result (gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,amoney,tax,total,paysale,discounts,payed,punpay,unpay)
+select '3',CHAR(255),CHAR(255),'',@t_mon,a.custno,MAX(comp),CHAR(255),'',MAX(b.amoney),MAX(b.tax),MAX(b.total)
+,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+,isnull((select unpay from @tmp where custno=a.custno),0),0
+from @result a
+outer apply (select custno,SUM(amoney)amoney,SUM(tax)tax,SUM(total)total from 
+((select custno,noa,MAX((case when typea='1' then 1 else -1 end)*amoney)amoney,MAX((case when typea='1' then 1 else -1 end)*tax)tax,MAX((case when typea='1' then 1 else -1 end)*total)total from @result where a.custno=custno group by custno,noa))tmp group by custno) b
+group by a.custno
+
+insert @result(gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,post,addr,tel,serial,amoney,tax,total,paysale,discounts,payed,punpay,unpay,counts)
+select '3',noa,'001',CHAR(255),CHAR(255),custno,comp,CHAR(255),'',post,addr,tel,serial,0,0,0
+,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+,unpay,unpay,0 from @tmp a
+where custno not in (select custno from @result )
+
+update a 
+set unpay=punpay+total-payed
+,counts=(select count(*) from @result where gno='0' and custno=a.custno)
+from @result a where gno='3'
+
+insert @result (gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,post,addr,tel,serial)
+select '1','','000',@t_mon+'/00',@t_mon,custno,MAX(comp),xcustno,MAX(xcomp),MAX(post),MAX(addr),MAX(tel),MAX(serial)
+from @result where gno='0' 
+and custno in (select custno from (select custno,xcustno from @result where gno='0' group by custno,xcustno)tmp group by custno having COUNT(*)>1)
+group by custno,xcustno
+
+insert @result (gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,post,addr,tel,serial,mount,money)
+select '2','','000',@t_mon+'/00',@t_mon,custno,MAX(comp),xcustno,MAX(xcomp),MAX(post),MAX(addr),MAX(tel),MAX(serial),SUM(mount),SUM(money)
+from @result where gno='0' 
+and custno in (select custno from (select custno,xcustno from @result where gno='0' group by custno,xcustno)tmp group by custno having COUNT(*)>1)
+group by custno,xcustno
+
+declare @custno nvarchar(30)
+declare @maxnoq nvarchar(30)
+declare @ncount int
+declare @xcount int
+declare cursor_table cursor for
+select custno from @result where gno='3'
+open cursor_table
+fetch next from cursor_table
+into @custno
+while(@@FETCH_STATUS <> -1)
+begin
+	select @maxnoq=isnull((select MAX(noq) from @result where gno='0' and custno=@custno),'000')
+	,@ncount=(select count(*) from @result where gno='0' and custno=@custno)+3
+	,@xcount=(select count(*) from @result where (gno='1' or gno='2') and custno=@custno)
+	
+	while ((@ncount+@xcount) % @t_pageline>0)
+	begin
+		set @maxnoq=right('000'+cast(CAST(@maxnoq as int)+1 as nvarchar(10)),3)
+		
+		insert @result(custno,comp,xcustno,xcomp,post,addr,tel,serial,gno,mon,datea,noa,noq)
+		select @custno,comp,CHAR(255),CHAR(255),post,addr_home,tel,serial,'0',@t_mon,CHAR(255),CHAR(255),@maxnoq
+		from cust where noa=@custno
+	
+		set @ncount=@ncount+1
+	end
+
+	fetch next from cursor_table
+	into @custno
+end
+close cursor_table
+deallocate cursor_table
+
+update a
+set counts=(select counts from @result where gno='3' and custno=a.custno)
+from @result a
+
+select 
+ROW_NUMBER()over(partition by custno order by custno,gno,datea,noa,noq)/(@t_pageline+1)+1 page,
+(cast((counts+3)as int)/@t_pageline)+1 mpage,
+case when typea='1' then '銷' when typea='2' then '退' else '' end typea,
+case when gno='0' then right(datea,2) else '' end day,
+dbo.getComma(mount,0) mount,
+dbo.getComma(price,2) price,
+dbo.getComma(money,0) money,
+dbo.getComma(amoney,0) amoney,
+dbo.getComma(tax,0) tax,
+dbo.getComma(total,0) total,
+dbo.getComma(paysale,0) paysale,
+dbo.getComma(discounts,0) discounts,
+dbo.getComma(payed,0) payed,
+dbo.getComma(punpay,0) punpay,
+dbo.getComma(unpay,0) unpay,
+* 
+from @result order by custno,xcustno,case when gno='0' then '1' when gno='1' then '0' else gno end,datea,noa,noq
+;
