@@ -19,6 +19,8 @@ z_workvp03:--z_workvp03
 	left join workvs b on a.noa=b.noa
 	left join workvt c on a.noa=c.noa and b.noq=c.noq
 	where b.noa is not null and c.noa is not null
+	and b.datea between @t_bdate and @t_edate
+	and c.sssno between @t_bsssno and @t_esssno
 	group by isnull(c.sssno,''),ISNULL(c.namea,''),ISNULL(b.datea,''),ISNULL(b.price,0)
 	update @tmpa set total = round(weight*price/1000,0)
 	
@@ -232,6 +234,8 @@ z_workvp02:--z_workvp02
 	left join workvt c on a.noa=c.noa and b.noq=c.noq
 	left join mech d on b.mechno=d.noa
 	where b.noa is not null and c.noa is not null
+	and b.datea between @t_bdate and @t_edate
+	and c.sssno between @t_bsssno and @t_esssno
 	group by isnull(c.sssno,''),isnull(c.namea,''),isnull(b.datea,''),isnull(b.price,0),isnull(b.mechno,'')
 	open cursor_table
 	fetch next from cursor_table
