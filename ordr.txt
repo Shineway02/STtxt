@@ -1,3 +1,13 @@
+ordr_orda:--ordr_orda
+	declare @t_ordrno nvarchar(20) = [1]
+	
+	update ordas set apv=1,apvmemo=b.apvmemo
+	from ordas a
+	left join (select * from ordrs where noa=@t_ordrno) b on a.noa=b.ordano and a.noq=b.ordanoq
+	where b.apv=1
+	
+	select 'done' msg;
+	
 orda_ordr: -- orda_ordr
 	declare @t_noa nvarchar(20) = [1]
 	declare @t_workgno nvarchar(20) = [2]
