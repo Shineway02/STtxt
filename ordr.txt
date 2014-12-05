@@ -11,25 +11,24 @@ ordr_orda:--ordr_orda
 orda_ordr: -- orda_ordr
 	declare @t_noa nvarchar(20) = [1]
 	declare @t_workgno nvarchar(20) = [2]
-	declare @t_rworkdate nvarchar(10) = [3]
-	declare @t_bday int = case when len([4])=0 then 0 else cast([4] as int) end
-	declare @t_uccgano nvarchar(20) = [5]
-	declare @t_uccgbno nvarchar(20) = [6]
-	declare @t_uccgcno nvarchar(20)= [7]
-	declare @t_bdate nvarchar(20) = ''
-	if LEN(@t_rworkdate)>0
-		set @t_bdate =dbo.AD2ChineseEraName( dateadd(DD,-1*@t_bday,dbo.ChineseEraName2AD(@t_rworkdate)))
-	 
+	declare @t_style nvarchar(50) = [3]
+	declare @t_bworkdate nvarchar(10) = [4]
+	declare @t_eworkdate nvarchar(10) = [5]
+	declare @t_uccgano nvarchar(20) = [6]
+	declare @t_uccgbno nvarchar(20) = [7]
+	declare @t_uccgcno nvarchar(20)= [8]
+
 	select b.* 
 	from orda a
 	left join ordas b on a.noa=b.noa
-	left join (select noa,MIN(rworkdate) rworkdate from view_workgs where len(rworkdate)>0 group by noa) c on a.workgno=c.noa
-	left join ucc d on b.productno=d.noa
+	left join ucc c on b.productno=c.noa
 	where b.noa is not null
 	and b.apv = 0
 	and (len(@t_workgno)=0 or @t_workgno=a.workgno)
-	and (len(@t_bdate)=0 or @t_bdate=c.rworkdate)
-	and (len(@t_uccgano)=0 or @t_uccgano=d.groupano)
-	and (len(@t_uccgbno)=0 or @t_uccgbno=d.groupbno)
-	and (len(@t_uccgcno)=0 or @t_uccgcno=d.groupcno)
+	and (len(@t_style)=0 or @t_style=b.style)
+	and (len(@t_bworkdate)=0 or @t_bworkdate<=b.workdate)
+	and (len(@t_eworkdate)=0 or @t_eworkdate>=b.workdate)
+	and (len(@t_uccgano)=0 or @t_uccgano=c.groupano)
+	and (len(@t_uccgbno)=0 or @t_uccgbno=c.groupbno)
+	and (len(@t_uccgcno)=0 or @t_uccgcno=c.groupcno)
 	order by a.noa desc,b.noq;
