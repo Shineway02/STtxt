@@ -39,22 +39,21 @@ z_ordrp01:--z_ordrp01
 	insert into @tmp(gno,pno,recno,ordano,ordanoq,apv,apvmemo
 		,rworkdate,datea,productno,product,unit,spec,style,gmount,stkmount
 		,schmount,netmount,fdate,fmount,mount,memo,ldate,wmount)
-	select '1','1',ROW_NUMBER()over(order by isnull(c.rworkdate,''),a.noa,b.noq)
+	select '1','1',ROW_NUMBER()over(order by isnull(b.workdate,''),a.noa,b.noq)
 		,a.noa,b.noq,b.apv,b.apvmemo
-		,isnull(c.rworkdate,''),b.datea,b.productno,b.product,b.unit,b.spec,b.style,b.gmount,b.stkmount
+		,isnull(b.workdate,''),b.datea,b.productno,b.product,b.unit,b.spec,b.style,b.gmount,b.stkmount
 		,b.schmount,b.netmount,b.fdate,b.fmount,b.mount,b.memo,b.ldate,b.wmount
 	from orda a
 	left join ordas b on a.noa=b.noa
-	left join (select noa,MIN(rworkdate) rworkdate from view_workgs where len(rworkdate)>0 group by noa) c on a.workgno=c.noa
 	left join ucc d on b.productno=d.noa
 	where b.noa is not null
 	and (@t_apv is null or b.apv=@t_apv)
 	and (len(@t_workgno)=0 or @t_workgno=a.workgno)
-	and (isnull(c.rworkdate,'') between @t_brworkdate and @t_erworkdate)
+	and (isnull(b.workdate,'') between @t_brworkdate and @t_erworkdate)
 	and (len(@t_uccgano)=0 or @t_uccgano=d.groupano)
 	and (len(@t_uccgbno)=0 or @t_uccgbno=d.groupbno)
 	and (len(@t_uccgcno)=0 or @t_uccgcno=d.groupcno)
-	order by isnull(c.rworkdate,''),a.noa,b.noq
+	order by isnull(b.workdate,''),a.noa,b.noq
 	
 	select recno rr
 		,"orda?noa=\'"+ordano+"\' and "+cast(recno as nvarchar)+"=$rr?" ghref 
