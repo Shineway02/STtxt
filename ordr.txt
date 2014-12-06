@@ -50,12 +50,12 @@ ordr_ordb:--ordr_ordb
 	)
 	insert into #ordr_ordbs(tggno,productno,product,unit,price,mount,ldate)
 	select ISNULL(c.tggno,''),ISNULL(b.productno,''),ISNULL(c.product,'')
-		,ISNULL(b.unit,''),ISNULL(c.price,''),SUM(ISNULL(b.netmount,0)),MIN(ISNULL(b.workdate,''))
+		,ISNULL(b.unit,''),ISNULL(c.inprice,''),SUM(ISNULL(b.netmount,0)),MIN(ISNULL(b.workdate,''))
 	from ordr a
 	left join ordrs b on a.noa=b.noa
 	left join ucc c on b.productno=c.noa
 	where a.noa=@t_ordrno
-	group by ISNULL(c.tggno,''),ISNULL(b.productno,''),ISNULL(c.product,''),ISNULL(b.unit,''),ISNULL(c.price,'')
+	group by ISNULL(c.tggno,''),ISNULL(b.productno,''),ISNULL(c.product,''),ISNULL(b.unit,''),ISNULL(c.inprice,'')
 	
 	update #ordr_ordbs set no3=RIGHT('000'+CAST(b.recno as nvarchar),3)
 		,c1=0,notv=b.mount,total = ROUND(b.mount*b.price,0)
@@ -193,3 +193,38 @@ ordr_ordb:--ordr_ordb
 	drop table #ordr_ordb
 	drop table #ordr_ordbs
 	return;
+ordr_orda:--ordr_orda
+	declare @t_ordrno nvarchar(20) = [1]
+	
+	update ordas set apv=1,apvmemo=b.apvmemo
+	from ordas a
+	left join (select * from ordrs where noa=@t_ordrno) b on a.noa=b.ordano and a.noq=b.ordanoq
+	where b.apv=1
+	
+	select 'done' msg;
+	
+orda_ordr: -- orda_ordr
+	declare @t_noa nvarchar(20) = [1]
+	declare @t_workgno nvarchar(20) = [2]
+	declare @t_style nvarchar(50) = [3]
+	declare @t_bworkdate nvarchar(10) = [4]
+	declare @t_eworkdate nvarchar(10) = [5]
+	declare @t_uccgano nvarchar(20) = [6]
+	declare @t_uccgbno nvarchar(20) = [7]
+	declare @t_uccgcno nvarchar(20)= [8]
+
+	select b.* 
+	from orda a
+	left join ordas b on a.noa=b.noa
+	left join ucc c on b.productno=c.noa
+	where b.noa is not null
+	and b.apv = 0
+	and not exists(select noa from ordrs where noa!=@t_noa and ordano=a.noa and ordanoq=b.noq)
+	and (len(@t_workgno)=0 or @t_workgno=a.workgno)
+	and (len(@t_style)=0 or @t_style=b.style)
+	and (len(@t_bworkdate)=0 or @t_bworkdate<=b.workdate)
+	and (len(@t_eworkdate)=0 or @t_eworkdate>=b.workdate)
+	and (len(@t_uccgano)=0 or @t_uccgano=c.groupano)
+	and (len(@t_uccgbno)=0 or @t_uccgbno=c.groupbno)
+	and (len(@t_uccgcno)=0 or @t_uccgcno=c.groupcno)
+	order by a.noa desc,b.noq;
