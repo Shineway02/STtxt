@@ -85,6 +85,8 @@ ordr_ordb:--ordr_ordb
 	declare @t_ordbno nvarchar(max) = ''
 	declare @t_noa nvarchar(20) = ''
 	declare @t_maxordbno nvarchar(20) = ''
+	declare @t_maxordbno1 nvarchar(20) = ''
+	declare @t_maxordbno2 nvarchar(20) = ''
 	declare @string nvarchar(max) = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 	declare @n int
 	
@@ -95,19 +97,18 @@ ordr_ordb:--ordr_ordb
 	into @tggno
 	while(@@FETCH_STATUS <> -1)
 	begin
-		select @t_date = datea from #ordr_ordb where tggno=@tggno
+		select @t_date = datea from #ordr_ordb where tggno=@tggno 
 		set @t_ordbno = ''
 		set @t_noa = @t_key + replace(@t_date,'/','')
-		set @t_maxordbno = ''
 		
-		if not exists(select * from @tmpa )
-		begin
-			select @t_maxordbno = MAX(noa) from view_ordb where noa like @t_noa+'[A-Z,0-9][A-Z,0-9][A-Z,0-9]'
-		end
-		else
-		begin
-			select @t_maxordbno = MAX(ordbno) from @tmpa 
-		end
+		set @t_maxordbno1 = ''
+		set @t_maxordbno2 = ''
+
+		select @t_maxordbno1 = MAX(noa) from view_ordb where noa like @t_noa+'[A-Z,0-9][A-Z,0-9][A-Z,0-9]'
+		select @t_maxordbno2 = MAX(ordbno) from @tmpa 
+	
+		set @t_maxordbno = case when isnull(@t_maxordbno1,'')>isnull(@t_maxordbno2,'') then @t_maxordbno1 else @t_maxordbno2 end
+		
 		if len(ISNULL(@t_maxordbno,''))=0
 		begin
 			set @t_ordbno = @t_noa + '001'
@@ -193,6 +194,7 @@ ordr_ordb:--ordr_ordb
 	drop table #ordr_ordb
 	drop table #ordr_ordbs
 	return;
+	
 ordr_orda:--ordr_orda
 	declare @t_ordrno nvarchar(20) = [1]
 	
