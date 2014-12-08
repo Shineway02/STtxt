@@ -199,6 +199,9 @@ import:--ordb -> ordp
 	declare @t_eldate nvarchar(10) = case when len([10])=0 then char(255) else [10] end
 
 	declare @t_ordbsign nvarchar(10) = [11] 
+	declare @t_uccgano nvarchar(20) = [12] 
+	declare @t_uccgbno nvarchar(20) = [13] 
+	declare @t_uccgcno nvarchar(20) = [14] 
 	-------------------------------------------------------------------------
 	declare @tmp table(
 		pno nvarchar(10),
@@ -231,6 +234,7 @@ import:--ordb -> ordp
 	select '1',a.accy,a.noa,a.no3,isnull(b.cno,''),b.kind,isnull(b.datea,''),b.tggno,b.tgg,a.productno,a.product,a.spec,a.style,a.unit,isnull(a.mount,0),a.omount,isnull(a.price,0),isnull(a.total,0),isnull(a.ldate,'')
 	from view_ordbs a
 	left join view_ordb b on a.accy=b.accy and a.noa=b.noa
+	left join ucc c on a.productno=c.noa
 	where len(b.tggno)>0 and len(a.productno)>0 and a.mount!=0
 	and (len(@t_kind)=0 or b.kind=@t_kind)
 	and (b.tggno between @t_btggno and @t_etggno)
@@ -240,6 +244,9 @@ import:--ordb -> ordp
 	and b.odate between @t_bodate and @t_eodate
 	and isnull(a.cancel,0)=0
 	and isnull(b.cancel,0)=0
+	and (len(@t_uccgano)=0 or c.groupano=@t_uccgano)
+	and (len(@t_uccgbno)=0 or c.groupbno=@t_uccgbno)
+	and (len(@t_uccgcno)=0 or c.groupcno=@t_uccgcno)
 	and (@t_ordbsign='0' or exists(select top 1 * from sign where zno=b.noa and ISNULL(enda,'')='Y'))
 	-- ordb 無廠商 就找詢價議價找
 	insert into @tmp(pno,accy,noa,no3,no4,cno,kind,datea,tggno,tgg,productno,product,spec,style,unit,mount,omount,price,total,ldate)
