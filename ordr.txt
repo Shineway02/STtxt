@@ -9,6 +9,11 @@ ordr_ordb:--ordr_ordb
 		select '尚未核准完畢，不產生請購單。' msg,'' ordbno
 		return
 	end
+	
+	declare @t_odate nvarchar(20) = ''
+	declare @t_bday int =0
+	select @t_odate=apvdate,@t_bday=ISNULL(bday,0) from ordr where noa=@t_ordrno
+	set @t_odate = dbo.AD2ChineseEraName(dateadd(DD,-1*@t_bday,dbo.ChineseEraName2AD(@t_odate)))
 	--================================================================================================
 	IF OBJECT_ID('tempdb..#ordr_ordb')is not null
 	BEGIN
@@ -48,9 +53,11 @@ ordr_ordb:--ordr_ordb
 		notv float,
 		ldate nvarchar(10)
 	)
-	insert into #ordr_ordbs(tggno,productno,product,unit,price,mount,ldate)
+	insert into #ordr_ordbs(tggno,productno,product,unit,price,mount,ldate,omount,stdmount)
 	select ISNULL(c.tggno,''),ISNULL(b.productno,''),ISNULL(c.product,'')
-		,ISNULL(b.unit,''),ISNULL(c.inprice,''),SUM(ISNULL(b.netmount,0)),MIN(ISNULL(b.workdate,''))
+		,ISNULL(b.unit,''),ISNULL(c.inprice,''),SUM(ISNULL(b.netmount,0))
+		,dbo.AD2ChineseEraName(dateadd(DD,-1*@t_bday,dbo.ChineseEraName2AD(MIN(ISNULL(b.workdate,'')))))
+		,SUM(ISNULL(b.netmount,0)),SUM(ISNULL(c.stdmount,0))
 	from ordr a
 	left join ordrs b on a.noa=b.noa
 	left join ucc c on b.productno=c.noa
@@ -61,7 +68,6 @@ ordr_ordb:--ordr_ordb
 		,c1=0,notv=b.mount,total = ROUND(b.mount*b.price,0)
 	from #ordr_ordbs a
 	left join (select ROW_NUMBER()over(PARTITION by tggno order by pno) recno,* from #ordr_ordbs) b on a.pno=b.pno
-
 	--================================================================================================
 	declare @tmpa table(
 		ordbaccy nvarchar(10),
@@ -130,10 +136,6 @@ ordr_ordb:--ordr_ordb
 	declare @cmd nvarchar(max)
 	declare @accy nvarchar(10)
 	declare @ordbno nvarchar(20)
-	declare @t_odate nvarchar(20) = ''
-	declare @t_bday int =0
-	select @t_odate=apvdate,@t_bday=ISNULL(bday,0) from ordr where noa=@t_ordrno
-	set @t_odate = dbo.AD2ChineseEraName(dateadd(DD,-1*@t_bday,dbo.ChineseEraName2AD(@t_odate)))
 
 	declare cursor_table cursor for
 	select ordbaccy,ordbno,tggno,n from @tmpa 	
@@ -150,10 +152,11 @@ ordr_ordb:--ordr_ordb
 		if @n>0
 		begin
 			set @cmd =
-				"insert into ordb"+@accy+"(noa,datea,odate,tggno,tgg,nick,workgno)
-				select @ordbno,a.datea,@t_odate,a.tggno,b.comp,b.nick,@t_ordrno
+				"insert into ordb"+@accy+"(noa,datea,odate,tggno,tgg,nick,workgno,money,total)
+				select @ordbno,a.datea,a.datea,a.tggno,b.comp,b.nick,@t_ordrno,isnull(c.total,0),isnull(c.total,0)
 				from #ordr_ordb a
 				left join tgg b on a.tggno=b.noa
+				outer apply (select sum(isnull(total,0)) total from #ordr_ordbs where tggno=@tggno) c 
 				where a.tggno=@tggno"
 			execute sp_executesql @cmd,N'@ordbno nvarchar(20),@tggno nvarchar(20),@t_ordrno nvarchar(20),@t_odate nvarchar(10)'
 				,@ordbno=@ordbno,@tggno=@tggno,@t_ordrno=@t_ordrno,@t_odate=@t_odate
