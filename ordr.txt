@@ -223,7 +223,7 @@ orda_ordr: -- orda_ordr
 	left join ordas b on a.noa=b.noa
 	left join ucc c on b.productno=c.noa
 	where b.noa is not null
-	and b.apv = 0
+	and isnull(b.apv,0) = 0
 	and not exists(select noa from ordrs where noa!=@t_noa and ordano=a.noa and ordanoq=b.noq)
 	and (len(@t_workgno)=0 or @t_workgno=a.workgno)
 	and (len(@t_style)=0 or @t_style=b.style)
