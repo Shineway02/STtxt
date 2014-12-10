@@ -41,14 +41,14 @@ insert into @tmp
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
 ,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.addr2 else a.addr end,c.conntel,c.billmemo
 ,a.invono,a.memo
-,case when c.notprice=1 then null else a.money end
-,case when c.notprice=1 then null else a.tax end
+,case when isnull(cm.notprice,0)=1 then null else a.money end
+,case when isnull(cm.notprice,0)=1 then null else a.tax end
 ,dbo.split(c.invomemo,'##',1),dbo.split(c.invomemo,'##',3),c.paytype
 ,b.productno,b.product,b.spec,b.unit,b.mount,b.tranmoney2-b.tranmoney3
-,case when c.notprice=1 then null else b.price end
-,case when c.notprice=1 then null else b.total end
+,case when isnull(cm.notprice,0)=1 then null else b.price end
+,case when isnull(cm.notprice,0)=1 then null else b.total end
 ,b.memo,case when a.worker2!='' then a.worker2 else a.worker end
-from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa
+from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa left join custm cm on a.custno=cm.noa
 left join ucc d on b.productno=d.noa
 where a.noa between @t_bxnoa and @t_exnoa
 
