@@ -35,6 +35,7 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 		recno int,
 		noq nvarchar(10),
 		place nvarchar(20),
+		placeX nvarchar(20),
 		productno nvarchar(20),
 		product nvarchar(50),
 		spec nvarchar(20),
@@ -51,11 +52,13 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 		totweight float
 	)
 	insert into @tmp(gno,pno,noa,datea,odate,custno,cust,nick,[site],tagcolor,trantype,trantype1,trantype2,chktype,tolerance,worker,memo
-		,recno,noq,place,productno,product,lengthb,mount,[weight],imgdata,memos
+		,recno,noq,place,placex,productno,product,lengthb,mount,[weight],imgdata,memos
 		,ordeaccy,ordeno)
 	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.trantype1,a.trantype2,a.chktype,a.tolerance,a.worker,a.memo
 		,ROW_NUMBER()over(partition by a.noa order by b.noq)
-		,b.noq,b.place,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.imgdata,b.memo
+		,b.noq,b.place
+		,isnull(b.place1,'')+isnull(b.place2,'')+isnull(b.place3,'')+isnull(b.place4,'')+isnull(b.place5,'')
+		,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.imgdata,b.memo
 		,a.ordeaccy,a.ordeno
 	from workj a
 	left join workjs b on a.noa=b.noa
@@ -156,10 +159,11 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 		,case when len(isnull(imgdata,''))>0 then '<img src="'+imgdata+'" style="width:150px'+char(59)+'height:50px'+char(59)+'"/>' 
 			else '<span style="display:block'+char(59)+'width:150px'+char(59)+'height:50px'+char(59)+'"></span>' end b03
 		,lengthb b04
-		,mount b05
-		,[weight] b06
+		,dbo.getComma([mount],0) b05
+		,dbo.getComma([weight],0) b06
 		,timea b07
 		,memos b08
+		,placex b09
 		,totmount c01
 		,[totweight] c02
 		
