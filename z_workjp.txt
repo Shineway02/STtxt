@@ -35,7 +35,7 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 		recno int,
 		noq nvarchar(10),
 		place nvarchar(20),
-		placeX nvarchar(20),
+		placeX nvarchar(max),
 		productno nvarchar(20),
 		product nvarchar(50),
 		spec nvarchar(20),
@@ -57,7 +57,11 @@ z_workjp01:--z_workjp01 因為要印頁小計，改為一次只能印一張
 	select '1','1',a.noa,a.datea,a.odate,a.custno,a.cust,a.nick,a.[site],a.tagcolor,a.trantype,a.trantype1,a.trantype2,a.chktype,a.tolerance,a.worker,a.memo
 		,ROW_NUMBER()over(partition by a.noa order by b.noq)
 		,b.noq,b.place
-		,isnull(b.place1,'')+isnull(b.place2,'')+isnull(b.place3,'')+isnull(b.place4,'')+isnull(b.place5,'')
+		,isnull(b.place1,'')
+			+'<br>'+isnull(b.place2,'')
+			+'<br>'+isnull(b.place3,'')
+			+'<br>'+isnull(b.place4,'')
+			+'<br>'+isnull(b.place5,'')
 		,b.productno,b.product,b.lengthb,b.mount,b.[weight],b.imgdata,b.memo
 		,a.ordeaccy,a.ordeno
 	from workj a
