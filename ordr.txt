@@ -152,8 +152,8 @@ ordr_ordb:--ordr_ordb
 		if @n>0
 		begin
 			set @cmd =
-				"insert into ordb"+@accy+"(noa,datea,odate,tggno,tgg,nick,workgno,money,total)
-				select @ordbno,a.datea,a.datea,a.tggno,b.comp,b.nick,@t_ordrno,isnull(c.total,0),isnull(c.total,0)
+				"insert into ordb"+@accy+"(noa,kind,datea,odate,tggno,tgg,nick,workgno,money,total)
+				select @ordbno,'1',a.datea,a.datea,a.tggno,b.comp,b.nick,@t_ordrno,isnull(c.total,0),isnull(c.total,0)
 				from #ordr_ordb a
 				left join tgg b on a.tggno=b.noa
 				outer apply (select sum(isnull(total,0)) total from #ordr_ordbs where tggno=@tggno) c 
