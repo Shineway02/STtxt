@@ -49,9 +49,9 @@ declare @tmp table(
 
 insert into @tmp 
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq)
-,a.noa,a.odate,a.datea,a.custno,a.comp,c.serial,c.invoicetitle
+,a.noa,a.odate,a.datea,a.custno,a.comp,a.pay,c.invoicetitle
 ,a.tel,a.fax,case when a.addr2!='' then a.addr2 else a.addr end
-,c.email,c.conntel,a.salesno,a.sales,d.mobile1
+,a.memo2,c.conntel,a.salesno,a.sales,d.mobile1
 ,b.productno,b.product,case when b.classa='印刷' then 'V' else '' end
 ,b.sizea,b.dime,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
 from view_quat a left join view_quats b on a.noa=b.noa left join cust c on a.custno=c.noa
