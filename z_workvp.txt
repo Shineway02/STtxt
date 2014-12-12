@@ -68,46 +68,165 @@ z_workvp03:--z_workvp03
 		
 		m31 float
 	)
-	insert into @tmpb(pno,gno,sssno,namea,mon,recno
-		,m01,m02,m03,m04,m05,m06,m07,m08,m09,m10
-		,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20
-		,m21,m22,m23,m24,m25,m26,m27,m28,m29,m30
-		,m31)
-	select '1','1',isnull(sssno,''),ISNULL(namea,''),LEFT(datea,6)
-		,ROW_NUMBER()over(partition by LEFT(datea,6) order by sssno)
-		,case when RIGHT(datea,2)='01' then total else 0 end
-		,case when RIGHT(datea,2)='02' then total else 0 end
-		,case when RIGHT(datea,2)='03' then total else 0 end
-		,case when RIGHT(datea,2)='04' then total else 0 end
-		,case when RIGHT(datea,2)='05' then total else 0 end
-		,case when RIGHT(datea,2)='06' then total else 0 end
-		,case when RIGHT(datea,2)='07' then total else 0 end
-		,case when RIGHT(datea,2)='08' then total else 0 end
-		,case when RIGHT(datea,2)='09' then total else 0 end
-		,case when RIGHT(datea,2)='10' then total else 0 end
-		,case when RIGHT(datea,2)='11' then total else 0 end
-		,case when RIGHT(datea,2)='12' then total else 0 end
-		,case when RIGHT(datea,2)='13' then total else 0 end
-		,case when RIGHT(datea,2)='14' then total else 0 end
-		,case when RIGHT(datea,2)='15' then total else 0 end
-		,case when RIGHT(datea,2)='16' then total else 0 end
-		,case when RIGHT(datea,2)='17' then total else 0 end
-		,case when RIGHT(datea,2)='18' then total else 0 end
-		,case when RIGHT(datea,2)='19' then total else 0 end
-		,case when RIGHT(datea,2)='20' then total else 0 end
-		,case when RIGHT(datea,2)='21' then total else 0 end
-		,case when RIGHT(datea,2)='22' then total else 0 end
-		,case when RIGHT(datea,2)='23' then total else 0 end
-		,case when RIGHT(datea,2)='24' then total else 0 end
-		,case when RIGHT(datea,2)='25' then total else 0 end
-		,case when RIGHT(datea,2)='26' then total else 0 end
-		,case when RIGHT(datea,2)='27' then total else 0 end
-		,case when RIGHT(datea,2)='28' then total else 0 end
-		,case when RIGHT(datea,2)='29' then total else 0 end
-		,case when RIGHT(datea,2)='30' then total else 0 end
-		,case when RIGHT(datea,2)='31' then total else 0 end
-	from (select sssno,namea,datea,sum(total) total from @tmpa group by sssno,namea,datea) a
+	insert into @tmpb(pno,gno,sssno,namea,mon,recno)
+	select '1','1',isnull(a.sssno,''),ISNULL(a.namea,''),a.mon,ROW_NUMBER()over(partition by a.mon order by sssno)
+	from (select sssno,namea,LEFT(datea,6) mon from @tmpa group by sssno,namea,LEFT(datea,6)) a
 	
+	update @tmpb set m01 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='01' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m02 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='02' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m03 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='03' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m04 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='04' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m05 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='05' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m06 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='06' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m07 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='07' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m08 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='08' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m09 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='09' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m10 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='10' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m11 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='11' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m12 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='12' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m13 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='13' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m14 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='14' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m15 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='15' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m16 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='16' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m17 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='17' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m18 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='18' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m19 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='19' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m20 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='20' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m21 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='21' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m22 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='22' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m23 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='23' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m24 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='24' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m25 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='25' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m26 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='26' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m27 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='27' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m28 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='28' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m29 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='29' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m30 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='30' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m31 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='31' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+
 	update @tmpb set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10
 		+m11+m12+m13+m14+m15+m16+m17+m18+m19+m20
 		+m21+m22+m23+m24+m25+m26+m27+m28+m29+m30+m31
