@@ -3,11 +3,12 @@ declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
 declare @t_bnoa nvarchar(50)
 declare @t_enoa nvarchar(50)
-declare @t_show nvarchar(20)
+declare @t_logo2 nvarchar(20)
 set @t_bdate = case when '#non' = [2] then '' else [2] end
 set @t_edate = case when '#non' = [3] then CHAR(255) else [3] end
 set @t_bnoa = case when '#non' = [4] then '' else [4] end
 set @t_enoa = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_logo2 = case when '#non' = [6] then '0' else [6] end
 declare @t_pageline int = 20   --------一頁幾行
 --*******************************************************************************************************
 declare @tmp table(
@@ -30,7 +31,7 @@ declare @tmp table(
 	productno nvarchar(90),
 	product nvarchar(90),
 	pack nvarchar(90),
-	col float,
+	col nvarchar(90),
 	unit nvarchar(90),
 	mount float,
 	price float,
@@ -53,8 +54,9 @@ insert into @tmp
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.no2)
 ,a.noa,a.odate,a.custno,a.comp,c.serial,c.invoicetitle
 ,a.tel,a.fax,a.addr
-,c.email,c.conntel,a.salesno,a.sales,d.mobile1,b.productno,b.product
-,b.sizea,b.dime,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
+,c.email,c.conntel,a.salesno,a.sales,d.mobile1,b.productno,b.product,b.sizea
+,case when b.dime=1 then '單' when b.dime=2 then '雙' when b.dime=3 then '參' when b.dime=4 then '肆' when b.dime=5 then '全彩' else '' end
+,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
 ,b.datea,case when isnull(c.startdate,'')='' or c.startdate='0' then 30 else cast(c.startdate as int)-1 end
 ,dbo.split(c.invomemo,'##',1),c.[getdate],a.paytype,a.trantype,a.addr2,a.addr2
 from view_orde a left join view_ordes b on a.noa=b.noa left join cust c on a.custno=c.noa
@@ -181,6 +183,6 @@ dbo.getComma(price,2) price,
 dbo.getComma(total,0) total,
 *
 ,'<img width="60px" src="http://59.125.143.171/images/logo1_xy.png">' logo1
-,'<img width="120px" src="http://59.125.143.171/images/logo2_xy.png" style="position: absolute">' logo2
+,case when @t_logo2=0 then '' else '<img width="120px" src="http://59.125.143.171/images/logo2_xy.png" style="position: absolute">' end logo2
 from @tmp
 order by noa,recno,gno;
