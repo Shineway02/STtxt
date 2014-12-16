@@ -4,11 +4,13 @@ declare @t_edate nvarchar(20)
 declare @t_bnoa nvarchar(50)
 declare @t_enoa nvarchar(50)
 declare @t_show nvarchar(20)
+declare @t_logo2 nvarchar(20)
 set @t_bdate = case when '#non' = [2] then '' else [2] end
 set @t_edate = case when '#non' = [3] then CHAR(255) else [3] end
 set @t_bnoa = case when '#non' = [4] then '' else [4] end
 set @t_enoa = case when '#non' = [5] then CHAR(255) else [5] end
 set @t_show = case when '#non' = [6] then '0' else [6] end
+set @t_logo2 = case when '#non' = [7] then '0' else [7] end
 declare @t_pageline int = 20   --------一頁幾行
 
 if(@t_show='0')
@@ -36,7 +38,7 @@ declare @tmp table(
 	product nvarchar(90),
 	np nvarchar(90),
 	pack nvarchar(90),
-	col float,
+	col nvarchar(90),
 	unit nvarchar(90),
 	mount float,
 	price float,
@@ -52,8 +54,9 @@ select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq)
 ,a.noa,a.odate,a.datea,a.custno,a.comp,a.pay,c.invoicetitle
 ,a.tel,a.fax,case when a.addr2!='' then a.addr2 else a.addr end
 ,a.memo2,c.conntel,a.salesno,a.sales,d.mobile1
-,b.productno,b.product,case when b.classa='印刷' then 'V' else '' end
-,b.sizea,b.dime,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
+,b.productno,b.product,b.classa,b.sizea
+,case when b.dime=1 then '單' when b.dime=2 then '雙' when b.dime=3 then '參' when b.dime=4 then '肆' when b.dime=5 then '全彩' else '' end
+,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
 from view_quat a left join view_quats b on a.noa=b.noa left join cust c on a.custno=c.noa
 left join sss d on a.salesno=d.noa
 where a.noa between @t_bnoa and @t_enoa and a.odate between @t_bdate and @t_edate
@@ -179,6 +182,6 @@ dbo.getComma(price,2) price,
 dbo.getComma(total,0) total,
 *
 ,'<img width="60px" src="http://59.125.143.171/images/logo1_xy.png">' logo1
-,'<img width="90px" src="http://59.125.143.171/images/logo2_xy.png">' logo2
+,case when @t_logo2=0 then '' else '<img width="90px" src="http://59.125.143.171/images/logo2_xy.png">' end logo2
 from @tmp
 order by noa,recno,gno;

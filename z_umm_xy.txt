@@ -411,3 +411,54 @@ dbo.getComma(unpay,0) unpay,
 * 
 from @result order by custno,xcustno,case when gno='0' then '1' when gno='1' then '0' else gno end,datea,noa,noq
 ;
+--********************************************************************************************
+z_umm_xy3:--z_umm_xy3
+declare @t_mon nvarchar(7)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+
+set @t_mon = case when '#non'=[1] then '' else [1] end
+set @t_bsalesno = case when '#non'=[6] then '' else [6] end
+set @t_esalesno = case when '#non'=[7] then char(255) else [7] end
+-------------------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(4),
+	udate nvarchar(20),
+	unoa nvarchar(50),
+	ucustno nvarchar(100),
+	ucomp nvarchar(100),
+	utotal float,
+	salesno nvarchar(50),
+	saless nvarchar(50),
+	vdate nvarchar(20),
+	vcustno nvarchar(100),
+	vcomp nvarchar(100),
+	vnoa nvarchar(50),
+	vnoq nvarchar(50),
+	product nvarchar(200),
+	mount float,
+	price float,
+	vtotal float,
+	lengthb float
+)
+
+insert into @tmp
+select '0',a.datea,a.noa,a.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=a.custno)
+,b.paysale,isnull(e.salesno,''),e.sales,c.datea,c.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=c.custno)
+,c.noa,c.noq,c.product,c.mount,c.price,c.total,d.lengthb
+from umm a left join umms b on a.noa=b.noa left join view_vccs c on b.vccno=c.noa
+left join view_ordes d on (c.ordeno=d.noa and c.no2=d.no2)
+left join view_vcc e on c.noa=e.noa
+where a.mon=@t_mon and (isnull(e.salesno,'') between @t_bsalesno and @t_esalesno)
+
+insert @tmp (gno,salesno,saless,utotal,vtotal)
+select '1',salesno,MAX(saless),sum(utotal),sum(vtotal) from @tmp group by salesno
+
+select 
+dbo.getComma(mount,0) mount,
+dbo.getComma(price,4) price,
+dbo.getComma(utotal,0) utotal,
+dbo.getComma(vtotal,0) vtotal,
+* 
+from @tmp order by salesno,gno,udate,ucustno,unoa,vcustno,vnoa,vnoq
+;
