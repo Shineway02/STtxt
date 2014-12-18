@@ -439,20 +439,24 @@ declare @tmp table(
 	mount float,
 	price float,
 	vtotal float,
-	lengthb float
+	rate nvarchar(50),
+	bonus float
 )
 
 insert into @tmp
 select '0',a.datea,a.noa,a.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=a.custno)
 ,b.paysale,isnull(e.salesno,''),e.sales,c.datea,c.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=c.custno)
-,c.noa,c.noq,c.product,c.mount,c.price,c.total,d.lengthb
+,c.noa,c.noq,c.product,c.mount,c.price,c.total,d.class,null
 from umm a left join umms b on a.noa=b.noa left join view_vccs c on b.vccno=c.noa
 left join view_ordes d on (c.ordeno=d.noa and c.no2=d.no2)
 left join view_vcc e on c.noa=e.noa
 where a.mon=@t_mon and (isnull(e.salesno,'') between @t_bsalesno and @t_esalesno)
 
-insert @tmp (gno,salesno,saless,utotal,vtotal)
-select '1',salesno,MAX(saless),sum(utotal),sum(vtotal) from @tmp group by salesno
+update @tmp
+set bonus=(case when rate='' then 100 else cast(rate as float) end)/100*utotal
+
+insert @tmp (gno,salesno,saless,utotal,vtotal,bonus)
+select '1',salesno,MAX(saless),sum(utotal),sum(vtotal),sum(bonus) from @tmp group by salesno
 
 select 
 dbo.getComma(mount,0) mount,
