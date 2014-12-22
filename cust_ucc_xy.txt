@@ -64,9 +64,23 @@ declare @chg_custno nvarchar(MAX) = [2]
 
 --更新cust 編號
 update cust set noa=@chg_custno where noa=@tmp_custno
+--更新聯絡人編號
+update conn set noa=@chg_custno where noa=@tmp_custno
+--更新稅務資料
+update custm set noa=@chg_custno where noa=@tmp_custno
+update custms set noa=@chg_custno where noa=@tmp_custno
 
 --更新印刷品編號
 update ucc set noa=REPLACE(noa,@tmp_custno,@chg_custno) 
+where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
+--更新替代品
+update ucctd set noa=REPLACE(noa,@tmp_custno,@chg_custno) 
+where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
+--更新客戶
+update ucccust set noa=REPLACE(noa,@tmp_custno,@chg_custno) 
+where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
+--更新供應商
+update ucccust set productno=REPLACE(noa,@tmp_custno,@chg_custno) 
 where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
 
 --更新報價
@@ -79,9 +93,16 @@ fetch next from cursor_table
 into @t_accy,@t_noa
 while(@@FETCH_STATUS <> -1) 
 begin 
-	exec("update quat"+@t_accy+" 
+	exec("update a
 	set custno='"+@chg_custno+"'
-	where noa='"+@t_noa+"' and custno='"+@tmp_custno+"'")
+	,comp=b.comp
+	,nick=b.nick
+	,paytype=b.paytype
+	,tel=b.tel,fax=b.fax,postname=b.conntel,pay=b.serial,memo2=b.email
+	,post=b.zip_comp,addr=b.addr_comp,trantype=b.trantype,salesno=b.salesno,sales=b.sales
+	from quat"+@t_accy+" a
+	outer apply (select * from cust where noa='"+@chg_custno+"') b
+	where a.noa='"+@t_noa+"' and a.custno='"+@tmp_custno+"'")
 	
 	exec("update quats"+@t_accy+" 
 	set custno='"+@chg_custno+"'
@@ -90,6 +111,11 @@ begin
 	exec("update quats"+@t_accy+" 
 	set productno=REPLACE(productno,'"+@tmp_custno+"','"+@chg_custno+"')
 	where left(productno,len('"+@tmp_custno+"'))='"+@tmp_custno+"' and len(productno)>5 and noa='"+@t_noa+"'")
+	
+	exec("update a 
+	set product=b.product,spec=b.spec
+	from quats"+@t_accy+" a outer apply (select * from ucc where noa=a.productno) b
+	where len(a.productno)>5 and a.noa='"+@t_noa+"'")
 	
 	fetch next from cursor_table 
 	into @t_accy,@t_noa
@@ -105,9 +131,12 @@ fetch next from cursor_table
 into @t_accy,@t_noa
 while(@@FETCH_STATUS <> -1) 
 begin 
-	exec("update orde"+@t_accy+" 
+	exec("update a 
 	set custno='"+@chg_custno+"'
-	where noa='"+@t_noa+"' and custno='"+@tmp_custno+"'")
+	,comp=b.comp	,nick=b.nick,paytype=b.paytype
+	,tel=b.tel,fax=b.fax,post=b.zip_comp,addr=b.addr_comp,trantype=b.trantype,salesno=b.salesno,sales=b.sales
+	from orde"+@t_accy+" a	outer apply (select * from cust where noa='"+@chg_custno+"') b
+	where a.noa='"+@t_noa+"' and a.custno='"+@tmp_custno+"'")
 	
 	exec("update ordes"+@t_accy+" 
 	set custno='"+@chg_custno+"'
@@ -116,6 +145,11 @@ begin
 	exec("update ordes"+@t_accy+" 
 	set productno=REPLACE(productno,'"+@tmp_custno+"','"+@chg_custno+"')
 	where left(productno,len('"+@tmp_custno+"'))='"+@tmp_custno+"' and len(productno)>5 and noa='"+@t_noa+"'")
+	
+	exec("update a 
+	set product=b.product,spec=b.spec
+	from ordes"+@t_accy+" a outer apply (select * from ucc where noa=a.productno) b
+	where len(a.productno)>5 and a.noa='"+@t_noa+"'")
 	
 	fetch next from cursor_table 
 	into @t_accy,@t_noa
@@ -131,6 +165,12 @@ declare @chg_uccno nvarchar(MAX) = [2]
 
 --更新ucc 編號
 update ucc set noa=@chg_uccno where noa=@tmp_uccno
+--更新替代品
+update ucctd set noa=@chg_uccno where noa=@tmp_uccno
+--更新客戶
+update ucccust set noa=@chg_uccno where noa=@tmp_uccno
+--更新供應商
+update ucccust set productno=@chg_uccno where noa=@tmp_uccno
 
 --更新報價
 declare @t_accy nvarchar(MAX)
@@ -142,9 +182,11 @@ into @t_accy
 while(@@FETCH_STATUS <> -1) 
 begin 
 
-	exec("update quats"+@t_accy+" 
-	set productno='"+@chg_uccno+"'
-	where productno='"+@tmp_uccno+"'")
+	exec("update a 
+	set productno='"+@chg_uccno+"',product=b.product,spec=b.spec
+	from quats"+@t_accy+" a
+	outer apply (select * from ucc where noa='"+@chg_uccno+"') b
+	where a.productno='"+@tmp_uccno+"'")
 	
 	fetch next from cursor_table 
 	into @t_accy
@@ -161,9 +203,11 @@ into @t_accy
 while(@@FETCH_STATUS <> -1) 
 begin 
 
-	exec("update ordes"+@t_accy+" 
-	set productno='"+@chg_uccno+"'
-	where productno='"+@tmp_uccno+"'")
+	exec("update a
+	set productno='"+@chg_uccno+"',product=b.product,spec=b.spec
+	from ordes"+@t_accy+" a
+	outer apply (select * from ucc where noa='"+@chg_uccno+"') b
+	where a.productno='"+@tmp_uccno+"'")
 	
 	fetch next from cursor_table 
 	into @t_accy
