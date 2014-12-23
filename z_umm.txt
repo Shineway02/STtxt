@@ -20,7 +20,7 @@ z_umm14:--z_umm14
 	select '1',ISNULL(a.custno,''),sum(isnull(b.[money],0))
 	from umm a
 	left join umms b on a.noa=b.noa
-	where LEFT(b.acc1,4)=(case when @t_project='FE' then '4107' else '4106' end)
+	where (LEFT(b.acc1,4)=(case when @t_project='FE' then '4107' else '4106' end) or charindex(b.acc2,'銷貨折讓')>0)
 	and isnull(a.datea,'') between @t_bdate and @t_edate
 	and isnull(a.mon,'') between @t_bmon and @t_emon
 	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
