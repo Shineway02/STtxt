@@ -55,9 +55,9 @@ ordr_ordb:--ordr_ordb
 	)
 	insert into #ordr_ordbs(tggno,productno,product,unit,price,mount,ldate,omount,stdmount)
 	select ISNULL(c.tggno,''),ISNULL(b.productno,''),ISNULL(c.product,'')
-		,ISNULL(b.unit,''),ISNULL(c.inprice,''),SUM(case when ISNULL(b.apvmount,0)=0 then ISNULL(b.netmount,0) else ISNULL(b.apvmount,0) end)
+		,ISNULL(b.unit,''),ISNULL(c.inprice,''),SUM(case when ISNULL(b.apvmount,0)=0 then ISNULL(b.netmount,0)+ISNULL(b.fmount,0) else ISNULL(b.apvmount,0) end)
 		,dbo.AD2ChineseEraName(dateadd(DD,-1*@t_bday,dbo.ChineseEraName2AD(MIN(ISNULL(b.workdate,'')))))
-		,SUM(case when ISNULL(b.apvmount,0)=0 then ISNULL(b.netmount,0) else ISNULL(b.apvmount,0) end),SUM(ISNULL(c.stdmount,0))
+		,SUM(case when ISNULL(b.apvmount,0)=0 then ISNULL(b.netmount,0)+ISNULL(b.fmount,0)  else ISNULL(b.apvmount,0) end),SUM(ISNULL(c.stdmount,0))
 	from ordr a
 	left join ordrs b on a.noa=b.noa
 	left join ucc c on b.productno=c.noa
