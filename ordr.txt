@@ -152,8 +152,8 @@ ordr_ordb:--ordr_ordb
 		if @n>0
 		begin
 			set @cmd =
-				"insert into ordb"+@accy+"(noa,kind,datea,odate,tggno,tgg,nick,workgno,money,total)
-				select @ordbno,'1',a.datea,a.datea,a.tggno,b.comp,b.nick,@t_ordrno,isnull(c.total,0),isnull(c.total,0)
+				"insert into ordb"+@accy+"(noa,kind,datea,odate,tggno,tgg,nick,workgno,money,total,isproj,enda,cancel)
+				select @ordbno,'1',a.datea,a.datea,a.tggno,b.comp,b.nick,@t_ordrno,isnull(c.total,0),isnull(c.total,0),1,0,0
 				from #ordr_ordb a
 				left join tgg b on a.tggno=b.noa
 				outer apply (select sum(isnull(total,0)) total from #ordr_ordbs where tggno=@tggno) c 
@@ -162,8 +162,8 @@ ordr_ordb:--ordr_ordb
 				,@ordbno=@ordbno,@tggno=@tggno,@t_ordrno=@t_ordrno,@t_odate=@t_odate
 			
 			set @cmd =
-				"insert into ordbs"+@accy+"(datea,noa,no3,tggno,productno,product,unit,mount,omount,stdmount,price,total,c1,notv,ldate)
-				select a.datea,@ordbno,b.no3,a.tggno,b.productno,b.product,b.unit,b.mount,b.omount,b.stdmount,b.price,b.total,b.c1,b.notv,b.ldate
+				"insert into ordbs"+@accy+"(datea,noa,no3,kind,tggno,productno,product,unit,mount,omount,stdmount,price,total,c1,notv,ldate,enda,cancel)
+				select a.datea,@ordbno,b.no3,'1',a.tggno,b.productno,b.product,b.unit,b.mount,b.omount,b.stdmount,b.price,b.total,b.c1,b.notv,b.ldate,0,0
 				from #ordr_ordb a
 				left join #ordr_ordbs b on a.tggno=b.tggno
 				where a.tggno=@tggno"
