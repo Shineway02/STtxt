@@ -1,8 +1,8 @@
 z_umm14:--z_umm14
 	declare @t_bdate nvarchar(10) = case when '#non'=[3] then '' else [3] end
 	declare @t_edate nvarchar(10) = case when '#non'=[4] then char(255) else [4] end
-	declare @t_bcustno nvarchar(20) = case when '#non'=[5] then '' else [5] end
-	declare @t_ecustno nvarchar(20) = case when '#non'=[6] then char(255) else [6] end
+	declare @t_bcustno nvarchar(50) = case when '#non'=[5] then '' else [5] end
+	declare @t_ecustno nvarchar(50) = case when '#non'=[6] then char(255) else [6] end
 	declare @t_bmon nvarchar(10) = case when '#non'=[13] then '' else [13] end
 	declare @t_emon nvarchar(10) = case when '#non'=[14] then char(255) else [14] end
 	declare @t_project nvarchar(50)=case when '#non' = '[26]' then '' else '[26]' end
@@ -136,8 +136,8 @@ order by part,accc3,gno;
 z_umm7:--z_umm7
 declare @t_bscno nvarchar(20)
 declare @t_escno nvarchar(20)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_bsmon nvarchar(10)
 declare @t_esmon nvarchar(10)
 declare @t_xaccy nvarchar(20)
@@ -158,7 +158,7 @@ declare @coin nvarchar(20)
 
 declare @tmpa table(
 	coin nvarchar(20),
-	custno nvarchar(20),
+	custno nvarchar(50),
 	money float,
 	mon nvarchar(MAX)
 )
@@ -275,8 +275,8 @@ delete @tmpa where money=0
 declare @tmp table(
 	coin nvarchar(20),
 	gno nvarchar(1),
-	custno nvarchar(20),
-	comp nvarchar(50),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
 	namea nvarchar(30),
 	money float,
 	total float,
@@ -541,8 +541,8 @@ from @tmp a order by coin,custno,gno,memo;
 z_umm6:--z_umm6
 declare @t_bscno nvarchar(20)
 declare @t_escno nvarchar(20)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_bsmon nvarchar(10)
 declare @t_esmon nvarchar(10)
 declare @t_xaccy nvarchar(20)
@@ -557,8 +557,8 @@ set @t_bsmon = case when '#non' = [13] then '' else [13] end
 set @t_esmon = case when '#non' = [14] then CHAR(255) else [14] end
 declare @tmp table(
 	gno nvarchar(1),
-	custno nvarchar(20),
-	ccomp nvarchar(50),
+	custno nvarchar(50),
+	ccomp nvarchar(MAX),
 	cno nvarchar(20),
 	acomp nvarchar(50),
 	money float,
@@ -653,8 +653,8 @@ declare @t_cno nvarchar(20)
 declare @t_part nvarchar(20)
 declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 set @t_cno = case when '#non' = [1] then '' else [1] end
 set @t_part = case when '#non' = [2] then '' else [2] end
 set @t_bdate = case when '#non' = [3] then '' else [3] end
@@ -669,8 +669,8 @@ declare @tmp table(
 	cno nvarchar(20),
 	acc1 nvarchar(20),
 	typea nvarchar(50),
-	custno nvarchar(20),
-	comp nvarchar(50),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
 	[money] int,
 	chgs int,
 	paysales int,
@@ -737,8 +737,8 @@ declare @t_cno nvarchar(20)
 declare @t_part nvarchar(20)
 declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 set @t_cno = case when '#non' = [1] then '' else [1] end
 set @t_part = case when '#non' = [2] then '' else [2] end
 set @t_bdate = case when '#non' = [3] then '' else [3] end
@@ -752,8 +752,8 @@ declare @tmp table(
 	datea nvarchar(10),
 	cno nvarchar(20),
 	typea nvarchar(50),
-	custno nvarchar(20),
-	comp nvarchar(50),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
 	[money] int,
 	chgs int,
 	paysales int,
@@ -848,7 +848,7 @@ set @t_edate = case when '#non' = [4] then CHAR(255) else [4] end
 declare @tmp table(
 	gno nvarchar(1),
 	custno nvarchar(50),
-	comp nvarchar(100),
+	comp nvarchar(MAX),
 	bmoney float,
 	opay float,
 	unopay float,
@@ -881,8 +881,8 @@ from @tmp order by gno,custno;
 z_vccj:--z_vccj
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
-declare @t_bcustno nvarchar(30)
-declare @t_ecustno nvarchar(30)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 set @t_bdate = case when '#non'=[3] then '' else [3] end
 set @t_edate = case when '#non'=[4] then char(255) else [4] end
 set @t_bcustno = case when '#non'=[5] then '' else [5] end
@@ -890,8 +890,8 @@ set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
 
 declare @tmp table(
 	gno nvarchar(1),
-	custno nvarchar(30), ----客戶編號
-	comp nvarchar(90), ----客戶名稱
+	custno nvarchar(50), ----客戶編號
+	comp nvarchar(MAX), ----客戶名稱
 	vcc_money float, ----出貨金額 > vcc.應收
 	vcc_tax float, ----營業稅 > vcc.稅金
 	vcc_weight float, ----出貨重量 > if vcc.type = 退 *-1 if vccs.實重>0 then 實重 else vccs.重量
@@ -956,8 +956,8 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bmon nvarchar(7)
 declare @t_emon nvarchar(7)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_bsalesno nvarchar(20)
 declare @t_esalesno nvarchar(20)
 declare @t_bproductno nvarchar(30)
@@ -980,8 +980,8 @@ declare @result table(
 	noq nvarchar(3),
 	datea nvarchar(10),
 	mon nvarchar(7),
-	custno nvarchar(20),
-	comp nvarchar(40),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
 	addr_invo nvarchar(90),
 	tel nvarchar(90),
 	productno nvarchar(30),
@@ -1033,10 +1033,10 @@ declare @typea nvarchar(4)
 declare @noa nvarchar(15)
 declare @total decimal(18,0)
 declare @mon nvarchar(7)
-declare @custno nvarchar(20)
-declare @comp nvarchar(40)
-declare @t_custno nvarchar(20)
-declare @t_comp nvarchar(40)
+declare @custno nvarchar(50)
+declare @comp nvarchar(MAX)
+declare @t_custno nvarchar(50)
+declare @t_ar(MAX)
 declare @t_money decimal(18,0)
 declare @t_back decimal(18,0)
 declare @t_tax decimal(18,0)
@@ -1113,8 +1113,8 @@ begin
 		noq nvarchar(3),
 		datea nvarchar(10),
 		mon nvarchar(7),
-		custno nvarchar(20),
-		comp nvarchar(40),
+		custno nvarchar(50),
+		comp nvarchar(MAX),
 		addr_invo nvarchar(90),
 		tel nvarchar(90),
 		productno nvarchar(30),
@@ -1252,10 +1252,10 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bmon nvarchar(7)
 declare @t_emon nvarchar(7)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
-declare @t_bsalesno nvarchar(20)
-declare @t_esalesno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
+declare @t_bsalesno nvarchar(50)
+declare @t_esalesno nvarchar(50)
 declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
 declare @t_showunpay nvarchar(30)
@@ -1284,12 +1284,12 @@ declare @result table(
 	noq nvarchar(3),
 	datea nvarchar(10),
 	mon nvarchar(7),
-	custno nvarchar(20),
-	comp nvarchar(40),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
 	addr_invo nvarchar(90),
 	tel nvarchar(90),
-	productno nvarchar(30),
-	xproduct nvarchar(40),
+	productno nvarchar(MAX),
+	xproduct nvarchar(MAX),
 	unit nvarchar(8),
 	mount decimal(16,2),
 	weight decimal(16,2),
@@ -1514,10 +1514,10 @@ declare @typea nvarchar(4)
 declare @noa nvarchar(15)
 declare @total decimal(18,0)
 declare @mon nvarchar(7)
-declare @custno nvarchar(20)
-declare @comp nvarchar(40)
-declare @t_custno nvarchar(20)
-declare @t_comp nvarchar(40)
+declare @custno nvarchar(50)
+declare @comp nvarchar(MAX)
+declare @t_custno nvarchar(50)
+declare @t_comp nvarchar(MAX)
 declare @t_money decimal(18,0)
 declare @t_back decimal(18,0)
 declare @t_tax decimal(18,0)
@@ -1611,12 +1611,12 @@ declare @tmp table(
 	noq nvarchar(3),
 	datea nvarchar(10),
 	mon nvarchar(7),
-	custno nvarchar(20),
-	comp nvarchar(40),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
 	addr_invo nvarchar(90),
 	tel nvarchar(90),
-	productno nvarchar(30),
-	xproduct nvarchar(40),
+	productno nvarchar(MAX),
+	xproduct nvarchar(MAX),
 	unit nvarchar(8),
 	mount decimal(16,2),
 	weight decimal(16,2),
@@ -1848,8 +1848,8 @@ from @result a order by custno,coin,gno,mon,datea,noa,noq;
 --**************************************************************************************************
 z_umm11:--z_umm11
 declare @t_pageline int = 16   --------一頁幾行
-declare @t_bcustno nvarchar(35)
-declare @t_ecustno nvarchar(35)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_bmon nvarchar(20)
 declare @t_emon nvarchar(20)
 set @t_bmon = case when '#non'=[13] then '' else [13] end
@@ -1862,7 +1862,7 @@ declare @tmp table(
 	orderno int,
 	pageno int,
 	typea nvarchar(10),
-	custno nvarchar(35),
+	custno nvarchar(50),
 	custs nvarchar(90),
 	zipcode nvarchar(90),
 	addr nvarchar(max),
@@ -1910,7 +1910,7 @@ declare @k int = 0 ----差幾頁
 declare @pageCount int
 declare @orderno int
 declare @pageno int
-declare @custno nvarchar(30)
+declare @custno nvarchar(50)
 declare @custs nvarchar(90)
 declare @zipcode nvarchar(20)
 declare @addr nvarchar(max)
@@ -2015,8 +2015,8 @@ from @tmp order by custno,custs,zipcode,addr,pageno,gno,orderno;
 
 --********************************************************************************
 z_umm12:--z_umm12
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_bsmon nvarchar(10)
 declare @t_esmon nvarchar(10)
 declare @t_bsalesno nvarchar(10)
@@ -2034,8 +2034,8 @@ set @t_paytype = case when '#non' = [20] then '' else [20] end
 
 declare @tmp table(
 	gno nvarchar(1),
-	custno nvarchar(20),
-	comp nvarchar(50),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
 	salesno nvarchar(30),
 	namea nvarchar(30),
 	money float,
@@ -2156,8 +2156,8 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bmon nvarchar(7)
 declare @t_emon nvarchar(7)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
 declare @t_bsalesno nvarchar(20)
 declare @t_esalesno nvarchar(20)
 declare @t_showunpay nvarchar(30)
@@ -2187,7 +2187,7 @@ declare @result table(
 	datea nvarchar(10),
 	mon nvarchar(7),
 	custno nvarchar(50),
-	comp nvarchar(90),
+	comp nvarchar(MAX),
 	addr_invo nvarchar(max),
 	serial nvarchar(90),
 	tel nvarchar(90),
