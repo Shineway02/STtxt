@@ -26,8 +26,32 @@ BEGIN TRY
 
 	--客戶主檔
 	update cust set noa=@new_noa where noa=@old_noa
+	update cust set grpno=@new_noa where grpno=@old_noa
+	
 	--收款
 	update cust_2s set noa=@new_noa where noa=@old_noa
+	
+	--會計科目
+	declare cursor_table cursor for 
+	SELECT TABLE_NAME,COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+	WHERE (COLUMN_NAME like 'acc1' or COLUMN_NAME like 'uacc%' or COLUMN_NAME like '%accc5%') 
+	and TABLE_NAME not like 'view_%' and TABLE_NAME !='changeno' and TABLE_NAME !='tgg'
+	order by TABLE_NAME
+	open cursor_table 
+	fetch next from cursor_table 
+	into @tablea,@column
+	while(@@FETCH_STATUS <> -1) 
+	begin
+		
+		EXEC(" update "+@tablea+" set "+@column+"='1123."+@new_noa+"' where "+@column+"='1123."+@old_noa+"'")
+		EXEC(" update "+@tablea+" set "+@column+"='1121."+@new_noa+"' where "+@column+"='1121."+@old_noa+"'")
+		EXEC(" update "+@tablea+" set "+@column+"='2131."+@new_noa+"' where "+@column+"='2131."+@old_noa+"'")
+		
+		fetch next from cursor_table 
+		into @tablea,@column
+	end 
+	close cursor_table 
+	deallocate cursor_table 
 	
 	select 'success' mess
 	
@@ -35,7 +59,6 @@ END TRY
 BEGIN CATCH
 	select 'failure' mess
 END CATCH
-
 ;
 ------------------------------------------------------------------------------------------------------------------------------------
 uccno_change:--uccno_change
