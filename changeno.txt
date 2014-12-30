@@ -8,7 +8,7 @@ declare @column nvarchar(MAX)
 BEGIN TRY
 	declare cursor_table cursor for 
 	SELECT TABLE_NAME,COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-	WHERE COLUMN_NAME like '%custno%' and TABLE_NAME not like 'view_%' and TABLE_NAME !='changeno'
+	WHERE (COLUMN_NAME like '%custno%' or COLUMN_NAME like '%grpno%') and TABLE_NAME not like 'view_%' and TABLE_NAME !='changeno'
 	order by TABLE_NAME
 	open cursor_table 
 	fetch next from cursor_table 
@@ -26,7 +26,6 @@ BEGIN TRY
 
 	--客戶主檔
 	update cust set noa=@new_noa where noa=@old_noa
-	update cust set grpno=@new_noa where grpno=@old_noa
 	
 	--收款
 	update cust_2s set noa=@new_noa where noa=@old_noa
