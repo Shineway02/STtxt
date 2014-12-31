@@ -160,52 +160,17 @@ declare @tmpa table(
 	coin nvarchar(20),
 	custno nvarchar(50),
 	money float,
-	mon nvarchar(MAX)
+	mon nvarchar(200)
+	PRIMARY KEY (coin,custno,mon)
 )
 
 insert into @tmpa (coin,custno,money,mon)
-select @t_xcoin,custno,SUM(money),mon from (
---trd
---select aa.custno,bb.salesno,SUM(isnull(unpay,0)) money,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)mon from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon
---group by aa.custno,bb.salesno,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
---union all
---vcc =前期未收-前期已收月結
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-	,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))
-	-ISNULL((select sum(paysale) from umms a left join view_vcc b on a.vccno=b.noa 
-	where (case when b.custno2!='' then b.custno2 else b.custno end)=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)),0)
-	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
-	where len(vccno)>8 and right(vccno,4)!='-TAX' 
-	group by left(vccno,len(vccno)-7),right(vccno,6)
-	having right(vccno,6)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
-	and  left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)
-	),0))*coin.floata money
-	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
-	from view_vcc aa left join cust bb on aa.custno=bb.noa
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and aa.datea <=edate order by edate desc,noa desc),1) end floata) coin 
-	where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-	and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
-	,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end),coin.floata
---vcca=前期全部稅額-前期已收稅額
-	union all
-	select ca.custno	,(SUM(isnull(ca.tax,0))
-	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
-	where len(vccno)>8 and right(vccno,4)='-TAX'  
-	group by left(vccno,len(vccno)-11),left(right(vccno,10),6) 
-	having left(right(vccno,10),6)=(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
-	and left(vccno,len(vccno)-11)=ca.custno),0))*coin.floata
-	,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end) mon
-	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and ca.datea <=edate order by edate desc,noa desc),1) end floata) coin
-	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
-	and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-	group by ca.custno,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end),coin.floata
---union all
---cara
---select ca.carownerno,ca.sssno,outmoney-inmoney,ca.mon
---from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
-)tmp where custno between @t_bcustno and @t_ecustno group by custno,mon
+select @t_xcoin,noa,sum(unpay*coin.floata),mon from cust_2s a 
+outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
+where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
+and cno between @t_bscno and @t_escno 
+group by noa,mon
+
 
 if(@t_xcoin='ALL')
 begin
@@ -218,49 +183,11 @@ begin
 	begin
 	
 		insert into @tmpa (coin,custno,money,mon)
-		select @coin,custno,SUM(money),mon from (
-		--trd
-		--select aa.custno,bb.salesno,SUM(isnull(unpay,0)) money,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)mon from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon
-		--group by aa.custno,bb.salesno,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
-		--union all
-		--vcc =前期未收-前期已收月結
-			select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-			,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))
-			-ISNULL((select sum(paysale) from umms a left join view_vcc b on a.vccno=b.noa 
-			where (case when b.custno2!='' then b.custno2 else b.custno end)=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)),0)
-			-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
-			where len(vccno)>8 and right(vccno,4)!='-TAX' 
-			group by left(vccno,len(vccno)-7),right(vccno,6)
-			having right(vccno,6)=(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end)
-			and  left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)
-			),0))*coin.floata money
-			,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) mon
-			from view_vcc aa left join cust bb on aa.custno=bb.noa
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and aa.datea <=edate order by edate desc,noa desc),1) floata) coin 
-			where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-			and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-			group by (case when aa.custno2!='' then aa.custno2 else aa.custno end)
-			,(case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end),coin.floata
-		--vcca=前期全部稅額-前期已收稅額
-			union all
-			select ca.custno	,(SUM(isnull(ca.tax,0))
-			-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa 
-			where len(vccno)>8 and right(vccno,4)='-TAX'  
-			group by left(vccno,len(vccno)-11),left(right(vccno,10),6) 
-			having left(right(vccno,10),6)=(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end)
-			and left(vccno,len(vccno)-11)=ca.custno),0))*coin.floata
-			,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end) mon
-			from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and ca.datea <=edate order by edate desc,noa desc),1) floata) coin
-			where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
-			and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-			group by ca.custno,(case when len(ca.mon)=0 then LEFT(ca.datea,6) else ca.mon end),coin.floata
-		--union all
-		--cara
-		--select ca.carownerno,ca.sssno,outmoney-inmoney,ca.mon
-		--from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
-		)tmp where custno between @t_bcustno and @t_ecustno group by custno,mon
-		
+		select @coin,noa,unpay*coin.floata,mon from cust_2s a 
+		outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin 
+		where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
+		and cno between @t_bscno and @t_escno 
+				
 		fetch next from cursor_table
 		into @coin
 	
@@ -281,102 +208,26 @@ declare @tmp table(
 	money float,
 	total float,
 	payed float,
-	memo nvarchar(MAX)
+	memo nvarchar(200)
+	PRIMARY KEY (coin,gno,custno,memo)
 )
 
---前期
-insert into @tmp (coin,gno,custno,money,total,payed)
-select @t_xcoin,'9',custno,SUM(money),0,0 from (
-	--trd
-	--select aa.custno,bb.salesno,SUM(isnull(unpay,0)) money from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon group by  aa.custno,bb.salesno
-	--union all
-	--vcc 前期未收-前期已收月結
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-	,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))
-	-ISNULL((select sum(paysale) from umms a left join view_vcc b on a.vccno=b.noa 
-	where (case when b.custno2!='' then b.custno2 else b.custno end)=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)<@t_bsmon),0)
-	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon 
-	group by left(vccno,len(vccno)-7) having
-	left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0))*coin.floata money
-	from view_vcc aa left join cust bb on aa.custno=bb.noa 
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and aa.datea <=edate order by edate desc,noa desc),1) end floata) coin
-	where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-	and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end),coin.floata
-	 --vcca 前期全部稅額-前期已收稅額
+insert into @tmp (coin,gno,custno,money,total,payed,memo)
+select coin,gno,custno,SUM(money),SUM(total),SUM(payed),'' from (
+	--前期
+	select @t_xcoin coin,'9' gno,noa custno,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
+	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
+	where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
+	and cno between @t_bscno and @t_escno 
+	group by noa
 	union all
-	select  ca.custno
-	,(SUM(isnull(ca.tax,0))
-	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon 
-	group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0))*coin.floata
-	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and ca.datea <=edate order by edate desc,noa desc),1) end floata) coin
-	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
-	and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-	group by ca.custno,coin.floata
-	--union all
-	--cara
-	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
-)tmp where custno between @t_bcustno and @t_ecustno group by custno
+	--本期
+	select @t_xcoin,'9',noa,0,totsale*coin.floata,pay from cust_2s a 
+	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
+	where mon between @t_bsmon and @t_esmon and noa between @t_bcustno and @t_ecustno
+	and cno between @t_bscno and @t_escno 
+)tmp group by coin,gno,custno
 
---本期
-
-insert into @tmp (coin,gno,custno,money,total,payed)
-select @t_xcoin,'9',custno,0,SUM(total),0 from (
-	--trd
-	--select aa.custno,bb.salesno,SUM(isnull(total,0)) total from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
-	--union all
-	--vcc =本期應收金額
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))*coin.floata total
-	from view_vcc aa left join cust bb on aa.custno=bb.noa 
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and aa.datea <=edate order by edate desc,noa desc),1) end floata) coin
-	where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-	and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,coin.floata
-	--vcca =本期應收稅額
-	union all
-	select  ca.custno,SUM(isnull(ca.tax,0))*coin.floata
-	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and ca.datea <=edate order by edate desc,noa desc),1) end floata) coin
-	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
-	and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-	group by ca.custno,coin.floata
-	--union all
-	--cara
-	--select ca.carownerno,ca.sssno,sum(outmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
-)tmp where custno between @t_bcustno and @t_ecustno group by custno
-
---本期已收
-insert into @tmp (coin,gno,custno,money,total,payed)
-select @t_xcoin,'9',custno,0,0,SUM(payed) from (
-	--trd
-	--select aa.custno,bb.salesno,SUM(isnull(payed,0)) payed from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
-	--union all
-	--vcc 本期已付
-	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-	,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*payed,0))
-	+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6) between @t_bsmon and @t_esmon 
-	group by left(vccno,len(vccno)-7) having left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0))*coin.floata payed
-	from view_vcc aa left join cust bb on aa.custno=bb.noa 
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and aa.datea <=edate order by edate desc,noa desc),1) end floata) coin
-	where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-	and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end),coin.floata
-	--vcca 本期稅額已付
-	union all
-	select  ca.custno
-	,(0+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6) between @t_bsmon and @t_esmon
-	group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0))*coin.floata
-	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and ca.datea <=edate order by edate desc,noa desc),1) end floata) coin
-	where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
-	and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-	group by ca.custno,coin.floata
-	--union all
-	--cara
-	--select ca.carownerno,ca.sssno,sum(inmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
-)tmp where custno between @t_bcustno and @t_ecustno group by custno
 
 if(@t_xcoin='ALL')
 begin
@@ -388,100 +239,22 @@ begin
 	while(@@FETCH_STATUS <> -1)
 	begin
 		
-		--前期
-		insert into @tmp (coin,gno,custno,money,total,payed)
-		select @coin,'9',custno,SUM(money),0,0 from (
-			--trd
-			--select aa.custno,bb.salesno,SUM(isnull(unpay,0)) money from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon group by  aa.custno,bb.salesno
-			--union all
-			--vcc 前期未收-前期已收月結
-			select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-			,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))
-			-ISNULL((select sum(paysale) from umms a left join view_vcc b on a.vccno=b.noa 
-			where (case when b.custno2!='' then b.custno2 else b.custno end)=(case when aa.custno2!='' then aa.custno2 else aa.custno end) and (case when len(b.mon)=0 then left(b.datea,6) else b.mon end)<@t_bsmon),0)
-			-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6)<@t_bsmon 
-			group by left(vccno,len(vccno)-7) having
-			left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0))*coin.floata money
-			from view_vcc aa left join cust bb on aa.custno=bb.noa 
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and aa.datea <=edate order by edate desc,noa desc),1) floata) coin
-			where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon and (left(isnull(kind,''),4)!='健勞勞退')
-			and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-			group by (case when aa.custno2!='' then aa.custno2 else aa.custno end),coin.floata
-			 --vcca 前期全部稅額-前期已收稅額
+		insert into @tmp (coin,gno,custno,money,total,payed,memo)
+		select coin,gno,custno,SUM(money),SUM(total),SUM(payed),'' from (
+			--前期
+			select @coin coin,'9' gno,noa custno,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
+			outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin
+			where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
+			and cno between @t_bscno and @t_escno 
+			group by noa
 			union all
-			select  ca.custno
-			,(SUM(isnull(ca.tax,0))
-			-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon 
-			group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0))*coin.floata
-			from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and ca.datea <=edate order by edate desc,noa desc),1) floata) coin
-			where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bsmon and ([21]!=3)
-			and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-			group by ca.custno,coin.floata
-			--union all
-			--cara
-			--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
-		)tmp where custno between @t_bcustno and @t_ecustno group by custno
+			--本期
+			select @coin,'9',noa,0,totsale*coin.floata,pay from cust_2s a 
+			outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin
+			where mon between @t_bsmon and @t_esmon and noa between @t_bcustno and @t_ecustno
+			and cno between @t_bscno and @t_escno 
+		)tmp group by coin,gno,custno
 		
-		--本期
-		
-		insert into @tmp (coin,gno,custno,money,total,payed)
-		select @coin,'9',custno,0,SUM(total),0 from (
-			--trd
-			--select aa.custno,bb.salesno,SUM(isnull(total,0)) total from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
-			--union all
-			--vcc =本期應收金額
-			select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-			,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*total,0))*coin.floata total
-			from view_vcc aa left join cust bb on aa.custno=bb.noa 
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and aa.datea <=edate order by edate desc,noa desc),1) floata) coin
-			where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-			and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-			group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,coin.floata
-			--vcca =本期應收稅額
-			union all
-			select  ca.custno,SUM(isnull(ca.tax,0))*coin.floata
-			from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and ca.datea <=edate order by edate desc,noa desc),1) floata) coin
-			where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
-			and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-			group by ca.custno,coin.floata
-			--union all
-			--cara
-			--select ca.carownerno,ca.sssno,sum(outmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
-		)tmp where custno between @t_bcustno and @t_ecustno group by custno
-		
-		--本期已收
-		insert into @tmp (coin,gno,custno,money,total,payed)
-		select @coin,'9',custno,0,0,SUM(payed) from (
-			--trd
-			--select aa.custno,bb.salesno,SUM(isnull(payed,0)) payed from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon group by  aa.custno,bb.salesno
-			--union all
-			--vcc 本期已付
-			select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno
-			,(SUM(isnull((case when aa.typea='1' then 1 else -1 end)*payed,0))
-			+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)!='-TAX' and right(vccno,6) between @t_bsmon and @t_esmon 
-			group by left(vccno,len(vccno)-7) having left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0))*coin.floata payed
-			from view_vcc aa left join cust bb on aa.custno=bb.noa 
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and aa.datea <=edate order by edate desc,noa desc),1) floata) coin
-			where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) between @t_bsmon and @t_esmon and (left(isnull(kind,''),4)!='健勞勞退')
-			and (case when aa.custno2!='' then aa.custno2 else aa.custno end) between @t_bcustno and @t_ecustno 
-			group by (case when aa.custno2!='' then aa.custno2 else aa.custno end),coin.floata
-			--vcca 本期稅額已付
-			union all
-			select  ca.custno
-			,(0+isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6) between @t_bsmon and @t_esmon
-			group by left(vccno,len(vccno)-11) having left(vccno,len(vccno)-11)=ca.custno),0))*coin.floata
-			from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-			outer apply (select isnull((select top 1 floata from flors where coin=@coin and ca.datea <=edate order by edate desc,noa desc),1) floata) coin
-			where (case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) between @t_bsmon and @t_esmon and ([21]!=3)
-			and (ca.taxtype='1' or ca.taxtype='5') and ca.custno between @t_bcustno and @t_ecustno 
-			group by ca.custno,coin.floata
-			--union all
-			--cara
-			--select ca.carownerno,ca.sssno,sum(inmoney) from cara ca left join caras cb on ca.noa=cb.noa where ca.mon between @t_bsmon and @t_esmon and cb.caritemno!='001' group by ca.carownerno,ca.sssno
-		)tmp where custno between @t_bcustno and @t_ecustno group by custno
-	
 		fetch next from cursor_table
 		into @coin
 	end
@@ -496,8 +269,8 @@ begin
 end
 
 --結果
-insert into @tmp (coin,gno,custno,money,total,payed)
-select coin,'0',custno,SUM(money),SUM(total),SUM(payed) from @tmp 
+insert into @tmp (coin,gno,custno,money,total,payed,memo)
+select coin,'0',custno,SUM(money),SUM(total),SUM(payed),'' from @tmp 
 group by coin,custno order by coin,custno
 
 --總計
@@ -509,7 +282,8 @@ delete @tmp where gno='0'
 
 --換成月份分割
 insert into @tmp (coin,gno,custno,money,total,payed,memo)
-select a.coin,'1',a.custno,SUM(a.money),SUM(a.total),SUM(a.payed),b.mon+'：'+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b.money),1)),4,12))
+select a.coin,'1',a.custno,SUM(a.money),SUM(a.total),SUM(a.payed)
+,isnull(b.mon+'：'+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b.money),1)),4,12)),'')
 from @tmp a left join @tmpa b on a.custno=b.custno and a.coin=b.coin where gno='9'
 group by a.coin,a.custno,b.mon,b.money order by a.coin,a.custno
 
