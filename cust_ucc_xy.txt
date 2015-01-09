@@ -214,5 +214,73 @@ begin
 end 
 close cursor_table 
 deallocate cursor_table 
+;
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+orde_ucc:--orde_ucc --產生產品編號
+SET QUOTED_IDENTIFIER OFF
+declare @noa nvarchar(MAX) = [1]
+declare @year nvarchar(MAX) = [2]
 
+declare @custno nvarchar(MAX)=isnull((select custno from view_orde where noa=@noa),'')
+declare @accy nvarchar(MAX)
+declare @t_noa nvarchar(MAX)
+declare @t_no2 nvarchar(MAX)
+declare @product nvarchar(MAX)
+declare @spec nvarchar(MAX)
+declare @t_spec nvarchar(MAX)
+declare @unit nvarchar(MAX)
+declare @classa nvarchar(MAX)
+declare @quatno nvarchar(MAX)
+declare @no3 nvarchar(MAX)
+declare @newpno nvarchar(MAX)
+
+if(@custno!='')
+begin
+
+	declare cursor_table cursor for 
+	select accy,noa,no2,product,spec,unit,classa,quatno,no3 from view_ordes where noa=@noa and productno=''
+	open cursor_table 
+	fetch next from cursor_table 
+	into @accy,@t_noa,@t_no2,@product,@spec,@unit,@classa,@quatno,@no3
+	while(@@FETCH_STATUS <> -1) 
+	begin 
+		if(@classa='印刷')
+		begin
+			set @newpno=@custno+'-'+right('000'+cast(cast(right(isnull((select MAX(noa) from ucc where LEFT(noa,len(@custno))=@custno and len(noa)>5),'000'),3) as int)+1 as nvarchar(10)),3)
+		end
+		else--便品
+		begin
+			set @t_spec=@spec
+			if(patindex('%[0-9]%',@t_spec)>0)
+			begin
+				set @t_spec=SUBSTRING(@t_spec,patindex('%[0-9]%',@t_spec),LEN(@t_spec))
+				set @t_spec=SUBSTRING(@t_spec,1,case when patindex('%[^0-9]%',@t_spec)=0 then LEN(@t_spec) else  patindex('%[^0-9]%',@t_spec)-1 end)
+			end
+			else
+			begin
+			 	set @t_spec=''
+			end
+				
+			set @newpno='B'+UPPER(left(dbo.procGetPY(@product),2))+@t_spec
+			+right('0000'+cast(cast(right(isnull((select MAX(noa) from ucc where len(noa)-4=len('B'+UPPER(left(dbo.procGetPY(@product),2))+@t_spec) and noa like 'B'+UPPER(left(dbo.procGetPY(@product),2))+@t_spec+'%' ),'000'),4) as int)+1 as nvarchar(10)),4)
+		end
+		
+		insert ucc(noa,product,spec,unit,typea)
+		select @newpno,@product,@spec,@unit,'1'
+		
+		--更新訂單產品編號
+		exec("update ordes"+@accy+" set productno='"+@newpno+"'
+		where noa='"+@t_noa+"' and no2='"+@t_no2+"'")
+		
+		if(isnull(@quatno,'')!='' and isnull(@no3,'')!='')
+		exec("update quats"+@accy+" set productno='"+@newpno+"'
+		where noa='"+@quatno+"' and no3='"+@no3+"'")
+		
+		fetch next from cursor_table 
+		into @accy,@t_noa,@t_no2,@product,@spec,@unit,@classa,@quatno,@no3
+	end 
+	close cursor_table 
+	deallocate cursor_table 
+
+end
 ;
