@@ -463,6 +463,7 @@ from umm a left join umms b on a.noa=b.noa left join view_vccs c on b.vccno=c.no
 left join view_ordes d on (c.ordeno=d.noa and c.no2=d.no2)
 left join view_vcc e on c.noa=e.noa
 where a.mon=@t_mon and (isnull(e.salesno,'') between @t_bsalesno and @t_esalesno)
+and isnull(c.noa,'')!=''
 
 update @tmp
 set bonus=(case when rate='' then 100 else cast(rate as float) end)/100*utotal
