@@ -1,0 +1,235 @@
+ordr_ordb:--ordr_ordb	
+	------------------------------------------------------------------------------------------------
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_key nvarchar(10) = [1]
+	declare @t_ordrno nvarchar(20) = [2]
+	
+	if exists(select * from ordrs where noa=@t_ordrno and ISNULL(apv,0)=0)
+	begin
+		select '尚未核准完畢，不產生請購單。' msg,'' ordbno
+		return
+	end
+	
+	declare @t_odate nvarchar(20) = ''
+	declare @t_bday int =0
+	select @t_odate=apvdate,@t_bday=ISNULL(bday,0) from ordr where noa=@t_ordrno
+	set @t_odate = dbo.AD2ChineseEraName(dateadd(DD,-1*@t_bday,dbo.ChineseEraName2AD(@t_odate)))
+	--================================================================================================
+	IF OBJECT_ID('tempdb..#ordr_ordb')is not null
+	BEGIN
+		drop table #ordr_ordb
+	END
+	create table #ordr_ordb(
+		noa nvarchar(20),
+		datea nvarchar(20),
+		tggno nvarchar(20)
+	)
+	insert into #ordr_ordb(datea,tggno)
+	select a.apvdate,ISNULL(c.tggno,'')
+	from ordr a
+	left join ordrs b on a.noa=b.noa
+	left join ucc c on b.productno=c.noa
+	where a.noa=@t_ordrno
+	group by a.apvdate,ISNULL(c.tggno,'')
+	
+	IF OBJECT_ID('tempdb..#ordr_ordbs')is not null
+	BEGIN
+		drop table #ordr_ordbs
+	END
+	create table #ordr_ordbs(
+		pno int IDENTITY(1,1),
+		noa nvarchar(20),
+		no3 nvarchar(10),
+		tggno nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		omount float,
+		stdmount float,
+		price float,
+		total float,
+		c1 float,
+		notv float,
+		ldate nvarchar(10)
+	)
+	insert into #ordr_ordbs(tggno,productno,product,unit,price,mount,ldate,omount,stdmount)
+	select ISNULL(c.tggno,''),ISNULL(b.productno,''),ISNULL(c.product,'')
+		,ISNULL(b.unit,''),ISNULL(c.inprice,''),SUM(case when ISNULL(b.apvmount,0)=0 then ISNULL(b.netmount,0)+ISNULL(b.fmount,0) else ISNULL(b.apvmount,0) end)
+		,dbo.AD2ChineseEraName(dateadd(DD,-1*@t_bday,dbo.ChineseEraName2AD(MIN(ISNULL(b.workdate,'')))))
+		,SUM(case when ISNULL(b.apvmount,0)=0 then ISNULL(b.netmount,0)+ISNULL(b.fmount,0)  else ISNULL(b.apvmount,0) end),SUM(ISNULL(c.stdmount,0))
+	from ordr a
+	left join ordrs b on a.noa=b.noa
+	left join ucc c on b.productno=c.noa
+	where a.noa=@t_ordrno
+	group by ISNULL(c.tggno,''),ISNULL(b.productno,''),ISNULL(c.product,''),ISNULL(b.unit,''),ISNULL(c.inprice,'')
+	
+	update #ordr_ordbs set no3=RIGHT('000'+CAST(b.recno as nvarchar),3)
+		,c1=0,notv=b.mount,total = ROUND(b.mount*b.price,0)
+	from #ordr_ordbs a
+	left join (select ROW_NUMBER()over(PARTITION by tggno order by pno) recno,* from #ordr_ordbs) b on a.pno=b.pno
+	--================================================================================================
+	declare @tmpa table(
+		ordbaccy nvarchar(10),
+		ordbno nvarchar(20),
+		tggno nvarchar(20),
+		n int
+	)
+	insert into @tmpa(ordbaccy,ordbno,tggno)
+	select accy,noa,tggno from view_ordb where workgno=@t_ordrno
+
+	insert into @tmpa(tggno)
+	select tggno from #ordr_ordbs a where not exists(select * from @tmpa where tggno=a.tggno) group by tggno
+	
+	update @tmpa set n=ISNULL(b.n,0)
+	from @tmpa a
+	left join (select tggno,count(1) n from #ordr_ordbs group by tggno) b on a.tggno=b.tggno
+	
+	--================================================================================================
+	declare @tggno nvarchar(20)
+	declare @t_date nvarchar(10) 
+	declare @t_ordbno nvarchar(max) = ''
+	declare @t_noa nvarchar(20) = ''
+	declare @t_maxordbno nvarchar(20) = ''
+	declare @t_maxordbno1 nvarchar(20) = ''
+	declare @t_maxordbno2 nvarchar(20) = ''
+	declare @string nvarchar(max) = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	declare @n int
+	
+	declare cursor_table cursor for
+	select tggno from @tmpa where n>0 and len(isnull(ordbno,''))=0
+	open cursor_table
+	fetch next from cursor_table
+	into @tggno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		select @t_date = datea from #ordr_ordb where tggno=@tggno 
+		set @t_ordbno = ''
+		set @t_noa = @t_key + replace(@t_date,'/','')
+		
+		set @t_maxordbno1 = ''
+		set @t_maxordbno2 = ''
+
+		select @t_maxordbno1 = MAX(noa) from view_ordb where noa like @t_noa+'[A-Z,0-9][A-Z,0-9][A-Z,0-9]'
+		select @t_maxordbno2 = MAX(ordbno) from @tmpa 
+	
+		set @t_maxordbno = case when isnull(@t_maxordbno1,'')>isnull(@t_maxordbno2,'') then @t_maxordbno1 else @t_maxordbno2 end
+		
+		if len(ISNULL(@t_maxordbno,''))=0
+		begin
+			set @t_ordbno = @t_noa + '001'
+		end
+		else
+		begin
+			set @n = (charindex(@string,left(right(@t_maxordbno,3),1))+0)*100 + cast(right(@t_maxordbno,2) as int) + 1
+			set @t_ordbno = @t_noa+SUBSTRING(@string,floor(@n/100)+1,1)+RIGHT('000'+CAST(@n%100 as nvarchar),2)
+		end
+		
+		update @tmpa set ordbaccy=left(@t_date,3),ordbno=@t_ordbno where tggno=@tggno
+		fetch next from cursor_table
+		into @tggno
+	end
+	close cursor_table
+	deallocate cursor_table
+	--================================================================================================
+	--刪除先前的ORDB,再寫入新的
+	declare @cmd nvarchar(max)
+	declare @accy nvarchar(10)
+	declare @ordbno nvarchar(20)
+
+	declare cursor_table cursor for
+	select ordbaccy,ordbno,tggno,n from @tmpa 	
+	open cursor_table
+	fetch next from cursor_table
+	into @accy,@ordbno,@tggno,@n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd = "delete ordb"+@accy+" where noa=@ordbno"
+		execute sp_executesql @cmd,N'@ordbno nvarchar(20)',@ordbno=@ordbno
+		set @cmd = "delete ordbs"+@accy+" where noa=@ordbno"
+		execute sp_executesql @cmd,N'@ordbno nvarchar(20)',@ordbno=@ordbno
+		
+		if @n>0
+		begin
+			set @cmd =
+				"insert into ordb"+@accy+"(noa,kind,datea,odate,tggno,tgg,nick,workgno,money,total,isproj,enda,cancel)
+				select @ordbno,'1',a.datea,a.datea,a.tggno,b.comp,b.nick,@t_ordrno,isnull(c.total,0),isnull(c.total,0),1,0,0
+				from #ordr_ordb a
+				left join tgg b on a.tggno=b.noa
+				outer apply (select sum(isnull(total,0)) total from #ordr_ordbs where tggno=@tggno) c 
+				where a.tggno=@tggno"
+			execute sp_executesql @cmd,N'@ordbno nvarchar(20),@tggno nvarchar(20),@t_ordrno nvarchar(20),@t_odate nvarchar(10)'
+				,@ordbno=@ordbno,@tggno=@tggno,@t_ordrno=@t_ordrno,@t_odate=@t_odate
+			
+			set @cmd =
+				"insert into ordbs"+@accy+"(datea,noa,no3,kind,tggno,productno,product,unit,mount,omount,stdmount,price,total,c1,notv,ldate,enda,cancel)
+				select a.datea,@ordbno,b.no3,'1',a.tggno,b.productno,b.product,b.unit,b.mount,b.omount,b.stdmount,b.price,b.total,b.c1,b.notv,b.ldate,0,0
+				from #ordr_ordb a
+				left join #ordr_ordbs b on a.tggno=b.tggno
+				where a.tggno=@tggno"
+			execute sp_executesql @cmd,N'@ordbno nvarchar(20),@tggno nvarchar(20)'
+				,@ordbno=@ordbno,@tggno=@tggno
+		end
+		fetch next from cursor_table
+		into @accy,@ordbno,@tggno,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	--==============================================================
+	set @t_ordbno = ''
+	declare cursor_table cursor for
+	select ordbaccy,ordbno,tggno from @tmpa where n>0	
+	open cursor_table
+	fetch next from cursor_table
+	into @accy,@ordbno,@tggno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @t_ordbno = @t_ordbno + case when LEN(@t_ordbno)>0 then ',' else '' end + @ordbno
+		fetch next from cursor_table
+		into @accy,@ordbno,@tggno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update ordr set ordbno=@t_ordbno where noa=@t_ordrno
+	
+	select '' msg,@t_ordbno ordbno
+	drop table #ordr_ordb
+	drop table #ordr_ordbs
+	return;
+	
+ordr_orda:--ordr_orda
+	declare @t_ordrno nvarchar(20) = [1]
+	
+	update ordas set apv=1,apvmemo=b.apvmemo
+	from ordas a
+	left join (select * from ordrs where noa=@t_ordrno) b on a.noa=b.ordano and a.noq=b.ordanoq
+	where b.apv=1
+	
+	select 'done' msg;
+	
+orda_ordr: -- orda_ordr
+	declare @t_noa nvarchar(20) = [1]
+	declare @t_workgno nvarchar(20) = [2]
+	declare @t_style nvarchar(50) = [3]
+	declare @t_bworkdate nvarchar(10) = [4]
+	declare @t_eworkdate nvarchar(10) = [5]
+	declare @t_uccgano nvarchar(20) = [6]
+	declare @t_uccgbno nvarchar(20) = [7]
+	declare @t_uccgcno nvarchar(20)= [8]
+
+	select b.* 
+	from orda a
+	left join ordas b on a.noa=b.noa
+	left join ucc c on b.productno=c.noa
+	where b.noa is not null
+	and isnull(b.apv,0) = 0
+	and not exists(select noa from ordrs where noa!=@t_noa and ordano=a.noa and ordanoq=b.noq)
+	and (len(@t_workgno)=0 or @t_workgno=a.workgno)
+	and (len(@t_style)=0 or @t_style=b.style)
+	and (len(@t_bworkdate)=0 or @t_bworkdate<=b.workdate)
+	and (len(@t_eworkdate)=0 or @t_eworkdate>=b.workdate)
+	and (len(@t_uccgano)=0 or @t_uccgano=c.groupano)
+	and (len(@t_uccgbno)=0 or @t_uccgbno=c.groupbno)
+	and (len(@t_uccgcno)=0 or @t_uccgcno=c.groupcno)
+	order by a.noa desc,b.noq;

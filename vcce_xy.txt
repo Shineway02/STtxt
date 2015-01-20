@@ -1,0 +1,55 @@
+post:--vcce_xy
+--寫入車牌
+SET QUOTED_IDENTIFIER OFF
+declare @year nvarchar(20)=[1]--年度[1]
+declare @noa nvarchar(50)=[2]--單據編號[2]
+declare @condition nvarchar(20)=[3]--動作 0 刪除, 1 新增[3]
+-----------------------------------------------------------------------
+declare @cmd nvarchar(max)
+declare @carno nvarchar(50)=(select top 1 carno from view_vcce where noa=@noa order by noa desc)
+declare @accy nvarchar(20)
+declare @vccno nvarchar(50)
+
+if(@condition='0')
+begin
+	declare cursor_table cursor for
+	select b.accy,b.noa from view_vcces a left join view_vcc b on a.ordeno=b.noa
+	where b.noa!='' and a.noa=@noa
+	open cursor_table
+	fetch next from cursor_table
+	into @accy,@vccno
+	while(@@FETCH_STATUS <> -1)
+	begin				
+		
+		--清除車牌
+		EXEC("update vcc"+@accy+" set carno='',transtart='' where noa='"+@vccno+"' ")
+			
+		fetch next from cursor_table
+		into @accy,@vccno
+	end
+	close cursor_table
+	deallocate cursor_table	 		
+end
+
+if(@condition='1')
+begin
+	declare cursor_table cursor for
+	select b.accy,b.noa from view_vcces a left join view_vcc b on a.ordeno=b.noa
+	where b.noa!='' and a.noa=@noa
+	open cursor_table
+	fetch next from cursor_table
+	into @accy,@vccno
+	while(@@FETCH_STATUS <> -1)
+	begin				
+		
+		--寫入車牌
+		EXEC("update vcc"+@accy+" set carno='"+@carno+"',transtart='"+@noa+"' where noa='"+@vccno+"' ")
+			
+		fetch next from cursor_table
+		into @accy,@vccno
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+
+;

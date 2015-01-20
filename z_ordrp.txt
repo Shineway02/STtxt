@@ -1,0 +1,75 @@
+z_ordrp01:--z_ordrp01 
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_apv int = case when '#non'=[1] then null else cast([1] as int) end
+	declare @t_workgno nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_brworkdate nvarchar(20) = case when '#non'=[3] then '' else [3] end
+	declare @t_erworkdate nvarchar(20) = case when '#non'=[4] then char(255) else [4] end
+	declare @t_uccgano nvarchar(20) = case when '#non'=[5] then '' else [5] end
+	declare @t_uccgbno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_uccgcno nvarchar(20) = case when '#non'=[7] then '' else [7] end
+	-----------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		ordano nvarchar(20),
+		ordanoq nvarchar(10),
+		apv bit,
+		apvmemo nvarchar(50),
+		rworkdate nvarchar(10),
+		datea nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		spec nvarchar(50),
+		style nvarchar(50),
+		gmount float,
+		stkmount float,
+		schmount float,
+		safemount float,
+		netmount float,
+		fdate nvarchar(10),
+		fmount float,
+		mount float,
+		memo nvarchar(max),
+		ldate nvarchar(10),
+		wmount float
+	)
+	
+	insert into @tmp(gno,pno,recno,ordano,ordanoq,apv,apvmemo
+		,rworkdate,datea,productno,product,unit,spec,style,gmount,stkmount
+		,schmount,netmount,fdate,fmount,mount,memo,ldate,wmount)
+	select '1','1',ROW_NUMBER()over(order by isnull(b.workdate,''),a.noa,b.noq)
+		,a.noa,b.noq,b.apv,b.apvmemo
+		,isnull(b.workdate,''),b.datea,b.productno,b.product,b.unit,b.spec,b.style,b.gmount,b.stkmount
+		,b.schmount,b.netmount,b.fdate,b.fmount,b.mount,b.memo,b.ldate,b.wmount
+	from orda a
+	left join ordas b on a.noa=b.noa
+	left join ucc d on b.productno=d.noa
+	where b.noa is not null
+	and (@t_apv is null or b.apv=@t_apv)
+	and (len(@t_workgno)=0 or @t_workgno=a.workgno)
+	and (isnull(b.workdate,'') between @t_brworkdate and @t_erworkdate)
+	and (len(@t_uccgano)=0 or @t_uccgano=d.groupano)
+	and (len(@t_uccgbno)=0 or @t_uccgbno=d.groupbno)
+	and (len(@t_uccgcno)=0 or @t_uccgcno=d.groupcno)
+	order by isnull(b.workdate,''),a.noa,b.noq
+	
+	select recno rr
+		,"orda?noa=\'"+ordano+"\' and "+cast(recno as nvarchar)+"=$rr?" ghref 
+		,rworkdate a00
+		,case when apv=1 then '*' else '' end a01
+		,apvmemo a02--簽核意見	
+		,product a03--物品	
+		,unit a04--單位	
+		,gmount a05--毛需求	
+		,wmount a06--製令未領	
+		,stkmount a07--庫存量	
+		,schmount a08--在途量	
+		,safemount a09--安全存量	
+		,netmount a10--淨需求量	
+		,fdate a11--預測日期	
+		,fmount a12--預測需求	
+		,memo a13--備註
+		,* 
+	from @tmp order by pno,recno;

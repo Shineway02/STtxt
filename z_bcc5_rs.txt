@@ -1,0 +1,210 @@
+z_bcc5_rs1:--z_bcc5_rs1
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_enddate nvarchar(10)
+	declare @t_store nvarchar(max)
+	declare @t_part nvarchar(max) 
+	declare @t_typea nvarchar(max) 
+	set @t_bbccno = case when '#non'=[3] then '' else [3] end
+	set @t_ebccno = case when '#non'=[4] then char(255) else [4] end
+	set @t_enddate = case when '#non'=[5] then char(255) else [5] end
+	set @t_store = case when '#non'=[6] then '' else [6] end
+	set @t_part = case when '#non'=[7] then '' else [7] end
+	set @t_typea = case when '#non'=[8] then '' else [8] end
+	-----------------------------------------------------------------------------
+	declare @string nvarchar(max)
+	declare @n int
+	IF OBJECT_ID('tempdb..#store')is not null
+	BEGIN
+		set @cmd = 'drop table #store'
+		EXECUTE sp_executesql @cmd
+	END
+	create table #store(
+		noa nvarchar(20)
+	)
+	set @string = @t_store
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into #store select @string
+			end
+			break
+		end
+		insert into #store select LEFT(@string,@n-1)	
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	
+	IF OBJECT_ID('tempdb..#part')is not null
+	BEGIN
+		set @cmd = 'drop table #part'
+		EXECUTE sp_executesql @cmd
+	END
+	create table #part(
+		noa nvarchar(20)
+	)
+	set @string = @t_part
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into #part select @string
+			end
+			break
+		end
+		insert into #part select LEFT(@string,@n-1)	
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	-----------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(10)
+	declare @typea nvarchar(10)
+	declare @storeno nvarchar(20)
+	declare @bccno nvarchar(20)
+	declare @datea nvarchar(20)
+	declare @mount float
+	declare @price float
+	declare @total float
+	declare @mount2 float
+	declare @tgg nvarchar(MAX)
+	
+	declare @tmp table(
+		gno nvarchar(3),
+		typea nvarchar(10),
+		datea nvarchar(20),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		storeno nvarchar(20),
+		bccno nvarchar(20),	
+		bccname nvarchar(max),
+		mount float,
+		price float,
+		total float,
+		mount2 float,
+		tgg nvarchar(max)
+	)
+	
+	insert into @tmp
+	select '1','A',ISNULL(b.datea,''),a.noa+'盤點',a.noq,isnull(a.storeno,''),isnull(a.bccno,''),a.bccname,isnull(a.mount,0),ISNULL(a.price,0),ISNULL(a.total,0),0,''
+	from bcces a
+	left join bcce b on a.noa=b.noa
+	left join #store c on a.storeno=c.noa
+	where (ISNULL(a.bccno,'') between @t_bbccno and @t_ebccno)
+	and (ISNULL(b.datea,'')<=@t_enddate)
+	
+	insert into @tmp
+	select '1','B',ISNULL(b.datea,''),a.noa+'入料',a.noq,isnull(a.storeno,''),isnull(a.bccno,''),a.bccname
+	,(case when b.typea='2' then -1 else 1 end)*isnull(a.mount,0),ISNULL(a.price,0)
+	,(case when b.typea='2' then -1 else 1 end)*ISNULL(a.total,0),0,b.tgg
+	from bccins a
+	left join bccin b on a.noa=b.noa
+	left join #store c on a.storeno=c.noa
+	where (ISNULL(a.bccno,'') between @t_bbccno and @t_ebccno)
+	and (ISNULL(b.datea,'')<=@t_enddate)
+	
+	insert into @tmp
+	select '1','C',ISNULL(b.datea,''),a.noa+'領料',a.noq,isnull(a.storeno,''),isnull(a.bccno,''),a.bccname,isnull(a.mount-a.bkbcc,0),null,null,0,''
+	from bccouts a
+	left join bccout b on a.noa=b.noa
+	left join #store c on a.storeno=c.noa
+	where (ISNULL(a.bccno,'') between @t_bbccno and @t_ebccno)
+	and (ISNULL(b.datea,'')<=@t_enddate)
+
+	declare @bmount float
+	declare @botal float
+	declare @etgg nvarchar(max)
+	
+	declare cursor_table cursor for
+	select storeno,bccno from @tmp group by storeno,bccno
+	open cursor_table
+	fetch next from cursor_table
+	into @storeno,@bccno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		select @bmount=0 ,@mount2=0,@botal=0
+	
+		declare cursor_table2 cursor for
+		select noa,noq,typea,datea,isnull(mount,0),isnull(total,0),tgg from @tmp where storeno=@storeno and bccno=@bccno order by datea,typea,noa,noq
+		open cursor_table2
+		fetch next from cursor_table2
+		into @noa,@noq,@typea,@datea,@mount,@total,@tgg
+		while(@@FETCH_STATUS <> -1)
+		begin
+			if(@typea='A')
+			begin
+				set @mount2 = @mount
+				set @botal=@total
+			end
+			else
+			begin
+				set @botal=@botal+case when @typea='B' then @total else -(case when @mount2=0 then 0 else(@botal/@mount2)end)*@mount end
+				set @mount2 = @mount2 + case when @typea='B' then @mount else -@mount end
+				
+				if(@typea='B')
+					set @etgg=@tgg
+			end
+			
+			update @tmp set mount2=@mount2 where noa=@noa and noq=@noq
+			
+			if(@datea<=@t_enddate)
+			begin
+				set @bmount=@mount2
+			end
+			
+			fetch next from cursor_table2
+			into @noa,@noq,@typea,@datea,@mount,@total,@tgg
+		end
+		close cursor_table2
+		deallocate cursor_table2
+		
+		insert into @tmp(gno,typea,storeno,bccno,noa,mount2,total,tgg)values('0','',@storeno,@bccno,'庫存量',@mount2,@botal,@etgg)
+
+		--insert into @tmp(gno,typea,storeno,bccno,noa,mount2)values('0','',@storeno,@bccno,'前期存量',@bmount)
+
+		fetch next from cursor_table
+		into @storeno,@bccno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	delete @tmp where gno!='0'
+	
+	update @tmp set price=case when isnull(mount2,0)=0 then 0 else round(total/mount2,4) end
+	
+	insert @tmp(gno,storeno)
+	select '1',storeno from @tmp group by storeno
+	
+	select a.gno,a.storeno sno,b.store,d.namea typea,a.bccno bno,c.product bname,left(a.tgg,6) tgg
+	,dbo.getComma(a.mount2,[1]) mount
+	,dbo.getComma(a.price,[2]) price
+	,dbo.getComma(a.total,0) total
+	,@t_enddate endd
+	from @tmp a
+	left join store b on a.storeno=b.noa
+	left join bcc c on c.noa=a.bccno
+	left join bcctype d on c.typea=d.noa
+	where  (len(@t_store)=0 or b.noa=@t_store) and (len(@t_typea)=0 or c.typea=@t_typea)
+	order by a.storeno,a.gno,a.bccno,a.datea,a.typea,a.noa,a.noq;
+	
+	--select a.*
+	--,a.storeno sa 
+	--,b.store sb
+	--,a.bccno ba
+	--,c.product bb
+	--,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mt1
+	--,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) tt
+	--,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount2),1)),4,12)) mt2
+	--from @tmp a
+	--left join store b on a.storeno=b.noa
+	--left join bcc c on c.noa=a.bccno
+	--where  (len(@t_store)=0 or b.noa=@t_store) and (len(@t_typea)=0 or c.typea=@t_typea)
+	--order by a.storeno,a.bccno,a.gno,a.datea,a.typea,a.noa,a.noq
+--***********************************************************************************************

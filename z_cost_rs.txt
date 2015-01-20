@@ -1,0 +1,35 @@
+z_cost_rs1:--z_cost_rs1
+declare @t_xmon nvarchar(20)
+set @t_xmon = case when '#non' = [3] then '' else [3] end
+---------------------------------------------------------------------------
+
+select '0' gno,typea,productno
+,case when isnull((select top 1 product from view_ucaucc where noa=a.productno),'')='' then productno else (select top 1 product from view_ucaucc where noa=a.productno) end product,
+dbo.getComma(beginmount,[1]) beginmount,
+dbo.getComma(beginmoney,0) beginmoney,
+dbo.getComma((case when beginmount!=0 then beginmoney/beginmount else 0 end),[2]) beginprice,
+dbo.getComma(inmount,[1]) inmount,
+dbo.getComma(inmoney,0) inmoney,
+dbo.getComma((case when inmount!=0 then inmoney/inmount else 0 end),[2]) inprice,
+dbo.getComma(bornmount,[1]) bornmount,
+dbo.getComma(bornmoney,0) bornmoney,
+dbo.getComma(outsmount,[1]) outsmount,
+dbo.getComma(outsmoney,0) outsmoney,
+dbo.getComma(beginmount+inmount+bornmount+outsmount,[1]) tmount,
+dbo.getComma(beginmoney+inmoney+bornmoney+outsmoney,0) tmoney,
+dbo.getComma(salemount,[1]) salemount,
+dbo.getComma(salemoney,0) salemoney,
+dbo.getComma(outmount,[1]) outmount,
+dbo.getComma(outmoney,0) outmoney,
+dbo.getComma(outvmount,[1]) outvmount,
+dbo.getComma(outvmoney,0) outvmoney,
+dbo.getComma(backmount,[1]) backmount,
+dbo.getComma(backmoney,0) backmoney,
+dbo.getComma(othermount,[1]) othermount,
+dbo.getComma(othermoney,0) othermoney,
+dbo.getComma(lastmount,[1]) lastmount,
+dbo.getComma(lastmoney,0) lastmoney,
+dbo.getComma(price,[2]) price
+from view_costs a
+where mon=@t_xmon order by productno
+;

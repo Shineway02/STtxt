@@ -1,0 +1,548 @@
+z_payfe03:--z_payfe03
+	SET QUOTED_IDENTIFIER OFF
+
+	declare @t_cno nvarchar(20) = case when '#non' = [1] then '' else [1] end
+	declare @t_btggno nvarchar(20) = case when '#non' = [2] then '' else [2] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
+	declare @t_bmon nvarchar(20) = case when '#non' = [6] then '' else [6] end
+	declare @t_emon nvarchar(20) = case when '#non' = [7] then CHAR(255) else [7] end
+	declare @date date 
+	declare @t_bbmon nvarchar(20)
+	begin try
+		set @date = convert(date,cast(cast(left(@t_bmon,3)as int)+1911 as nvarchar)+right(@t_bmon,3)+'/01') 
+		set @date = DATEADD(MM,-2,@date) 
+		set @t_bbmon = right('000'+cast(year(@date)-1911 as nvarchar),3)+'/'+right('00'+cast(month(@date) as nvarchar),2) 
+	end try
+	begin catch
+		--日期異常
+		set @t_bmon = char(255)
+		set @t_emon = char(255)
+		set @t_bbmon = char(255)
+	end catch
+	---------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno int,
+		recno int,
+		cno nvarchar(20),
+		coin nvarchar(20),
+		tggno nvarchar(20),
+		sale float,
+		bksale float,
+		taxsale float,
+		totsale float,
+		pay float,
+		unpay1 float,--本期未收
+		unpay2 float,--前期未收
+		unpay3 float,--呆帳(超過2個月,即3個月前)
+		total float,
+		xx int,
+		rc2Count int,
+	
+		datea nvarchar(10),
+		typea nvarchar(10),
+		tablea nvarchar(20),
+		accy nvarchar(20),
+		noa nvarchar(20),
+		[money] float,
+		tax float,
+		product nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		price float,
+		moneys float		
+	)
+	--只顯示本期有進貨的
+	insert into @tmp(gno,pno,recno,cno,coin,tggno
+		,datea,typea,tablea,accy,noa,[money],tax,product,unit,mount,price,moneys,rc2Count,xx)
+	select '1',1,ROW_NUMBER()over(partition by a.cno,a.coin,a.tggno order by a.noa,b.noq)
+		,isnull(a.cno,''),isnull(a.coin,''),isnull(a.tggno,'')
+		,a.datea,case when a.typea='1' then '進' else '退' end,'rc2fe',a.accy,a.noa
+		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then a.[money] else 0 end
+		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then a.[tax] else 0 end
+		,b.product,b.unit,b.mount,b.price,b.total
+		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then 1 else 0 end
+		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then 1 else 0 end
+	from view_rc2 a
+	left join view_rc2s b on a.accy=b.accy and a.noa=b.noa
+	where (len(@t_cno)=0 or a.cno=@t_cno)
+	and isnull(a.tggno,'') between @t_btggno and @t_etggno
+	and isnull(a.mon,'') between @t_bmon and @t_emon
+	--bccin
+	--workd
+	--payb
+	--------------------------------------------------------------------------------------------
+	--rc2a
+	insert into @tmp(gno,pno,cno,coin,tggno
+		,datea,typea,tablea,accy,noa,tax)
+	select '2',2,cno,'',tggno
+		,datea,'稅','rc2a','',noa,[tax]
+	from rc2a 
+	where tggno between @t_btggno and @t_etggno
+	and LEFT(datea,6) between @t_bmon and @t_emon
+	--------------------------------------------------------------------------------------------
+	--頁尾小計
+	--出貨金額：
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '5',5,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno
+	
+	--退貨金額：
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '6',6,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno
+	
+	--稅    額：
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '7',7,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno	
+		
+	--本期應收：
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '8',8,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno	
+		
+	--已收金額：
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '9',9,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno	
+		
+	--前期未收：
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '10',10,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno	
+	
+	--呆帳
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '11',11,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno
+		
+	--應收總計：	
+	insert into @tmp(gno,pno,cno,coin,tggno)
+	select '12',12,cno,coin,tggno 
+	from @tmp
+	group by cno,coin,tggno
+	
+	--------------------------------------------------------------------------------------------
+	update @tmp set sale=b.sale,bksale=b.bksale,taxsale=b.taxsale
+	from @tmp a
+	left join(
+		select cno,coin,tggno
+		,SUM(case typea when '進' then ISNULL([money],0) else 0 end) sale
+		,SUM(case typea when '退' then ISNULL([money],0) else 0 end) bksale
+		,SUM(case typea when '退' then -ISNULL([tax],0) else ISNULL([tax],0) end) taxsale
+		from @tmp
+		group by cno,coin,tggno
+	)b on a.cno=b.cno and a.coin=b.coin and a.tggno=b.tggno
+
+	update @tmp set totsale=b.totsale, pay=b.pay, unpay1=b.unpay 
+	from @tmp a
+	left join (
+		select cno,coin,noa,SUM(isnull(sale,0)) sale,SUM(isnull(tax,0)) tax
+		,SUM(isnull(totsale,0)) totsale,SUM(isnull(pay,0)) pay,SUM(isnull(unpay,0)) unpay
+		from tgg_2s
+		where (len(@t_cno)=0 or cno=@t_cno)
+		and noa between @t_btggno and @t_etggno
+		and mon between @t_bmon and @t_emon
+		and ISNULL(totsale,0)!=0
+		group by cno,coin,noa
+	)b on a.cno=b.cno and a.coin=b.coin and a.tggno=b.noa
+	
+	update @tmp set unpay2=b.unpay 
+	from @tmp a
+	left join (
+		select cno,coin,noa,SUM(isnull(sale,0)) sale,SUM(isnull(tax,0)) tax
+		,SUM(isnull(totsale,0)) totsale,SUM(isnull(pay,0)) pay,SUM(isnull(unpay,0)) unpay
+		from tgg_2s
+		where (len(@t_cno)=0 or cno=@t_cno)
+		and noa between @t_btggno and @t_etggno
+		and mon between @t_bbmon and @t_bmon and mon<@t_bmon
+		and ISNULL(totsale,0)!=0
+		group by cno,coin,noa
+	)b on a.cno=b.cno and a.coin=b.coin and a.tggno=b.noa
+	
+	update @tmp set unpay3=b.unpay 
+	from @tmp a
+	left join (
+		select cno,coin,noa,SUM(isnull(sale,0)) sale,SUM(isnull(tax,0)) tax
+		,SUM(isnull(totsale,0)) totsale,SUM(isnull(pay,0)) pay,SUM(isnull(unpay,0)) unpay
+		from tgg_2s
+		where (len(@t_cno)=0 or cno=@t_cno)
+		and noa between @t_btggno and @t_etggno
+		and mon<@t_bbmon
+		and ISNULL(totsale,0)!=0
+		group by cno,coin,noa
+	)b on a.cno=b.cno and a.coin=b.coin and a.tggno=b.noa
+	
+	update @tmp set total = ISNULL(unpay1,0)+ISNULL(unpay2,0)+ISNULL(unpay3,0)
+	
+	update @tmp set rc2Count=b.nn
+	from @tmp a
+	left join (select cno,coin,tggno,SUM(rc2count)nn
+		from @tmp group by cno,coin,tggno)b
+	on a.cno=b.cno and a.coin=b.coin and a.tggno=b.tggno
+	-----------------------------------------------------------------------------------------------
+	declare @t_pageline int = 36 -- 一頁幾行
+	declare @cno nvarchar(20)
+	declare @tggno nvarchar(20)
+	declare @coin nvarchar(20)
+	declare @n int
+	declare @m int
+	
+	declare cursor_table cursor for
+	select cno,tggno,coin,count(1) from @tmp group by cno,tggno,coin
+	open cursor_table
+	fetch next from cursor_table
+	into @cno,@tggno,@coin,@n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @m = 1
+		
+		while @n%@t_pageline!=0
+		begin
+			if @m = 1
+			begin
+				insert into @tmp(gno,pno,cno,coin,tggno)values('3',3,@cno,@coin,@tggno)
+				set @m = @m+1
+				set @n = @n+1
+			end
+			if @n%@t_pageline!=0
+			begin
+				insert into @tmp(gno,pno,cno,coin,tggno)values('4',4,@cno,@coin,@tggno)
+				set @n = @n+1
+			end
+		end
+		
+		fetch next from cursor_table
+		into @cno,@tggno,@coin,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	-------------------------------------------------------------------------------------------------------
+	
+	select rc2Count nn
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.acomp +'</a>' tacomp
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.comp +'</a>' tcomp
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.addr_home +'</a>' taddr
+		,case when xx=1 then a.typea else '' end b01
+		,case when xx=1 then a.datea else '' end b02
+		,case when xx=1 then a.noa else '' end b03
+		,case when xx=1 then dbo.getComma(a.[money],0) else '' end b04 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' b05
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.unit +'</a>' b06
+		,dbo.getComma(a.[mount],0) b07
+		,dbo.getComma(a.[moneys],0) b08
+		,dbo.getComma(a.[tax],0) b09
+		
+		,dbo.getComma(isnull(a.[sale],0),0) c01
+		,dbo.getComma(isnull(a.[bksale],0),0) c02
+		,dbo.getComma(isnull(a.[taxsale],0),0) c03
+		,dbo.getComma(isnull(a.[totsale],0),0) c04
+		,dbo.getComma(isnull(a.[pay],0),0) c05
+		,dbo.getComma(isnull(a.[unpay2],0),0) c06
+		,dbo.getComma(isnull(a.[unpay3],0),0) c07
+		,dbo.getComma(isnull(a.[total],0),0) c08
+		,a.* 
+	from @tmp a 
+	left join acomp b on a.cno=b.noa
+	left join tgg c on a.tggno = c.noa
+	order by a.tggno,a.cno,a.coin,a.pno,a.recno;
+
+z_payfe02:--z_payfe02
+	SET QUOTED_IDENTIFIER OFF
+
+	declare @t_cno nvarchar(20) = case when '#non' = [1] then '' else [1] end
+	declare @t_btggno nvarchar(20) = case when '#non' = [2] then '' else [2] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
+	declare @t_bmon nvarchar(20) = case when '#non' = [6] then '' else [6] end
+	declare @t_emon nvarchar(20) = case when '#non' = [7] then CHAR(255) else [7] end
+	
+	declare @date date 
+	declare @t_bbmon nvarchar(20)
+	begin try
+		set @date = convert(date,cast(cast(left(@t_bmon,3)as int)+1911 as nvarchar)+right(@t_bmon,3)+'/01') 
+		set @date = DATEADD(MM,-2,@date) 
+		set @t_bbmon = right('000'+cast(year(@date)-1911 as nvarchar),3)+'/'+right('00'+cast(month(@date) as nvarchar),2) 
+	end try
+	begin catch
+		--日期異常
+		set @t_bmon = char(255)
+		set @t_emon = char(255)
+		set @t_bbmon = char(255)
+	end catch
+	--------------------------------------------------------------------
+	declare @tmp table(
+		cno nvarchar(20),
+		tggno nvarchar(20),
+		mon nvarchar(20),
+		coin nvarchar(20),
+		sale float,
+		tax float,
+		totsale float,
+		pay float,
+		unpay1 float,--本期未收
+		unpay2 float,--前期未收
+		unpay3 float--呆帳(超過2個月,即3個月前)
+	)
+	insert into @tmp(cno,tggno,mon,coin,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
+	select cno,a.noa,mon,coin
+		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.sale else 0 end
+		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.tax else 0 end
+		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.totsale else 0 end
+		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.pay else 0 end
+		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.unpay else 0 end
+		,case when ISNULL(a.mon,'') between @t_bbmon and @t_bmon and ISNULL(a.mon,'')!=@t_bmon then a.unpay else 0 end
+		,case when ISNULL(a.mon,'') < @t_bbmon then a.unpay else 0 end
+	from tgg_2s a
+	where (len(@t_cno)=0 or a.cno=@t_cno) 
+	and ISNULL(a.noa,'') between @t_btggno and @t_etggno
+	and ((ISNULL(a.mon,'')  between @t_bmon and @t_emon and isnull(totsale,0) !=0) 
+		or (ISNULL(a.mon,'') < @t_bmon and isnull(a.unpay,0) !=0 ))
+	-----------------------------------------------------------------------------------------------------
+	declare @cno nvarchar(20)
+	declare @tggno nvarchar(20)
+	declare @month nvarchar(10)
+	declare @coin nvarchar(20)
+	declare @money float
+	declare @memo nvarchar(max)
+	
+	declare @tmpa table(
+		gno nvarchar(10),		
+		cno nvarchar(20),
+		tggno nvarchar(20),
+		coin nvarchar(20),
+		sale float,
+		tax float,
+		totsale float,
+		pay float,
+		unpay1 float,--本期未收
+		unpay2 float,--前期未收
+		unpay3 float,--呆帳(超過2個月,即3個月前)
+		total float,
+		memo nvarchar(max)
+	)
+	insert into @tmpa(gno,cno,tggno,coin,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
+	select '1',cno,tggno,coin,SUM(isnull([sale],0)),SUM(isnull([tax],0))
+		,SUM(isnull([totsale],0)),SUM(isnull([pay],0)) 
+		,SUM(isnull([unpay1],0)),SUM(isnull([unpay2],0)),SUM(isnull([unpay3],0))
+	from @tmp group by cno,tggno,coin
+	
+	declare cursor_table cursor for
+	select cno,tggno,coin from @tmpa
+	open cursor_table
+	fetch next from cursor_table
+	into @cno,@tggno,@coin
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @memo = ''
+		
+		declare cursor_table2 cursor for
+		select mon,unpay2 from @tmp where cno=@cno and tggno=@tggno and coin=@coin and unpay2!=0
+		open cursor_table2
+		fetch next from cursor_table2
+		into @month,@money
+		while(@@FETCH_STATUS <> -1)
+		begin
+			set @memo = @memo + case when LEN(@memo)=0 then '' else ',&nbsp'+CHAR(59)+'&nbsp'+CHAR(59) end + @month+'：<a style="color:darkblue'+CHAR(59)+'">'+dbo.getComma(@money,0)+'</a>' 
+
+			fetch next from cursor_table2
+			into @month,@money
+		end
+		close cursor_table2
+		deallocate cursor_table2
+	
+		update @tmpa set memo = @memo where cno=@cno and tggno=@tggno and coin=@coin
+		
+		fetch next from cursor_table
+		into @cno,@tggno,@coin
+	end
+	close cursor_table
+	deallocate cursor_table
+	-------------------------------------------------------------------------------------
+	insert into @tmpa(gno,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
+	select '2',SUM(isnull([sale],0)),SUM(isnull([tax],0))
+		,SUM(isnull([totsale],0)),SUM(isnull([pay],0)) 
+		,SUM(isnull([unpay1],0)),SUM(isnull([unpay2],0)),SUM(isnull([unpay3],0))
+	from @tmpa
+	
+	update @tmpa set total = unpay1+unpay2+unpay3
+	
+	select b.nick nick
+		,dbo.getComma(a.unpay3,0) aa1
+		,dbo.getComma(a.sale,0) aa2
+		,dbo.getComma(a.tax,0) aa3
+		,dbo.getComma(a.pay,0) aa4
+		,dbo.getComma(a.total,0) aa5
+		,a.* 
+	from @tmpa a
+	left join tgg b on a.tggno=b.noa
+	order by gno,tggno;
+
+z_payfe01:--z_payfe01
+	SET QUOTED_IDENTIFIER OFF
+
+	declare @t_cno nvarchar(20) = case when '#non' = [1] then '' else [1] end
+	declare @t_btggno nvarchar(20) = case when '#non' = [2] then '' else [2] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
+	declare @t_bdate nvarchar(20) = case when '#non' = [4] then '' else [4] end
+	declare @t_edate nvarchar(20) = case when '#non' = [5] then CHAR(255) else [5] end
+	declare @t_bmon nvarchar(20) = case when '#non' = [6] then '' else [6] end
+	declare @t_emon nvarchar(20) = case when '#non' = [7] then CHAR(255) else [7] end
+	declare @t_detail nvarchar(max) = case when '#non' = [8] then '' else [8] end
+
+	---------------------------------------------------------------------------------
+	declare @recno int
+	declare @tggno nvarchar(20)
+	declare @datea nvarchar(10)
+	declare @rc2no nvarchar(max)
+	declare @paysale float 
+	declare @opay float
+	
+	declare @tmp table(
+		gno nvarchar(10),
+		recno int,
+		tggno nvarchar(20),
+		datea nvarchar(10),
+		
+		noa nvarchar(20),
+		noq nvarchar(10),
+		acc1 nvarchar(20),
+		acc2 nvarchar(max),
+		[money] float,
+		checkno nvarchar(20),
+		bankno nvarchar(20),
+		bank nvarchar(max),
+		indate nvarchar(10),
+		
+		rc2no nvarchar(20),
+		paysale float,
+		
+		mm1 float,
+		mm2 float,
+		mm3 float,
+		opay float
+	)
+	
+	--收款金額
+	insert into @tmp(recno,tggno,datea,noa,noq,acc1,acc2,[money],checkno,bankno,bank,indate)
+	select ROW_NUMBER()over(partition by a.tggno,a.datea order by a.noa,a.noq),a.*
+	from(
+		select b.tggno,b.datea,a.noa,a.noq,a.acc1,a.acc2,a.[money],a.checkno,a.bankno,a.bank,a.indate
+		from pays a
+		left join pay b on a.noa=b.noa
+		where b.noa is not null
+		and b.datea between @t_bdate and @t_edate
+		and b.tggno between @t_btggno and @t_etggno
+		and b.mon between @t_bmon and @t_emon
+		and isnull(a.[money],0)!=0
+		and (len(@t_cno)=0 or b.cno=@t_cno)
+		union all
+		select tggno,datea,noa,'','','預付沖帳',unopay,'','','','' from pay 
+		where isnull(unopay,0)!=0
+		and datea between @t_bdate and @t_edate
+		and mon between @t_bmon and @t_emon
+		and tggno between @t_btggno and @t_etggno
+		and (len(@t_cno)=0 or cno=@t_cno)
+	)a
+	order by a.tggno,a.datea,a.noa,a.noq
+	
+	--沖帳
+	declare cursor_table cursor for
+	select b.tggno,b.datea,a.rc2no,a.paysale
+	from pays a
+	left join pay b on a.noa=b.noa
+	where b.noa is not null
+	and b.datea between @t_bdate and @t_edate
+	and b.mon between @t_bmon and @t_emon
+	and b.tggno between @t_btggno and @t_etggno
+	and isnull(a.paysale,0)!=0
+	and (len(@t_cno)=0 or b.cno=@t_cno)
+	order by b.tggno,b.datea,a.noa,a.noq
+	open cursor_table
+	fetch next from cursor_table
+	into @tggno,@datea,@rc2no,@paysale
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @recno = 0
+		select @recno = recno
+		from @tmp where tggno=@tggno and datea=@datea and len(ISNULL(rc2no,''))=0
+
+		if @recno>0
+		begin
+			update @tmp set rc2no=@rc2no,paysale=@paysale where tggno=@tggno and datea=@datea and recno=@recno
+		end
+		else
+		begin
+			select @recno = max(recno)
+			from @tmp where tggno=@tggno and datea=@datea
+			set @recno = ISNULL(@recno,0)+1
+			insert into @tmp(recno,tggno,datea,rc2no,paysale)
+			select @recno,@tggno,@datea,@rc2no,@paysale
+		end
+	
+		fetch next from cursor_table
+		into @tggno,@datea,@rc2no,@paysale
+	end
+	close cursor_table
+	deallocate cursor_table
+	----------------------------------------------------------------------------------------
+	insert into @tmp(gno,tggno,datea,mm1,mm2,mm3)
+	select '1',tggno,''
+	,SUM(case when len(isnull(noq,''))=0 then ISNULL([money],0) else 0 end) --預付沖帳
+	,SUM(case when len(isnull(noq,''))>0 then ISNULL([money],0) else 0 end) --付款金額	
+	,SUM(ISNULL(paysale,0))--沖帳金額
+	from @tmp
+	group by tggno
+
+	declare cursor_table cursor for
+	select b.tggno,SUM(ISNULL(a.[money],0)-ISNULL(a.paysale,0))
+	from pays a
+	left join pay b on a.noa=b.noa
+	where b.noa is not null
+	and b.tggno between @t_btggno and @t_etggno
+	and b.datea <= @t_edate
+	and (len(@t_cno)=0 or b.cno=@t_cno)
+	group by b.tggno
+	open cursor_table
+	fetch next from cursor_table
+	into @tggno,@opay
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if exists(select * from @tmp where tggno=@tggno and gno='1')
+		begin
+			update @tmp set opay=@opay where tggno=@tggno and gno='1'
+		end
+		else
+		begin
+			insert into @tmp(gno,tggno,datea,opay)
+			select '1',@tggno,'',@opay
+		end
+	
+		fetch next from cursor_table
+		into @tggno,@opay
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	if LEN(@t_detail)>0
+	begin
+		update @tmp set gno='2' where gno is null
+	end
+	else
+	begin
+		delete @tmp where gno is null
+		update @tmp set gno='3' where gno='1'
+	end
+	select a.* 
+	,b.comp tcomp
+	,b.nick tnick
+	from @tmp a
+	left join tgg b on a.tggno=b.noa
+	order by a.tggno,a.datea,a.recno;

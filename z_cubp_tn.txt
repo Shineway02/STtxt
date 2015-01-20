@@ -1,0 +1,570 @@
+z_cubp_tn1:--z_cubp_tn1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bcno nvarchar(50)
+declare @t_ecno nvarchar(50)
+declare @t_btggno nvarchar(50)
+declare @t_etggno nvarchar(50)
+declare @t_bmechno nvarchar(50)
+declare @t_emechno nvarchar(50)
+declare @t_bproductno nvarchar(max)
+declare @t_eproductno nvarchar(max)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bcno = case when '#non'=[4] then '' else [4] end
+set @t_ecno = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bmechno = case when '#non'=[8] then '' else [8] end
+set @t_emechno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(10),
+	noa nvarchar(50),
+	noq nvarchar(10),
+	productno nvarchar(max),
+	product nvarchar(max),
+	class nvarchar(max),
+	spec nvarchar(max),
+	lengthb float,
+	width float,
+	lengthc float,
+	mount float,
+	unit nvarchar(20),
+	ordeno nvarchar(50),
+	no2 nvarchar(10)
+)
+insert into @tmp
+	select
+		'0' gno,a.noa,b.noq,b.productno,b.product,b.class,
+		b.spec,b.lengthb,b.width,b.lengthc,b.mount,b.unit,b.ordeno,b.no2
+	from view_cub a
+	left join view_cubs b on (a.noa=b.noa)
+	where (isnull(b.noq,'') != '') and (isnull(b.slit,0)=0) and
+			 (isnull(a.datea,'') between @t_bdate and @t_edate) and
+			 (isnull(a.cno,'') between @t_bcno and @t_ecno) and
+			 (isnull(a.tggno,'') between @t_btggno and @t_etggno) and
+			 (isnull(a.mechno,'') between @t_bmechno and @t_emechno) and
+			 (isnull(b.productno,'') between @t_bproductno and @t_eproductno)
+select
+	a.gno,a.noa,a.noq,a.productno,a.product,a.class,a.spec,a.unit,
+	a.lengthb,a.width,a.lengthc,a.mount,a.ordeno,a.no2,
+	'cub_tn?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?'+b.accy qhref
+from @tmp a
+outer apply(select top 1 accy from view_cub where (noa=a.noa)) b
+outer apply(select top 1 accy from view_orde where (noa=a.noa)) c
+order by a.gno,a.noa,a.noq;
+---------------------------------------------------------------------------------------*
+z_cubp_tn2:--z_cubp_tn2
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bcno nvarchar(50)
+declare @t_ecno nvarchar(50)
+declare @t_btggno nvarchar(50)
+declare @t_etggno nvarchar(50)
+declare @t_bmechno nvarchar(50)
+declare @t_emechno nvarchar(50)
+declare @t_bproductno nvarchar(max)
+declare @t_eproductno nvarchar(max)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bcno = case when '#non'=[4] then '' else [4] end
+set @t_ecno = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bmechno = case when '#non'=[8] then '' else [8] end
+set @t_emechno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(10),
+	noa nvarchar(50),
+	noq nvarchar(10),
+	productno nvarchar(max),
+	product nvarchar(max),
+	class nvarchar(max),
+	spec nvarchar(max),
+	lengthb float,
+	width float,
+	lengthc float,
+	mount float,
+	unit nvarchar(20),
+	ordeno nvarchar(50),
+	no2 nvarchar(10)
+)
+insert into @tmp
+	select
+		'0' gno,a.noa,b.noq,b.productno,b.product,b.class,
+		b.spec,b.lengthb,b.width,b.lengthc,b.mount,b.unit,b.ordeno,b.no2
+	from view_cub a
+	left join view_cubs b on (a.noa=b.noa)
+	where (isnull(b.noq,'') != '') and (isnull(b.slit,0)=1) and (isnull(b.cut,0)=0) and
+			 (isnull(a.datea,'') between @t_bdate and @t_edate) and
+			 (isnull(a.cno,'') between @t_bcno and @t_ecno) and
+			 (isnull(a.tggno,'') between @t_btggno and @t_etggno) and
+			 (isnull(a.mechno,'') between @t_bmechno and @t_emechno) and
+			 (isnull(b.productno,'') between @t_bproductno and @t_eproductno)
+select
+	a.gno,a.noa,a.noq,a.productno,a.product,a.class,a.spec,a.unit,
+	a.lengthb,a.width,a.lengthc,a.mount,a.ordeno,a.no2,
+	'cub_tn?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?'+b.accy qhref
+from @tmp a
+outer apply(select top 1 accy from view_cub where (noa=a.noa)) b
+outer apply(select top 1 accy from view_orde where (noa=a.noa)) c
+order by a.gno,a.noa,a.noq;
+---------------------------------------------------------------------------------------*
+z_cubp_tn3:--z_cubp_tn3
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bcno nvarchar(50)
+declare @t_ecno nvarchar(50)
+declare @t_bmechno nvarchar(50)
+declare @t_emechno nvarchar(50)
+declare @t_bproductno nvarchar(max)
+declare @t_eproductno nvarchar(max)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bcno = case when '#non'=[4] then '' else [4] end
+set @t_ecno = case when '#non'=[5] then char(255) else [5] end
+set @t_bmechno = case when '#non'=[8] then '' else [8] end
+set @t_emechno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @tmp table(
+	gno nvarchar(10),
+	cno nvarchar(90),
+	comp nvarchar(max),
+	proccessno nvarchar(90),
+	proccesss nvarchar(max),
+	mechno nvarchar(90),
+	mechs nvarchar(max),
+	noa nvarchar(50),
+	noq nvarchar(10),
+	productno nvarchar(90),
+	products nvarchar(max),
+	class nvarchar(max),
+	spec nvarchar(max),
+	lengthb float,
+	width float,
+	lengthc float,
+	mount float,
+	unit nvarchar(20),
+	minutes float
+)
+insert into @tmp
+	select
+		'0' gno,b.cno,b.comp,b.processno,b.process,
+		b.mechno,b.mech,b.noa,a.noq,a.productno,a.product,
+		a.class,a.spec,a.lengthb,a.width,a.lengthc,a.mount,a.unit,a.hard
+	from view_cubs a
+	left join view_cub b on (b.noa=a.noa)
+	where (isnull(a.cut,0)=1) and (isnull(b.cno,'') != '') and
+			 (isnull(b.datea,'') between @t_bdate and @t_edate) and
+			 (isnull(b.cno,'') between @t_bcno and @t_ecno) and
+			 (isnull(b.mechno,'') between @t_bmechno and @t_emechno) and
+			 (isnull(a.productno,'') between @t_bproductno and @t_eproductno)			 
+			 
+insert into @tmp(gno,cno,comp,proccessno,proccesss,mechno,mechs,lengthc,mount,minutes)
+	select '1',a.cno,a.comp,a.proccessno,a.proccesss,a.mechno,a.mechs,sum(lengthc),sum(mount),sum(minutes)
+	from @tmp a
+	where (gno='0')
+	group by a.cno,a.comp,a.proccessno,a.proccesss,a.mechno,a.mechs
+	
+select
+	a.gno,a.cno,a.comp,a.proccessno,a.proccesss,a.mechno,a.mechs,a.unit,
+	a.noa,a.noq,a.productno,a.products,a.class,a.spec,a.lengthb,
+	a.width,a.lengthc,a.mount,a.minutes
+from @tmp a
+order by a.cno,a.comp,a.proccessno,a.proccesss,a.mechno,a.mechs,a.gno,a.noa,a.noq;
+---------------------------------------------------------------------------------------*
+z_cubp_tn4:--z_cubp_tn4
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_btggno nvarchar(50)
+declare @t_etggno nvarchar(50)
+declare @t_bmechno nvarchar(50)
+declare @t_emechno nvarchar(50)
+declare @t_bproductno nvarchar(max)
+declare @t_eproductno nvarchar(max)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bmechno = case when '#non'=[8] then '' else [8] end
+set @t_emechno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+
+declare @tmp table(
+	gno nvarchar(10),
+	tggno nvarchar(90),
+	tggs nvarchar(max),
+	proccessno nvarchar(90),
+	proccesss nvarchar(max),
+	mechno nvarchar(90),
+	mechs nvarchar(max),
+	noa nvarchar(50),
+	noq nvarchar(10),
+	productno nvarchar(90),
+	products nvarchar(max),
+	class nvarchar(max),
+	spec nvarchar(max),
+	lengthb float,
+	width float,
+	lengthc float,
+	mount float,
+	unit nvarchar(20),
+	minutes float
+)
+insert into @tmp
+	select
+		'0' gno,b.tggno,b.tgg,b.processno,b.process,
+		b.mechno,b.mech,b.noa,a.noq,a.productno,a.product,
+		a.class,a.spec,a.lengthb,a.width,a.lengthc,a.mount,a.unit,a.hard
+	from view_cubs a
+	left join view_cub b on (b.noa=a.noa)
+	where (isnull(a.cut,0)=1) and (isnull(b.tggno,'') != '') and
+			 (isnull(b.datea,'') between @t_bdate and @t_edate) and
+			 (isnull(b.tggno,'') between @t_btggno and @t_etggno) and
+			 (isnull(b.mechno,'') between @t_bmechno and @t_emechno) and
+			 (isnull(a.productno,'') between @t_bproductno and @t_eproductno)			 
+			 
+insert into @tmp(gno,tggno,tggs,proccessno,proccesss,mechno,mechs,lengthc,mount,minutes)
+	select '1',a.tggno,a.tggs,a.proccessno,a.proccesss,a.mechno,a.mechs,sum(lengthc),sum(mount),sum(minutes)
+	from @tmp a where (gno='0')
+	group by a.tggno,a.tggs,a.proccessno,a.proccesss,a.mechno,a.mechs
+	
+select
+	a.gno,a.tggno,a.tggs,a.proccessno,a.proccesss,a.mechno,a.mechs,
+	a.noa,a.noq,a.productno,a.products,a.class,a.spec,a.lengthb,a.width,
+	a.lengthc,a.mount,a.minutes,a.unit
+from @tmp a
+order by a.tggno,a.tggs,a.proccessno,a.proccesss,a.mechno,a.mechs,a.gno,a.noa,a.noq;
+--************************************************************************************************
+z_cubp_tn5:--z_cubp_tn5
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bcno nvarchar(50)
+declare @t_ecno nvarchar(50)
+declare @t_bproductno nvarchar(max)
+declare @t_eproductno nvarchar(max)
+declare @t_bcustno nvarchar(max)
+declare @t_ecustno nvarchar(max)
+declare @t_iscut nvarchar(10)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bcno = case when '#non'=[4] then '' else [4] end
+set @t_ecno = case when '#non'=[5] then char(255) else [5] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_bcustno = case when '#non'=[12] then '' else [12] end
+set @t_ecustno = case when '#non'=[13] then char(255) else [13] end
+set @t_iscut = case when '#non'=[14] then '' else [14] end
+----------------------------------------------------------------------------------------------------------------------
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max) 
+	IF OBJECT_ID('tempdb..#tmpa')is not null
+	BEGIN
+		   drop table #tmpa
+	END
+	IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		   drop table #tmp
+	END
+
+	declare @tmpa table(
+		cno nvarchar(50),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		productno nvarchar(50),
+		product nvarchar(100),
+		spec nvarchar(100),
+		unit nvarchar(10),
+		mount float,
+		process nvarchar(100)
+	)
+	
+	declare @noa nvarchar(50)
+	declare @no2 nvarchar(50)
+	declare @productno nvarchar(50)
+	declare @product nvarchar(100)
+	declare @spec nvarchar(200)
+	declare @unit nvarchar(10)
+	declare @mount float
+	declare @sizea nvarchar(MAX)
+	declare @cno1 nvarchar(MAX)
+	declare @process1 nvarchar(MAX)
+	declare @cno2 nvarchar(MAX)
+	declare @process2 nvarchar(MAX)
+
+	declare cursor_table cursor for
+	select a.noa,b.no2,b.productno,b.product,b.spec,b.unit,b.mount,b.sizea 
+	from view_orde a left join view_ordes b on a.noa=b.noa 
+	where a.odate between @t_bdate and @t_edate 
+	and b.productno between @t_bproductno and @t_eproductno
+	and a.custno between @t_bcustno and @t_ecustno
+	and len(sizea)>0 and (len(@t_iscut)=0 or @t_iscut=b.cut)
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@no2,@productno,@product,@spec,@unit,@mount,@sizea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cno1=SUBSTRING(@sizea,0,CHARINDEX('^$^',@sizea))
+		set @cno2=SUBSTRING(@cno1,CHARINDEX(char(59),@cno1)+1,LEN(@cno1))
+		set @cno1=SUBSTRING(@cno1,0,CHARINDEX(char(59),@cno1))
+		set @process1=SUBSTRING(@cno1,CHARINDEX('@',@cno1)+1,LEN(@cno1))
+		set @process2=SUBSTRING(@cno2,CHARINDEX('@',@cno2)+1,LEN(@cno2))
+		set @cno1=SUBSTRING(@cno1,0,CHARINDEX(':',@cno1))
+		set @cno2=SUBSTRING(@cno2,0,CHARINDEX(':',@cno2))
+		
+		while (charindex(',',@process1)>0)
+		begin
+			insert @tmpa
+			select @cno1,@noa,@no2,@productno,@product,@spec,@unit,@mount,SUBSTRING(@process1,0,charindex(',',@process1))
+			set @process1=SUBSTRING(@process1,charindex(',',@process1)+1,LEN(@process1))
+		end
+		
+		while (charindex(',',@process2)>0)
+		begin
+			insert @tmpa
+			select @cno2,@noa,@no2,@productno,@product,@spec,@unit,@mount,SUBSTRING(@process2,0,charindex(',',@process2))
+			set @process2=SUBSTRING(@process2,charindex(',',@process2)+1,LEN(@process2))
+		end
+		
+		--select @cno1,@process1,@cno2,@process2
+		
+		fetch next from cursor_table
+		into @noa,@no2,@productno,@product,@spec,@unit,@mount,@sizea
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	delete @tmpa where cno not between @t_bcno and @t_ecno
+	
+	create table #tmpa(
+		cno nvarchar(50),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		productno nvarchar(50),
+		product nvarchar(100),
+		spec nvarchar(100),
+		unit nvarchar(10),
+		mount float,
+		process nvarchar(100),
+		idno int
+	)
+	
+	insert #tmpa 
+	select * ,DENSE_RANK() over( order by noa,no2 ) from @tmpa order by noa,no2
+	
+	declare @process table(
+		idno int,
+		process nvarchar(100)
+	)
+	
+	create table #tmp(
+		tgno nvarchar(1),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		productno nvarchar(50),
+		product nvarchar(100),
+		spec nvarchar(100),
+		unit nvarchar(10),
+		mount float,
+		pt int,
+		paget int,
+		p0 nvarchar(50),
+		p1 nvarchar(50),
+		p2 nvarchar(50),
+		p3 nvarchar(50),
+		p4 nvarchar(50),
+		p5 nvarchar(50),
+		p6 nvarchar(50),
+		p7 nvarchar(50),
+		v0 nvarchar(50),
+		v1 nvarchar(50),
+		v2 nvarchar(50),
+		v3 nvarchar(50),
+		v4 nvarchar(50),
+		v5 nvarchar(50),
+		v6 nvarchar(50),
+		v7 nvarchar(50)
+	)
+	
+	declare @pagep int=15 --預設每頁10個訂單產品
+	declare @tmpp int=(select COUNT(*) from (select noa,no2 from #tmpa group by noa,no2)a)
+	declare @count int=0
+	
+	declare @processno nvarchar(10)
+	declare @pidno nvarchar(50)
+	
+	while (@tmpp>0)
+	begin
+		delete @process
+		
+		insert @process
+		select ROW_NUMBER() over(order by b.noa,a.process),a.process from #tmpa a left join process b on a.process=b.process where a.idno/(@pagep+1)=@count group by b.noa,a.process
+		--select ROW_NUMBER() over(order by process),process from #tmpa where idno/(@pagep+1)=@count group by process
+		-----------------------------------------------
+		declare process_table cursor for
+		select idno-1,process from @process order by idno
+		open process_table
+		fetch next from process_table
+		into @pidno,@processno
+		while(@@FETCH_STATUS <> -1)
+		begin
+		
+			set @cmd=
+			"insert #tmp(tgno,paget,noa,no2,productno,product,spec,unit,mount,pt,p"+cast((@pidno%8)as nvarchar(10))+",v"+cast((@pidno%8) as nvarchar(10))+")
+			select '9',"+cast(@count as nvarchar(10))+",noa,no2,productno,product,spec,unit,mount,"+cast(@pidno/8 as nvarchar(10))+",'"+@processno+"'
+			,case when (select count(*) from view_cub a left join view_cubs b on a.noa=b.noa where b.ordeno=#tmpa.noa and b.no2=#tmpa.no2 and b.cut='1' and (select top 1 process from process where noa=a.processno)='"+@processno+"' )>0 then 'Y' else 'N' end
+			from #tmpa where process='"+@processno+"' and idno/"+cast((@pagep+1) as nvarchar(10))+"="+cast(@count as nvarchar(10))+" "
+			execute sp_executesql @cmd
+			
+			insert #tmp(tgno,paget,noa,no2,productno,product,spec,unit,mount,pt)
+			select '9',@count,noa,no2,productno,product,spec,unit,mount,@pidno/8
+			from #tmpa where idno/(@pagep+1)=@count 
+			and noa+'_'+no2 not in (select noa+'_'+no2 from #tmp where paget=@count and pt=@pidno/8)
+			group by noa,no2,productno,product,spec,unit,mount
+			
+			fetch next from process_table
+			into @pidno,@processno
+		end
+		close process_table
+		deallocate process_table
+		
+		set @tmpp=@tmpp-@pagep
+		set @count=@count+1
+	end
+	
+	insert #tmp (tgno,noa,no2,productno,product,spec,unit,mount,pt,paget,p0,p1,p2,p3,p4,p5,p6,p7,v0,v1,v2,v3,v4,v5,v6,v7)
+	select '1',noa,no2,productno,product,spec,unit,mount,pt,paget,MAX(p0),MAX(p1),MAX(p2),MAX(p3),MAX(p4),MAX(p5),MAX(p6),MAX(p7)
+	,MAX(v0),MAX(v1),MAX(v2),MAX(v3),MAX(v4),MAX(v5),MAX(v6),MAX(v7)
+	from #tmp group by noa,no2,productno,product,spec,unit,mount,pt,paget
+	
+	insert #tmp (tgno,pt,paget,p0,p1,p2,p3,p4,p5,p6,p7)
+	select '0',pt,paget,MAX(p0),MAX(p1),MAX(p2),MAX(p3),MAX(p4),MAX(p5),MAX(p6),MAX(p7)
+	from #tmp group by pt,paget
+	
+	insert #tmp(tgno,pt,paget)
+	select '2',pt,paget from #tmp group by pt,paget
+	
+	select case when tgno='1' then '0' when tgno='0' then '1' else tgno end gno,
+	(case when v0='N' then "<font color='red'>"+v0+"</font>" when v0='Y' then "<font color='green'>"+v0+"</font>" else '' end) v0 ,
+	(case when v1='N' then "<font color='red'>"+v1+"</font>" when v1='Y' then "<font color='green'>"+v1+"</font>" else '' end) v1 ,
+	(case when v2='N' then "<font color='red'>"+v2+"</font>" when v2='Y' then "<font color='green'>"+v2+"</font>" else '' end) v2 ,
+	(case when v3='N' then "<font color='red'>"+v3+"</font>" when v3='Y' then "<font color='green'>"+v3+"</font>" else '' end) v3 ,
+	(case when v4='N' then "<font color='red'>"+v4+"</font>" when v4='Y' then "<font color='green'>"+v4+"</font>" else '' end) v4 ,
+	(case when v5='N' then "<font color='red'>"+v5+"</font>" when v5='Y' then "<font color='green'>"+v5+"</font>" else '' end) v5 ,
+	(case when v6='N' then "<font color='red'>"+v6+"</font>" when v6='Y' then "<font color='green'>"+v6+"</font>" else '' end) v6 ,
+	(case when v7='N' then "<font color='red'>"+v7+"</font>" when v7='Y' then "<font color='green'>"+v7+"</font>" else '' end) v7 ,
+	*
+	from #tmp where tgno<'9' order by paget,pt,tgno,noa,no2
+	
+	IF OBJECT_ID('tempdb..#tmpa')is not null
+	BEGIN
+		   drop table #tmpa
+	END
+	
+	IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		   drop table #tmp
+	END
+;
+------------------------------------------------------------------------------------------------------------------------------------------
+z_cubp_tn6:--z_cubp_tn6
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bcno nvarchar(50)
+declare @t_ecno nvarchar(50)
+declare @t_bproductno nvarchar(max)
+declare @t_eproductno nvarchar(max)
+declare @t_bcustno nvarchar(max)
+declare @t_ecustno nvarchar(max)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bcno = case when '#non'=[4] then '' else [4] end
+set @t_ecno = case when '#non'=[5] then char(255) else [5] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_bcustno = case when '#non'=[12] then '' else [12] end
+set @t_ecustno = case when '#non'=[13] then char(255) else [13] end
+--********************************************************************
+declare @tmpa table(
+		accy nvarchar(50),
+		cno nvarchar(50),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		productno nvarchar(50),
+		product nvarchar(100),
+		spec nvarchar(100),
+		unit nvarchar(10),
+		mount float,
+		process nvarchar(100),
+		memo nvarchar(MAX)
+	)
+	declare @accy nvarchar(50)
+	declare @noa nvarchar(50)
+	declare @no2 nvarchar(50)
+	declare @productno nvarchar(50)
+	declare @product nvarchar(100)
+	declare @spec nvarchar(200)
+	declare @unit nvarchar(10)
+	declare @mount float
+	declare @memo nvarchar(MAX)
+	declare @sizea nvarchar(MAX)
+	declare @cno1 nvarchar(MAX)
+	declare @process1 nvarchar(MAX)
+	declare @cno2 nvarchar(MAX)
+	declare @process2 nvarchar(MAX)
+
+	declare cursor_table cursor for
+	select a.accy,a.noa,b.no2,b.productno,b.product,b.spec,b.unit,b.mount,b.sizea,b.memo
+	from view_orde a left join view_ordes b on a.noa=b.noa 
+	where a.odate between @t_bdate and @t_edate 
+	and b.productno between @t_bproductno and @t_eproductno
+	and a.custno between @t_bcustno and @t_ecustno
+	and len(b.sizea)>0 and isnull(b.enda,0)!='1' and isnull(b.cut,0)!='1' 
+	open cursor_table
+	fetch next from cursor_table
+	into @accy,@noa,@no2,@productno,@product,@spec,@unit,@mount,@sizea,@memo
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cno1=SUBSTRING(@sizea,0,CHARINDEX('^$^',@sizea))
+		set @cno2=SUBSTRING(@cno1,CHARINDEX(char(59),@cno1)+1,LEN(@cno1))
+		set @cno1=SUBSTRING(@cno1,0,CHARINDEX(char(59),@cno1))
+		set @process1=SUBSTRING(@cno1,CHARINDEX('@',@cno1)+1,LEN(@cno1))
+		set @process2=SUBSTRING(@cno2,CHARINDEX('@',@cno2)+1,LEN(@cno2))
+		set @cno1=SUBSTRING(@cno1,0,CHARINDEX(':',@cno1))
+		set @cno2=SUBSTRING(@cno2,0,CHARINDEX(':',@cno2))
+		
+		while (charindex(',',@process1)>0)
+		begin
+			insert @tmpa
+			select @accy,@cno1,@noa,@no2,@productno,@product,@spec,@unit,@mount,SUBSTRING(@process1,0,charindex(',',@process1)),@memo
+			set @process1=SUBSTRING(@process1,charindex(',',@process1)+1,LEN(@process1))
+		end
+		
+		while (charindex(',',@process2)>0)
+		begin
+			insert @tmpa
+			select @accy,@cno2,@noa,@no2,@productno,@product,@spec,@unit,@mount,SUBSTRING(@process2,0,charindex(',',@process2)),@memo
+			set @process2=SUBSTRING(@process2,charindex(',',@process2)+1,LEN(@process2))
+		end
+		
+		fetch next from cursor_table
+		into @accy,@noa,@no2,@productno,@product,@spec,@unit,@mount,@sizea,@memo
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	delete @tmpa where cno not between @t_bcno and @t_ecno
+	
+	--刪除已產生的加工單
+	delete @tmpa where noa+'_'+no2+'_'+cno+'_'+process
+	in (select b.ordeno+'_'+b.no2+'_'+a.cno+'_'+c.process from view_cub a left join view_cubs b on a.noa=b.noa left join process c on a.processno=c.noa)
+	
+	select '0' gno,a.*,'orde_tn?noa=$noa?'+accy qhref 
+	from @tmpa a left join process b on a.process=b.process
+	order by a.noa,a.no2,b.noa;

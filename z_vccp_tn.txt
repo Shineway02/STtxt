@@ -1,0 +1,100 @@
+z_vccp_tn1:--z_vccp_tn1
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
+declare @t_pageline int = 11   --------一頁幾行
+set @t_bxnoa = case when '#non' = [2] then '' else [2] end
+set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
+--*******************************************************************************************************
+declare @tmp table(
+	gno nvarchar(1),
+	recno int,
+	pageno int,
+	topage int,
+	title nvarchar(90),
+	noa nvarchar(100),
+	datea nvarchar(15),
+	custno nvarchar(90),
+	comp nvarchar(150),
+	tel nvarchar(100),
+	mobile nvarchar(100),
+	addr nvarchar(150),
+	store nvarchar(50),
+	salesno nvarchar(90),
+	sales nvarchar(90),
+	productno nvarchar(90),
+	product nvarchar(90),
+	mount float,
+	unit nvarchar(90),
+	price float,
+	total float
+)
+
+insert into @tmp 
+select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq)
+,0,0,'',a.noa,a.datea,a.custno,a.comp,a.tel,c.mobile,case when a.addr2!='' then a.addr2 else a.addr end
+,b.ordeno,a.salesno,a.sales,b.productno,b.product+' '+isnull(b.spec,''),b.mount,b.unit,b.price,b.total
+from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa
+where a.noa between @t_bxnoa and @t_exnoa
+
+declare @t_noa nvarchar(50)
+declare @count int
+declare @t_count int
+
+declare cursor_table cursor for
+select noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @t_noa,@count
+while(@@FETCH_STATUS <> -1)
+begin
+	--新增空白欄
+	select @t_count=@t_pageline-(@count % @t_pageline)
+	while(@t_count>0)
+	begin
+		insert @tmp(gno,recno,noa)
+		select '0',@t_count+(@count % @t_pageline)+(FLOOR(cast(@count as float)/cast(@t_pageline as float))*@t_pageline),@t_noa
+		set @t_count=@t_count-1
+	end
+
+	--新增 表頭和合計
+	set @t_count=ceiling(cast(@count as float)/cast(@t_pageline as float))
+	while(@t_count>0)
+	begin
+		insert @tmp(gno,recno,pageno,noa,datea,salesno,sales,custno,comp,tel,mobile,addr,store)
+		select top 1 '1',((@t_count-1)*@t_pageline),@t_count,@t_noa,datea,salesno,sales,custno,comp,tel,mobile,addr
+		,stuff((select ','+store from @tmp where noa=@t_noa group by store FOR XML PATH('')),1,1,'')
+		from @tmp where noa=@t_noa and datea!=''
+		
+		insert @tmp(gno,recno,pageno,noa,datea,salesno,sales,custno,comp,tel,mobile,addr,store)
+		select top 1 '2',((@t_count)*@t_pageline),@t_count,@t_noa,datea,salesno,sales,custno,comp,tel,mobile,addr
+		,stuff((select ','+store from @tmp where noa=@t_noa group by store FOR XML PATH('')),1,1,'')
+		from @tmp where noa=@t_noa and datea!=''
+		
+		set @t_count=@t_count-1
+	end
+	
+	fetch next from cursor_table
+	into @t_noa,@count
+end
+close cursor_table
+deallocate cursor_table
+
+update @tmp 
+set pageno=ceiling(cast(recno as float)/cast(@t_pageline as float))
+where gno='0'
+
+update a 
+set topage=(select MAX(pageno) from @tmp where noa=a.noa),title='估價單'
+from @tmp a
+
+update a 
+set total=(select SUM(total) from @tmp where noa=a.noa and pageno=a.pageno and gno='0')
+from @tmp a where gno='2'
+
+select gno,case when isnull(productno,'')='' then null else  recno end no,pageno,topage,title
+,noa,datea,custno,left(comp,15)comp,tel,mobile,addr,store,salesno,sales,productno,product,unit
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),2,30)) mount
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),2,30)) price
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
+from @tmp
+order by noa,pageno,recno,gno;

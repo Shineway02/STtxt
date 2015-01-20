@@ -1,0 +1,181 @@
+z_bcc2st:--z_bcc2st
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+
+	set @t_bdate = case when '#non'=[3] then '' else [3] end
+	set @t_edate = case when '#non'=[4] then char(255) else [4] end
+	set @t_bbccno = case when '#non'=[5] then '' else [5] end
+	set @t_ebccno = case when '#non'=[6] then char(255) else [6] end
+	set @t_storeno = case when '#non'=[7] then '' else [7] end
+	-------------------------------------------------------------------------------
+	declare @string nvarchar(max)
+	declare @n int
+	--解析要計算的種類
+	declare @liststore table(
+		noa nvarchar(20)
+	)
+	set @string = @t_storeno
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @liststore select @string
+			end
+			break
+		end
+		insert into @liststore select LEFT(@string,@n-1) 	
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	-------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		recno int,
+		bccno nvarchar(20),
+		bccname nvarchar(max),
+		storeno nvarchar(20),
+		store nvarchar(max),
+		mechno nvarchar(20),
+		mech nvarchar(max),
+		partno nvarchar(20),
+		part nvarchar(20),
+		
+		tablea nvarchar(20),
+		noa nvarchar(20),
+		noq nvarchar(20),
+		pno nvarchar(10),
+		ctype nvarchar(20),
+		datea nvarchar(10),
+		mount float,
+		price float,
+		bkbcc float,
+		total float,
+		cc nvarchar(20),--控制TABLE期初順序
+		ghref nvarchar(max),
+		memo nvarchar(max)
+	)
+	insert into @tmp(gno,tablea,noa,noq,bccno,bccname,storeno,store,partno,part,pno,ctype,datea,mount,price,ghref,memo)
+	select '2','bcce',a.noa,a.noq 
+		,ISNULL(a.bccno,''),ISNULL(a.bccname,''),ISNULL(b.storeno,''),ISNULL(c.store,''),ISNULL(b.partno,''),ISNULL(b.part,'')
+		,'A','盤點',ISNULL(b.datea,''),ISNULL(a.mount,0),ISNULL(a.price,0)
+		,'',a.memo
+	from bcces a
+	left join bcce b on a.noa=b.noa
+	left join store c on b.storeno=c.noa
+	left join part d on b.partno=d.part
+	left join @liststore e on b.storeno=e.noa
+	where b.noa is not null and e.noa is not null and (a.bccno between @t_bbccno and @t_ebccno) 
+
+	insert into @tmp(gno,tablea,noa,noq,bccno,bccname,storeno,store,partno,part,pno,ctype,datea,mount,price,ghref,memo)
+	select '2','bccin',a.noa,a.noq
+		,ISNULL(a.bccno,''),ISNULL(a.bccname,''),ISNULL(b.storeno,''),ISNULL(c.store,''),ISNULL(b.partno,''),ISNULL(b.part,'')
+		,case when isnull(b.typea,'')='2' then 'C' else 'B' end
+		,case when isnull(b.typea,'')='2' then '退貨' else '入庫' end
+		,ISNULL(b.datea,''),ISNULL(a.mount,0),ISNULL(a.price,0)
+		,'bccin?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?' ,a.memo
+	from bccins a
+	left join bccin b on a.noa=b.noa
+	left join store c on b.storeno=c.noa
+	left join part d on b.partno=d.part
+	left join @liststore e on b.storeno=e.noa
+	where b.noa is not null and e.noa is not null and (a.bccno between @t_bbccno and @t_ebccno) 
+
+	insert into @tmp(gno,tablea,noa,noq,bccno,bccname,storeno,store,mechno,mech,partno,part,pno,ctype,datea,mount,price,bkbcc,ghref,memo)
+	select '2','bccout',a.noa,a.noq
+		,ISNULL(a.bccno,''),ISNULL(a.bccname,''),ISNULL(b.storeno,''),ISNULL(c.store,''),isnull(b.mechno,''),isnull(b.mech,''),ISNULL(b.partno,''),ISNULL(b.part,'')
+		,'D'
+		,'領料'
+		,ISNULL(b.datea,''),ISNULL(a.mount,0),0,ISNULL(a.bkbcc,0)
+		,'bccout?left(noa,'+cast(len(a.noa) as nvarchar)+')=$noa?' ,a.memo
+	from bccouts a
+	left join bccout b on a.noa=b.noa
+	left join store c on b.storeno=c.noa
+	left join part d on b.partno=d.part
+	left join @liststore e on b.storeno=e.noa
+	where b.noa is not null and e.noa is not null and (a.bccno between @t_bbccno and @t_ebccno) 
+	---------------------------------------------------------------------------------------------
+	declare @recno int
+	declare @tablea nvarchar(20)
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(20)
+	declare @bccno nvarchar(20)
+	declare @bccname nvarchar(max)
+	declare @storeno nvarchar(20)
+	declare @store nvarchar(max)
+	declare @pno nvarchar(10)
+	declare @datea nvarchar(10)
+	declare @mount float
+	declare @bkbcc float
+	declare @total int
+	
+	declare cursor_table cursor for
+	select row_number()over(partition by bccno,storeno order by datea,pno),tablea,noa,noq,bccno,storeno,pno,datea,mount,bkbcc from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @recno,@tablea,@noa,@noq,@bccno,@storeno,@pno,@datea,@mount,@bkbcc
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @recno = 1
+		begin
+			set @total = case when @pno='A' OR @pno='B' then 1 else -1 end * ISNULL(@mount,0)-ISNULL(@bkbcc,0)
+		end
+		else
+		begin
+			if @pno='A'
+			begin
+				set @total = ISNULL(@mount,0)-ISNULL(@bkbcc,0)
+			end
+			else
+			begin
+				set @total = isnull(@total,0) + case when @pno='B' then 1 else -1 end * ISNULL(@mount,0)-ISNULL(@bkbcc,0)
+			end
+		end
+		update @tmp set recno=@recno,total=@total where tablea=@tablea and noa=@noa and noq=@noq
+		
+		fetch next from cursor_table
+		into @recno,@tablea,@noa,@noq,@bccno,@storeno,@pno,@datea,@mount,@bkbcc
+	end
+	close cursor_table
+	deallocate cursor_table
+	--------------------------------------------------------------------------
+	declare cursor_table cursor for
+	select bccno,storeno from @tmp group by bccno,storeno
+	open cursor_table
+	fetch next from cursor_table
+	into @bccno,@storeno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		select @total = 0,@datea='',@bccname='',@store=''
+		select top(1) @total=total,@datea=datea,@bccname=bccname,@store=store from @tmp where bccno=@bccno and storeno=@storeno and datea<@t_bdate order by datea desc,recno desc
+		select @bccname=product from bcc where noa=@bccno
+		select @store=store from store where noa=@storeno
+		
+		insert into @tmp(gno,recno,pno,datea,cc,bccno,bccname,storeno,store,total)
+		select '1',0,'',@datea,'A',@bccno,@bccname,@storeno,@store,@total
+		
+		fetch next from cursor_table
+		into @bccno,@storeno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	delete @tmp where not(datea between @t_bdate and @t_edate) and len(isnull(cc,''))=0 
+	update @tmp set gno=case when gno='1' and a.recno=b.recno then '3'
+							 when gno='2' and a.recno=b.recno then '4'
+							 else gno end
+ 	from @tmp a
+	left join (select bccno,storeno,MAX(recno) recno from @tmp group by bccno,storeno) b on a.bccno=b.bccno and a.storeno=b.storeno 
+	---------------------------------------------------------------------------
+	update @tmp set ghref = tablea+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' 
+	
+	select gno,recno,bccno,bccname,storeno,store,mechno,mech,partno,part,tablea,noa,noq,pno,ctype,datea,cc,ghref,memo
+	,dbo.getComma(mount,[1])mount
+	,dbo.getComma(price,[2])price
+	,dbo.getComma(bkbcc,[1])bkbcc
+	,dbo.getComma(total,[1])total
+	from @tmp order by bccno,storeno,datea,cc,pno;

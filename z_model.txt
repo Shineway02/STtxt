@@ -1,0 +1,125 @@
+z_model1:--z_model1
+declare @t_bmodelno nvarchar(90)
+declare @t_emodelno nvarchar(90)
+set @t_bmodelno = case when '#non' = [2] then '' else [2] end
+set @t_emodelno = case when '#non' = [3] then CHAR(255) else [3] end
+declare @tmp table(
+	gno nvarchar(10),
+	modelno nvarchar(90),
+	models nvarchar(max),
+	agelimit float,
+	indatea nvarchar(10),
+	inmount float,
+	outmount float,
+	lendmount float,
+	returnmount float,
+	stkmount float
+)
+insert into @tmp
+	select
+		'0',a.noa,a.model,a.yearmount,a.indate,
+		isnull(a.inmount,0),isnull(b.mount,0),isnull(c.mount,0),isnull(d.mount,0),0
+	from model a
+	outer apply(select sum(mount) mount from moout where (a.noa=modelno)) b
+	outer apply(select sum(outmount) mount from moget where (a.noa=modelno) and (len(isnull(outsno,'')) > 0)) c
+	outer apply(select sum(inmount) mount from moget where (a.noa=modelno) and (len(isnull(insno,'')) > 0)) d
+	where (a.noa between @t_bmodelno and @t_emodelno)
+update @tmp set stkmount = inmount-outmount-lendmount+returnmount
+select
+	a.gno,
+	a.modelno a01,
+	a.models a02,
+	a.agelimit a03,
+	a.indatea a04,
+	a.inmount a05,
+	a.outmount a06,
+	a.lendmount a07,
+	a.returnmount a08,
+	a.stkmount a09
+from @tmp a order by a.modelno,a.indatea;
+-------------------------------------------------------------------------------------------------------------*
+z_model2:--z_model2
+declare @t_bmodelno nvarchar(90)
+declare @t_emodelno nvarchar(90)
+set @t_bmodelno = case when '#non' = [2] then '' else [2] end
+set @t_emodelno = case when '#non' = [3] then CHAR(255) else [3] end
+declare @tmp table(
+	gno nvarchar(10),
+	idno int identity(0,1),
+	gettype nvarchar(90),
+	stktype int,
+	modelno nvarchar(90),
+	models nvarchar(max),
+	datea nvarchar(10),
+	noa nvarchar(50),
+	mount float,
+	stkmount float,
+	ghref nvarchar(max)
+)
+----------stktype->1=+,2=-
+insert into @tmp
+	select
+		'0','',0,a.noa,a.model,'' datea,'' noa,0 inmount,
+		isnull(a.inmount,0)-isnull(b.mount,0)-isnull(c.mount,0)+isnull(d.mount,0),''
+	from model a
+	outer apply(select sum(mount) mount from moout where (a.noa=modelno)) b
+	outer apply(select sum(outmount) mount from moget where (a.noa=modelno) and (len(isnull(outsno,'')) > 0)) c
+	outer apply(select sum(inmount) mount from moget where (a.noa=modelno) and (len(isnull(insno,'')) > 0)) d
+	where (a.noa between @t_bmodelno and @t_emodelno) and (isnull(a.inmount,0)-isnull(b.mount,0)-isnull(c.mount,0)+isnull(d.mount,0))>0
+insert into @tmp
+	select
+		a.*
+	from (
+		select '1' gno,'取得' gettype,1 stktype,a.noa modelno,a.model,a.indate,a.noa,a.inmount,0 stkmount,'model' ghref from model a
+		union all
+		select '1' gno,'報廢' gettype,2 stktype,a.modelno modelno,a.model,a.datea,a.noa,a.mount,0 stkmount,'moout' ghref from moout a
+		union all
+		select '1' gno,'借出' gettype,2 stktype,a.modelno modelno,a.model,a.outdate,a.noa,a.outmount,0 stkmount,'moget' ghref from moget a where (len(isnull(a.outsno,'')) > 0)
+		union all
+		select '1' gno,'歸還' gettype,1 stktype,a.modelno modelno,a.model,a.indate,a.noa,a.inmount,0 stkmount,'moget' ghref from moget a where (len(isnull(a.insno,'')) > 0)
+	) a
+	outer apply(select top 1 modelno,models,stkmount from @tmp where (a.modelno=modelno) and (a.model=models) and (gno='0')) b
+	where (b.modelno is not null) and (b.models is not null) and (b.stkmount > 0)
+declare @idno int
+declare @modelno nvarchar(90)
+declare @models nvarchar(max)
+declare @lastmodelno nvarchar(90)
+declare @lastmodels nvarchar(max)
+declare @stktype int
+declare @mount float
+declare @c_stkmount float
+declare cursor_table cursor for
+	select a.idno,a.modelno,a.models,a.stktype,mount from @tmp a where gno='1' order by a.modelno,a.models,a.datea
+open cursor_table
+fetch next from cursor_table
+into @idno,@modelno,@models,@stktype,@mount
+while(@@FETCH_STATUS <> -1)
+begin
+	if((@modelno = @lastmodelno) and (@models = @lastmodels))
+	begin
+		set @c_stkmount = @c_stkmount + isnull((case when @stktype='1' then @mount else @mount*(-1) end),0)
+	end
+	else
+	begin
+		set @c_stkmount = @mount
+	end
+	update @tmp set stkmount=@c_stkmount where idno=@idno
+	set @lastmodelno = @modelno
+	set @lastmodels = @models
+	fetch next from cursor_table
+	into @idno,@modelno,@models,@stktype,@mount
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set ghref=ghref+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?' where gno='1'
+select
+	a.gno,
+	a.modelno a01,
+	a.models a02,
+	a.gettype a03,
+	a.noa,
+	a.datea a04,
+	a.mount a05,
+	a.stkmount a06,
+	a.ghref
+from @tmp a order by a.modelno,a.models,a.gno,a.datea;

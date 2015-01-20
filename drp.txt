@@ -1,0 +1,18 @@
+import:--import
+	declare @t_date nvarchar(10) = [1]
+	declare @t_driverno nvarchar(20) = [2]
+	
+	select carno,sum(isnull([money],0))[money] 
+	from(
+		select carno,sum(isnull([money],0))[money] 
+		from view_vcc 
+		where datea=@t_date and driverno=@t_driverno
+		group by carno
+		union all
+		select carno,sum(isnull([money],0))[money] 
+		from view_rc2
+		where datea=@t_date and driverno=@t_driverno
+		group by carno
+		)a
+	group by carno
+	order by carno;

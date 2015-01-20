@@ -1,0 +1,117 @@
+z_bccinx1:--z_bccinx1
+declare @t_bbccno nvarchar(20)
+declare @t_ebccno nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bbccno = case when '#non' = [6] then '' else [6] end
+set @t_ebccno = case when '#non' = [7] then CHAR(255) else [7] end
+declare @t_pageline int
+set @t_pageline = 32
+------------------------------------------------------------------------------------------------------
+declare @tmp  table(
+		gno nvarchar(1),
+		idno int identity(0,1),
+		orderno int,
+		pageno int,
+		noa nvarchar(50),
+		noq nvarchar(20),
+		datea nvarchar(20),
+		typea nvarchar(50),
+		bccno nvarchar(50),
+		bccname nvarchar(100),
+		mount float,
+		unit nvarchar(50),
+		partno nvarchar(50),
+		part nvarchar(50),
+		source nvarchar(50),
+		mechno nvarchar(50),
+		mech nvarchar(50),
+		storeno nvarchar(50),
+		store nvarchar(50),
+		contract nvarchar (50)
+)
+
+	insert into @tmp
+	select '0',ROW_NUMBER()over(order by a.datea,a.noa,b.bccno),0
+	,a.noa,b.noq,a.datea,b.typea,b.bccno,b.bccname,b.mount,b.unit
+	,b.partno,b.part,b.source,b.mechno,b.mech,b.storeno,b.store,b.contract
+	from bccinx a
+	left join bccinxs b on a.noa = b.noa
+	where (a.datea between @t_bdate and @t_edate) and
+	(b.bccno between @t_bbccno and @t_ebccno) 
+	order by a.datea,a.noa,b.bccno
+	
+	if (@t_bbccno=@t_ebccno)
+	begin
+		insert into @tmp (gno,datea,bccno,mount,unit,orderno,pageno)
+		select '1',char(255),bccno,sum(mount),MAX(unit),0,0
+		from @tmp group by bccno
+	end
+	--頁數---------------------------------------------------------------------
+	declare @a_count int
+	declare @idno int
+	declare @k int = 0 ----差幾頁
+	declare @pageCount int
+	declare @orderno int
+	declare @pageno int
+	
+	declare cursor_table cursor for
+	select count(*),max(orderno) from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @a_count,@orderno
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		if(@a_count > @t_pageline)
+		begin
+			set @k = CEILING((cast(@a_count as float)/@t_pageline))
+			while(@k > 0)
+			begin
+				update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+				set @k -=1
+			end
+		end
+		fetch next from cursor_table
+		into @a_count,@orderno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select distinct max(orderno),pageno,min(idno),count(*) from @tmp group by pageno
+	open cursor_table
+	fetch next from cursor_table
+	into @orderno,@pageno,@idno,@a_count
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		set @k = @t_pageline -(@a_count%@t_pageline)
+		set @pageCount = @a_count/@t_pageline
+		if(@k < @t_pageline and (@pageCount =0))
+		begin
+			while(@k > 0)
+			begin
+				if NOT(@k = @t_pageline -(@a_count%@t_pageline))
+					insert into @tmp(gno,orderno,pageno,datea,noa,bccno)
+					select '2',(@orderno+1),@pageno,char(255),CHAR(255),CHAR(255) from @tmp where idno = @idno
+					
+				set @k = @k-1
+				set @orderno = @orderno +1
+			end
+		end
+		fetch next from cursor_table
+		into @orderno,@pageno,@idno,@a_count
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+select 
+dbo.getComma(mount,[1]) mount
+,case when isnull(part,'')='' then partno else part end part
+,case when isnull(mech,'')='' then mechno else mech end mech
+,case when isnull(store,'')='' then storeno else store end store
+,*
+from @tmp  
+order by datea,noa,bccno,gno;
+-----------------------------------------------------------------------------------------------------------------

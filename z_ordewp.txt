@@ -1,0 +1,133 @@
+﻿z_ordewp1:--z_ordewp1
+
+declare @t_noa nvarchar(30)
+declare @t_pageline int = 18   --------一頁幾行
+set @t_noa = case when '#non' = [4] then '' else [4] end
+
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	w_totpage int,
+	noa nvarchar(30),
+	no2 nvarchar(30),
+	odate nvarchar(10),
+	datea nvarchar(10),
+	stype nvarchar(15),
+	custno nvarchar(30),
+	custs nvarchar(90),
+	tel nvarchar(90),
+	fax nvarchar(90),
+	addr1 nvarchar(max),
+	addr2 nvarchar(max),
+	memo nvarchar(max),
+	bccno nvarchar(30),
+	bccname nvarchar(90),
+	unit nvarchar(15),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	aprice float
+)
+
+insert into @tmp
+select
+	'0',ROW_NUMBER()over(partition by a.noa order by a.noa),1,0,
+	a.noa,b.no2,a.odate,b.datea,a.stype,a.custno,c.comp,a.tel,a.fax,a.addr,a.addr2,a.memo,
+	b.bccno,b.bccname,b.unit,b.mount,b.weight,b.price,b.total,case when b.mount=0 then 0 else b.total/b.mount end
+from ordew a
+left join ordews b on a.noa = b.noa
+left join cust c on a.custno = c.noa
+where (a.noa = @t_noa ) order by a.noa,b.no2
+
+update @tmp set stype = ( case stype when '1' then '銷售' when '2' then '資源回收' when '3' then '垃圾車回收' end) 
+
+declare @noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+select noa,count(*),max(orderno) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare cursor_table cursor for
+select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,noa,odate,memo,stype,custno)
+				select '0',(@orderno+1),@pageno,@noa,odate,memo,stype,custno from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	
+	insert into @tmp(gno,orderno,pageno,noa,stype,custno,addr2,memo)
+		select '1',(@t_pageline+1),pageno,noa,stype,custno,MAX(addr2),MAX(memo) from @tmp 
+		where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno,stype,custno
+	insert into @tmp(gno,orderno,pageno,noa,stype,custno) 
+		select '2',(@t_pageline+2),pageno,noa,stype,custno from @tmp 
+		where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno,stype,custno
+		
+	fetch next from cursor_table
+	into @noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+
+declare cursor_table cursor for
+select distinct noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@a_count
+while(@@FETCH_STATUS <> -1)
+begin	
+	update @tmp set w_totpage = @a_count/(@t_pageline+2) where noa = @noa
+	fetch next from cursor_table
+	into @noa,@a_count
+end
+close cursor_table
+deallocate cursor_table
+
+select
+	dbo.getComma(mount,[1]) mount
+	,dbo.getComma(weight,[2]) weight
+	,dbo.getComma(price,[3]) price
+	,dbo.getComma(aprice,[3]) aprice
+	,dbo.getComma(total,[3]) total
+	,*,ROW_NUMBER()over(partition by noa order by noa desc,custno,pageno,gno,orderno,odate desc)recno
+from @tmp  order by noa desc,recno;

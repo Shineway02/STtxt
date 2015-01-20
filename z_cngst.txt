@@ -1,0 +1,113 @@
+z_cngst1:--z_cngst1
+declare @pagecount int
+declare @t_accy nvarchar(20)
+declare @t_bnoa nvarchar(30)
+declare @t_enoa nvarchar(30)
+declare @t_pageline int = 5   --------一頁幾行
+set @t_accy = '[1]'
+set @t_bnoa = case when '#non' = [2] then '' else [2] end
+set @t_enoa = case when '#non' = [3] then CHAR(255) else [3] end
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	noa nvarchar(30),
+	noq nvarchar(20),
+	storno nvarchar(20),
+	store nvarchar(50),
+	stornno nvarchar(20),
+	storein nvarchar(50),
+	datea nvarchar(10),
+	sto nvarchar(20),
+	s nvarchar(20),
+	uno nvarchar(30),
+	spec nvarchar(30),
+	class nvarchar(20),
+	product nvarchar(50),
+	size nvarchar(90),
+	mo float,
+	weightb float,
+	memo nvarchar(200),
+	cardeal nvarchar(50),
+	carno nvarchar(20),
+	trant nvarchar(20),
+	tmemo nvarchar(200)
+)
+insert into @tmp
+	select '0' gno,ROW_NUMBER()over(partition by a.noa order by a.noa),1,
+	a.noa,b.noq,a.storeno,a.store,a.storeinno,a.storein,a.datea,b.storeno,
+	c.source,b.uno,b.spec,b.class,b.product,
+	dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+	b.mount,b.weight,b.memo,case when len(d.nick)>0 then d.nick else LEFT(a.cardeal,3) end,
+	a.carno,a.trantype,a.memo
+	from cng[1] a
+	left join cngs[1] b on a.noa = b.noa
+	left join view_uccc c on b.uno = a.noa
+	left join cardeal d on a.cardealno = d.noa
+	where (a.noa between @t_bnoa and @t_enoa)
+
+declare @noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+	select noa,count(*),max(orderno) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+declare cursor_table cursor for
+	select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo)
+				select '0',(@orderno+1),@pageno,@noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,mo,weightb,memo)
+		select '1',(@t_pageline+1),pageno,noa,storno,store,stornno,storein,datea,cardeal,carno,trant,sum(mo),sum(weightb),memo from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,storno,store,stornno,storein,datea,cardeal,carno,trant,memo,pageno
+	insert into @tmp(gno,orderno,pageno,noa)
+		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno
+	fetch next from cursor_table
+	into @noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+select
+	gno,idno,orderno,pageno spage,noa,noq,storno,store,stornno,storein,datea,sto,s,uno,spec,class,product,size,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mo),1)),4,12)) mo,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
+	memo,cardeal,carno,trant,tmemo
+from @tmp order by noa desc,pageno,gno,orderno;
+--********************************************************************************************************************************

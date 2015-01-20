@@ -1,0 +1,231 @@
+z_vccp_xy1:--z_vccp_xy1
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
+declare @t_pageline int = 4   --------一頁幾行
+set @t_bxnoa = case when '#non' = [2] then '' else [2] end
+set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
+--*******************************************************************************************************
+declare @tmp table(
+	gno nvarchar(1),
+	recno int,
+	pageno int,
+	topage int,
+	noa nvarchar(100),
+	datea nvarchar(15),
+	custno nvarchar(90),
+	comp nvarchar(150),
+	tel nvarchar(100),
+	addr nvarchar(150),
+	conn nvarchar(100),
+	timea nvarchar(100),
+	invono nvarchar(100),
+	amemo nvarchar(MAX),
+	money float,
+	tax float,
+	invopay nvarchar(90),
+	checkvcc nvarchar(90),
+	paytype nvarchar(90),
+	productno nvarchar(90),
+	product nvarchar(90),
+	spec nvarchar(90),
+	unit nvarchar(90),
+	mount float,
+	stock float,
+	price float,
+	total float,
+	bmemo nvarchar(MAX),
+	worker nvarchar(MAX)
+)
+
+insert into @tmp 
+select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
+,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.addr2 else a.addr end,c.conntel,c.billmemo
+,a.invono,a.memo
+,case when isnull(cm.notprice,0)=1 then null else a.money end
+,case when isnull(cm.notprice,0)=1 then null else a.tax end
+,dbo.split(c.invomemo,'##',1),dbo.split(c.invomemo,'##',3),c.paytype
+,b.productno,b.product,b.spec,b.unit,b.mount+b.tranmoney3-b.tranmoney2
+,isnull((select sum(isnull(vb.tranmoney2,0))-sum(isnull(vb.tranmoney3,0)) from view_vcc va left join view_vccs vb on va.noa=vb.noa where a.custno=va.custno and b.productno=vb.productno and a.noa>=va.noa),0)
+--,b.tranmoney2
+,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.price end) end
+,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.total end) end
+,b.memo,case when a.worker2!='' then a.worker2 else a.worker end
+from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa left join custm cm on a.custno=cm.noa
+left join ucc d on b.productno=d.noa
+where a.noa between @t_bxnoa and @t_exnoa
+
+declare @t_noa nvarchar(50)
+declare @count int
+declare @t_count int
+
+declare cursor_table cursor for
+select noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @t_noa,@count
+while(@@FETCH_STATUS <> -1)
+begin
+	--新增空白欄
+	select @t_count=@t_pageline-(@count % @t_pageline)
+	while(@t_count>0)
+	begin
+		insert @tmp(gno,recno,noa)
+		select '0',@t_count+(@count % @t_pageline)+(FLOOR(cast(@count as float)/cast(@t_pageline as float))*@t_pageline),@t_noa
+		set @t_count=@t_count-1
+	end
+
+	--新增 表頭和合計
+	set @t_count=ceiling(cast(@count as float)/cast(@t_pageline as float))
+	while(@t_count>0)
+	begin
+		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money)
+		select top 1 '1',((@t_count-1)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money
+		from @tmp where noa=@t_noa and datea!=''
+		
+		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money)
+		select top 1 '2',((@t_count)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money
+		from @tmp where noa=@t_noa and datea!=''
+		
+		set @t_count=@t_count-1
+	end
+	
+	fetch next from cursor_table
+	into @t_noa,@count
+end
+close cursor_table
+deallocate cursor_table
+
+update @tmp 
+set pageno=ceiling(cast(recno as float)/cast(@t_pageline as float))
+where gno='0'
+
+update a 
+set total=(select SUM(total) from @tmp where noa=a.noa and pageno=a.pageno and gno='0')+tax
+from @tmp a where gno='2'
+
+select case when isnull(productno,'')='' then null else  recno end no,
+dbo.getComma(money,0) money,
+dbo.getComma(tax,0) tax,
+dbo.getComma(mount,1) mount,
+dbo.getComma(stock,1) stock,
+dbo.getComma(price,4) price,
+dbo.getComma(total,0) total,
+*
+from @tmp
+order by noa,pageno,recno,gno;
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+z_vccp_xy2:--z_vccp_xy2
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
+declare @t_pageline int = 4   --------一頁幾行
+set @t_bxnoa = case when '#non' = [2] then '' else [2] end
+set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
+--*******************************************************************************************************
+declare @tmp table(
+	gno nvarchar(1),
+	recno int,
+	pageno int,
+	topage int,
+	noa nvarchar(100),
+	datea nvarchar(15),
+	custno nvarchar(90),
+	comp nvarchar(150),
+	tel nvarchar(100),
+	addr nvarchar(150),
+	conn nvarchar(100),
+	timea nvarchar(100),
+	invono nvarchar(100),
+	amemo nvarchar(MAX),
+	money float,
+	tax float,
+	invopay nvarchar(90),
+	checkvcc nvarchar(90),
+	paytype nvarchar(90),
+	productno nvarchar(90),
+	product nvarchar(90),
+	spec nvarchar(90),
+	unit nvarchar(90),
+	mount float,
+	stock float,
+	price float,
+	total float,
+	bmemo nvarchar(MAX),
+	worker nvarchar(MAX)
+)
+
+insert into @tmp 
+select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
+,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.addr2 else a.addr end,c.conntel,c.billmemo
+,a.invono,a.memo
+,case when isnull(cm.notprice,0)=1 then null else a.money end
+,case when isnull(cm.notprice,0)=1 then null else a.tax end
+,dbo.split(c.invomemo,'##',1),dbo.split(c.invomemo,'##',3),c.paytype
+,b.productno,b.product,b.spec,b.unit,b.mount+b.tranmoney3-b.tranmoney2
+,isnull((select sum(isnull(vb.tranmoney2,0))-sum(isnull(vb.tranmoney3,0)) from view_vcc va left join view_vccs vb on va.noa=vb.noa where a.custno=va.custno and b.productno=vb.productno and a.noa>=va.noa),0)
+--,b.tranmoney2
+,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.price end) end
+,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.total end) end
+,b.memo,case when a.worker2!='' then a.worker2 else a.worker end
+from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa left join custm cm on a.custno=cm.noa
+left join ucc d on b.productno=d.noa
+where a.noa between @t_bxnoa and @t_exnoa
+
+declare @t_noa nvarchar(50)
+declare @count int
+declare @t_count int
+
+declare cursor_table cursor for
+select noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @t_noa,@count
+while(@@FETCH_STATUS <> -1)
+begin
+	--新增空白欄
+	select @t_count=@t_pageline-(@count % @t_pageline)
+	while(@t_count>0)
+	begin
+		insert @tmp(gno,recno,noa)
+		select '0',@t_count+(@count % @t_pageline)+(FLOOR(cast(@count as float)/cast(@t_pageline as float))*@t_pageline),@t_noa
+		set @t_count=@t_count-1
+	end
+
+	--新增 表頭和合計
+	set @t_count=ceiling(cast(@count as float)/cast(@t_pageline as float))
+	while(@t_count>0)
+	begin
+		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money)
+		select top 1 '1',((@t_count-1)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money
+		from @tmp where noa=@t_noa and datea!=''
+		
+		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money)
+		select top 1 '2',((@t_count)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money
+		from @tmp where noa=@t_noa and datea!=''
+		
+		set @t_count=@t_count-1
+	end
+	
+	fetch next from cursor_table
+	into @t_noa,@count
+end
+close cursor_table
+deallocate cursor_table
+
+update @tmp 
+set pageno=ceiling(cast(recno as float)/cast(@t_pageline as float))
+where gno='0'
+
+update a 
+set total=(select SUM(total) from @tmp where noa=a.noa and pageno=a.pageno and gno='0')+tax
+from @tmp a where gno='2'
+
+select case when isnull(productno,'')='' then null else  recno end no,
+dbo.getComma(money,0) money,
+dbo.getComma(tax,0) tax,
+dbo.getComma(mount,1) mount,
+dbo.getComma(stock,1) stock,
+dbo.getComma(price,4) price,
+dbo.getComma(total,0) total,
+*
+from @tmp
+order by noa,pageno,recno,gno;

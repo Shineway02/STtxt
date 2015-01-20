@@ -1,0 +1,119 @@
+z_rc2bp1:--z_rc2bp1
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
+declare @t_pageline int = 10--------一頁幾行
+set @t_bxnoa = case when '#non' = [2] then '' else [2] end
+set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
+------------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	noa nvarchar(30),
+	noq nvarchar(30),
+	ordcno nvarchar(MAX),
+	tggno nvarchar(90),
+	comp nvarchar(90),
+	tel nvarchar(90),
+	addr nvarchar(max),
+	datea nvarchar(10),
+	amemo nvarchar(max),
+	
+	productno nvarchar(50),
+	products nvarchar(100),
+	unit nvarchar(15),
+	inmount float,
+	mount float,
+	bkmount float,
+	bkrea nvarchar(max),
+	wmount float,
+	wrea nvarchar(max),
+	qcworker nvarchar(max),
+	qctime nvarchar(max),
+	bmemo nvarchar(max)
+)
+
+insert into @tmp
+select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),1
+,a.noa,b.noq,a.ordcno,a.tggno,c.comp,a.tel,a.addr,a.datea,a.memo
+,b.productno,b.product,b.unit,b.inmount,b.mount,b.bkmount,b.bkrea,b.wmount,b.wrea,b.qcworker,b.qctime,b.memo
+from view_rc2b[1] a
+left join view_rc2bs[1] b on a.noa = b.noa
+left join tgg c on a.tggno = c.noa
+where (a.noa between @t_bxnoa and @t_exnoa)
+
+declare @noa nvarchar(30)
+declare @count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+select noa,count(*),max(orderno) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @noa,@count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare cursor_table cursor for
+select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @noa,@orderno,@pageno,@idno,@count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@count%@t_pageline)
+	set @pageCount = @count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,noa,amemo,tggno,comp,ordcno,tel,addr,datea)
+				select '0',(@orderno+1),@pageno,@noa,amemo,tggno,comp,ordcno,tel,addr,datea
+				from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	
+	insert into @tmp(gno,orderno,pageno,noa,tggno,comp,inmount,mount,bkmount,wmount)
+	select '1',(@t_pageline+1),pageno,noa,tggno,comp,sum(inmount),sum(mount),sum(bkmount),sum(wmount) 
+	from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno,tggno,comp
+		
+	insert into @tmp(gno,orderno,pageno,noa,tggno,amemo) 
+	select '2',(@t_pageline+2),pageno,noa,tggno,amemo 
+	from @tmp where gno=0 and noa=@noa and pageno=@pageno group by noa,pageno,tggno,amemo
+	
+	fetch next from cursor_table
+	into @noa,@orderno,@pageno,@idno,@count
+end
+close cursor_table
+deallocate cursor_table
+
+select
+dbo.getComma(inmount,[4])  inmount,
+dbo.getComma(mount,[4])  mount,
+dbo.getComma(bkmount,[4])  bkmount,
+dbo.getComma(wmount,[4])  wmount,
+*
+from @tmp order by noa desc,pageno,gno,orderno;

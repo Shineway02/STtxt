@@ -1,0 +1,167 @@
+﻿z_getst1:--z_getst1
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+declare @t_pageline int = 8   --------一頁幾行
+set @t_bnoa = case when '#non' = [4] then ' ' else [4] end
+set @t_enoa = case when '#non' = [5] then CHAR(255) else [5] end
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	noa nvarchar(30),
+	datea nvarchar(10),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	typea nvarchar(15),
+	tel nvarchar(90),
+	fax nvarchar(90),
+	addr nvarchar(max),
+	trantype nvarchar(30),
+	s nvarchar(20),
+	uno nvarchar(50),
+	spec nvarchar(20),
+	class nvarchar(20),
+	pno nvarchar(30),
+	product nvarchar(90),
+	csize nvarchar(max),
+	unit nvarchar(30),
+	mount float,
+	weight float,
+	memo nvarchar(200),
+	cardeal nvarchar(50),
+	carno nvarchar(20),
+	tmemo nvarchar(200),
+	store nvarchar(50),
+	gweight float
+)
+insert into @tmp
+	select '0' gno,ROW_NUMBER()over(partition by a.noa order by a.noa),1,
+	a.noa,a.datea,a.custno,a.comp,a.typea,c.tel,c.fax,c.addr_comp,a.trantype,d.source,
+	b.uno,d.spec,d.class,b.productno,b.product,
+	dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),b.unit,
+	b.mount,b.weight,b.memo,a.cardeal,a.carno,a.memo,d.store,b.gweight
+	from get[1] a
+	left join gets[1] b on a.noa = b.noa
+	left join cust c on a.custno = c.noa 
+	left join uccc d on d.noa = b.uno
+	where a.noa between @t_bnoa and @t_enoa
+
+declare @a_noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+	select noa,count(*),max(orderno) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @a_noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+declare cursor_table cursor for
+	select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,noa)
+				select '0',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,noa,cardeal,carno,mount,weight,gweight)
+		select '1',(@t_pageline+1),pageno,noa,max(cardeal),max(carno),sum(mount),sum(weight),sum(gweight) from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+	insert into @tmp(gno,orderno,pageno,noa) 
+		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+	fetch next from cursor_table
+	into @a_noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+select
+	gno,idno,orderno,pageno,noa,datea,custno,comp,typea,tel,fax,addr,trantype,s,uno,spec,class,pno,product,csize,unit,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,gweight),1)),4,12)) gweight,
+	memo,cardeal,carno,tmemo,store
+from @tmp order by noa desc,pageno,gno,orderno;
+--*********************************************************************************************************************
+z_getst2:--z_getst2
+declare @t_accy nvarchar(20)
+declare @t_itype nvarchar(10)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bdime decimal(7,3)
+declare @t_edime decimal(7,3)
+set @t_accy = '[1]'
+set @t_itype = case when '#non' = [6] then '' when '全部'=[6] then '' else [6] end
+set @t_bdate = case when '#non' = [7] then '' else [7] end
+set @t_edate = case when '#non' = [8] then CHAR(255) else [8] end
+set @t_bdime = case when '#non' = [9] then 0 else [9] end
+set @t_edime = case when '#non' = [10] then 999.999 else [10] end
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		typea nvarchar(20),
+		datea nvarchar(10),
+		comp nvarchar(50),
+		uno nvarchar(20),
+		pno nvarchar(35),
+		product nvarchar(20),
+		unit nvarchar(15),
+		spec nvarchar(20),
+		csize nvarchar(50),
+		mount float,
+		weight float,
+		memo nvarchar(max),
+		qhref nvarchar(max)
+)
+insert into @tmp
+	select '0' gno,a.noa,b.noq,a.typea,a.datea,c.nick,b.uno,b.productno,b.product,b.unit,b.spec,
+	dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius),
+	b.mount,b.weight,b.memo,'getst'+a.accy
+	from view_get a
+	left join view_gets b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where  (LEN(@t_itype)= 0 or @t_itype = a.typea) and
+	(a.datea between @t_bdate and @t_edate ) and
+	(b.dime between @t_bdime and @t_edime)
+
+insert into @tmp(gno,mount,weight)
+	select '1' gno,SUM(mount),SUM(weight) from @tmp
+update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+select 
+	gno,noa,noq,typea,datea,comp,uno,pno,product,unit,spec,csize,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weight),1)),4,12)) weight,memo,qhref
+from @tmp;
+--***********************************************************************************************************************

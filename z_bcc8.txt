@@ -1,0 +1,267 @@
+z_bcc8sta:--z_bcc8sta
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bmon nvarchar(10)
+	declare @t_emon nvarchar(10)
+	declare @t_btggno nvarchar(20)
+	declare @t_etggno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bmon = case when '#non'=[6] then '' else [6] end
+	set @t_emon = case when '#non'=[7] then char(255) else [7] end
+	set @t_btggno = case when '#non'=[8] then '' else [8] end
+	set @t_etggno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+declare @result table(
+		gno nvarchar(1),
+		tggno nvarchar(50),
+		tggname nvarchar(50),
+		bccno nvarchar(50),
+		bccname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(20),
+		mount float,
+		price float,
+		mount2 float,
+		unit nvarchar(10),
+		total float,
+		contract nvarchar(50),
+		store nvarchar(50)
+)
+	--資料 
+	insert into @result 
+	select '0' gno,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,8) end,b.bccno,b.bccname,a.datea,a.noa
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount2,b.unit
+	,(case when a.typea='2' then -1 else 1 end)*b.total,a.contract,c.store
+	from bccin a left join bccins b on a.noa=b.noa 
+	left join store c on b.storeno = c.noa
+	left join tgg d on a.tggno=d.noa
+	where a.datea between @t_bdate and @t_edate and a.tggno between @t_btggno and @t_etggno 
+	and (len(@t_storeno) = 0 or b.storeno = @t_storeno)
+	order by a.tggno,b.bccno 
+	
+	--小計
+	insert into @result
+	select '1',tggno,'','','','','',0,0,0,'',SUM(total),'',''
+	from @result
+	group by tggno
+
+	select gno,tggno,tggname,bccno,bccname,datea,noa,unit,contract
+	,dbo.getComma(mount,[1]) mount
+	,dbo.getComma(price,[2]) price
+	,dbo.getComma(mount2,[1]) mount2
+	,dbo.getComma(total,0) total
+	,store
+	from @result order by tggno,gno,datea,bccno;
+
+--*********************************************************************************************
+z_bcc8stb:--z_bcc8stb
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bmon nvarchar(10)
+	declare @t_emon nvarchar(10)
+	declare @t_btggno nvarchar(20)
+	declare @t_etggno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bmon = case when '#non'=[6] then '' else [6] end
+	set @t_emon = case when '#non'=[7] then char(255) else [7] end
+	set @t_btggno = case when '#non'=[8] then '' else [8] end
+	set @t_etggno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+
+declare @result table(
+		gno nvarchar(1),
+		bccno nvarchar(50),
+		bccname nvarchar(50),
+		tggno nvarchar(50),
+		tggname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(20),
+		mount float,
+		price float,
+		mount2 float,
+		unit nvarchar(10),
+		total float,
+		contract nvarchar(50),
+		store nvarchar(20)
+)
+	--資料 
+	insert into @result 
+	select '0' gno,b.bccno,b.bccname,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,10) end,a.datea,a.noa
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price,(case when a.typea='2' then -1 else 1 end)*b.mount2
+	,b.unit,(case when a.typea='2' then -1 else 1 end)*b.total,a.contract,c.store
+	from bccin a left join bccins b on a.noa=b.noa 
+	left join store c on b.storeno = c.noa
+	left join tgg d on a.tggno=d.noa
+	where a.datea between @t_bdate and @t_edate and a.tggno between @t_btggno and @t_etggno 
+	and (len(@t_storeno) = 0 or b.storeno = @t_storeno)
+	order by b.bccno,a.tggno 
+	
+	--小計
+	insert into @result
+	select '1',bccno,'','','','','',sum(mount),0,sum(mount2),'',SUM(total),'',''
+	from @result
+	group by bccno
+
+select gno,bccno,bccname,tggno,tggname,datea,noa,unit,contract
+,dbo.getComma(mount,[1]) mount
+,dbo.getComma(price,[2]) price
+,dbo.getComma(mount2,[1]) mount2
+,dbo.getComma(total,0) total
+,store
+from @result order by bccno,gno,tggno;
+-*****************************************************************************************	
+z_bcc8stc:--z_bcc8stc
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bmon nvarchar(10)
+	declare @t_emon nvarchar(10)
+	declare @t_btggno nvarchar(20)
+	declare @t_etggno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bmon = case when '#non'=[6] then '' else [6] end
+	set @t_emon = case when '#non'=[7] then char(255) else [7] end
+	set @t_btggno = case when '#non'=[8] then '' else [8] end
+	set @t_etggno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+declare @result table(
+		gno nvarchar(1),
+		tggno nvarchar(50),
+		tggname nvarchar(50),
+		bccno nvarchar(50),
+		bccname nvarchar(50),
+		datea nvarchar(10),
+		noa nvarchar(20),
+		mount float,
+		price float,
+		mount2 float,
+		unit nvarchar(10),
+		total float,
+		contract nvarchar(50),
+		store nvarchar(50)
+)
+	--資料 
+	insert into @result 
+	select '0' gno,a.tggno,case when isnull(d.nick,'')!='' then d.nick else left(a.tgg,8) end,b.bccno,b.bccname,a.datea,a.noa
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount2,b.unit
+	,(case when a.typea='2' then -1 else 1 end)*b.total,a.contract,c.store
+	from bccin a left join bccins b on a.noa=b.noa 
+	left join store c on b.storeno = c.noa
+	left join tgg d on a.tggno=d.noa
+	where a.datea between @t_bdate and @t_edate and a.tggno between @t_btggno and @t_etggno 
+	and (len(@t_storeno) = 0 or b.storeno = @t_storeno)
+	order by a.tggno,b.bccno 
+	
+	--小計
+	insert into @result(gno,tggno,noa,contract,total)
+	select '1',tggno,noa,contract,SUM(total)
+	from @result
+	group by tggno,noa,contract
+	
+	--合計
+	insert into @result
+	select '2',tggno,'','','','','',0,0,0,'',SUM(total),'',''
+	from @result where gno='0'
+	group by tggno
+
+	select gno,tggno,tggname,bccno,bccname,datea,noa,unit,contract
+	,dbo.getComma(mount,[1]) mount
+	,dbo.getComma(price,[2]) price
+	,dbo.getComma(mount2,[1]) mount2
+	,dbo.getComma(total,0) total
+	,store
+	from @result order by tggno,contract,noa,gno,bccno;
+
+--*********************************************************************************************
+z_bcc8std:--z_bcc8std
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bmon nvarchar(10)
+	declare @t_emon nvarchar(10)
+	declare @t_btggno nvarchar(20)
+	declare @t_etggno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bmon = case when '#non'=[6] then '' else [6] end
+	set @t_emon = case when '#non'=[7] then char(255) else [7] end
+	set @t_btggno = case when '#non'=[8] then '' else [8] end
+	set @t_etggno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+
+declare @result table(
+		gno nvarchar(1),
+		tggno nvarchar(20),
+		tggname nvarchar(50),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		unit nvarchar(10),
+		datea nvarchar(10),
+		mount float,
+		price float,
+		mount2 float,
+		weight float,
+		total float,
+		tax float,
+		store nvarchar(20)
+)
+	--資料 
+	insert into @result 
+	select '0' gno,a.tggno,a.tgg+' ('+a.tggno+')',b.bccno,b.bccname,b.unit,a.datea
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount2,(case when a.typea='2' then -1 else 1 end)*b.weight
+	,(case when a.typea='2' then -1 else 1 end)*b.total,null,c.store
+	from bccin a left join bccins b on a.noa=b.noa 
+	left join store c on b.storeno = c.noa
+	where a.datea between @t_bmon+'/01' and @t_emon+'/31' and a.tggno between @t_btggno and @t_etggno  
+	and (len(@t_storeno) = 0 or b.storeno = @t_storeno)
+	order by a.tggno,b.bccno 
+	
+	--小計
+	insert into @result
+	select '1',tggno,'','','','','',0,0,0,0,SUM(total),0,''
+	from @result
+	group by tggno
+	
+	--計算營業稅
+	declare @gno nvarchar(10)
+	declare @tggno nvarchar(10)
+
+	declare bcc_table cursor for
+	select gno,tggno from @result
+	open bcc_table
+	fetch next from bcc_table
+	into @gno,@tggno
+	while(@@FETCH_STATUS <> -1)
+	begin
+	if (@gno=1)
+	begin
+		update @result
+		set tax=(select SUM((case when typea='2' then -1 else 1 end)*tax) from bccin where tggno=@tggno and datea between @t_bmon+'/01' and @t_emon+'/31')
+		where current of bcc_table
+
+	end
+		fetch next from bcc_table
+		into @gno,@tggno
+	end
+	close bcc_table
+	deallocate bcc_table
+
+select gno,tggno,tggname,bccno,bccname,unit,datea
+,dbo.getComma(weight,[3]) weight
+,dbo.getComma(mount,[1]) mount
+,dbo.getComma(price,[2]) price
+,dbo.getComma(mount2,[1]) mount2
+,dbo.getComma(total,0) total
+,dbo.getComma(tax,0) tax
+,store
+from @result order by tggno,gno,bccno;

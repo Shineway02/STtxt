@@ -1,0 +1,286 @@
+tmp_cust_ucc:--tmp_cust_ucc --建立暫存的客戶資料 與 產品(便品)
+SET QUOTED_IDENTIFIER OFF
+declare @noa nvarchar(MAX) = [1]
+declare @worker nvarchar(MAX) = [2]
+declare @year nvarchar(MAX) = [3]
+
+declare @newcustno nvarchar(MAX)=isnull((select custno from view_quat where noa=@noa),'')
+declare @accy nvarchar(MAX)=isnull((select accy from view_quat where noa=@noa),@year)
+
+if(@newcustno='')
+	set @newcustno='##'+right('000'+cast(cast(isnull((select right(MAX(noa),3) from cust where LEFT(noa,2)='##'),'000') as int)+1 as nvarchar(10)),3)
+
+insert cust(noa,comp,nick,paytype,tel,fax,conntel,serial,email,zip_comp,addr_comp,zip_home,addr_home,trantype,salesno,sales)
+select @newcustno,comp,comp,paytype,tel,fax
+,postname conntel,pay serial ,memo2 email
+,post,addr,post,addr,trantype,salesno,sales
+from view_quat where noa=@noa and custno=''
+
+--更新報價單客戶
+exec("update quat"+@accy+" set custno='"+@newcustno+"' where noa='"+@noa+"'")
+
+declare @t_noa nvarchar(MAX)
+declare @t_no3 nvarchar(MAX)
+declare @product nvarchar(MAX)
+declare @spec nvarchar(MAX)
+declare @unit nvarchar(MAX)
+declare @classa nvarchar(MAX)
+declare @newpno nvarchar(MAX)
+
+declare cursor_table cursor for 
+select noa,no3,product,spec,unit,classa from view_quats where noa=@noa and productno=''
+open cursor_table 
+fetch next from cursor_table 
+into @t_noa,@t_no3,@product,@spec,@unit,@classa
+while(@@FETCH_STATUS <> -1) 
+begin 
+	if(@classa='印刷')
+	begin
+		set @newpno=@newcustno+'-'+right('000'+cast(cast(right(isnull((select MAX(noa) from ucc where LEFT(noa,len(@newcustno))=@newcustno and len(noa)>5),'000'),3) as int)+1 as nvarchar(10)),3)
+	end
+	else--便品
+	begin
+		set @newpno='##'+right('000'+cast(cast(right(isnull((select MAX(noa) from ucc where LEFT(noa,2)='##' and len(noa)=5 ),'000'),3) as int)+1 as nvarchar(10)),3)
+	end
+	
+	insert ucc(noa,product,spec,unit,typea)
+	select @newpno,@product,@spec,@unit,'1'
+	
+	--更新報價單產品編號
+	exec("update quats"+@accy+" set productno='"+@newpno+"',custno='"+@newcustno+"' 
+	where noa='"+@t_noa+"' and no3='"+@t_no3+"'")
+	
+	fetch next from cursor_table 
+	into @t_noa,@t_no3,@product,@spec,@unit,@classa
+end 
+close cursor_table 
+deallocate cursor_table 
+;
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+change_tmpcustno:--change_tmpcustno --更換客戶編號
+SET QUOTED_IDENTIFIER OFF
+declare @tmp_custno nvarchar(MAX) = [1]
+declare @chg_custno nvarchar(MAX) = [2]
+
+--更新cust 編號
+update cust set noa=@chg_custno where noa=@tmp_custno
+--更新聯絡人編號
+update conn set noa=@chg_custno where noa=@tmp_custno
+--更新稅務資料
+update custm set noa=@chg_custno where noa=@tmp_custno
+update custms set noa=@chg_custno where noa=@tmp_custno
+
+--更新印刷品編號
+update ucc set noa=REPLACE(noa,@tmp_custno,@chg_custno) 
+where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
+--更新替代品
+update ucctd set noa=REPLACE(noa,@tmp_custno,@chg_custno) 
+where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
+--更新客戶
+update ucccust set noa=REPLACE(noa,@tmp_custno,@chg_custno) 
+where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
+--更新供應商
+update ucccust set productno=REPLACE(noa,@tmp_custno,@chg_custno) 
+where left(noa,len(@tmp_custno))=@tmp_custno and len(noa)>5
+
+--更新報價
+declare @t_noa nvarchar(MAX)
+declare @t_accy nvarchar(MAX)
+declare cursor_table cursor for 
+select accy,noa from view_quat where custno=@tmp_custno
+open cursor_table 
+fetch next from cursor_table 
+into @t_accy,@t_noa
+while(@@FETCH_STATUS <> -1) 
+begin 
+	exec("update a
+	set custno='"+@chg_custno+"'
+	,comp=b.comp
+	,nick=b.nick
+	,paytype=b.paytype
+	,tel=b.tel,fax=b.fax,postname=b.conntel,pay=b.serial,memo2=b.email
+	,post=b.zip_comp,addr=b.addr_comp,trantype=b.trantype,salesno=b.salesno,sales=b.sales
+	from quat"+@t_accy+" a
+	outer apply (select * from cust where noa='"+@chg_custno+"') b
+	where a.noa='"+@t_noa+"' and a.custno='"+@tmp_custno+"'")
+	
+	exec("update quats"+@t_accy+" 
+	set custno='"+@chg_custno+"'
+	where noa='"+@t_noa+"' and custno='"+@tmp_custno+"'")
+	
+	exec("update quats"+@t_accy+" 
+	set productno=REPLACE(productno,'"+@tmp_custno+"','"+@chg_custno+"')
+	where left(productno,len('"+@tmp_custno+"'))='"+@tmp_custno+"' and len(productno)>5 and noa='"+@t_noa+"'")
+	
+	exec("update a 
+	set product=b.product,spec=b.spec
+	from quats"+@t_accy+" a outer apply (select * from ucc where noa=a.productno) b
+	where len(a.productno)>5 and a.noa='"+@t_noa+"'")
+	
+	fetch next from cursor_table 
+	into @t_accy,@t_noa
+end 
+close cursor_table 
+deallocate cursor_table 
+
+--更新訂單
+declare cursor_table cursor for 
+select accy,noa from view_orde where custno=@tmp_custno
+open cursor_table 
+fetch next from cursor_table 
+into @t_accy,@t_noa
+while(@@FETCH_STATUS <> -1) 
+begin 
+	exec("update a 
+	set custno='"+@chg_custno+"'
+	,comp=b.comp	,nick=b.nick,paytype=b.paytype
+	,tel=b.tel,fax=b.fax,post=b.zip_comp,addr=b.addr_comp,trantype=b.trantype,salesno=b.salesno,sales=b.sales
+	from orde"+@t_accy+" a	outer apply (select * from cust where noa='"+@chg_custno+"') b
+	where a.noa='"+@t_noa+"' and a.custno='"+@tmp_custno+"'")
+	
+	exec("update ordes"+@t_accy+" 
+	set custno='"+@chg_custno+"'
+	where noa='"+@t_noa+"' and custno='"+@tmp_custno+"'")
+	
+	exec("update ordes"+@t_accy+" 
+	set productno=REPLACE(productno,'"+@tmp_custno+"','"+@chg_custno+"')
+	where left(productno,len('"+@tmp_custno+"'))='"+@tmp_custno+"' and len(productno)>5 and noa='"+@t_noa+"'")
+	
+	exec("update a 
+	set product=b.product,spec=b.spec
+	from ordes"+@t_accy+" a outer apply (select * from ucc where noa=a.productno) b
+	where len(a.productno)>5 and a.noa='"+@t_noa+"'")
+	
+	fetch next from cursor_table 
+	into @t_accy,@t_noa
+end 
+close cursor_table 
+deallocate cursor_table 
+;
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+change_tmpuccno:--change_tmpuccno --更換產品編號
+SET QUOTED_IDENTIFIER OFF
+declare @tmp_uccno nvarchar(MAX) = [1]
+declare @chg_uccno nvarchar(MAX) = [2]
+
+--更新ucc 編號
+update ucc set noa=@chg_uccno where noa=@tmp_uccno
+--更新替代品
+update ucctd set noa=@chg_uccno where noa=@tmp_uccno
+--更新客戶
+update ucccust set noa=@chg_uccno where noa=@tmp_uccno
+--更新供應商
+update ucccust set productno=@chg_uccno where noa=@tmp_uccno
+
+--更新報價
+declare @t_accy nvarchar(MAX)
+declare cursor_table cursor for 
+select accy from view_quats where productno=@tmp_uccno group by accy
+open cursor_table 
+fetch next from cursor_table 
+into @t_accy
+while(@@FETCH_STATUS <> -1) 
+begin 
+
+	exec("update a 
+	set productno='"+@chg_uccno+"',product=b.product,spec=b.spec
+	from quats"+@t_accy+" a
+	outer apply (select * from ucc where noa='"+@chg_uccno+"') b
+	where a.productno='"+@tmp_uccno+"'")
+	
+	fetch next from cursor_table 
+	into @t_accy
+end 
+close cursor_table 
+deallocate cursor_table 
+
+--更新訂單
+declare cursor_table cursor for 
+select accy from view_ordes where productno=@tmp_uccno group by accy
+open cursor_table 
+fetch next from cursor_table 
+into @t_accy
+while(@@FETCH_STATUS <> -1) 
+begin 
+
+	exec("update a
+	set productno='"+@chg_uccno+"',product=b.product,spec=b.spec
+	from ordes"+@t_accy+" a
+	outer apply (select * from ucc where noa='"+@chg_uccno+"') b
+	where a.productno='"+@tmp_uccno+"'")
+	
+	fetch next from cursor_table 
+	into @t_accy
+end 
+close cursor_table 
+deallocate cursor_table 
+;
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+orde_ucc:--orde_ucc --產生產品編號
+SET QUOTED_IDENTIFIER OFF
+declare @noa nvarchar(MAX) = [1]
+declare @year nvarchar(MAX) = [2]
+
+declare @custno nvarchar(MAX)=isnull((select custno from view_orde where noa=@noa),'')
+declare @accy nvarchar(MAX)
+declare @t_noa nvarchar(MAX)
+declare @t_no2 nvarchar(MAX)
+declare @product nvarchar(MAX)
+declare @spec nvarchar(MAX)
+declare @t_spec nvarchar(MAX)
+declare @unit nvarchar(MAX)
+declare @classa nvarchar(MAX)
+declare @quatno nvarchar(MAX)
+declare @no3 nvarchar(MAX)
+declare @newpno nvarchar(MAX)
+
+if(@custno!='')
+begin
+
+	declare cursor_table cursor for 
+	select accy,noa,no2,product,spec,unit,classa,quatno,no3 from view_ordes where noa=@noa and productno=''
+	open cursor_table 
+	fetch next from cursor_table 
+	into @accy,@t_noa,@t_no2,@product,@spec,@unit,@classa,@quatno,@no3
+	while(@@FETCH_STATUS <> -1) 
+	begin 
+		if(@classa='印刷')
+		begin
+			set @newpno=@custno+'-'+right('000'+cast(cast(right(isnull((select MAX(noa) from ucc where LEFT(noa,len(@custno))=@custno and len(noa)>5),'000'),3) as int)+1 as nvarchar(10)),3)
+		end
+		else--便品
+		begin
+			set @t_spec=@spec
+			if(patindex('%[0-9]%',@t_spec)>0)
+			begin
+				set @t_spec=SUBSTRING(@t_spec,patindex('%[0-9]%',@t_spec),LEN(@t_spec))
+				set @t_spec=SUBSTRING(@t_spec,1,case when patindex('%[^0-9]%',@t_spec)=0 then LEN(@t_spec) else  patindex('%[^0-9]%',@t_spec)-1 end)
+			end
+			else
+			begin
+			 	set @t_spec=''
+			end
+				
+			set @newpno='B'+UPPER(left(dbo.procGetPY(@product),2))+@t_spec
+			+right('0000'+cast(cast(right(isnull((select MAX(noa) from ucc where len(noa)-4=len('B'+UPPER(left(dbo.procGetPY(@product),2))+@t_spec) and noa like 'B'+UPPER(left(dbo.procGetPY(@product),2))+@t_spec+'%' ),'000'),4) as int)+1 as nvarchar(10)),4)
+		end
+		
+		insert ucc(noa,product,spec,unit,typea)
+		select @newpno,@product,@spec,@unit,'1'
+		
+		--更新訂單產品編號
+		exec("update ordes"+@accy+" set productno='"+@newpno+"'
+		where noa='"+@t_noa+"' and no2='"+@t_no2+"'")
+		
+		if(isnull(@quatno,'')!='' and isnull(@no3,'')!='')
+		exec("update quats"+@accy+" set productno='"+@newpno+"'
+		where noa='"+@quatno+"' and no3='"+@no3+"'")
+		
+		fetch next from cursor_table 
+		into @accy,@t_noa,@t_no2,@product,@spec,@unit,@classa,@quatno,@no3
+	end 
+	close cursor_table 
+	deallocate cursor_table 
+
+end
+;

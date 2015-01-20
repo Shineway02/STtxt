@@ -1,0 +1,127 @@
+z_vccrs1:--z_vccrs1
+declare @t_bdatea nvarchar(10)
+declare @t_edatea nvarchar(10)
+set @t_bdatea = case when '#non'=[2] then '' else [2] end
+set @t_edatea = case when '#non'=[3] then char(255) else [3] end
+declare @tmp table(
+	gno nvarchar(1),
+	kind nvarchar(15),
+	ordeno nvarchar(35),
+	noa nvarchar(35),
+	nick nvarchar(50),
+	product nvarchar(90),
+	pno nvarchar(35),
+	csize nvarchar(max),
+	spec nvarchar(50),
+	amount float,
+	aweight float,
+	estoreno nvarchar(35),
+	car nvarchar(90),
+	tranmoney float,
+	memo nvarchar(200),
+	datea nvarchar(10),
+	emount float,
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',b.kind,a.ordeno,b.noa,c.nick,a.product,a.productno,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.spec,a.mount,a.weight,e.storeno,b.cardeal,b.tranmoney,a.memo,b.datea,e.mount,'vccst'+a.accy
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	left join vccd d on a.noa = d.noa
+	left join vccds e on d.noa = e.noa
+	where (b.typea = 2) and (b.datea between @t_bdatea and @t_edatea)
+	order by b.datea
+insert into @tmp(gno,amount,aweight,emount)
+	select '1',sum(amount),sum(aweight),sum(emount) from @tmp
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+update @tmp set csize = replace(csize,'~#$','''')
+select
+	gno,kind,ordeno,noa,nick,product,pno,csize,spec,amount,aweight,estoreno,car,tranmoney,memo,datea,emount,qhref
+from @tmp;
+----------********************************************************************----------
+z_vccrs2:--z_vccrs2
+declare @t_bdatea nvarchar(10)
+declare @t_edatea nvarchar(10)
+set @t_bdatea = case when '#non'=[2] then '' else [2] end
+set @t_edatea = case when '#non'=[3] then char(255) else [3] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(35),
+	custno nvarchar(35),
+	custs nvarchar(50),
+	uno nvarchar(90),
+	pno nvarchar(30),
+	product nvarchar(90),
+	csize nvarchar(max),
+	spec nvarchar(50),
+	bmount float,
+	bweight float,
+	price float,
+	total float,
+	qhref nvarchar(max)
+)
+insert into @tmp 
+	select 
+		'0',b.noa,b.custno,c.nick,a.uno,a.productno,a.product,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) csize, 
+		a.spec,a.mount,a.weight,a.price,a.total,'vccst'+a.accy
+	from view_vccs[1] a 
+	left join view_vcc[1] b on a.noa = b.noa 
+	left join cust c on b.custno = c.noa
+	where (a.typea != '2' and (right(RTRIM(a.product),1) = '*')) and 
+	(b.datea between @t_bdatea and @t_edatea) 
+insert into @tmp(gno,bmount,bweight,total)
+	select '1',sum(bmount),sum(bweight),sum(total) from @tmp
+update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+select
+	gno,noa,custno,custs,uno,pno,product,csize,bmount,bweight,price,total,
+	ROW_NUMBER()over(order by gno) idno,spec,qhref
+from @tmp;
+----------********************************************************************----------
+z_vccrs3:--z_vccrs3
+declare @t_bdatea nvarchar(10)
+declare @t_edatea nvarchar(10)
+set @t_bdatea = case when '#non'=[2] then '' else [2] end
+set @t_edatea = case when '#non'=[3] then char(255) else [3] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	comp nvarchar(35),
+	datea nvarchar(10),
+	uno nvarchar(50),
+	pno nvarchar(35),
+	product nvarchar(90),
+	class nvarchar(30),
+	spec nvarchar(15),
+	style nvarchar(10),
+	csize nvarchar(max),
+	mount float,
+	gweight float,
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',b.noa,e.nick,a.datea,a.uno,a.productno,a.product,a.class,a.spec,a.style,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end),
+		SUM(isnull(a.mount,0)),sum(isnull(a.weight,0)) weight,'vccst'+a.accy qhref
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	left join cust e on b.custno = e.noa
+	where (b.datea between @t_bdatea and @t_edatea)
+	group by e.nick,b.noa,a.style,a.product,a.productno,a.class,a.spec,a.datea,a.uno,a.ordeno,a.no2,b.stype,b.kind,a.radius,a.width,a.dime,a.lengthb,a.size,a.accy
+insert into @tmp(gno,mount,gweight)
+	select '1',sum(mount),sum(gweight) from @tmp
+update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+select
+	gno,noa,comp,datea,uno,pno,product,class,spec,style,csize,mount,gweight,qhref,
+	ROW_NUMBER()over(order by gno,comp,datea desc) idno
+from @tmp order by gno,comp,datea desc;
+----------********************************************************************----------

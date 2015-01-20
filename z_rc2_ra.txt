@@ -1,0 +1,122 @@
+z_rc2_ra1:--z_rc2_ra1
+declare @t_bnoa nvarchar(50) = case when '#non' = [2] then '' else [2] end
+declare @t_enoa nvarchar(50) = case when '#non' = [3] then char(255) else [3] end
+declare @t_bproductno nvarchar(max) = case when '#non' = [4] then '' else [4] end
+declare @t_eproductno nvarchar(max) = case when '#non' = [5] then char(255) else [5] end
+declare @t_btggno nvarchar(max) = case when '#non' = [6] then '' else [6] end
+declare @t_etggno nvarchar(max) = case when '#non' = [7] then char(255) else [7] end
+------------報表設定<<Start>>------------
+declare @pageline int = 7 --每頁幾行
+------------報表設定<<End>>------------
+declare @tmp table(
+	gno nvarchar(10),
+	idno int identity(0,1),
+	pageno int,
+	noapageno int,
+	noatotpno int,
+	recno int,
+	datea nvarchar(10),
+	tggno nvarchar(50),
+	tggs nvarchar(90),
+	carno nvarchar(90),
+	noa nvarchar(50),
+	ordeno nvarchar(90),
+	productno nvarchar(max),
+	products nvarchar(max),
+	unit nvarchar(20),
+	mount float,
+	weight float,
+	storeno nvarchar(50),
+	stores nvarchar(90),
+	uno nvarchar(90),
+	price float,
+	memo nvarchar(max)
+)
+insert into @tmp
+	select
+		'0' gno,0 pageno,0 noapageno,0 noatotpno,0 recno,
+		a.datea,a.tggno,a.tgg,a.carno,a.noa,b.ordeno,b.productno,b.product,b.unit,b.mount,b.weight,
+		b.storeno,b.store,b.uno,b.price,b.memo
+	from view_rc2 a
+	left join view_rc2s b on (a.noa=b.noa)
+	where (a.noa between @t_bnoa and @t_enoa) and
+		  (b.productno between @t_bproductno and @t_eproductno) and
+		  (a.tggno between @t_btggno and @t_etggno)
+	order by a.noa,b.noq
+------gno-> 1=空白行,2=加總
+declare @idno int
+declare @noa nvarchar(50)
+declare @pageno int
+declare @recCount int
+declare @noapageno int
+------------更新頁數<<Start>>------------
+declare @pageno_int int = 0
+declare @lastidno int
+declare @lastnoa nvarchar(50) = ''
+declare cursor_table cursor for
+	select idno,noa from @tmp order by idno
+open cursor_table
+fetch next from cursor_table
+into @idno,@noa
+while(@@FETCH_STATUS <> -1)
+begin
+	if((@recCount > @pageline) or (@noa != @lastnoa))
+	begin
+		if(@noa != @lastnoa)
+			set @noapageno = 1
+		else if((@recCount > @pageline))
+			set @noapageno = @noapageno + 1
+		set @pageno_int = @pageno_int+1
+		set @recCount = 1
+	end
+	update @tmp set pageno=@pageno_int,recno=@recCount,noapageno=@noapageno where idno=@idno
+	set @lastnoa = @noa
+	set @recCount = @recCount+1
+	fetch next from cursor_table
+	into @idno,@noa
+end
+close cursor_table
+deallocate cursor_table
+------------更新頁數<<End>>-------------
+------------插入空白行<<Start>>------------
+set @recCount = 0
+declare cursor_table cursor for
+	select pageno,noapageno,noa,max(recno) from @tmp where (gno='0') group by pageno,noapageno,noa
+open cursor_table
+fetch next from cursor_table
+into @pageno,@noapageno,@noa,@recCount
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@recCount<@pageline)
+	begin
+		while(@recCount<@pageline)
+		begin
+			set @recCount = @recCount+1
+			insert into @tmp(gno,noa,pageno,noapageno,recno)
+				values('1',@noa,@pageno,@noapageno,@recCount)
+		end
+	end
+	fetch next from cursor_table
+	into @pageno,@noapageno,@noa,@recCount
+end
+close cursor_table
+deallocate cursor_table
+------------插入空白行<<End>>-------------
+------------插入合計<<Start>>-------------
+insert into @tmp(gno,noa,pageno,noapageno,recno,mount,weight)
+	select
+		'2' gno,noa,pageno,noapageno,max(recno)+1,b.mount,b.weight
+	from @tmp a
+	outer apply(select sum(mount) mount,sum(weight) weight from @tmp where (gno='0') and (noa=a.noa)) b
+	group by noa,pageno,noapageno,b.mount,b.weight
+------------插入合計<<End>>-------------
+update a
+	set noatotpno = b.pageno
+from @tmp a
+outer apply(select max(noapageno) pageno from @tmp where a.noa=noa) b
+select
+	a.gno,a.idno,a.pageno,a.noapageno npno1,a.noatotpno npno2,a.recno,a.datea,a.tggno,a.tggs,a.carno,a.noa,
+	a.ordeno,a.productno,a.products,a.unit,a.mount,a.weight,a.storeno,a.stores,a.uno,a.price,a.memo
+from @tmp a
+order by a.pageno,a.gno,a.recno;
+----------------------------------------------------------------------------------------------------------*

@@ -1,0 +1,181 @@
+z_bcc7st:--z_bcc7st
+	declare @t_xyear nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_xyear = case when '#non'=[3] then '' else [3] end
+	set @t_bbccno = case when '#non'=[4] then '' else [4] end
+	set @t_ebccno = case when '#non'=[5] then char(255) else [5] end
+	set @t_bsssno = case when '#non'=[6] then '' else [6] end
+	set @t_esssno = case when '#non'=[7] then char(255) else [7] end
+	set @t_storeno = case when '#non'=[8] then '' else [8] end
+	--*****************************************************************************************	
+SET QUOTED_IDENTIFIER OFF
+
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+	drop table #tmpa
+END
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+
+
+create table #tmp(
+	storeno nvarchar(20),
+	store nvarchar(20),
+	bccno nvarchar(20),
+	bccname nvarchar(50),
+	sssno nvarchar(20),
+	sssname nvarchar(50),
+	mount float,
+	bkbcc float,
+	mon nvarchar(10)
+)
+
+insert into #tmp 
+select a.storeno,c.store,b.bccno,b.bccname,a.sno,a.sname,b.mount,b.bkbcc,left(a.datea,6) datea 
+from bccout a left join bccouts b on a.noa=b.noa
+left join store c on a.storeno=c.noa 
+where (left(a.datea,3)=@t_xyear) and (b.bccno between @t_bbccno and @t_ebccno) and (a.sno between @t_bsssno and @t_esssno)
+and (len(@t_storeno)=0 or a.storeno=@t_storeno) 
+order by a.storeno,b.bccno 
+
+
+create table #tmpa(
+	gno nvarchar(1),
+	accy nvarchar(20),
+	storeno nvarchar(50),
+	store nvarchar(90),
+	bccno nvarchar(50),
+	bccname nvarchar(90),
+	sssno nvarchar(50),
+	sssname nvarchar(90),
+	m01 float,
+	m02 float,
+	m03 float,
+	m04 float,
+	m05 float,
+	m06 float,
+	m07 float,
+	m08 float,
+	m09 float,
+	m10 float,
+	m11 float,
+	m12 float,
+	b01 float,
+	b02 float,
+	b03 float,
+	b04 float,
+	b05 float,
+	b06 float,
+	b07 float,
+	b08 float,
+	b09 float,
+	b10 float,
+	b11 float,
+	b12 float,
+	total float
+)
+
+
+declare @bccno nvarchar(50)
+declare @sssno nvarchar(50)
+declare @storeno nvarchar(50)
+declare @mon nvarchar(50)
+declare @field nvarchar(50)
+declare @accy nvarchar(50)
+
+declare bccno_table cursor for
+select sssno,bccno,storeno,mon from #tmp group by sssno,bccno,storeno,mon
+open bccno_table
+fetch next from bccno_table
+into @sssno,@bccno,@storeno,@mon
+while(@@FETCH_STATUS <> -1)
+begin
+	set @field=right(@mon,2)
+	set @accy=left(@mon,3)
+	
+	--檢查該年度廠商產品是否已建立
+	if(select COUNT(*) from #tmpa where storeno=@storeno and bccno=@bccno and sssno=@sssno and accy=@accy)>0
+	begin	
+		exec("update #tmpa set m"+@field+"=(select sum(mount) from #tmp where bccno='"+@bccno+"' and sssno='"+@sssno+"' and storeno='"+@storeno+"' and mon='"+@mon+"')
+		,b"+@field+"=(select sum(bkbcc) from #tmp where bccno='"+@bccno+"' and sssno='"+@sssno+"' and storeno='"+@storeno+"' and mon='"+@mon+"')
+		where bccno='"+@bccno+"' and sssno='"+@sssno+"' and storeno='"+@storeno+"' and accy='"+@accy+"'
+		")
+	end
+	else
+	begin
+		exec("insert #tmpa (gno,accy,bccno,bccname,sssno,sssname,storeno,store,m"+@field+",b"+@field+")
+		select '0','"+@accy+"',bccno,MAX(bccname),sssno,MAX(sssname),storeno,MAX(store),sum(mount),sum(bkbcc)
+		from #tmp where bccno='"+@bccno+"' and sssno='"+@sssno+"' and storeno='"+@storeno+"' and mon='"+@mon+"'
+		group by bccno,sssno,storeno ")
+	
+	end
+
+	fetch next from bccno_table
+	into @sssno,@bccno,@storeno,@mon
+end
+close bccno_table
+deallocate bccno_table
+
+update #tmpa
+set total=
+ISNULL(m01,0)-ISNULL(b01,0)+ISNULL(m02,0)-ISNULL(b02,0)+
+ISNULL(m03,0)-ISNULL(b03,0)+ISNULL(m04,0)-ISNULL(b04,0)+
+ISNULL(m05,0)-ISNULL(b05,0)+ISNULL(m06,0)-ISNULL(b06,0)+
+ISNULL(m07,0)-ISNULL(b07,0)+ISNULL(m08,0)-ISNULL(b08,0)+
+ISNULL(m09,0)-ISNULL(b09,0)+ISNULL(m10,0)-ISNULL(b10,0)+
+ISNULL(m11,0)-ISNULL(b11,0)+ISNULL(m12,0)-ISNULL(b12,0)
+
+insert #tmpa(gno,storeno,bccno,accy
+,m01,m02,m03,m04,m05,m06,m07,m08,m09,m10,m11,m12
+,b01,b02,b03,b04,b05,b06,b07,b08,b09,b10,b11,b12,total)
+select '1',storeno,bccno,accy
+,SUM(m01),SUM(m02),SUM(m03),SUM(m04),SUM(m05),SUM(m06)
+,SUM(m07),SUM(m08),SUM(m09),SUM(m10),SUM(m11),SUM(m12)
+,SUM(b01),SUM(b02),SUM(b03),SUM(b04),SUM(b05),SUM(b06)
+,SUM(b07),SUM(b08),SUM(b09),SUM(b10),SUM(b11),SUM(b12)
+,SUM(total) from #tmpa group by storeno,bccno,accy
+
+select gno,accy,storeno,store,bccno,bccname,sssno,sssname
+,dbo.getComma(m01,[1]) m01
+,dbo.getComma(m02,[1]) m02
+,dbo.getComma(m03,[1]) m03
+,dbo.getComma(m04,[1]) m04
+,dbo.getComma(m05,[1]) m05
+,dbo.getComma(m06,[1]) m06
+,dbo.getComma(m07,[1]) m07
+,dbo.getComma(m08,[1]) m08
+,dbo.getComma(m09,[1]) m09
+,dbo.getComma(m10,[1]) m10
+,dbo.getComma(m11,[1]) m11
+,dbo.getComma(m12,[1]) m12
+,dbo.getComma(b01,[1]) b01
+,dbo.getComma(b02,[1]) b02
+,dbo.getComma(b03,[1]) b03
+,dbo.getComma(b04,[1]) b04
+,dbo.getComma(b05,[1]) b05
+,dbo.getComma(b06,[1]) b06
+,dbo.getComma(b07,[1]) b07
+,dbo.getComma(b08,[1]) b08
+,dbo.getComma(b09,[1]) b09
+,dbo.getComma(b10,[1]) b10
+,dbo.getComma(b11,[1]) b11
+,dbo.getComma(b12,[1]) b12
+,dbo.getComma(total,[1]) total
+from #tmpa order by bccno,storeno,accy,gno,sssno
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+	drop table #tmpa
+END;
