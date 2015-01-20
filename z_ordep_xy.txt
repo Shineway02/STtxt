@@ -47,7 +47,9 @@ declare @tmp table(
 	paytype nvarchar(MAX),
 	trantype nvarchar(MAX),
 	xadd1 nvarchar(MAX),
-	xadd2 nvarchar(MAX)
+	xadd2 nvarchar(MAX),
+	istax nvarchar(MAX),
+	checkvcc nvarchar(MAX)
 )
 
 insert into @tmp 
@@ -58,7 +60,7 @@ select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.no2)
 ,case when b.dime=1 then '單' when b.dime=2 then '雙' when b.dime=3 then '參' when b.dime=4 then '肆' when b.dime=5 then '全彩' else '' end
 ,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
 ,b.datea,case when isnull(c.startdate,'')='' or c.startdate='0' then 30 else cast(c.startdate as int)-1 end
-,dbo.split(c.invomemo,'##',1),c.[getdate],a.paytype,a.trantype,a.addr2,a.addr2
+,dbo.split(c.invomemo,'##',1),c.[getdate],a.paytype,a.trantype,a.addr2,a.addr2,dbo.split(c.invomemo,'##',2),dbo.split(c.invomemo,'##',3)
 from view_orde a left join view_ordes b on a.noa=b.noa left join cust c on a.custno=c.noa
 left join sss d on a.salesno=d.noa
 where a.noa between @t_bnoa and @t_enoa and a.odate between @t_bdate and @t_edate
@@ -93,11 +95,11 @@ begin
 			end
 			
 			insert @tmp(gno,recno,noa,mount,money,total,tax,taxtype,salesno,sales,stel
-			,startdate,datea,isinvo,xgetdate,namea,paytype,trantype,xadd1,xadd2)
+			,startdate,datea,isinvo,xgetdate,namea,paytype,trantype,xadd1,xadd2,istax,checkvcc)
 			select '2',@count,@x_noa,@t_mount,@t_total,@t_total,0
 				,MAX(taxtype),MAX(salesno),MAX(sales),MAX(stel)
 				,MAX(startdate),MAX(datea),MAX(isinvo),MAX(xgetdate)
-				,MAX(namea),MAX(paytype),MAX(trantype),MAX(xadd1),MAX(xadd2)
+				,MAX(namea),MAX(paytype),MAX(trantype),MAX(xadd1),MAX(xadd2),MAX(istax),MAX(checkvcc)
 			from @tmp where gno='0' and noa=@x_noa
 			
 			insert @tmp(gno,recno,noa)
@@ -117,11 +119,11 @@ begin
 	if(@count%@t_pageline=0)
 	begin
 		insert @tmp(gno,recno,noa,mount,money,total,tax,taxtype,salesno,sales,stel
-		,startdate,datea,isinvo,xgetdate,namea,paytype,trantype,xadd1,xadd2)
+		,startdate,datea,isinvo,xgetdate,namea,paytype,trantype,xadd1,xadd2,istax,checkvcc)
 		select '2',@count,@noa,@t_mount,@t_total,@t_total,0
 			,MAX(taxtype),MAX(salesno),MAX(sales),MAX(stel)
 			,MAX(startdate),MAX(datea),MAX(isinvo),MAX(xgetdate)
-			,MAX(namea),MAX(paytype),MAX(trantype),MAX(xadd1),MAX(xadd2)
+			,MAX(namea),MAX(paytype),MAX(trantype),MAX(xadd1),MAX(xadd2),MAX(istax),MAX(checkvcc)
 		from @tmp where gno='0' and noa=@noa
 		
 		insert @tmp(gno,recno,noa)
@@ -148,11 +150,11 @@ begin
 		select '1',@count,@x_noa
 	end
 	insert @tmp(gno,recno,noa,mount,money,total,tax,taxtype,salesno,sales,stel
-	,startdate,datea,isinvo,xgetdate,namea,paytype,trantype,xadd1,xadd2)
+	,startdate,datea,isinvo,xgetdate,namea,paytype,trantype,xadd1,xadd2,istax,checkvcc)
 	select '2',@count,@x_noa,@t_mount,@t_total,@t_total,0
 		,MAX(taxtype),MAX(salesno),MAX(sales),MAX(stel)
 		,MAX(startdate),MAX(datea),MAX(isinvo),MAX(xgetdate)
-		,MAX(namea),MAX(paytype),MAX(trantype),MAX(xadd1),MAX(xadd2)
+		,MAX(namea),MAX(paytype),MAX(trantype),MAX(xadd1),MAX(xadd2),MAX(istax),MAX(checkvcc)
 	from @tmp where gno='0' and noa=@x_noa
 
 	insert @tmp(gno,recno,noa)
