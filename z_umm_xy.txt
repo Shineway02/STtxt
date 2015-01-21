@@ -148,6 +148,9 @@ set unpay=punpay+total-payed
 ,counts=(select count(*) from @result where gno='0' and custno=a.custno)
 from @result a where gno='1'
 
+delete @result 
+where custno in (select custno from @result where gno='1' and punpay=0 and unpay=0 and payed=0 and paysale=0 and amoney=0 and tax=0 and counts=0)
+
 declare @custno nvarchar(30)
 declare @maxnoq nvarchar(30)
 declare @ncount nvarchar(30)
@@ -355,6 +358,9 @@ update a
 set unpay=punpay+total-payed
 ,counts=(select count(*) from @result where gno='0' and custno=a.custno)
 from @result a where gno='3'
+
+delete @result 
+where custno in (select custno from @result where gno='3' and punpay=0 and unpay=0 and payed=0 and paysale=0 and amoney=0 and tax=0 and counts=0)
 
 insert @result (gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,post,addr,tel,serial)
 select '1','','000',@t_mon+'/00',@t_mon,custno,MAX(comp),xcustno,MAX(xcomp),MAX(post),MAX(addr),MAX(tel),MAX(serial)
@@ -632,6 +638,9 @@ update a
 set unpay=punpay+total-payed
 ,counts=(select count(*) from @result where gno='0' and custno=a.custno)
 from @result a where gno='3'
+
+delete @result 
+where custno in (select custno from @result where gno='3' and punpay=0 and unpay=0 and payed=0 and paysale=0 and amoney=0 and tax=0 and counts=0)
 
 insert @result (gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,post,addr,tel,serial)
 select '1','','000',@t_mon+'/00',@t_mon,custno,MAX(comp),xcustno,MAX(xcomp),MAX(post),MAX(addr),MAX(tel),MAX(serial)
