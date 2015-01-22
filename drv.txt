@@ -97,3 +97,15 @@ BEGIN
 END
 ;
 ------------------------------------------------------------------------------------------------------------------------------------------------
+ordeenda:--ordeenda
+SET QUOTED_IDENTIFIER OFF
+declare @t_ordeno nvarchar(100)= [1] --要結案的訂單號碼
+declare @accy nvarchar(50) = [2] --年度
+
+if(len(@t_ordeno)>0)
+begin
+	set @accy=(select top 1 accy from view_orde where noa=@t_ordeno)
+	exec(" update orde"+@accy+" set enda=1 where noa= '"+@t_ordeno+"'")
+	exec(" update ordes"+@accy+" set enda=1 where noa= '"+@t_ordeno+"'")
+end
+;
