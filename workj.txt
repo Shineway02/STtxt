@@ -24,7 +24,7 @@ orde:-- workj -> orde
 	else
 	begin
 		declare @odate nvarchar(10) = ''
-		select @odate = odate from workj where noa=@workjno
+		select @odate = datea from workj where noa=@workjno
 		set @accy = LEFT(@odate,3)
 		declare @noa nvarchar(20)= @ordekey+replace(@odate,'/','')
 		select top 1 @ordeno=noa from view_orde where LEFT(noa,len(@noa))=@noa order by noa desc
@@ -193,7 +193,7 @@ orde:-- workj -> orde
 	--quatno  no3
 	set @cmd=
 	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick,isproj,stype,enda,cancel,apv,trantype,memo2)
-	select @ordeno,odate,odate,custno,cust,nick,1,'1',0,0,'*',trantype,trantype2
+	select @ordeno,odate,datea,custno,cust,nick,1,'1',0,0,'*',trantype,trantype2
 	from workj where noa=@workjno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
 	-------------------------------------------------------------------------------------------
