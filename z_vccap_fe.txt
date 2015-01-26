@@ -46,9 +46,9 @@ z_vccap_fe01:--z_vccap_fe01
 	where a.noa=@noa
 	order by b.noq
 	
-	update @tmp set chk1='V' --where taxtype='1'
-	update @tmp set chk2='V' --where taxtype='2'
-	update @tmp set chk3='V' --where taxtype='4'
+	update @tmp set chk1='V' where taxtype='1'
+	update @tmp set chk2='V' where taxtype='2'
+	update @tmp set chk3='V' where taxtype='4'
 	
 	update @tmp set d1=LEFT(datea,3),d2=SUBSTRING(datea,5,2),d3=SUBSTRING(datea,8,2)
 	
@@ -77,14 +77,9 @@ z_vccap_fe01:--z_vccap_fe01
 	insert into @tmp(gno,c1,c2,c3,c4,c5,c6,c7,c8)select top 1 '6',c1,c2,c3,c4,c5,c6,c7,c8 from @tmp order by pno
 	
 	select noa vccano
-		,c8+REPLICATE('&nbsp'+CHAR(59),8)
-		+c7+REPLICATE('&nbsp'+CHAR(59),8)
-		+c6+REPLICATE('&nbsp'+CHAR(59),7)
-		+c5+REPLICATE('&nbsp'+CHAR(59),7)
-		+c4+REPLICATE('&nbsp'+CHAR(59),7) ctotal1
-		
-		,c3+REPLICATE('&nbsp'+CHAR(59),8)
-		+c2+REPLICATE('&nbsp'+CHAR(59),8)
-		+c1+REPLICATE('&nbsp'+CHAR(59),8) ctotal2
+		,dbo.getComma(money_s,0) e1
+		,dbo.getComma([money],0) e2
+		,dbo.getComma(tax,0) e3
+		,dbo.getComma(total,0) e4
 		,* 
 	from @tmp order by pno;
