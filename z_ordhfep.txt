@@ -8,7 +8,6 @@ z_ordhfep01:--z_ordhfep01
 	----------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(10),
-		accy nvarchar(10),
 		noa nvarchar(20),
 		cno nvarchar(20),
 		acomp nvarchar(50),
@@ -35,30 +34,74 @@ z_ordhfep01:--z_ordhfep01
 		mm3 nvarchar(max)
 	)
 	
-	insert into @tmp(gno,accy,noa,cno,acomp,tggno,tgg,tel,fax,datea,memo
+	insert into @tmp(gno,noa,cno,acomp,tggno,tgg,tel,fax,datea,memo
 		,noq,comp,indate,productno,product,unit,mount,[weight],price,[money],memos)
-	select '1',a.accy,a.noa,a.cno,a.acomp,a.tggno,a.tgg,a.tel,a.fax,a.datea,a.memo
+	select '1',a.noa,a.cno,a.acomp,a.tggno,a.tgg,a.tel,a.fax,a.datea,a.memo
 		,b.noq,b.comp,b.indate,b.productno,b.product,b.unit,b.mount,b.[weight],b.price,b.[money],b.memo 
-	from view_ordh a
-	left join view_ordhs b on a.accy=b.accy
+	from ordh a
+	left join ordhs b on a.noa=b.noa
 	where (len(@t_noa)=0 or a.noa=@t_noa)
 	and ISNULL(a.tggno,'') between @t_btggno and @t_etggno
 	and ISNULL(a.datea,'') between @t_bdate and @t_edate
 	--備註只印前三行
-	insert into @tmp(gno,accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,mm1)
-	select '2',accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,0,CHARINDEX('chr(10)',memo)),'chr(10)',space(1))
-	from @tmp
-	group by accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo
+	------------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	declare @cno nvarchar(20)
+	declare @comp nvarchar(40)
+	declare @tggno nvarchar(20)
+	declare @tgg nvarchar(50)
+	declare @tel nvarchar(50)
+	declare @fax nvarchar(50)
+	declare @datea nvarchar(10)
+	declare @memo nvarchar(max)
 	
-	insert into @tmp(gno,accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,mm2)
-	select '3',accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,CHARINDEX('chr(10)',memo)+7,CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)-CHARINDEX('chr(10)',memo)-7),'chr(10)',space(1))
-	from @tmp
-	group by accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo
+	declare @mm1 nvarchar(max)
+	declare @mm2 nvarchar(max)
+	declare @n int
 	
-	insert into @tmp(gno,accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,mm3)
-	select '4',accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo,replace(substring(memo,CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)+7,len(memo)-CHARINDEX('chr(10)',memo,CHARINDEX('chr(10)',memo)+1)-6),'chr(10)',space(1))
+	declare cursor_table cursor for
+	select noa,cno,comp,tggno,tgg,tel,fax,datea,memo
 	from @tmp
-	group by accy,noa,cno,comp,tggno,tgg,tel,fax,datea,memo
+	group by noa,cno,comp,tggno,tgg,tel,fax,datea,memo
+    open cursor_table
+    fetch next from cursor_table
+    into @noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@memo
+    while(@@FETCH_STATUS <> -1)
+    begin
+		select @mm1='',@mm2=''
+		set @n = CHARINDEX('chr(10)',@memo)
+		if @n>0
+		begin
+			set @mm1 = SUBSTRING(@memo,1,@n)
+			set @memo = RIGHT(@memo,LEN(@memo)-@n-7)
+			
+			set @n = CHARINDEX('chr(10)',@memo)
+			if @n>0
+			begin
+				set @mm2 = SUBSTRING(@memo,1,@n)
+				set @memo = RIGHT(@memo,LEN(@memo)-@n-7)
+			end
+		end
+		else
+		begin
+			set @mm1 = @memo
+			set @memo = ''
+		end
+		
+		insert into @tmp(gno,noa,cno,comp,tggno,tgg,tel,fax,datea,mm1)
+		select '2',@noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@mm1
+		
+		insert into @tmp(gno,noa,cno,comp,tggno,tgg,tel,fax,datea,mm2)
+		select '3',@noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@mm2
+		
+		insert into @tmp(gno,noa,cno,comp,tggno,tgg,tel,fax,datea,mm3)
+		select '4',@noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@memo
+
+        fetch next from cursor_table
+        into @noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@memo
+    end
+    close cursor_table
+    deallocate cursor_table
 	
 	select noa a01
 		,tgg a02
