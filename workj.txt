@@ -192,8 +192,8 @@ orde:-- workj -> orde
 	
 	--quatno  no3
 	set @cmd=
-	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick,isproj,stype,enda,cancel,apv,trantype,memo2)
-	select @ordeno,odate,datea,custno,cust,nick,1,'1',0,0,'*',trantype,trantype2
+	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick,isproj,stype,enda,cancel,apv,trantype,memo2,memo)
+	select @ordeno,odate,datea,custno,cust,nick,1,'1',0,0,'*',trantype,trantype2,site
 	from workj where noa=@workjno"
 	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
 	-------------------------------------------------------------------------------------------
@@ -239,37 +239,3 @@ orde:-- workj -> orde
 	update workj set ordeaccy=@accy,ordeno=@ordeno where noa=@workjno
 	
 	select '匯出訂單【'+@ordeno+'】' msg,@accy ordeaccy,@ordeno ordeno;
-
-cont:-- cont -> workj	
-	declare @workjno nvarchar(20) = [1]
-	declare @custno nvarchar(20) = [2]
-	
-	declare @tmp table(
-		contno nvarchar(20),
-		contnoq nvarchar(20),
-		productno nvarchar(20),
-		product nvarchar(50),
-		unit nvarchar(20),
-		lengthb float,
-		mount float,
-		[weight] float,
-		price float,
-		total float,
-		xmount float,
-		xweight float
-	) 
-	
-	insert into @tmp(contno,contnoq,productno,product,unit,lengthb,mount,[weight],price,total)
-	select a.noa,b.noq,b.productno,b.product,b.unit,b.lengthb,b.mount,b.[weight],b.price,b.total
-	from cont a
-	left join conts b on a.noa=b.noa
-	where isnull(a.enda,0)!=1
-	and ISNULL(b.enda,0)!=1
-	and a.tggno=@custno
-	
-	update @tmp set xmount=a.mount-isnull(b.mount,0),xweight=a.[weight]-isnull(b.[weight],0)
-	from @tmp a
-	outer apply(select SUM(ISNULL(mount,0)) mount,SUM(ISNULL([weight],0)) [weight] 
-		from workjs where contno=a.contno and contnoq=a.contnoq and noa!=@workjno) b
-	
-	select * from @tmp where xmount>0 and xweight>0;
