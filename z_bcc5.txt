@@ -20,30 +20,31 @@ z_bcc5sta:--z_bcc5sta
 		inmount float,
 		outmount float,
 		bkmount float,
-		stkmount float
+		stkmount float,
+		memo nvarchar(max)
 	)
-	insert into @tmp(gno,pno,recno,tablea,noa,typea,datea,productno,product,inmount,outmount,bkmount)
+	insert into @tmp(gno,pno,recno,tablea,noa,typea,datea,productno,product,inmount,outmount,bkmount,memo)
 	select gno,pno
 		,ROW_NUMBER()over(partition by productno order by datea,pno,typea)
-		,tablea,noa,typea,datea,productno,product,inmount,outmount,bkmount
+		,tablea,noa,typea,datea,productno,product,inmount,outmount,bkmount,memo
 	from(
 		select '1' gno,'1' pno,'bccin' tablea,a.noa,a.typea,a.datea,b.bccno productno,b.bccname product
 			,case when a.typea='1' then isnull(b.mount,0) else -isnull(b.mount,0) end inmount
-			,0 outmount,0 bkmount
+			,0 outmount,0 bkmount,b.memo
 		from bccin a
 		left join bccins b on a.noa=b.noa
 		where a.datea between @t_bdate and @t_edate
 		and ISNULL(b.bccno,'') between @t_bproductno and @t_eproductno
 		and (len(@t_storeno)=0 or CHARINDEX(','+a.storeno+',',','+@t_storeno+',')>0)
 		union all
-		select '1' gno,'2','bccout',a.noa,'',a.datea,b.bccno,b.bccname,0,b.mount,b.bkbcc
+		select '1' gno,'2','bccout',a.noa,'',a.datea,b.bccno,b.bccname,0,b.mount,b.bkbcc,b.memo
 		from bccout a
 		left join bccouts b on a.noa=b.noa
 		where a.datea between @t_bdate and @t_edate
 		and ISNULL(b.bccno,'') between @t_bproductno and @t_eproductno
 		and (len(@t_storeno)=0 or CHARINDEX(','+a.storeno+',',','+@t_storeno+',')>0)
 		union all
-		select '2' gno,'0','','前期存量','','',a.productno,b.product,sum(a.mount),0,0
+		select '2' gno,'0','','前期存量','','',a.productno,b.product,sum(a.mount),0,0,''
 		from (
 			select b.bccno productno,case when a.typea='1' then isnull(b.mount,0) else -isnull(b.mount,0) end mount
 			from bccin a
@@ -98,6 +99,7 @@ z_bcc5sta:--z_bcc5sta
 		,case when outmount=0 then '' else dbo.getComma(outmount,0) end a05
 		,case when bkmount=0 then '' else dbo.getComma(bkmount,0) end a06
 		,case when stkmount=0 then '0' else dbo.getComma(stkmount,0) end a07 
+		,memo a08
 		,* 
 	from @tmp order by productno,recno;
 --***********************************************************************************************
