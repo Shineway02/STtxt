@@ -30,6 +30,7 @@ declare @tmp table(
 	stel nvarchar(90),
 	productno nvarchar(90),
 	product nvarchar(90),
+	spec nvarchar(MAX),
 	pack nvarchar(90),
 	col nvarchar(90),
 	unit nvarchar(90),
@@ -56,7 +57,7 @@ insert into @tmp
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.no2)
 ,a.noa,a.odate,a.custno,a.comp,c.serial,c.invoicetitle
 ,a.tel,a.fax,a.addr
-,c.email,c.conntel,a.salesno,a.sales,d.mobile1,b.productno,b.product,b.sizea
+,c.email,c.conntel,a.salesno,a.sales,d.mobile1,b.productno,b.product,b.spec,b.sizea
 ,case when b.dime=1 then '單' when b.dime=2 then '雙' when b.dime=3 then '參' when b.dime=4 then '肆' when b.dime=5 then '全彩' else '' end
 ,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
 ,b.datea,case when isnull(c.startdate,'')='' or c.startdate='0' then 30 else cast(c.startdate as int)-1 end

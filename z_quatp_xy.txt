@@ -36,6 +36,7 @@ declare @tmp table(
 	stel nvarchar(90),
 	productno nvarchar(90),
 	product nvarchar(90),
+	spec nvarchar(MAX),
 	np nvarchar(90),
 	pack nvarchar(90),
 	col nvarchar(90),
@@ -54,7 +55,7 @@ select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq)
 ,a.noa,a.odate,a.datea,a.custno,a.comp,a.pay,c.invoicetitle
 ,a.tel,a.fax,case when a.addr2!='' then a.addr2 else a.addr end
 ,a.memo2,a.postname,a.salesno,a.sales,d.mobile1
-,b.productno,b.product,b.classa,b.sizea
+,b.productno,b.product,b.spec,b.classa,b.sizea
 ,case when b.dime=1 then '單' when b.dime=2 then '雙' when b.dime=3 then '參' when b.dime=4 then '肆' when b.dime=5 then '全彩' else '' end
 ,b.unit,b.mount,b.price,b.total,a.tax,a.taxtype,a.total,b.memo
 from view_quat a left join view_quats b on a.noa=b.noa left join cust c on a.custno=c.noa
