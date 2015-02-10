@@ -20,6 +20,7 @@ declare @tmp table(
 	carno nvarchar(90),
 	vcctype nvarchar(50),
 	datea nvarchar(10),
+	timea nvarchar(20),
 	noa nvarchar(50),
 	storeno nvarchar(50),
 	stores nvarchar(90),
@@ -35,8 +36,8 @@ insert into @tmp
 	select
 		'0' gno,0 pageno,0 noapageno,0 noatotpno,0 recno,
 		a.custno,c.nick,a.cardealno,d.nick,a.carno,a.transtyle,
-		a.datea,a.noa,b.storeno,b.store,b.productno,b.product,b.spec,b.unit,b.mount,
-		0 rackmount,b.memo
+		a.datea,a.zipname,a.noa,b.storeno,b.store,b.productno,b.product,b.spec,b.unit,b.mount,
+		b.lengthc rackmount,b.memo
 	from view_vcc a
 	left join view_vccs b on (a.noa=b.noa)
 	left join cust c on a.custno=c.noa
@@ -117,7 +118,7 @@ from @tmp a
 outer apply(select max(noapageno) pageno from @tmp where a.noa=noa) b
 select
 	a.gno,a.idno,a.pageno,a.noapageno npno1,a.noatotpno npno2,a.recno,
-	a.custno,a.custs,a.cardealno,a.cardeals,a.carno,a.vcctype,a.datea,a.noa,a.storeno,a.stores,
+	a.custno,a.custs,a.cardealno,a.cardeals,a.carno,a.vcctype,a.datea,a.timea,a.noa,a.storeno,a.stores,
 	a.productno,a.products,a.spec,a.unit,a.amount,a.rackmount,a.memo
 from @tmp a
 order by a.pageno,a.gno,a.recno;
