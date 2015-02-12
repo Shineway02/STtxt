@@ -443,9 +443,11 @@ declare @tmp table(
 	gno nvarchar(4),
 	udate nvarchar(20),
 	unoa nvarchar(50),
+	unoq nvarchar(50), 
 	ucustno nvarchar(100),
 	ucomp nvarchar(100),
 	utotal float,
+	paysale float,
 	salesno nvarchar(50),
 	saless nvarchar(50),
 	vdate nvarchar(20),
@@ -462,28 +464,35 @@ declare @tmp table(
 )
 
 insert into @tmp
-select '0',a.datea,a.noa,a.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=a.custno)
-,b.paysale,isnull(e.salesno,''),e.sales,c.datea,c.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=c.custno)
+select '0',a.datea,a.noa,b.noq,a.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=a.custno)
+,a.total,b.paysale,isnull(e.salesno,''),e.sales,c.datea,c.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=c.custno)
 ,c.noa,c.noq,c.product,c.mount,c.price,c.total,d.class,null
 from umm a left join umms b on a.noa=b.noa left join view_vccs c on b.vccno=c.noa
 left join view_ordes d on (c.ordeno=d.noa and c.no2=d.no2)
 left join view_vcc e on c.noa=e.noa
 where a.mon=@t_mon and (isnull(e.salesno,'') between @t_bsalesno and @t_esalesno)
-and isnull(c.noa,'')!=''
+and isnull(c.noa,'')!='' and isnull(c.price,0)!=0
 
 update @tmp
-set bonus=(case when rate='' then 100 else cast(rate as float) end)/100*utotal
+set bonus=(case when rate='' then 100 else cast(rate as float) end)/100*vtotal
 
 insert @tmp (gno,salesno,saless,utotal,vtotal,bonus)
 select '1',salesno,MAX(saless),sum(utotal),sum(vtotal),sum(bonus) from @tmp group by salesno
+
+update a
+set utotal=(select SUM(utotal) from ((select utotal from @tmp where gno='0' and salesno=a.salesno group by unoa,utotal))tmp)
+from @tmp a
+where gno='1'
 
 select 
 dbo.getComma(mount,0) mount,
 dbo.getComma(price,4) price,
 dbo.getComma(utotal,0) utotal,
+dbo.getComma(paysale,0) paysale,
 dbo.getComma(vtotal,0) vtotal,
+unoa+'-'+vnoa uvnoa,
 * 
-from @tmp order by salesno,gno,rate,udate,ucustno,unoa,vcustno,vnoa,vnoq
+from @tmp order by salesno,gno,ucustno,unoa,vcustno,vnoa,vnoq
 ;
 --********************************************************************************************
 z_umm_xy4:--z_umm_xy4
