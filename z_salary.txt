@@ -1445,10 +1445,14 @@ declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
 declare @t_bsssno nvarchar(20)
 declare @t_esssno nvarchar(20)
+declare @t_service nvarchar(20)
+
 set @t_bdate = case when '#non' = [6] then '' else [6] end
 set @t_edate = case when '#non' = [7] then CHAR(255) else [7] end
 set @t_bsssno = case when '#non' = [4] then '' else [4] end
 set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_service = case when '#non' = [13] then '' else [13] end
+
 declare @tmp table(
 		gno nvarchar(1),
 		noa nvarchar(20),
@@ -1464,15 +1468,33 @@ declare @tmp table(
 		bosp float,
 		boot float,
 		bofu float,
-		salary float
+		salary float,
+		outdate nvarchar(50)
 )
+
 insert into @tmp
 select '0' gno,a.noa,b.namea,a.datea,a.jobno,a.job,a.level1,a.level2,a.money,a.bo_admin,a.bo_traffic,a.bo_special,
-a.bo_oth,a.bo_full,a.salary
+a.bo_oth,a.bo_full,a.salary,isnull(b.outdate,'')
 from saladjust a
 left join sss b on a.noa = b.noa
 where (a.noa between @t_bsssno and @t_esssno) and
 (a.datea between @t_bdate and @t_edate)
+
+insert into @tmp
+select '1' gno,a.noa,b.namea,a.datea,a.jobno,a.job,a.level1,a.level2,a.money,a.bo_admin,a.bo_traffic,a.bo_special,
+a.bo_oth,a.bo_full,a.salary,isnull(b.outdate,'')
+from saladjust a
+left join sss b on a.noa = b.noa
+where (a.noa between @t_bsssno and @t_esssno) 
+and a.datea=isnull((select MAX(datea) from saladjust where (datea < @t_bdate) and noa=a.noa ),'')
+
+if(@t_service='1')
+	delete @tmp where outdate!=''
+if(@t_service='0')
+	delete @tmp where outdate=''
+	
+insert into @tmp (gno,noa,namea)
+select '2',noa,MAX(namea) from @tmp group by noa
 
 select gno,noa,namea,datea,jobno,job,level1,level2,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,moneys),1)),4,12)) moneys,
@@ -1482,7 +1504,7 @@ reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bosp),1)),4,12)) bo
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,boot),1)),4,12)) boot,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bofu),1)),4,12)) bofu,
 reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,salary),1)),4,12)) salary
-from @tmp;
+from @tmp order by noa,case when gno='1' then '0' when gno='0' then 1 else gno end,datea;
 -------------------------------------------------------------------------------------------------------
 z_salchg1:--z_salchg1
 declare @t_xmon nvarchar(20) 
@@ -1542,11 +1564,11 @@ set @part = ''
 declare @tmp table(
 		gno nvarchar(1),
 		idno int identity(0,1),
-		pno nvarchar(20),
-		part nvarchar(20),
-		namea nvarchar(50),
-		jobno nvarchar(20),
-		indate nvarchar(10)
+		pno nvarchar(50),
+		part nvarchar(50),
+		namea nvarchar(100),
+		jobno nvarchar(50),
+		indate nvarchar(50)
 )
 insert into @tmp
 select '0'gno,partno,part,namea,jobno,indate
