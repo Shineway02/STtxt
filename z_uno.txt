@@ -1,0 +1,311 @@
+z_uno01:--z_uno01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_uno nvarchar(max) = case when '#non'=[1] then '' else [1] end
+	--------------------------------------------------------------------
+	declare @tmpa table(
+		[rank] int,
+		gno nvarchar(20),
+		datea nvarchar(10),
+		nick nvarchar(20),
+		
+		qmount float,
+		qweight float,
+		qstoreno nvarchar(20),
+		qprice float,
+		qmemo nvarchar(max),
+		
+		accy nvarchar(10),
+		tablea nvarchar(20),
+		noa nvarchar(20),
+		uno nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		radius float,
+		dime float,
+		width float,
+		lengthb float,
+		size nvarchar(50),
+		spec nvarchar(50),
+		class nvarchar(20),
+		hard nvarchar(20),
+		style nvarchar(20),
+		storeno nvarchar(20),
+		mount float,
+		[weight] float,
+		memo nvarchar(max)
+	)
+	insert into @tmpa([rank],accy,tablea,noa,uno,productno,product
+		,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo)
+	select 0,accy,tablea,noa,uno,productno,product
+		,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+	from view_uccb
+	where uno=@t_uno
+	
+	--若原料來源是多個批號時,就中斷
+	declare @maxrank int = 0,@n int = 0
+	declare @currank int = 0,@flag int = 0,@curtable nvarchar(10)='',@curaccy nvarchar(10)='',@curnoa nvarchar(20)=''
+	declare @curuno nvarchar(50)
+	
+	while 1=1
+	begin
+		select @maxrank=0,@n=0
+		select @maxrank = MAX([rank]) from @tmpa 
+		set @currank = @maxrank+1
+		select @curuno=uno,@flag=0 from @tmpa where [rank]=@maxrank
+		select @curtable='',@curaccy='',@curnoa=''
+		select @curtable=tablea,@curaccy=accy,@curnoa=noa 
+		from @tmpa where [rank]=@maxrank and [rank]!=0
+		
+		--VCC
+		if @flag = 0
+		begin
+			if not exists(select * from @tmpa where tablea='vcc' and uno=@curuno)
+			begin
+				insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+					,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+					,qmount,qweight,qstoreno,qprice,qmemo)
+				select @currank,case when isnull(b.typea,'1')='1' then '7' else '8' end
+					,b.datea,b.nick,a.accy,'vcc',a.noa,a.uno,c.productno,c.product
+					,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.style,c.class,c.hard,c.storeno,c.mount,c.[weight],c.memo
+					,a.mount,a.[weight],'',a.price,a.memo
+				from view_vccs a
+				left join view_vcc b on a.accy=b.accy and a.noa=b.noa 
+				left join view_uccb c on a.uno=c.uno
+				where a.uno = @curuno and b.noa is not null
+				order by b.datea desc
+			end
+		end
+		--GET
+		if @flag = 0
+		begin
+			if not exists(select * from @tmpa where tablea='get' and uno=@curuno)
+			begin
+				insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+					,radius,dime,width,lengthb,size,spec,c.class,c.hard,style,storeno,mount,[weight],memo
+					,qmount,qweight,qstoreno,qprice,qmemo)
+				select @currank,'9',b.datea,'',a.accy,'get',a.noa,a.uno,c.productno,c.product
+					,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.style,c.class,c.hard,c.storeno,c.mount,c.[weight],c.memo
+					,a.mount,a.[weight],'',a.price,a.memo
+				from view_gets a
+				left join view_get b on a.accy=b.accy and a.noa=b.noa 
+				left join view_uccb c on a.uno=c.uno
+				where a.uno = @curuno and b.noa is not null
+				order by b.datea desc
+			end
+		end
+		if exists(select * from @tmpa where [rank]=@currank)
+		begin
+			set @flag = 1
+		end
+		--CUT
+		--if @flag = 0
+		--begin	
+		--	insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+		--		,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+		--		,qmount,qweight,qstoreno,qprice,qmemo)
+		--	select @currank,'10',b.datea,'',a.accy,'cut',a.noa,b.uno,c.productno,c.product
+		--		,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+		--		,b.gmount,b.[gweight],'',0,a.memo
+		--	from view_cuts a 
+		--	left join view_cut b on a.accy=b.accy and a.noa=b.noa
+		--	left join view_uccb c on b.uno=c.uno
+		--	where a.bno = @curuno and b.noa is not null
+		--end
+		--if exists(select * from @tmpa where [rank]=@currank)
+		--begin
+		--	set @flag = 1
+		--end
+		----CUB
+		--if @flag = 0
+		--begin
+		--	insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+		--		,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+		--		,qmount,qweight,qstoreno,qprice,qmemo)
+		--	select @currank,'11',d.datea,'',a.accy,'cub',a.noa,b.uno,c.productno,c.product
+		--		,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+		--		,b.gmount,b.[gweight],'',0,a.memo
+		--	from view_cubu a
+		--	left join view_cubt b on a.accy=b.accy and a.noa=b.noa and isnull(a.groupa,'')=isnull(b.groupa,'')
+		--	left join view_uccb c on b.uno=c.uno
+		--	left join view_cub d on a.accy=d.accy and a.noa=d.noa
+		--	where a.uno = @curuno and b.noa is not null
+		--end
+		--if exists(select * from @tmpa where [rank]=@currank)
+		--begin
+		--	set @flag = 1
+		--end
+		--CNG
+		if @flag = 0
+		begin
+			if not exists(select * from @tmpa where tablea='cng' and uno=@curuno)
+			begin
+				insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+					,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+					,qmount,qweight,qstoreno,qprice,qmemo)
+				select @currank,'1',b.datea,'',a.accy,'cng',a.noa,a.uno,c.productno,c.product
+					,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+					,a.mount,a.[weight],'',0,b.store+'->'+b.storein
+				from view_cngs a
+				left join view_cng b on a.accy=b.accy and a.noa=b.noa 
+				left join view_uccb c on a.uno=c.uno
+				where a.uno = @curuno and b.noa is not null
+			end
+		end
+		if exists(select * from @tmpa where [rank]=@currank)
+		begin
+			set @flag = 1
+		end
+		--rc2s
+		if @flag = 0 
+		begin
+			insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+				,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+				,qmount,qweight,qstoreno,qprice,qmemo)
+			select @currank,case when isnull(b.typea,'1')='1' then '2' else '3' end
+				,b.datea,b.nick,a.accy,'rc2s',a.noa,a.uno,c.productno,c.product
+				,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+				,a.mount,a.[weight],a.storeno,a.price,a.memo
+			from view_rc2s a
+			left join view_rc2 b on a.accy=b.accy and a.noa=b.noa
+			left join view_uccb c on a.uno=c.uno
+			where a.uno = @curuno
+			and not(@curtable='rc2s' and @curaccy=a.accy and @curnoa=a.noa)
+		end
+		if exists(select * from @tmpa where [rank]=@currank)
+		begin
+			set @flag = 1
+		end
+		--inas
+		if @flag = 0
+		begin
+			insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+				,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+				,qmount,qweight,qstoreno,qprice,qmemo)
+			select @currank,'4',b.datea,'',a.accy,'inas',a.noa,a.uno,c.productno,c.product
+				,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+				,a.mount,a.[weight],a.storeno,a.price,a.memo
+			from view_inas a
+			left join view_ina b on a.accy=b.accy and a.noa=b.noa
+			left join view_uccb c on a.uno=c.uno
+			where a.uno = @curuno
+			and not(@curtable='inas' and @curaccy=a.accy and @curnoa=a.noa)
+		end
+		if exists(select * from @tmpa where [rank]=@currank)
+		begin
+			set @flag = 1
+		end
+		--cuts
+		if @flag = 0
+		begin
+			insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+				,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+				,qmount,qweight,qstoreno,qprice,qmemo)
+			select @currank,'5',b.datea,'',a.accy,'cuts',a.noa,a.bno,c.productno,c.product
+				,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+				,a.mount,a.[weight],a.storeno,0,a.memo
+			from view_cuts a
+			left join view_cut b on a.accy=b.accy and a.noa=b.noa
+			left join view_uccb c on a.bno=c.uno
+			where a.bno = @curuno
+			and not(@curtable='cuts' and @curaccy=a.accy and @curnoa=a.noa)
+			
+			set @currank = @currank + 1
+			insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+				,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+				,qmount,qweight,qstoreno,qprice,qmemo)
+			select @currank,'10',b.datea,'',a.accy,'cut',a.noa,b.uno,c.productno,c.product
+				,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+				,b.gmount,b.[gweight],'',0,a.memo
+			from view_cuts a 
+			left join view_cut b on a.accy=b.accy and a.noa=b.noa
+			left join view_uccb c on b.uno=c.uno
+			where a.bno = @curuno and b.noa is not null
+		end
+		if exists(select * from @tmpa where [rank]=@currank)
+		begin
+			set @flag = 1
+		end
+		--cubu
+		if @flag = 0
+		begin
+			insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+				,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+				,qmount,qweight,qstoreno,qprice,qmemo)
+			select @currank,'6',a.datea,'',a.accy,'cubu',a.noa,a.uno,c.productno,c.product
+				,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+				,a.mount,a.[weight],a.storeno,0,a.memo
+			from view_cubu a
+			left join view_cub b on a.accy=b.accy and a.noa=b.noa
+			left join view_uccb c on a.uno=c.uno
+			where a.uno = @curuno
+			and not(@curtable='cubu' and @curaccy=a.accy and @curnoa=a.noa)
+			
+			set @currank = @currank + 1
+			insert into @tmpa([rank],gno,datea,nick,accy,tablea,noa,uno,productno,product
+				,radius,dime,width,lengthb,size,spec,class,hard,style,storeno,mount,[weight],memo
+				,qmount,qweight,qstoreno,qprice,qmemo)
+			select @currank,'11',d.datea,'',a.accy,'cub',a.noa,b.uno,c.productno,c.product
+				,c.radius,c.dime,c.width,c.lengthb,c.size,c.spec,c.class,c.hard,c.style,c.storeno,c.mount,c.[weight],c.memo
+				,b.gmount,b.[gweight],'',0,a.memo
+			from view_cubu a
+			left join view_cubt b on a.accy=b.accy and a.noa=b.noa and isnull(a.groupa,'')=isnull(b.groupa,'')
+			left join view_uccb c on b.uno=c.uno
+			left join view_cub d on a.accy=d.accy and a.noa=d.noa
+			where a.uno = @curuno and b.noa is not null
+		end
+		if exists(select * from @tmpa where [rank]=@currank)
+		begin
+			set @flag = 1
+		end
+		
+		--select * from @tmpa
+		--中止條件
+		select @n=count(1) from @tmpa where [rank]=@currank 
+		if @n=0
+		begin
+			break
+		end	
+		select @n=count(1) from @tmpa where [rank]=@currank and (tablea!='cng' and tablea!='vcc' and tablea!='get')
+		if @n>1
+		begin
+			break
+		end	
+	end
+	
+	select ROW_NUMBER()over(order by a.[rank]) rr 
+		,case a.gno when '1' then 'cngst'
+			when '2' then 'rc2st'
+			when '3' then 'rc2st'
+			when '4' then 'inast'
+			when '5' then 'cut'
+			when '6' then 'cubpi'
+			when '7' then 'vccst'
+			when '8' then 'vccst'
+			when '9' then 'getst'
+			when '10' then 'cut'
+			when '11' then 'cubpi' end
+			+ "?noa=\'"+a.noa+"\' and "+cast(ROW_NUMBER()over(order by a.[rank]) as nvarchar)+"=$rr?"+a.accy ghref
+		,b.uno  a01
+		,b.product a02
+		,b.size a03
+		,b.spec a04
+		,b.class a05
+		,b.hard a06
+		,b.storeno a07
+		,dbo.getComma(ISNULL(c.emount,0),1) a08
+		,dbo.getComma(ISNULL(c.eweight,0),3) a09
+		
+		,a.datea b01
+		--,"<a href="+CHAR(34)+"JavaScript:q_box('z_uno.aspx','{%22uno%22:%22"+a.uno+"%22}','95%','95%','104')"+char(34)+">"+a.uno+"</a>" uuu
+		,a.uno uuu
+		,dbo.getComma(a.qmount,1) qmm
+		,dbo.getComma(a.qweight,3) qww
+		,dbo.getComma(a.qprice,2) qpp
+		,ISNULL(d.store,a.qstoreno) qss
+		,a.* 
+	from @tmpa a
+	outer apply (select * from @tmpa where [rank]=0) b
+	left join uccy c on b.uno=c.uno 
+	left join store d on a.qstoreno =d.noa
+	where a.[rank]!=0;
+	
