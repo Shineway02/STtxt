@@ -93,6 +93,7 @@ declare @tmpa table(
 	products nvarchar(MAX),
 	vccno nvarchar(MAX),
 	mount float
+	primary key (idno) 
 )
 
 insert @tmpa
@@ -119,10 +120,11 @@ insert @tmp (gno,idno,accy,datea,typea,custno,comp,cust2no,cust2comp,productno,p
 select '0',idno,accy,datea,case when typea='1' then '寄庫' else '寄出' end,custno,comp,cust2no,cust2comp,productno,products,vccno,mount,0
 from @tmpa where datea between @t_bdate and @t_edate
 
-update a
-set stkmount=(select SUM((case when typea='1' then 1 else -1 end)*mount) from @tmpa 
-where custno=a.custno and productno=a.productno and idno<=a.idno)
-from @tmp a
+--後面跑47000筆跑12分太慢了
+--update a
+--set stkmount=(select SUM((case when typea='1' then 1 else -1 end)*mount) from @tmpa 
+--where custno=a.custno and productno=a.productno and idno<=a.idno)
+--from @tmp a
 
 if(@t_last='1')
 begin
@@ -131,6 +133,53 @@ begin
 	on a.custno=b.custno and a.productno=b.productno
 	where b.datea>a.datea
 end
+
+declare @idno int
+declare @custno nvarchar(MAX)
+declare @productno nvarchar(MAX)
+declare @t_custno nvarchar(MAX)='########'
+declare @t_productno nvarchar(MAX)='########'
+declare @mount float
+declare @typea nvarchar(MAX)
+declare @stkmount float
+declare cursor_table cursor for
+select idno,custno,productno,typea,mount from @tmp where gno='0' order by custno,productno,gno,datea,idno,cust2no
+open cursor_table
+fetch next from cursor_table
+into @idno,@custno,@productno,@typea,@mount
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@t_custno='########' or @t_productno='########' or @t_custno!=@custno or @t_productno!=@productno)
+	begin
+		select @stkmount=(
+			select SUM((case when typea='1' then 1 else -1 end)*mount) from @tmpa 
+			where custno=a.custno and productno=a.productno and idno<=a.idno
+		)
+		from @tmp a where idno=@idno
+		
+		update a set stkmount=@stkmount from @tmp a where idno=@idno
+	
+	end
+	else
+	begin
+		if(@typea='寄出')
+			set @stkmount=@stkmount-@mount
+		else
+			set @stkmount=@stkmount+@mount
+		
+		update a set stkmount=@stkmount from @tmp a where idno=@idno
+	
+	end
+		
+	set @t_custno=@custno
+	set @t_productno=@productno
+
+	fetch next from cursor_table
+	into @idno,@custno,@productno,@typea,@mount
+end
+close cursor_table
+deallocate cursor_table
+
 
 if((select COUNT(*) from @tmp)>0)
 begin

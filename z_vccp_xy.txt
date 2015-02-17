@@ -229,3 +229,50 @@ dbo.getComma(total,0) total,
 *
 from @tmp
 order by noa,pageno,recno,gno;
+--------------------------------------------------------------------------------------------------------------------------------
+z_vccp_xy3:--z_vccp_xy3
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bpno nvarchar(50)
+declare @t_epno nvarchar(50)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
+
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bpno = case when '#non' = [6] then '' else [6] end
+set @t_epno = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_bcustno = case when '#non' = [8] then '' else [8] end
+set @t_ecustno = case when '#non' = [9] then CHAR(255) else [9] end
+
+--*******************************************************************************************************
+declare @tmp table(
+	gno nvarchar(1),
+	datea nvarchar(15),
+	custno nvarchar(90),
+	comp nvarchar(150),
+	ordeno nvarchar(100),
+	amemo nvarchar(MAX),
+	no2 nvarchar(10),
+	productno nvarchar(90),
+	products nvarchar(90),
+	spec nvarchar(90),
+	mount float,
+	vmount float,
+	umount float,
+	bmemo nvarchar(MAX)
+)
+
+insert @tmp
+select '0',b.datea,a.custno,a.comp,a.noa,a.memo
+,b.no2,b.productno,b.product,b.spec,b.mount
+,isnull(c.mount,0),b.mount-isnull(c.mount,0),b.memo
+from view_orde a left join view_ordes b on a.noa=b.noa
+outer apply (select sum(mount)mount from view_vccs where ordeno=a.noa and no2=b.no2 ) c
+where b.datea!='' and b.mount!=0
+and  ((b.datea between @t_bdate and @t_edate) or (b.mount-c.mount>0))
+and  (b.productno between @t_bpno and @t_epno)
+and  (a.custno between @t_bcustno and @t_ecustno)
+
+
+select * from @tmp order by datea,custno,ordeno,no2;
