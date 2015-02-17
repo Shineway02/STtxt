@@ -12,6 +12,20 @@ set @t_bsalesno = case when '#non'=[6] then '' else [6] end
 set @t_esalesno = case when '#non'=[7] then char(255) else [7] end
 declare @t_pageline int = 8   --------一頁幾行
 -------------------------------------------------------------------------------------------------------------------------
+--收款
+declare @umms table(
+	acc2 nvarchar(50),
+	custno nvarchar(50),
+	mon nvarchar(10),
+	money float,
+	primary key (acc2,custno,mon) 
+) 
+
+insert @umms
+select isnull(acc2,''),isnull(a.custno,''),isnull(a.mon,''),SUM(money) from umms b left join umm a on a.noa=b.noa
+where money!=0 group by isnull(acc2,''),isnull(a.custno,''),isnull(a.mon,'')
+---------------------------------------------------------------------------
+--前期
 declare @tmp table(
 	gno nvarchar(4),
 	typea nvarchar(4),
@@ -58,16 +72,23 @@ set total=(case when typea='1' then 1 else -1 end)*total
 ,tax=(case when typea='1' then 1 else -1 end)*tax
 ,money=(case when typea='1' then 1 else -1 end)*money
 
-insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed)
-select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total)
-,isnull((select SUM(ub.paysale) from umms ub left join umm ua on ua.noa=ub.noa where ua.mon<@t_mon and (case when ua.custno!='' then ua.custno else ua.custno2 end)=a.custno),0)
-from @tmp a
-group by a.custno
+--insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed)
+--select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total)
+--,isnull((select SUM(ub.paysale) from umms ub left join umm ua on ua.noa=ub.noa where ua.mon<@t_mon and (case when ua.custno!='' then ua.custno else ua.custno2 end)=a.custno),0)
+--from @tmp a
+--group by a.custno
+
+insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed) 
+select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total) 
+,isnull((select SUM(money) from @umms where mon<@t_mon and custno=a.custno),0) 
+from @tmp a 
+group by a.custno 
 
 delete @tmp where gno='0'
 update @tmp set unpay=total-payed where gno='1'
 
 -------------------------------------------------------------------------------------------------------------------------
+--本期
 declare @result table(
 	gno nvarchar(1),
 	typea nvarchar(4),
@@ -124,24 +145,44 @@ update @result
 set total=(case when  (select count(*) from ucca )>0 then amoney+(case when taxtype='1' then tax else 0 end) else total end)
 ,amoney=(case when  (select count(*) from ucca )>0 then total-(case when taxtype='3' then tax else 0 end) else amoney end)
 
-insert @result (gno,noa,noq,datea,mon,custno,comp,amoney,tax,total,paysale,discounts,payed,punpay,unpay)
-select '1',CHAR(255),CHAR(255),'',@t_mon,a.custno,MAX(comp),MAX(b.amoney),MAX(b.tax),MAX(b.total)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
-,isnull((select unpay from @tmp where custno=a.custno),0),0
-from @result a
-outer apply (select custno,SUM(amoney)amoney,SUM(tax)tax,SUM(total)total from 
-((select custno,noa,MAX((case when typea='1' then 1 else -1 end)*amoney)amoney,MAX((case when typea='1' then 1 else -1 end)*tax)tax,MAX((case when typea='1' then 1 else -1 end)*total)total from @result where a.custno=custno group by custno,noa))tmp group by custno) b
-group by a.custno
 
-insert @result(gno,noa,noq,datea,mon,custno,comp,post,addr,tel,serial,amoney,tax,total,paysale,discounts,payed,punpay,unpay,counts)
-select '1',noa,'001',CHAR(255),CHAR(255),custno,comp,post,addr,tel,serial,0,0,0
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
-,unpay,unpay,0 from @tmp a
-where custno not in (select custno from @result )
+--insert @result (gno,noa,noq,datea,mon,custno,comp,amoney,tax,total,paysale,discounts,payed,punpay,unpay)
+--select '1',CHAR(255),CHAR(255),'',@t_mon,a.custno,MAX(comp),MAX(b.amoney),MAX(b.tax),MAX(b.total)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+--,isnull((select unpay from @tmp where custno=a.custno),0),0
+--from @result a
+--outer apply (select custno,SUM(amoney)amoney,SUM(tax)tax,SUM(total)total from 
+--((select custno,noa,MAX((case when typea='1' then 1 else -1 end)*amoney)amoney,MAX((case when typea='1' then 1 else -1 end)*tax)tax,MAX((case when typea='1' then 1 else -1 end)*total)total from @result where a.custno=custno group by custno,noa))tmp group by custno) b
+--group by a.custno
+
+insert @result (gno,noa,noq,datea,mon,custno,comp,amoney,tax,total,paysale,discounts,payed,punpay,unpay) 
+select '1',CHAR(255),CHAR(255),'',@t_mon,a.custno,MAX(comp),MAX(b.amoney),MAX(b.tax),MAX(b.total) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno),0) 
+,isnull((select unpay from @tmp where custno=a.custno),0),0 
+from @result a 
+outer apply (select custno,SUM(amoney)amoney,SUM(tax)tax,SUM(total)total from 
+((select custno,noa,MAX((case when typea='1' then 1 else -1 end)*amoney)amoney,MAX((case when typea='1' then 1 else -1 end)*tax)tax,MAX((case when typea='1' then 1 else -1 end)*total)total from @result where a.custno=custno group by custno,noa))tmp group by custno) b 
+group by a.custno 
+
+--insert @result(gno,noa,noq,datea,mon,custno,comp,post,addr,tel,serial,amoney,tax,total,paysale,discounts,payed,punpay,unpay,counts)
+--select '1',noa,'001',CHAR(255),CHAR(255),custno,comp,post,addr,tel,serial,0,0,0
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+--,unpay,unpay,0 from @tmp a
+--where custno not in (select custno from @result )
+
+insert @result(gno,noa,noq,datea,mon,custno,comp,post,addr,tel,serial,amoney,tax,total,paysale,discounts,payed,punpay,unpay,counts) 
+select '1',noa,'001',CHAR(255),CHAR(255),custno,comp,post,addr,tel,serial,0,0,0 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno),0) 
+,unpay,unpay,0 from @tmp a 
+where custno not in (select custno from @result ) 
 
 update a 
 set unpay=punpay+total-payed
@@ -220,6 +261,19 @@ set @t_bsalesno = case when '#non'=[6] then '' else [6] end
 set @t_esalesno = case when '#non'=[7] then char(255) else [7] end
 declare @t_pageline int = 32   --------一頁幾行
 -------------------------------------------------------------------------------------------------------------------------
+--收款
+declare @umms table(
+	acc2 nvarchar(50),
+	custno nvarchar(50),
+	mon nvarchar(10),
+	money float,
+	primary key (acc2,custno,mon) 
+) 
+
+insert @umms
+select isnull(acc2,''),isnull(a.custno,''),isnull(a.mon,''),SUM(money) from umms b left join umm a on a.noa=b.noa
+where money!=0 group by isnull(acc2,''),isnull(a.custno,''),isnull(a.mon,'')
+---------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(4),
 	typea nvarchar(4),
@@ -266,11 +320,15 @@ set total=(case when typea='1' then 1 else -1 end)*total
 ,tax=(case when typea='1' then 1 else -1 end)*tax
 ,money=(case when typea='1' then 1 else -1 end)*money
 
-insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed)
-select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total)
-,isnull((select SUM(ub.paysale) from umms ub left join umm ua on ua.noa=ub.noa where ua.mon<@t_mon and (case when ua.custno!='' then ua.custno else ua.custno2 end)=a.custno),0)
-from @tmp a
-group by a.custno
+--insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed)
+--select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total)
+--,isnull((select SUM(ub.paysale) from umms ub left join umm ua on ua.noa=ub.noa where ua.mon<@t_mon and (case when ua.custno!='' then ua.custno else ua.custno2 end)=a.custno),0)
+--from @tmp a group by a.custno
+
+insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed) 
+select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total) 
+,isnull((select SUM(money) from @umms where mon<@t_mon and custno=a.custno),0) 
+from @tmp a group by a.custno 
 
 delete @tmp where gno='0'
 update @tmp set unpay=total-payed where gno='1'
@@ -337,9 +395,12 @@ set total=(case when  (select count(*) from ucca )>0 then amoney+(case when taxt
 
 insert @result (gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,amoney,tax,total,paysale,discounts,payed,punpay,unpay)
 select '3',CHAR(255),CHAR(255),'',@t_mon,a.custno,MAX(comp),CHAR(255),'',MAX(b.amoney),MAX(b.tax),MAX(b.total)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno),0) 
 ,isnull((select unpay from @tmp where custno=a.custno),0),0
 from @result a
 outer apply (select custno,SUM(amoney)amoney,SUM(tax)tax,SUM(total)total from 
@@ -348,9 +409,12 @@ group by a.custno
 
 insert @result(gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,post,addr,tel,serial,amoney,tax,total,paysale,discounts,payed,punpay,unpay,counts)
 select '3',noa,'001',CHAR(255),CHAR(255),custno,comp,CHAR(255),'',post,addr,tel,serial,0,0,0
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno),0) 
 ,unpay,unpay,0 from @tmp a
 where custno not in (select custno from @result )
 
@@ -509,6 +573,19 @@ set @t_bsalesno = case when '#non'=[6] then '' else [6] end
 set @t_esalesno = case when '#non'=[7] then char(255) else [7] end
 declare @t_pageline int = 32   --------一頁幾行
 -------------------------------------------------------------------------------------------------------------------------
+--收款
+declare @umms table(
+	acc2 nvarchar(50),
+	custno nvarchar(50),
+	mon nvarchar(10),
+	money float,
+	primary key (acc2,custno,mon) 
+) 
+
+insert @umms
+select isnull(acc2,''),isnull(a.custno,''),isnull(a.mon,''),SUM(money) from umms b left join umm a on a.noa=b.noa
+where money!=0 group by isnull(acc2,''),isnull(a.custno,''),isnull(a.mon,'')
+---------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(4),
 	typea nvarchar(4),
@@ -557,7 +634,8 @@ set total=(case when typea='1' then 1 else -1 end)*total
 
 insert @tmp (gno,custno,comp,post,addr,tel,serial,noa,money,tax,total,payed)
 select '1',a.custno,MAX(comp),MAX(post),MAX(addr),MAX(tel),MAX(serial),CHAR(255),sum(money),sum(tax),sum(total)
-,isnull((select SUM(ub.paysale) from umms ub left join umm ua on ua.noa=ub.noa where ua.mon<@t_mon and (case when ua.custno!='' then ua.custno else ua.custno2 end)=a.custno),0)
+--,isnull((select SUM(ub.paysale) from umms ub left join umm ua on ua.noa=ub.noa where ua.mon<@t_mon and (case when ua.custno!='' then ua.custno else ua.custno2 end)=a.custno),0)
+,isnull((select SUM(money) from @umms where mon<@t_mon and custno=a.custno),0)
 from @tmp a
 group by a.custno
 
@@ -626,9 +704,12 @@ set total=(case when  (select count(*) from ucca )>0 then amoney+(case when taxt
 
 insert @result (gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,amoney,tax,total,paysale,discounts,payed,punpay,unpay)
 select '3',CHAR(255),CHAR(255),'',@t_mon,a.custno,MAX(comp),CHAR(255),'',MAX(b.amoney),MAX(b.tax),MAX(b.total)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno),0) 
 ,isnull((select unpay from @tmp where custno=a.custno),0),0
 from @result a
 outer apply (select custno,SUM(amoney)amoney,SUM(tax)tax,SUM(total)total from 
@@ -637,9 +718,12 @@ group by a.custno
 
 insert @result(gno,noa,noq,datea,mon,custno,comp,xcustno,xcomp,post,addr,tel,serial,amoney,tax,total,paysale,discounts,payed,punpay,unpay,counts)
 select '3',noa,'001',CHAR(255),CHAR(255),custno,comp,CHAR(255),'',post,addr,tel,serial,0,0,0
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
-,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0)
+--,isnull((select SUM(paysale) from umms where mon=@t_mon and custno=a.custno),0)
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)=0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno and CHARINDEX('折讓',acc2)>0),0) 
+,isnull((select SUM(money) from @umms where mon=@t_mon and custno=a.custno),0) 
 ,unpay,unpay,0 from @tmp a
 where custno not in (select custno from @result )
 
