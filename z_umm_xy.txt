@@ -541,15 +541,16 @@ declare @tmp table(
 	bonus float
 )
 
-insert into @tmp
-select '0',a.datea,a.noa,b.noq,a.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=a.custno)
-,a.total,b.paysale,isnull(e.salesno,''),e.sales,c.datea,c.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=c.custno)
-,c.noa,c.noq,c.product,c.mount,c.price,c.total,d.class,null
-from umm a left join umms b on a.noa=b.noa left join view_vccs c on b.vccno=c.noa
-left join view_ordes d on (c.ordeno=d.noa and c.no2=d.no2)
-left join view_vcc e on c.noa=e.noa
-where a.mon=@t_mon and (isnull(e.salesno,'') between @t_bsalesno and @t_esalesno)
-and isnull(c.noa,'')!='' and isnull(c.price,0)!=0
+insert into @tmp 
+select '0',a.datea,a.noa,b.noq,a.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=a.custno) 
+,a.total,b.paysale,isnull(f.salesno,''),f.sales,c.datea,c.custno,(select case when isnull(nick,'')!='' then nick else left(comp,8) end from cust where noa=c.custno) 
+,c.noa,c.noq,c.product,c.mount,c.price,c.total,e.class,null 
+from umm a left join umms b on a.noa=b.noa left join view_vccs c on b.vccno=c.noa 
+left join view_ordes d on (c.ordeno=d.noa and c.no2=d.no2) 
+left join view_quats e on (d.quatno=e.noa and d.no3=e.no3) 
+left join view_vcc f on c.noa=f.noa 
+where a.mon=@t_mon and (isnull(f.salesno,'') between @t_bsalesno and @t_esalesno) 
+and isnull(c.noa,'')!='' and isnull(c.price,0)!=0 
 
 update @tmp
 set bonus=(case when rate='' then 100 else cast(rate as float) end)/100*vtotal
