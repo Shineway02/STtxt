@@ -205,5 +205,78 @@ z_salaryp_rb3:--z_salaryp_rb3
 declare @t_xmon nvarchar(20)
 set @t_xmon = case when '#non' = [1] then '' else [1] end
 ---------------------------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(1),
+		partno nvarchar(20),
+		parts nvarchar(50),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		-- 員工負擔
+		la_person float,--勞保費
+		he_person float,--健保費
+		we_person float,--福利金
+		pr_person float,--團保費
+		re_person float,--退休準備金
+		pe_person float,--退休金
+		-- 公司負擔
+		la_comp float,--勞保費
+		disaster float,--職災
+		he_comp float,--健保費
+		we_comp float,--福利金
+		pr_xcomp float,--團保費
+		re_comp float,--退休準備金
+		pe_comp float,--退休金
+		
+		insur_fund float --工資墊償基金
+)
+
+insert @tmp
+select '0',isnull(c.partno,''),isnull(c.part,''),a.noa,c.namea
+,SUM(b.la_person),SUM(b.he_person)
+,(select SUM(sb.welfare) from salary sa left join salarys sb on sa.noa=sb.noa where sa.mon=@t_xmon and sb.sno=a.noa)
+,null,SUM(b.re_person),null
+,SUM(b.la_comp),SUM(b.disaster),SUM(b.he_comp),null,null,SUM(b.re_comp),null
+,SUM(a.insur_fund*b.sa_labor)
+from labase a left join salinsures b on a.noa=b.noa
+left join sss c on a.noa=c.noa
+where b.mon=@t_xmon
+group by c.partno,c.part,a.noa,c.namea
+
+insert @tmp (gno,partno,parts,insur_fund)
+select '1',partno,parts,SUM(insur_fund) from @tmp where gno='0' group by partno,parts
+
+insert @tmp (gno,partno,parts,la_person,he_person,we_person,pr_person,re_person,pe_person
+,la_comp,disaster,he_comp,we_comp,pr_xcomp,re_comp,pe_comp,insur_fund)
+select '2',partno,parts,SUM(la_person),SUM(he_person),SUM(we_person),SUM(pr_person)
+,SUM(re_person),SUM(pe_person),SUM(la_comp),SUM(disaster),SUM(he_comp),SUM(we_comp) 
+,SUM(pr_xcomp),SUM(re_comp),SUM(pe_comp),SUM(insur_fund)
+from @tmp where gno='0' group by partno,parts
+
+insert @tmp (gno,partno,parts,la_person,he_person,we_person,pr_person,re_person,pe_person
+,la_comp,disaster,he_comp,we_comp,pr_xcomp,re_comp,pe_comp,insur_fund)
+select '3',CHAR(255),CHAR(255),SUM(la_person),SUM(he_person),SUM(we_person),SUM(pr_person)
+,SUM(re_person),SUM(pe_person),SUM(la_comp),SUM(disaster),SUM(he_comp),SUM(we_comp) 
+,SUM(pr_xcomp),SUM(re_comp),SUM(pe_comp),SUM(insur_fund)
+from @tmp where gno='0'
+
+select 
+dbo.getComma(la_person,0)la_person
+,dbo.getComma(he_person,0)he_person
+,dbo.getComma(we_person,0)we_person
+,dbo.getComma(pr_person,0)pr_person
+,dbo.getComma(re_person,0)re_person
+,dbo.getComma(pe_person,0)pe_person
+,dbo.getComma(la_comp,0)la_comp
+,dbo.getComma(disaster,0)disaster
+,dbo.getComma(he_comp,0)he_comp
+,dbo.getComma(we_comp,0)we_comp
+,dbo.getComma(pr_xcomp,0)pr_xcomp
+,dbo.getComma(re_comp,0)re_comp
+,dbo.getComma(pe_comp,0)pe_comp
+,dbo.getComma(insur_fund,0)insur_fund
+,* 
+from @tmp 
+order by partno,(case when gno='1' then '0' when gno='0' then '1' else gno end),sssno
 ;
+
 ------------------------------------------------------------------------------------------------------------------------------
