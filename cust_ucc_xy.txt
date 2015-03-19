@@ -279,7 +279,10 @@ begin
 		exec("update ordes"+@accy+" set productno='"+@newpno+"'	where noa='"+@t_noa+"' and no2='"+@t_no2+"'")
 		
 		if(isnull(@quatno,'')!='' and isnull(@no3,'')!='')
-		exec("update quats"+@accy+" set productno='"+@newpno+"' where noa='"+@quatno+"' and no3='"+@no3+"'")
+		begin
+			set @year=(select top 1 accy from view_quat where noa=@quatno)
+			exec("update quats"+@year+" set productno='"+@newpno+"' where noa='"+@quatno+"' and no3='"+@no3+"'")
+		end
 		
 		fetch next from cursor_table 
 		into @accy,@t_noa,@t_no2,@product,@spec,@unit,@classa,@quatno,@no3
@@ -345,7 +348,10 @@ begin
 		exec("update ordcs"+@accy+" set productno='"+@newpno+"' where noa='"+@t_noa+"' and no2='"+@t_no2+"'")
 		
 		if(isnull(@ordbno,'')!='' and isnull(@no3,'')!='')
-			exec("update ordbs"+@accy+" set productno='"+@newpno+"' where noa='"+@ordbno+"' and no3='"+@no3+"'")
+		begin
+			set @year=(select top 1 accy from view_ordb where noa=@ordbno)
+			exec("update ordbs"+@year+" set productno='"+@newpno+"' where noa='"+@ordbno+"' and no3='"+@no3+"'")
+		end
 		
 		fetch next from cursor_table 
 		into @accy,@t_noa,@t_no2,@product,@spec,@unit,@classa,@ordbno,@no3
