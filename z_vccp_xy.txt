@@ -40,7 +40,7 @@ declare @tmp table(
 insert into @tmp 
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
 ,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.addr2 else a.addr end,c.conntel,c.billmemo
-,a.invono,a.memo
+,a.invono,replace(a.memo,'chr(10)','<BR>')
 ,case when isnull(cm.notprice,0)=1 then null else a.money end
 ,case when isnull(cm.notprice,0)=1 then null else a.tax end
 ,dbo.split(c.invomemo,'##',1),dbo.split(c.invomemo,'##',3),c.paytype
@@ -49,7 +49,7 @@ select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
 --,b.tranmoney2
 ,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.price end) end
 ,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.total end) end
-,b.memo,case when a.worker2!='' then a.worker2 else a.worker end
+,replace(b.memo,'chr(10)','<BR>'),case when a.worker2!='' then a.worker2 else a.worker end
 from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa left join custm cm on a.custno=cm.noa
 left join ucc d on b.productno=d.noa
 where a.noa between @t_bxnoa and @t_exnoa
@@ -156,7 +156,7 @@ declare @tmp table(
 insert into @tmp 
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
 ,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.addr2 else a.addr end,c.conntel,c.billmemo
-,a.invono,a.memo
+,a.invono,replace(a.memo,'chr(10)','<BR>')
 ,case when isnull(cm.notprice,0)=1 then null else a.money end
 ,case when isnull(cm.notprice,0)=1 then null else a.tax end
 ,dbo.split(c.invomemo,'##',1),dbo.split(c.invomemo,'##',3),c.paytype
@@ -165,7 +165,7 @@ select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
 --,b.tranmoney2
 ,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.price end) end
 ,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.total end) end
-,b.memo,case when a.worker2!='' then a.worker2 else a.worker end
+,replace(b.memo,'chr(10)','<BR>'),case when a.worker2!='' then a.worker2 else a.worker end
 from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa left join custm cm on a.custno=cm.noa
 left join ucc d on b.productno=d.noa
 where a.noa between @t_bxnoa and @t_exnoa
