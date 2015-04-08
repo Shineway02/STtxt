@@ -1,0 +1,62 @@
+z_vcfp_yc01:--z_vcfp_yc01
+	declare @t_worker nvarchar(20) = '[1]'
+	declare @t_bnoa nvarchar(50) = case when '#non' = [2] then '' else [2] end
+	declare @t_enoa nvarchar(50) = case when '#non' = [3] then CHAR(255) else [3] end
+	declare @t_bdate nvarchar(50) = case when '#non' = [4] then '' else [4] end
+	declare @t_edate nvarchar(50) = case when '#non' = [5] then CHAR(255) else [5] end
+	declare @t_btggno nvarchar(50) = case when '#non' = [6] then '' else [6] end
+	declare @t_etggno nvarchar(50) = case when '#non' = [7] then CHAR(255) else [7] end
+	----------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(50),
+	noq nvarchar(50),
+	datea nvarchar(20),
+	custno nvarchar(50),
+	comp nvarchar(100),
+	pno nvarchar(50),
+	product nvarchar(MAX),
+	mount float,
+	weight float,
+	memo nvarchar(MAX),
+	date2 nvarchar(20),
+	uno nvarchar(50),
+	storeno nvarchar(50),
+	store nvarchar(50)
+	
+)
+
+insert into @tmp
+select '0',a.noa,b.noq,a.datea,c.custno,case when c.nick!='' then c.nick else left(c.comp,4) end
+,b.productno,b.product,b.mount,b.weight,b.memo,c.datea,'','',''
+from vcf a
+left join vcfs b on a.noa=b.noa
+left join view_orde c on b.ordeno = c.noa
+left join view_ordes d on b.ordeno = d.noa and b.no2=d.no2
+where a.noa between @t_bnoa and @t_enoa
+and a.datea between @t_bdate and @t_edate
+and a.tggno between @t_btggno and @t_etggno
+order by a.noa
+	
+insert into @tmp
+select '2',a.noa,b.noq,a.datea,'','',b.productno,b.product,b.mount,b.weight,b.memo,'',b.uno,b.storeno,b.store
+from vcf a left join vcft b on a.noa=b.noa
+where a.noa between @t_bnoa and @t_enoa
+and a.datea between @t_bdate and @t_edate
+and a.tggno between @t_btggno and @t_etggno
+order by a.noa
+
+if((select count(*) from @tmp where gno='2'))>0
+begin
+	insert into @tmp(gno,noa)
+	select '1',noa from @tmp group by noa
+end
+
+insert into @tmp(gno,noa,datea,memo)
+select '3',a.noa,a.datea,a.memo
+from vcf a 
+where a.noa between @t_bnoa and @t_enoa
+and a.datea between @t_bdate and @t_edate
+and a.tggno between @t_btggno and @t_etggno
+
+select *,@t_worker worker from @tmp order by noa,gno,noq;
