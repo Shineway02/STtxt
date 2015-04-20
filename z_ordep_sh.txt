@@ -1,0 +1,103 @@
+﻿z_ordep_sh1:--z_ordep_sh1
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bnoa nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_enoa nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	--------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		page nvarchar(20),
+		
+		accy nvarchar(10),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		addr nvarchar(50),
+		cno nvarchar(20),
+		acomp nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(50),
+		stype nvarchar(50),
+		
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		price float,
+		mount float,
+		[money] float,
+		memo nvarchar(max),
+		tdate nvarchar(20)
+	)
+	--設定顯示筆數避免單號空白執行過久
+	insert into @tmp(gno,pno,recno,accy,noa,datea,custno,cust,addr,cno,acomp,tel,fax,stype
+	,productno,product,unit,price,mount,[money],memo,tdate)
+	select top 1000  '1','1',ROW_NUMBER()over(partition by a.noa order by b.no2)
+		,a.accy,a.noa,a.datea,a.custno,a.comp,a.addr2,a.cno,a.acomp,tel,fax
+		,case when a.stype='1' then '內銷' when a.stype='2' then '代工' when a.stype='3' then '外銷' else '計畫生產' end
+		,b.productno,b.product,b.unit,b.price,b.mount,b.total,b.memo,b.datea
+	from view_orde a
+	left join view_ordes b on a.noa=b.noa
+	where a.noa between @t_bnoa and @t_enoa
+	order by a.noa,b.no2
+	---------------------------------------------------------------
+	insert into @tmp (gno,pno,noa,datea,custno,cust,addr,cno,acomp,mount,[money])
+	select '3','3',noa,datea,custno,cust,addr,cno,acomp,sum(isnull(mount,'')),sum(isnull([money],''))
+	from @tmp group by noa,datea,custno,cust,addr,cno,acomp
+	---------------------------------------------------------------
+	declare @t_pageline int = 15 --一頁幾行
+	declare @noa nvarchar(20)
+	declare @datea nvarchar(20)
+	declare @custno nvarchar(20)
+	declare @cust nvarchar(50)
+	declare @addr nvarchar(100)
+	declare @cno nvarchar(20)
+	declare @acomp nvarchar(50)
+	declare @n int
+	declare @recno int
+	
+	declare cursor_table cursor for
+	select noa,datea,custno,cust,addr,cno,acomp
+		,count(1),max(recno) from @tmp group by noa,datea,custno,cust,addr,cno,acomp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while @n%@t_pageline !=0
+		begin
+			set @recno = @recno + 1
+			insert into @tmp(gno,pno,noa,datea,custno,cust,addr,cno,acomp,recno)
+			values('2','2',@noa,@datea,@custno,@cust,@addr,@cno,@acomp,@recno)
+			set @n=@n+1
+		end
+		
+		fetch next from cursor_table
+		into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	------------------------------------------------------------------
+	update @tmp set page = CAST(ceiling(cast(a.recno as float)/cast(@t_pageline as float)) as nvarchar)+'/'+CAST(ceiling(cast(b.recno as float)/cast(@t_pageline as float)) as nvarchar)
+	from @tmp a
+	left join (select noa,MAX(recno) recno from @tmp group by noa) b on a.noa=b.noa
+
+	select a.recno rr
+		,a.productno a01
+		,a.product a02
+		,a.unit a03
+		,a.mount a04
+		,a.price a06
+		,dbo.getComma(a.[money],0) a07
+		,a.memo a08
+		,a.tdate a09
+		,a.noa b01
+		,a.cust b02
+		,a.addr b03
+		,a.* 
+		,a.acomp xxxx
+	from @tmp a
+	order by a.noa,a.pno,a.recno;
+	
