@@ -1,102 +1,70 @@
-﻿z_vccp_sh1:--z_vccp_sh1
-	SET QUOTED_IDENTIFIER OFF
-	declare @t_bnoa nvarchar(20) = case when '#non'=[2] then '' else [2] end
-	declare @t_enoa nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
-	--------------------------------------------------------------
-	declare @tmp table(
+z_vccp_sh1:--z_vccp_sh1
+SET QUOTED_IDENTIFIER OFF
+	declare @t_accy nvarchar(max)
+	declare @t_addr2 nvarchar(max)
+	declare @t_addr nvarchar(max)
+	declare @t_tel nvarchar(max)
+	declare @t_fax nvarchar(max)
+	declare @t_bno nvarchar(20)
+	declare @t_eno nvarchar(20)
+
+	set @t_accy = '[1]'
+	set @t_addr2 = '[2]'
+	set @t_addr = '[3]'
+	set @t_tel = '[4]'
+	set @t_fax= '[5]'
+	
+	set @t_bno = case when '#non' = [6] then '' else [6] end
+	set @t_eno = case when '#non' = [7] then CHAR(255) else [7] end
+
+declare @tmp table (
 		gno nvarchar(10),
-		pno nvarchar(10),
-		recno int,
-		page nvarchar(20),
-		
-		accy nvarchar(10),
-		noa nvarchar(20),
-		datea nvarchar(10),
-		custno nvarchar(20),
+		noa nvarchar(30),
+		noq nvarchar(10),
 		cust nvarchar(50),
-		addr nvarchar(50),
-		cno nvarchar(20),
-		acomp nvarchar(50),
-		
-		productno nvarchar(20),
-		product nvarchar(50),
-		unit nvarchar(20),
-		price float,
+		datea nvarchar(20),
+		serial nvarchar(30),
+		phone nvarchar(30),
+		product nvarchar(max),
 		mount float,
 		width float,
-		[money] float,
-		tranmoney2 float,
-		tranmoney3 float,
-		memo nvarchar(max)
+		unit nvarchar(20),
+		price float,
+		total float,
+		money float,
+		tax float,
+		sums float
 	)
-	--設定顯示筆數避免單號空白執行過久
-	insert into @tmp(gno,pno,recno,accy,noa,datea,custno,cust,addr,cno,acomp
-	,productno,product,unit,price,mount,width,[money],tranmoney2,tranmoney3,memo)
-	select top 1000  '1','1',ROW_NUMBER()over(partition by a.noa order by b.noq)
-		,a.accy,a.noa,a.datea,a.custno,a.comp,a.addr2,a.cno,a.acomp
-		,b.productno,b.product,b.unit,b.price,b.mount,b.width,b.total,b.tranmoney2,b.tranmoney3,b.memo
-	from view_vcc a
-	left join view_vccs b on a.noa=b.noa
-	where a.noa between @t_bnoa and @t_enoa
-	order by a.noa,b.noq
-	---------------------------------------------------------------
-	insert into @tmp (gno,pno,noa,datea,custno,cust,addr,cno,acomp,mount,width,[money],tranmoney2,tranmoney3)
-	select '3','3',noa,datea,custno,cust,addr,cno,acomp,sum(isnull(mount,'')),sum(isnull(width,'')),sum(isnull([money],'')),sum(isnull(tranmoney2,0)),sum(isnull(tranmoney3,0))
-	from @tmp group by noa,datea,custno,cust,addr,cno,acomp
-	---------------------------------------------------------------
-	declare @t_pageline int = 15 --一頁幾行
-	declare @noa nvarchar(20)
-	declare @datea nvarchar(20)
-	declare @custno nvarchar(20)
-	declare @cust nvarchar(50)
-	declare @addr nvarchar(100)
-	declare @cno nvarchar(20)
-	declare @acomp nvarchar(50)
-	declare @n int
-	declare @recno int
-	
-	declare cursor_table cursor for
-	select noa,datea,custno,cust,addr,cno,acomp
-		,count(1),max(recno) from @tmp group by noa,datea,custno,cust,addr,cno,acomp
-	open cursor_table
-	fetch next from cursor_table
-	into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
-	while(@@FETCH_STATUS <> -1)
-	begin		
-		while @n%@t_pageline !=0
-		begin
-			set @recno = @recno + 1
-			insert into @tmp(gno,pno,noa,datea,custno,cust,addr,cno,acomp,recno)
-			values('2','2',@noa,@datea,@custno,@cust,@addr,@cno,@acomp,@recno)
-			set @n=@n+1
-		end
-		
-		fetch next from cursor_table
-		into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
-	end
-	close cursor_table
-	deallocate cursor_table
-	
-	------------------------------------------------------------------
-	update @tmp set page = CAST(ceiling(cast(a.recno as float)/cast(@t_pageline as float)) as nvarchar)+'/'+CAST(ceiling(cast(b.recno as float)/cast(@t_pageline as float)) as nvarchar)
-	from @tmp a
-	left join (select noa,MAX(recno) recno from @tmp group by noa) b on a.noa=b.noa
+insert @tmp
+select '0',a.noa,b.noq,c.comp,a.datea,c.serial,a.tel,b.product,b.mount,isnull(b.width,0)as width,b.unit,b.price,b.total,0,isnull(d.tax,0)as tax,0 
+from view_vcc a left join view_vccs  b on a.noa=b.noa left join cust c on a.custno=c.noa left join vcca d on a.invono = d.noa where (a.noa between @t_bno and @t_eno)
 
-	select a.recno rr
-		,a.productno a01
-		,a.product a02
-		,a.unit a03
-		,a.mount a04
-		,a.width a05
-		,a.price a06
-		,dbo.getComma(a.[money],0) a07
-		,a.tranmoney2 a08
-		,a.tranmoney3 a09
-		,a.noa b01
-		,a.cust b02
-		,a.addr b03
-		,a.* 
-		,a.acomp xxxx
-	from @tmp a
-	order by a.noa,a.pno,a.recno;
-	
+declare @noa nvarchar(MAX)
+declare @counts int 
+declare @t_line int =15
+
+declare cursor_table cursor for
+select noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@counts
+while(@@FETCH_STATUS <> -1)
+begin		
+	while (@counts<@t_line)
+	begin
+		insert @tmp(gno,noa,noq)
+		select '1',@noa,CHAR(255)
+		
+		set @counts=@counts+1
+	end	
+	fetch next from cursor_table
+	into @noa,@counts
+end
+close cursor_table
+deallocate cursor_table
+
+
+insert @tmp(gno,noa,money,tax,sums)
+select '2',noa,SUM(total),SUM(tax),SUM(total)+SUM(tax) from @tmp  group by noa
+select dbo.getComma(total,0) total,dbo.getComma(money,0) money,dbo.getComma(tax,0) tax,dbo.getComma(sums,0) sums,* ,@t_addr2 addr2,@t_addr addr,@t_tel tel,SUBSTRING(@t_fax,0,CHARINDEX('Fax',@t_fax)) facsimile from @tmp order by noa,gno,noq 
+;
