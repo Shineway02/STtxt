@@ -16,6 +16,8 @@ declare @tmp table(
 	comp nvarchar(100),
 	pno nvarchar(50),
 	product nvarchar(MAX),
+	unit nvarchar(20),
+	lengthb float,
 	mount float,
 	weight float,
 	memo nvarchar(MAX),
@@ -28,7 +30,7 @@ declare @tmp table(
 
 insert into @tmp
 select '0',a.noa,b.noq,a.datea,c.custno,case when c.nick!='' then c.nick else left(c.comp,4) end
-,b.productno,b.product,b.mount,b.weight,b.memo,c.datea,'','',''
+,b.productno,b.product,b.unit,b.lengthb,b.mount,b.weight,b.memo,c.datea,'','',''
 from vcf a
 left join vcfs b on a.noa=b.noa
 left join view_orde c on b.ordeno = c.noa
@@ -39,7 +41,7 @@ and a.tggno between @t_btggno and @t_etggno
 order by a.noa
 	
 insert into @tmp
-select '2',a.noa,b.noq,a.datea,'','',b.productno,b.product,b.mount,b.weight,b.memo,'',b.uno,b.storeno,b.store
+select '2',a.noa,b.noq,a.datea,'','',b.productno,b.product,b.unit,null,b.mount,b.weight,b.memo,'',b.uno,b.storeno,b.store
 from vcf a left join vcft b on a.noa=b.noa
 where a.noa between @t_bnoa and @t_enoa
 and a.datea between @t_bdate and @t_edate
