@@ -1,9 +1,9 @@
 ﻿z_ordep_yc01:--z_ordepyc01 
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
-	declare @t_isweight nvarchar(max) = case when '#non' = [1] then '' else [1] end
-	declare @t_bno nvarchar(20) = case when '#non' = [2] then '' else [2] end
-	declare @t_eno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
+	declare @t_bno nvarchar(20) = case when '#non' = [1] then '' else [1] end
+	declare @t_eno nvarchar(20) = case when '#non' = [2] then CHAR(255) else [2] end
+	declare @t_isweight nvarchar(max) = case when '#non' = [3] then '' else [3] end
 ---------------------------------------------------------------------------------------------- 
 declare @tmp table( 
     gno nvarchar(10),
@@ -20,12 +20,14 @@ declare @tmp table(
     paytype nvarchar(20), 
     trantype nvarchar(20), 
     product nvarchar(max), 
-    unit nvarchar(20), 
+    unit nvarchar(20),
+    carton float, 
     mount float, 
     weight float, 
     price decimal(10,3), 
     total float, 
-    memo nvarchar(max)
+    bmemo nvarchar(max),
+    amemo nvarchar(max)
     
  ) 
  
@@ -33,24 +35,24 @@ declare @counts int
 declare @t_counts int 
 declare @t_line int =12
 
-insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,mount,weight,price,total,memo,recno) 
-select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,b.product,b.unit,b.mount,b.weight 
-,b.price,b.total,b.memo 
+insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno) 
+select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,b.product,b.unit,b.lengthc,b.mount,b.weight 
+,b.price,b.total,b.memo,a.memo 
 ,ROW_NUMBER() over (partition by a.noa order by a.noa,b.no2)
 from view_orde a left join view_ordes b on a.accy=b.accy and a.noa = b.noa 
 where (a.noa between @t_bno and @t_eno) 
       
-insert @tmp(gno,noa,mount,weight,total,recno) 
-select case when @t_isweight='1' then '5' else '6' end,noa,SUM(mount),SUM(weight),SUM(total),999999 from @tmp group by noa 
+insert @tmp(gno,noa,carton,mount,weight,total,amemo,recno) 
+select case when @t_isweight='1' then '5' else '6' end,noa,SUM(carton),SUM(mount),SUM(weight),SUM(total),MAX(amemo),999999 from @tmp group by noa 
 
 set @counts=((select count(*) from @tmp)/@t_line)+1
 set @t_counts=@counts
 while(@counts>0)
 begin
 	
-	insert @tmp(recno,gno,noa,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype)
+	insert @tmp(recno,gno,noa,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,amemo)
 	select ((@counts-1)*@t_line)+1,
-	case when @t_isweight='1' then '1' else '3' end,noa,MAX(acomp),MAX(cust),MAX(tel),MAX(fax),MAX(addr),MAX(odate),MAX(stype),MAX(paytype),MAX(trantype) from @tmp group by noa 
+	case when @t_isweight='1' then '1' else '3' end,noa,MAX(acomp),MAX(cust),MAX(tel),MAX(fax),MAX(addr),MAX(odate),MAX(stype),MAX(paytype),MAX(trantype),MAX(amemo) from @tmp group by noa 
 	
 	set @counts=@counts-1
 end
