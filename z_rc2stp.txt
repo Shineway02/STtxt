@@ -48,6 +48,7 @@ z_rc2stp1:--z_rc2stp1
 		recno int,
 		gno nvarchar(10),
 		noa nvarchar(20),
+		noq nvarchar(20),
 		tggno nvarchar(20),
 		tgg nvarchar(max),
 		tel nvarchar(max),
@@ -90,9 +91,9 @@ z_rc2stp1:--z_rc2stp1
 	)
 
 	set @cmd =
-	" select row_number()over(partition by a.noa order by a.no2)"+
-	" ,case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
-	" ,a.noa,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
+	" select row_number()over(partition by a.noa order by a.noq,a.no2)"+
+	" ,case when row_number()over(partition by a.noa order by a.noq,a.no2)=1 then '1' else '2' end"+ 
+	" ,a.noa,a.noq,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0),b.cardeal,b.carno,b.ordcno,isnull(b.[price],0),isnull(b.[tranmoney],0)"+
 	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
@@ -105,9 +106,9 @@ z_rc2stp1:--z_rc2stp1
 	" and ISNULL(b.datea,'') between @t_bdate and @t_edate"+
 	" and a.noa between @t_bno and @t_eno"+
 	" and isnull(b.tggno,'') between @t_btggno and @t_etggno"+
-	" order by a.noa,a.no2 "
+	" order by a.noa,a.noq,a.no2 "
 
-	insert into @tmp(recno,gno,noa,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total],cardeal,carno,ordcno,tranprice,trancost
+	insert into @tmp(recno,gno,noa,noq,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total],cardeal,carno,ordcno,tranprice,trancost
 		,no2,productno,product,unit,mounts,weights,price,totals,size,spec,memos,uno2)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bno nvarchar(20),@t_eno nvarchar(20),@t_btggno nvarchar(20),@t_etggno nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bno=@t_bno,@t_eno=@t_eno,@t_btggno=@t_btggno,@t_etggno=@t_etggno
@@ -215,6 +216,7 @@ z_rc2stp1:--z_rc2stp1
 	declare @tmpa table(
 		gno nvarchar(10),
 		noa nvarchar(90),
+		noq nvarchar(20),
 		no2 nvarchar(10),
 		rrno int,
 		ttno int,
@@ -261,8 +263,8 @@ z_rc2stp1:--z_rc2stp1
 	insert into @tmpa
 		select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 		from(
-			select gno,noa,no2
-			,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+			select gno,noa,noq,no2
+			,ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 rrno
 			,b.rrno ttno
 			,noa a01
 			,tggno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+tgg a02
@@ -301,19 +303,19 @@ z_rc2stp1:--z_rc2stp1
 			,spec ba1
 			,uno2 ba2
 			from @tmp a
-			outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
-				from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
+			outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 rrno
+				from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 desc)b
 		)a
-		order by a.noa,a.no2
+		order by a.noa
 	update @tmpa set a05 = b.b05,a06=b.b06,a07=b.b08
 	from @tmpa a
 	left join (select noa,rrno,sum(b05) b05,sum(b06) b06,sum(b08) b08 from @tmpa group by noa,rrno) b on (a.noa = b.noa) and (b.rrno = a.rrno)
 	select
-		gno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,mma,mmb,mmc,cca,ccb,ccc,datea,cardeal,carno,ordcno,tranprice,trancost,
+		gno,noa,noq,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,mma,mmb,mmc,cca,ccb,ccc,datea,cardeal,carno,ordcno,tranprice,trancost,
 		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a07),1)),4,12)) a07,
 		case when len(isnull(cca,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a0a7),1)),4,12)) end a0a7,
 		case when len(isnull(ccb,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a08),1)),4,12)) end a08,
 		case when len(isnull(ccc,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a09),1)),4,12)) end a09,
 		a10,b01,b02,b03,b04,b05,b06,b07,
 		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b08),1)),4,12)) b08,b09,ba1,ba2,pno
-	from @tmpa order by noa,no2;
+	from @tmpa order by noa,ISNULL(noq,CHAR(255));
