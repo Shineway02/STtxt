@@ -35,10 +35,15 @@ declare @tmp table(
 	a.datea,a.mon,b.product,c.gmount,b.weight,b.memo from view_vcc a left join view_vccs b on a.noa=b.noa left join uccy c on b.uno=c.uno
 	where (a.noa between @t_bno and @t_eno) and (a.datea between @t_bdate and @t_edate)
 	
-declare @noa nvarchar(MAX)
+
 declare @counts int 
+declare @t_counts int 
 declare @t_line int =12
 
+set @counts=((select count(*) from @tmp)/@t_line)+1
+set @t_counts=@counts
+
+declare @noa nvarchar(MAX)
 declare cursor_table cursor for
 select noa,count(*) from @tmp group by noa
 open cursor_table
@@ -46,7 +51,7 @@ fetch next from cursor_table
 into @noa,@counts
 while(@@FETCH_STATUS <> -1)
 begin		
-	while (@counts<@t_line)
+	while ((@counts-@t_counts)%@t_line>0) 
 	begin
 		insert @tmp(gno,noa,noq)
 		select '0',@noa,CHAR(255)
