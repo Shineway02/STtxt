@@ -37,7 +37,7 @@ z_vccfep01:--z_vccfep01
 	select '1','1',ROW_NUMBER()over(partition by a.noa order by b.noq)
 		,a.accy,a.noa,a.datea,a.custno,a.custno,a.addr2
 		,a.cno,a.acomp
-		,b.productno,b.product,b.unit,b.price,b.lengthb,b.mount,b.[weight],b.total,b.memo
+		,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.price,b.lengthb,b.mount,b.[weight],b.total,b.memo
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
 	where (len(@t_noa)=0 or @t_noa=a.noa)
@@ -163,7 +163,7 @@ select
 	,a.noa,b.noq,a.custno,a.comp,case when isnull(a.addr2,'')='' then a.addr else a.addr2 end
 	,a.tel,a.datea,a.trantype,a.transtartno,a.transtart,a.driverno,a.driver,a.carno
 	,'',a.cartrips,a.cardealno,a.cardeal,a.worker
-	,a.total,b.productno,b.product,b.unit,case when isnull(b.unit,'')='KG' or isnull(b.unit,'')='' then b.weight else b.mount end
+	,a.total,b.productno,replace(b.product,'~#$',char(39)),b.unit,case when isnull(b.unit,'')='KG' or isnull(b.unit,'')='' then b.weight else b.mount end
 	,b.price,b.total,case when isnull(b.unit,'')='KG' or isnull(b.unit,'')='' then b.mount else null end
 	,case when isnull(b.unit,'')='KG' or isnull(b.unit,'')='' then 'w' else 'm' end
 from view_vcc a
