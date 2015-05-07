@@ -1,0 +1,110 @@
+z_vccp_yc01:--z_vccp_yc01	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_showprice nvarchar(20) = case when '#non' = [11] then '0' else [11] end
+	declare @t_showweight nvarchar(20) = case when '#non' = [12] then '0' else [12] end
+	--------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		noq nvarchar(10),
+		recno int,
+		tel nvarchar(30),
+		
+		accy nvarchar(10),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		addr nvarchar(50),
+		cno nvarchar(20),
+		acomp nvarchar(50),
+		
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		price float,
+		lengthb float,
+		lengthc float,
+		mount float,
+		weight float,
+		money float,
+		carton float,
+		memo nvarchar(max),
+		tax float,
+		total float,
+		worker nvarchar(30)
+		
+	)
+	declare @counts int 
+	declare @t_counts int 
+	declare @t_line int =20
+	
+	insert into @tmp(gno,noq,recno,accy,noa,tel,datea,custno,cust,addr
+		,cno,acomp
+		,productno,product,unit,price,lengthb,lengthc,mount,weight,money,memo,tax,total,worker)
+	select case when @t_showweight='1' then '2' else '4' end ,b.noq,ROW_NUMBER()over(partition by a.noa order by b.noq)
+		,a.accy,a.noa,a.tel,a.datea,a.custno,a.custno,a.addr2
+		,a.cno,a.acomp
+		,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.price,b.lengthb,b.lengthc,b.mount,b.weight,b.total,b.memo
+		,isnull(c.tax,0)as tax,0,a.worker
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa 
+	left join vcca c on a.invono = c.noa
+	where (len(@t_noa)=0 or @t_noa=a.noa)
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+
+------------------------------------------------------
+	
+	
+	insert into @tmp (gno,noa,money,tax,total,worker,recno)
+	select'5',noa,sum(isnull(money,'')),sum(isnull(tax,'')),sum(isnull(tax,''))+sum(isnull(money,'')),Max(worker),999999
+	from @tmp 
+	group by noa
+	
+	
+	if (@t_showprice !='1')
+	begin
+		update @tmp
+		set price=null,total=null,tax=null,money=null
+	end
+-------------------------------------------------------
+   	set @counts=((select count(*) from @tmp)/@t_line)+1
+	set @t_counts=@counts
+	while(@counts>0)
+	begin
+	
+	insert @tmp(recno,gno,noa,acomp,cust,tel,addr,datea)
+	select ((@counts-1)*@t_line)+1,
+	case when @t_showweight='1' then '1' else '3' end,noa,MAX(acomp),MAX(cust),MAX(tel),MAX(addr),MAX(datea)from @tmp group by noa 
+	
+	set @counts=@counts-1
+	end
+    
+   declare @noa nvarchar(MAX) 
+
+   declare cursor_table cursor for 
+   select noa,count(*) from @tmp group by noa 
+   open cursor_table 
+   fetch next from cursor_table 
+   into @noa,@counts 
+   while(@@FETCH_STATUS <> -1) 
+    begin	
+     while ((@counts-@t_counts)%@t_line>0) 
+     begin 
+
+         insert @tmp(gno,noa,noq,recno) 
+         select case when @t_showweight ='1' then '2' else '4' end ,@noa,CHAR(255),999999
+
+         set @counts=@counts+1 
+      end	
+     fetch next from cursor_table 
+     into @noa,@counts 
+    end 
+  close cursor_table 
+  deallocate cursor_table 
+
+  select * from @tmp order by noa,recno,gno,noq
+ ;	
+	
