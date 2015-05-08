@@ -1044,6 +1044,7 @@ declare @t_bproductno nvarchar(30)
 declare @t_eproductno nvarchar(30)
 declare @t_showunpay nvarchar(30)
 declare @t_xcoin nvarchar(20)
+declare @t_showordetotal nvarchar(30)
 
 set @t_bdate = case when '#non'=[3] then '' else [3] end
 set @t_edate = case when '#non'=[4] then char(255) else [4] end
@@ -1057,6 +1058,7 @@ set @t_bproductno = case when '#non'=[17] then '' else [17] end
 set @t_eproductno = case when '#non'=[18] then char(255) else [18] end
 set @t_showunpay = case when '#non'=[22] then '0' else [22] end
 set @t_xcoin = case when '#non' = [27] then '' else [27] end
+set @t_showordetotal = case when '#non'=[28] then '0' else [28] end
 -------------------------------------------------------------------------------------------------------------------------
 declare @coin nvarchar(20)
 
@@ -1075,9 +1077,9 @@ declare @result table(
 	productno nvarchar(MAX),
 	xproduct nvarchar(MAX),
 	unit nvarchar(8),
-	mount decimal(16,2),
-	weight decimal(16,2),
-	price decimal(16,2),
+	mount decimal(16,4),
+	weight decimal(16,4),
+	price decimal(16,4),
 	total decimal(18,0),
 	money decimal(18,0),
 	back decimal(18,0),
@@ -1394,6 +1396,16 @@ pay , 0 unpay, 0 total2, count(*),'',''  from @result a group by custno,coin
 update @result set total1=money-back+tax where gno='1'
 	
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
+
+--104/05/07單據插入小計
+insert @result
+select coin,'2',CHAR(255),noa,CHAR(255),datea,mon,custno,MAX(comp),MAX(addr_invo),MAX(tel),'','',''
+,null,null,null,SUM(total),null,null
+,isnull((select sum(tax) from view_vcc where noa=a.noa),0)
++isnull((select sum(cb.tax) from view_vcc ca left join vcca cb on ca.invono=cb.noa where ca.noa=a.noa and (ca.taxtype='1' or ca.taxtype='5') and [21]!=3),0)
+,null,null,null,null,null,MAX(salesno),MAX(saless)
+from @result a where gno='0' and typea!='稅'
+group by coin,gno,noa,datea,mon,custno
 
 --已收款
 --update a 
@@ -1730,7 +1742,7 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),(case when coin!='' then 0 else 4 end),30)) unpay
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total2),1)),(case when coin!='' then 0 else 4 end),30)) total2
 	,pcount,case when coin!='' then '_'+coin else '' end coin 
-from @result a order by custno,coin,gno,mon,datea,noa,noq;
+from @result a order by custno,coin,case when gno='2' then '0' else gno end,mon,datea,noa,noq;
 --**************************************************************************************************
 z_umm11:--z_umm11
 declare @t_pageline int = 16   --------一頁幾行
