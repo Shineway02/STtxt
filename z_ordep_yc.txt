@@ -38,7 +38,7 @@ declare @t_line int =12
 
 
 insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno) 
-select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,b.product,b.unit,b.lengthc,b.mount,b.weight 
+select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,replace(b.product,'~#$',char(39)),b.unit,b.lengthc,b.mount,b.weight 
 ,b.price,b.total,b.memo,a.memo 
 ,ROW_NUMBER() over (partition by a.noa order by a.noa,b.no2)
 from view_orde a left join view_ordes b on a.accy=b.accy and a.noa = b.noa 
