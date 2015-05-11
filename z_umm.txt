@@ -1398,15 +1398,17 @@ update @result set total1=money-back+tax where gno='1'
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 
 --104/05/07單據插入小計
-insert @result
-select coin,'2',CHAR(255),noa,CHAR(255),datea,mon,custno,MAX(comp),MAX(addr_invo),MAX(tel),'','',''
-,null,null,null,SUM(total),null,null
-,isnull((select sum(tax) from view_vcc where noa=a.noa),0)
-+isnull((select sum(cb.tax) from view_vcc ca left join vcca cb on ca.invono=cb.noa where ca.noa=a.noa and (ca.taxtype='1' or ca.taxtype='5') and [21]!=3),0)
-,null,null,null,null,null,MAX(salesno),MAX(saless)
-from @result a where gno='0' and typea!='稅'
-group by coin,gno,noa,datea,mon,custno
-
+if(@t_showordetotal='1')
+begin
+	insert @result
+	select coin,'2',CHAR(255),noa,CHAR(255),datea,mon,custno,MAX(comp),MAX(addr_invo),MAX(tel),'','',''
+	,null,null,null,SUM(total),null,null
+	,isnull((select sum(tax) from view_vcc where noa=a.noa),0)
+	+isnull((select sum(cb.tax) from view_vcc ca left join vcca cb on ca.invono=cb.noa where ca.noa=a.noa and (ca.taxtype='1' or ca.taxtype='5') and [21]!=3),0)
+	,null,null,null,null,null,MAX(salesno),MAX(saless)
+	from @result a where gno='0' and typea!='稅'
+	group by coin,gno,noa,datea,mon,custno
+end
 --已收款
 --update a 
 --set pay=isnull((select SUM(paysale*coin.floata) from umms ub
