@@ -40,13 +40,13 @@ z_vccp_yc01:--z_vccp_yc01
 	)
 	declare @counts int 
 	declare @t_counts int 
-	declare @t_line int =20
+	declare @t_line int =22
 	
 	insert into @tmp(gno,noq,recno,accy,noa,tel,datea,custno,cust,addr
 		,cno,acomp
 		,productno,product,unit,price,lengthb,lengthc,mount,weight,money,memo,tax,total,worker,discount)
 	select case when @t_showweight='1' then '2' else '4' end ,b.noq,ROW_NUMBER()over(partition by a.noa order by b.noq)
-		,a.accy,a.noa,a.tel,a.datea,a.custno,a.comp,a.addr2
+		,a.accy,a.noa,a.tel,a.datea,a.custno,a.custno+a.comp,a.addr2
 		,a.cno,a.acomp
 		,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.price,b.lengthb,b.lengthc,b.mount,b.weight,b.total,b.memo
 		,case when a.invono ='' then a.tax else isnull(c.tax,0) end,0,a.worker,a.discount
