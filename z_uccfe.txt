@@ -741,7 +741,7 @@ z_uccfe1:--z_uccfe1
 		insert @tmp
 		select case when a.gno='1' then '5' when a.gno='3' then '6' else a.gno end gno,
 			case when a.gno ='3'or a.gno ='6' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
-			a.price,a.[money],a.mount/NULLIF(b.stdmount,0) carton
+			a.price,a.[money],CEILING(a.mount/NULLIF(b.stdmount,0)) carton
 		from #z_uccfe1 a left join ucc b on a.productno = b.noa order by productno,recno
 	end
 	else
@@ -749,7 +749,7 @@ z_uccfe1:--z_uccfe1
 		insert @tmp
 		select case when a.gno='1' then '7' when a.gno='2' then '4' when a.gno='3' then '8' else a.gno end gno,
 			case when a.gno ='3'or a.gno ='8' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
-			a.price,a.[money],a.mount/NULLIF(b.stdmount,0) carton
+			a.price,a.[money],CEILING(a.mount/NULLIF(b.stdmount,0)) carton
 		from #z_uccfe1 a left join ucc b on a.productno = b.noa order by productno,recno
 	end
 	
