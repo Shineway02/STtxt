@@ -48,7 +48,7 @@ z_vccp_yc01:--z_vccp_yc01
 		,a.accy,a.noa,a.tel,a.datea,a.custno,a.custno,a.addr2
 		,a.cno,a.acomp
 		,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.price,b.lengthb,b.lengthc,b.mount,b.weight,b.total,b.memo
-		,isnull(c.tax,0)as tax,0,a.worker
+		,case when a.invono ='' then a.tax else isnull(c.tax,0) end,0,a.worker
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa 
 	left join vcca c on a.invono = c.noa
@@ -59,7 +59,7 @@ z_vccp_yc01:--z_vccp_yc01
 	
 	
 	insert into @tmp (gno,noa,money,tax,total,worker,recno)
-	select'5',noa,sum(isnull(money,'')),sum(isnull(tax,'')),sum(isnull(tax,''))+sum(isnull(money,'')),Max(worker),999999
+	select'5',noa,sum(isnull(money,'')),Max(tax),Max(tax)+sum(isnull(money,'')),Max(worker),999999
 	from @tmp 
 	group by noa
 	
