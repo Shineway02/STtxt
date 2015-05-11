@@ -28,7 +28,10 @@ declare @tmp table(
     price decimal(10,3), 
     total float, 
     bmemo nvarchar(max),
-    amemo nvarchar(max)
+    amemo nvarchar(max),
+    apv nvarchar(30),
+    worker nvarchar(30),
+    datea nvarchar(20)
     
  ) 
  
@@ -37,15 +40,16 @@ declare @t_counts int
 declare @t_line int =12
 
 
-insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno) 
+insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno,apv,worker,datea) 
 select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,replace(b.product,'~#$',char(39)),b.unit,b.lengthc,b.mount,b.weight 
 ,b.price,b.total,b.memo,a.memo 
 ,ROW_NUMBER() over (partition by a.noa order by a.noa,b.no2)
+,a.apv,a.worker,b.datea
 from view_orde a left join view_ordes b on a.accy=b.accy and a.noa = b.noa 
 where (a.noa between @t_bno and @t_eno) 
 
-insert @tmp(gno,noa,carton,mount,weight,total,amemo,recno) 
-select case when @t_isweight='1' then '5' else '6' end,noa,SUM(carton),SUM(mount),SUM(weight),SUM(total),MAX(amemo),999999 from @tmp group by noa 
+insert @tmp(gno,noa,carton,mount,weight,total,amemo,apv,worker,datea,recno) 
+select case when @t_isweight='1' then '5' else '6' end,noa,SUM(carton),SUM(mount),SUM(weight),SUM(total),MAX(amemo),MAX(apv),MAX(worker),MAX(datea),999999 from @tmp group by noa 
 
 if (@t_isprice !='1')
 begin
@@ -60,9 +64,9 @@ set @t_counts=@counts
 while(@counts>0)
 begin
 	
-	insert @tmp(recno,gno,noa,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,amemo)
+	insert @tmp(recno,gno,noa,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,amemo,apv,worker,datea)
 	select ((@counts-1)*@t_line)+1,
-	case when @t_isweight='1' then '1' else '3' end,noa,MAX(acomp),MAX(cust),MAX(tel),MAX(fax),MAX(addr),MAX(odate),MAX(stype),MAX(paytype),MAX(trantype),MAX(amemo) from @tmp group by noa 
+	case when @t_isweight='1' then '1' else '3' end,noa,MAX(acomp),MAX(cust),MAX(tel),MAX(fax),MAX(addr),MAX(odate),MAX(stype),MAX(paytype),MAX(trantype),MAX(amemo),MAX(apv),MAX(worker),MAX(datea) from @tmp group by noa 
 	
 	set @counts=@counts-1
 end

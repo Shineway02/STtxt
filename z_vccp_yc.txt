@@ -10,18 +10,18 @@ z_vccp_yc01:--z_vccp_yc01
 		gno nvarchar(10),
 		noq nvarchar(10),
 		recno int,
-		tel nvarchar(30),
+		tel nvarchar(50),
 		
 		accy nvarchar(10),
-		noa nvarchar(20),
+		noa nvarchar(30),
 		datea nvarchar(10),
-		custno nvarchar(20),
+		custno nvarchar(30),
 		cust nvarchar(50),
-		addr nvarchar(50),
-		cno nvarchar(20),
+		addr nvarchar(100),
+		cno nvarchar(30),
 		acomp nvarchar(50),
 		
-		productno nvarchar(20),
+		productno nvarchar(30),
 		product nvarchar(50),
 		unit nvarchar(20),
 		price float,
@@ -34,7 +34,8 @@ z_vccp_yc01:--z_vccp_yc01
 		memo nvarchar(max),
 		tax float,
 		total float,
-		worker nvarchar(30)
+		worker nvarchar(50),
+		discount nvarchar(30)
 		
 	)
 	declare @counts int 
@@ -43,12 +44,12 @@ z_vccp_yc01:--z_vccp_yc01
 	
 	insert into @tmp(gno,noq,recno,accy,noa,tel,datea,custno,cust,addr
 		,cno,acomp
-		,productno,product,unit,price,lengthb,lengthc,mount,weight,money,memo,tax,total,worker)
+		,productno,product,unit,price,lengthb,lengthc,mount,weight,money,memo,tax,total,worker,discount)
 	select case when @t_showweight='1' then '2' else '4' end ,b.noq,ROW_NUMBER()over(partition by a.noa order by b.noq)
-		,a.accy,a.noa,a.tel,a.datea,a.custno,a.custno,a.addr2
+		,a.accy,a.noa,a.tel,a.datea,a.custno,a.comp,a.addr2
 		,a.cno,a.acomp
 		,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.price,b.lengthb,b.lengthc,b.mount,b.weight,b.total,b.memo
-		,case when a.invono ='' then a.tax else isnull(c.tax,0) end,0,a.worker
+		,case when a.invono ='' then a.tax else isnull(c.tax,0) end,0,a.worker,a.discount
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa 
 	left join vcca c on a.invono = c.noa
@@ -58,8 +59,8 @@ z_vccp_yc01:--z_vccp_yc01
 ------------------------------------------------------
 	
 	
-	insert into @tmp (gno,noa,money,tax,total,worker,recno)
-	select'5',noa,sum(isnull(money,'')),Max(tax),Max(tax)+sum(isnull(money,'')),Max(worker),999999
+	insert into @tmp (gno,noa,money,discount,tax,total,worker,recno)
+	select'5',noa,sum(isnull(money,'')),Max(discount),Max(tax),Max(tax)+sum(isnull(money,'')),Max(worker),999999
 	from @tmp 
 	group by noa
 	
