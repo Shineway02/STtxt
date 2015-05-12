@@ -60,7 +60,7 @@ z_vccp_yc01:--z_vccp_yc01
 	
 	
 	insert into @tmp (gno,noa,money,discount,tax,total,worker,recno)
-	select'5',noa,sum(isnull(money,'')),Max(discount),Max(tax),Max(tax)+sum(isnull(money,'')),Max(worker),999999
+	select'5',noa,sum(isnull(money,'')),Max(isnull(discount,'')),Max(isnull(tax,'')),Max(isnull(tax,''))+sum(isnull(money,''))-Max(isnull(discount,'')),Max(worker),999999
 	from @tmp 
 	group by noa
 	
