@@ -159,8 +159,8 @@ ordp_ordc:--ordp_ordc
 	-------------------------------------------------------------------------------------------
 	declare @accy nvarchar(10) = left(@datea,3)
 	set @cmd = 
-		"insert into ordc"+@accy+" (noa,datea,odate,cno,acomp,kind,tggno,tgg,nick,money,total,ordbno,memo)
-		select a.noa,@datea,@odate,a.cno,b.acomp,a.kind,a.tggno,c.comp,c.nick,a.total,a.total,@t_noa,'採購建議書【'+@t_noa+'】轉來'
+		"insert into ordc"+@accy+" (noa,datea,odate,cno,acomp,kind,tggno,tgg,nick,money,total,ordbno,memo,isproj)
+		select a.noa,@datea,@odate,a.cno,b.acomp,a.kind,a.tggno,c.comp,c.nick,a.total,a.total,@t_noa,'採購建議書【'+@t_noa+'】轉來',1
 		from #ordp_tmp a
 		left join acomp b on a.cno=b.noa
 		left join tgg c on a.tggno=c.noa
@@ -169,13 +169,13 @@ ordp_ordc:--ordp_ordc
 		,@datea=@datea,@odate=@odate,@t_noa=@t_noa
 	
 	set @cmd = 
-		"insert into ordcs"+@accy+"(noa,no2,tablea,ordbno,no3,productno,product,spec,unit,omount,mount,price,total,trandate)
-		select noa,no2,'ordp',ordpno,ordpnoq,productno,product,spec,unit,omount,mount,price,total,trandate 
+		"insert into ordcs"+@accy+"(noa,no2,tablea,ordbno,no3,productno,product,spec,unit,omount,mount,price,total,trandate,tggno)
+		select noa,no2,'ordp',ordpno,ordpnoq,productno,product,spec,unit,omount,mount,price,total,trandate,tggno 
 		from #ordp_tmps"
 	execute sp_executesql @cmd
 	
 	set @cmd = 
-		"insert into ordct103(noa,no2,noq,ordbaccy,ordbno,no3,productno,unit,mount)
+		"insert into ordct"+@accy+"(noa,no2,noq,ordbaccy,ordbno,no3,productno,unit,mount)
 		select noa,no2,noq,ordbaccy,ordbno,no3,productno,unit,mount from #ordp_tmpt"
 	execute sp_executesql @cmd
 	
