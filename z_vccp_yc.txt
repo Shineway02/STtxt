@@ -1,0 +1,117 @@
+z_vccp_yc01:--z_vccp_yc01	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_showprice nvarchar(20) = case when '#non' = [11] then '0' else [11] end
+	declare @t_showweight nvarchar(20) = case when '#non' = [12] then '0' else [12] end
+	--------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		recno int,
+		cno nvarchar(30),
+		acomp nvarchar(50),
+		noa nvarchar(30),
+		noq nvarchar(10),
+		datea nvarchar(10),
+		custno nvarchar(30),
+		comp nvarchar(50),
+		addr nvarchar(100),
+		tel nvarchar(50),
+		
+		productno nvarchar(30),
+		product nvarchar(50),
+		unit nvarchar(20),
+		carton float,
+		mount float,
+		weight float,
+		price float,
+		money float,
+		
+		tmoney float,
+		ttax float,
+		tdiscount float,
+		ttotal float,
+		worker nvarchar(50)
+	)
+		
+	insert into @tmp
+	select case when @t_showweight='1' then '2' else '4' end gno,
+	ROW_NUMBER()over(partition by a.noa order by b.noq) recno
+	,a.cno,a.acomp,a.noa,b.noq,a.datea,a.custno,a.comp
+	,case when isnull(a.addr2,'')!='' then a.addr2 else a.addr end,a.tel
+	,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.lengthc
+	,b.mount,b.weight,b.price,b.total
+	,a.money,a.tax,isnull(a.discount,0),a.total,a.worker
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa 
+	where (len(@t_noa)=0 or @t_noa=a.noa)
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+
+------------------------------------------------------
+	if (@t_showprice !='1')
+	begin
+		update @tmp
+		set price=null,money=null,tmoney=null,ttax=null,tdiscount=null,ttotal=null
+	end
+-------------------------------------------------------
+	declare @counts int 
+	declare @t_counts int 
+	declare @t_line int =8
+    
+	declare @noa nvarchar(MAX) 
+
+	declare cursor_table cursor for 
+	select noa,count(*) from @tmp group by noa 
+	open cursor_table 
+	fetch next from cursor_table 
+	into @noa,@counts 
+	while(@@FETCH_STATUS <> -1) 
+	begin		
+		--插入空白行
+		while (@counts%@t_line>0) 
+		begin 
+
+			insert @tmp(gno,noa,noq,recno,tmoney,ttax,tdiscount,ttotal,worker) 
+			select top 1
+			case when @t_showweight ='1' then '2' else '4' end ,@noa,CHAR(255),999999
+			,MAX(tmoney),MAX(ttax),MAX(tdiscount),MAX(ttotal),MAX(worker)
+			from @tmp where noa=@noa and (gno='2' or gno='4') and recno!=999999
+			
+			set @counts=@counts+1 
+		end	
+		
+		--插入表頭
+		set @t_counts=(@counts/@t_line)
+		while(@t_counts>0)
+		begin
+		
+			insert @tmp(recno,gno,cno,acomp,noa,custno,comp,tel,addr,datea)
+			select ((@t_counts-1)*@t_line)+1,
+			case when @t_showweight='1' then '1' else '3' end
+			,MAX(cno),MAX(acomp),noa,MAX(custno),MAX(comp),MAX(tel),MAX(addr),MAX(datea)
+			from @tmp where noa=@noa group by noa
+			
+			set @t_counts=@t_counts-1
+		end
+		
+		fetch next from cursor_table 
+		into @noa,@counts 
+		
+	end 
+	close cursor_table 
+	deallocate cursor_table 
+
+	select 
+	dbo.getComma(mount,[6]) mount
+	,dbo.getComma(weight,[7]) weight
+	,dbo.getComma(price,[8]) price
+	,dbo.getComma(money,0) money
+	,dbo.getComma(tmoney,0) tmoney
+	,dbo.getComma(ttax,0) ttax
+	,dbo.getComma(tdiscount,0) tdiscount
+	,dbo.getComma(ttotal,0) ttotal
+	,*
+	from @tmp order by noa,recno,gno,noq
+ ;	
+	

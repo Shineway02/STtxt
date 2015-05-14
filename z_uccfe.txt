@@ -75,8 +75,8 @@ z_uccfe3:--z_uccfe3
 	------------------------------------------------------------------------------------
 	--前期
 	declare @tmpa table(
-		productno nvarchar(20),
-		storeno nvarchar(20),
+		productno nvarchar(30),
+		storeno nvarchar(30),
 		mount float,
 		[weight] float
 	)
@@ -93,9 +93,9 @@ z_uccfe3:--z_uccfe3
 		recno int,
 		pp int,
 		qq int,
-		storeno nvarchar(20),
+		storeno nvarchar(30),
 		store nvarchar(50),
-		productno nvarchar(20),
+		productno nvarchar(30),
 		product nvarchar(50),
 		mount float,
 		[weight] float,
@@ -186,8 +186,8 @@ z_uccfe2:--z_uccfe2
 	
 	--前期
 	declare @tmpa table(
-		productno nvarchar(20),
-		storeno nvarchar(20),
+		productno nvarchar(30),
+		storeno nvarchar(30),
 		mount float,
 		[weight] float
 	)
@@ -202,10 +202,10 @@ z_uccfe2:--z_uccfe2
 		gno nvarchar(10),
 		pno nvarchar(10),
 		recno int,
-		productno nvarchar(20),
+		productno nvarchar(30),
 		product nvarchar(50),
 		datea nvarchar(20),
-		storeno nvarchar(20),
+		storeno nvarchar(30),
 		store nvarchar(50),
 		[action] nvarchar(20),
 		n int,
@@ -516,8 +516,8 @@ z_uccfe2:--z_uccfe2
 	and a.datea between @t_bdate and @t_edate
 	
 	--------------------------------------------------------------------------
-	declare @productno nvarchar(20)
-	declare @storeno nvarchar(20)
+	declare @productno nvarchar(30)
+	declare @storeno nvarchar(30)
 	declare @accy nvarchar(10)
 	declare @tablea nvarchar(20)
 	declare @noa nvarchar(20)
@@ -639,11 +639,12 @@ z_uccfe1:--z_uccfe1
 	declare @t_bdate nvarchar(20) = case when '#non'=[6] then '' else [6] end
 	declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
+	declare @t_showcarton nvarchar(20) = case when '#non'=[9] then '' else [9] end
 	------------------------------------------------------------------------------------
-	--前期
+--前期
 	declare @tmpa table(
-		productno nvarchar(20),
-		storeno nvarchar(20),
+		productno nvarchar(30),
+		storeno nvarchar(30),
 		mount float,
 		[weight] float
 	)
@@ -660,9 +661,9 @@ z_uccfe1:--z_uccfe1
 		gno nvarchar(10),
 		grecno int,
 		recno int,
-		storeno nvarchar(20),
+		storeno nvarchar(30),
 		store nvarchar(50),
-		productno nvarchar(20),
+		productno nvarchar(30),
 		product nvarchar(50),
 		unit nvarchar(20),
 		mount float,
@@ -714,10 +715,60 @@ z_uccfe1:--z_uccfe1
 	update #z_uccfe1 set grecno=b.recno
 	from #z_uccfe1 a
 	left join(select ROW_NUMBER()over(order by productno) recno,productno 
-		from #z_uccfe1 where gno='2') b on a.productno=b.productno
+		from #z_uccfe1 where gno='2') b on a.productno=b.productno	
+	
+	declare @tmp table(
+		gno nvarchar(10),
+		grecno int,
+		recno int,
+		storeno nvarchar(30),
+		store nvarchar(50),
+		productno nvarchar(30),
+		product nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		[weight] float,
+		price float,
+		[money] float,
+		carton float
+	)
+	declare @counts int 
+	declare @t_counts int 
+	declare @t_line int =34
+	
+	if (@t_showcarton!='1')
+	begin
+		insert @tmp
+		select case when a.gno='1' then '5' when a.gno='3' then '6' else a.gno end gno,
+			case when a.gno ='3'or a.gno ='6' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
+			a.price,a.[money],CEILING(a.mount/NULLIF(b.stdmount,0)) carton
+		from #z_uccfe1 a left join ucc b on a.productno = b.noa order by productno,recno
+	end
+	else
+	begin
+		insert @tmp
+		select case when a.gno='1' then '7' when a.gno='2' then '4' when a.gno='3' then '8' else a.gno end gno,
+			case when a.gno ='3'or a.gno ='8' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
+			a.price,a.[money],CEILING(a.mount/NULLIF(b.stdmount,0)) carton
+		from #z_uccfe1 a left join ucc b on a.productno = b.noa order by productno,recno
+	end
+	
+	set @counts=((select count(*) from @tmp)/@t_line)+1
+	set @t_counts=@counts
+	while(@counts>0)
+	begin
+	
+	insert @tmp(grecno,gno)
+	select ((@counts-1)*@t_line)+1,
+	case when @t_showcarton='1' then '3' else '1' end
+	
+	set @counts=@counts-1
+	end
+    
+	
 	
 	select * 
-		,grecno rr
+	,grecno rr
 		,productno a01
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' a02
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(store,''))=0 then storeno else store end+'</a>' a03
@@ -725,7 +776,6 @@ z_uccfe1:--z_uccfe1
 		,dbo.getComma([weight],2) a05
 		,dbo.getComma(price,2) a06
 		,dbo.getComma([money],0) a07
-	from #z_uccfe1 order by productno,recno
-	drop table #z_uccfe1;
+	from @tmp order by grecno,gno;
 
 

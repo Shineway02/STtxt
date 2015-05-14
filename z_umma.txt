@@ -1,0 +1,82 @@
+z_umma01:--z_umma01
+SET QUOTED_IDENTIFIER OFF
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bcno nvarchar(30)
+declare @t_ecno nvarchar(30)
+declare @t_bcustno nvarchar(30)
+declare @t_ecustno nvarchar(30)
+
+set @t_bdate = case when '#non'=[1] then '' else [1] end
+set @t_edate = case when '#non'=[2] then CHAR(255) else [2] end
+set @t_bcno = case when '#non'=[3] then '' else [3] end
+set @t_ecno = case when '#non'=[4] then CHAR(255) else [4] end
+set @t_bcustno = case when '#non'=[5] then '' else [5] end
+set @t_ecustno = case when '#non'=[6] then CHAR(255) else [6] end
+----------------------------------------------------------------------------------------------------------------------------
+declare @cmd nvarchar(max)
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	set @cmd = 'drop table #tmp'
+	EXECUTE sp_executesql @cmd
+END
+	
+create table #tmp(
+	gno nvarchar(1), 
+	cno nvarchar(30),
+	acomp nvarchar(20),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	bmoney float,
+	money1 float,
+	money2 float,
+	paysale float,
+	discount float,
+	total float
+)
+
+insert #tmp (gno,cno,acomp,custno,comp)
+select '0',a.cno,(select acomp from acomp where a.cno=noa)
+,a.custno,(select case when isnull(nick,'')='' then left(comp,6) else nick end from cust where a.custno=noa)
+from umma a where a.datea <=@t_edate group by cno,custno
+
+update a
+set bmoney=isnull((select SUM(total) from umma where a.cno=cno and a.custno=custno and datea< @t_bdate),0)
+-isnull((select SUM(discount) from umma where a.cno=cno and a.custno=custno and ddate< @t_bdate),0)
+-isnull((select SUM(pb.total) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_bdate and pb.datea<@t_bdate),0)
+,money1=isnull((select SUM(money) from umma where a.cno=cno and a.custno=custno and datea between @t_bdate and @t_edate),0)
+,money2=isnull((select SUM(total) from umma where a.cno=cno and a.custno=custno and datea between @t_bdate and @t_edate),0)
+,paysale=isnull((select SUM(pb.total) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_edate and pb.datea between @t_bdate and @t_edate),0)
+,discount=isnull((select SUM(discount) from umma where a.cno=cno and a.custno=custno and ddate between @t_bdate and @t_edate),0)
+from #tmp a
+
+update #tmp
+set total=bmoney+money2-paysale-discount
+
+delete #tmp
+where bmoney=0 and money1=0 and money2=0 and paysale=0 and discount=0 and total=0
+
+insert #tmp
+select '1',cno,MAX(acomp),custno,MAX(comp)
+,SUM(bmoney),SUM(money1),SUM(money2),SUM(paysale),SUM(discount),SUM(total)
+from #tmp where gno='0' group by cno,custno
+
+select 
+dbo.getComma(bmoney,0) bmoney
+,dbo.getComma(money1,0) money1
+,dbo.getComma(money2,0) money2
+,dbo.getComma(paysale,0) paysale
+,dbo.getComma(discount,0) discount
+,dbo.getComma(total,0) total
+,*
+from #tmp order by cno,gno,custno
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	set @cmd = 'drop table #tmp'
+	EXECUTE sp_executesql @cmd
+END
+;
+;
+
