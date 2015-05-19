@@ -44,10 +44,10 @@ from paya a where a.datea <=@t_edate group by cno,tggno
 update a
 set bmoney=isnull((select SUM(total) from paya where a.cno=cno and a.tggno=tggno and datea< @t_bdate),0)
 -isnull((select SUM(discount) from paya where a.cno=cno and a.tggno=tggno and ddate< @t_bdate),0)
--isnull((select SUM(pb.total) from paya pa left join view_rc2 pb on pa.noa=pb.payano where a.cno=pa.cno and a.tggno=pa.tggno and pa.datea < @t_bdate and pb.datea<@t_bdate),0)
+-isnull((select SUM(pb.money) from paya pa left join view_rc2 pb on pa.noa=pb.payano where a.cno=pa.cno and a.tggno=pa.tggno and pa.datea < @t_bdate and pb.datea<@t_bdate),0)
 ,money1=isnull((select SUM(money) from paya where a.cno=cno and a.tggno=tggno and datea between @t_bdate and @t_edate),0)
 ,money2=isnull((select SUM(total) from paya where a.cno=cno and a.tggno=tggno and datea between @t_bdate and @t_edate),0)
-,paysale=isnull((select SUM(pb.total) from paya pa left join view_rc2 pb on pa.noa=pb.payano where a.cno=pa.cno and a.tggno=pa.tggno and pa.datea < @t_edate and pb.datea between @t_bdate and @t_edate),0)
+,paysale=isnull((select SUM(pb.money) from paya pa left join view_rc2 pb on pa.noa=pb.payano where a.cno=pa.cno and a.tggno=pa.tggno and pa.datea < @t_edate and pb.datea between @t_bdate and @t_edate),0)
 ,discount=isnull((select SUM(discount) from paya where a.cno=cno and a.tggno=tggno and ddate between @t_bdate and @t_edate),0)
 from #tmp a
 
