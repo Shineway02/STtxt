@@ -72,6 +72,7 @@ z_uccfe3:--z_uccfe3
 	--declare @t_bdate nvarchar(20) = case when '#non'=[6] then '' else [6] end
 	--declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	--declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
+	declare @t_project nvarchar(20) = case when '#non'='[10]' then '' else '[10]' end
 	------------------------------------------------------------------------------------
 	--前期
 	declare @tmpa table(
@@ -115,13 +116,24 @@ z_uccfe3:--z_uccfe3
 	left join ucc b on a.productno=b.noa
 	left join store c on a.storeno=c.noa
 	-------------------------------------------------------------------------------------------
-	update #z_uccfe3 set price = ISNULL(b.sprice,0),[money]=ISNULL(a.mount*b.sprice,0)
-	from #z_uccfe3 a
-	outer apply(select top 1 y.sprice
-		from uccp x
-		left join uccps y on x.noa=y.noa
-		where y.productno=a.productno and x.datea<=@t_enddate
-		order by x.datea desc) b
+	if(@t_project='FE')
+	begin
+		update #z_uccfe3 set price = ISNULL(b.sprice,0),[money]=ISNULL(a.mount*b.sprice,0)
+		from #z_uccfe3 a
+		outer apply(select top 1 y.sprice
+			from uccp x
+			left join uccps y on x.noa=y.noa
+			where y.productno=a.productno and x.datea<=@t_enddate
+			order by x.datea desc) b
+	end
+	else
+	begin
+		update #z_uccfe3 set price = ISNULL(b.price,0)
+			,[money]=ISNULL(case when a.unit='KG' or a.unit='公斤' or len(isnull(a.unit,''))=0 then a.[weight] else a.mount end*b.price,0)
+		from #z_uccfe3 a
+		outer apply(select price from view_costs where mon=LEFT(@t_enddate,6) and productno=a.productno ) b	
+	end
+		
 	---------------------------------------------------------------------------------------------
 	insert into #z_uccfe3(gno,pno,recno,storeno,store,mount,[weight],[money])
 	select '2','2',MAX(recno)+1,storeno,store,sum(mount),sum([weight]),sum(isnull([money],0))
@@ -640,6 +652,7 @@ z_uccfe1:--z_uccfe1
 	declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
 	declare @t_showcarton nvarchar(20) = case when '#non'=[9] then '' else [9] end
+	declare @t_project nvarchar(20) = case when '#non'='[10]' then '' else '[10]' end
 	------------------------------------------------------------------------------------
 --前期
 	declare @tmpa table(
@@ -686,15 +699,24 @@ z_uccfe1:--z_uccfe1
 	left join store c on a.storeno=c.noa
 	
 	-------------------------------------------------------------------------------------------
-	update #z_uccfe1 set price = ISNULL(b.sprice,0)
-		,[money]=ISNULL(case when a.unit='KG' or a.unit='公斤' or len(isnull(a.unit,''))=0 then a.[weight] else a.mount end*b.sprice,0)
-	from #z_uccfe1 a
-	outer apply(select top 1 y.sprice
-		from uccp x
-		left join uccps y on x.noa=y.noa
-		where y.productno=a.productno and x.datea<=@t_enddate
-		order by x.datea desc) b
-	
+	if(@t_project='FE')
+	begin
+		update #z_uccfe1 set price = ISNULL(b.sprice,0)
+			,[money]=ISNULL(case when a.unit='KG' or a.unit='公斤' or len(isnull(a.unit,''))=0 then a.[weight] else a.mount end*b.sprice,0)
+		from #z_uccfe1 a
+		outer apply(select top 1 y.sprice
+			from uccp x
+			left join uccps y on x.noa=y.noa
+			where y.productno=a.productno and x.datea<=@t_enddate
+			order by x.datea desc) b
+	end
+	else
+	begin
+		update #z_uccfe1 set price = ISNULL(b.price,0)
+			,[money]=ISNULL(case when a.unit='KG' or a.unit='公斤' or len(isnull(a.unit,''))=0 then a.[weight] else a.mount end*b.price,0)
+		from #z_uccfe1 a
+		outer apply(select price from view_costs where mon=LEFT(@t_enddate,6) and productno=a.productno ) b	
+	end
 	---------------------------------------------------------------------------------------------
 	insert into #z_uccfe1(gno,recno,productno,product,unit,mount,[weight],price,[money])
 	select '2',0,productno,product,unit,sum(mount),sum([weight]),price,sum(isnull([money],0))
@@ -764,9 +786,7 @@ z_uccfe1:--z_uccfe1
 	
 	set @counts=@counts-1
 	end
-    
-	
-	
+  
 	select * 
 	,grecno rr
 		,productno a01
@@ -777,5 +797,3 @@ z_uccfe1:--z_uccfe1
 		,dbo.getComma(price,2) a06
 		,dbo.getComma([money],0) a07
 	from @tmp order by grecno,gno;
-
-
