@@ -1,3 +1,179 @@
+z_umm15:--z_umm15
+	declare @t_bcustno nvarchar(50) = case when '#non'=[5] then '' else [5] end
+	declare @t_ecustno nvarchar(50) = case when '#non'=[6] then char(255) else [6] end
+	declare @t_bmon nvarchar(10) = case when '#non'=[13] then '' else [13] end
+	declare @t_emon nvarchar(10) = case when '#non'=[14] then char(255) else [14] end
+	----------------------------------------------------------------
+--收款紀錄
+declare @umms table(
+	recno int,
+	custno nvarchar(50),
+	datea nvarchar(20),
+	cno nvarchar(50),
+	acc1 nvarchar(50),
+	acc2 nvarchar(50),
+	money float,
+	chgs float,
+	checkno nvarchar(50),
+	account nvarchar(50),
+	bank nvarchar(50),
+	indate nvarchar(20),
+	memo nvarchar(MAX)
+)
+insert @umms
+select ROW_NUMBER() over (partition by a.custno,a.datea order by a.custno,a.datea,a.noa,b.noq)
+,a.custno,a.datea,a.cno,b.acc1,b.acc2,b.money,b.chgs
+,b.checkno,b.account,b.bank,b.indate,b.memo
+from umm a left join umms b on a.noa=b.noa 
+where a.custno between @t_bcustno and @t_ecustno 
+and a.mon between @t_bmon and @t_emon
+and (b.acc1!='' or b.money!=0 or b.chgs!=0 or b.checkno!='' or b.account!='' or b.bank!='' or b.indate!='')
+
+--沖帳紀錄
+declare @paysale table(		
+	recno int,
+	custno nvarchar(50),
+	datea nvarchar(20),
+	mon nvarchar(20),
+	vccno nvarchar(100),
+	paysales float,
+	memo nvarchar(MAX)
+)
+
+insert @paysale
+select ROW_NUMBER() over (partition by a.custno,a.datea order by a.custno,a.datea,a.noa,b.noq),
+b.custno,a.datea,b.paymon,b.vccno,b.paysale,b.memo
+from umm a left join umms b on a.noa=b.noa 
+where a.custno between @t_bcustno and @t_ecustno 
+and a.mon between @t_bmon and @t_emon
+and vccno!=''
+
+--本月應收金額
+declare @custunpay table(		
+	custno nvarchar(50),
+	unpay float,
+	total float
+)
+
+insert @custunpay
+select noa,SUM(unpay),0 from cust_2s 
+where noa between @t_bcustno and @t_ecustno and mon<=@t_emon
+group by noa
+
+--收款月份後沖帳的金額
+declare @custopaysale table(		
+	custno nvarchar(50),
+	opaysale float
+)
+
+insert @custopaysale
+select ub.custno,SUM(ub.paysale) opaysale from umm ua left join umms ub on ua.noa=ub.noa 
+where ua.mon >= @t_bmon and ub.paymon<=@t_emon and ub.vccno!='' group by ub.custno
+
+--本月應收金額-收款月份後沖帳的金額=本月收款月份前的應收金額
+update a
+set unpay=a.unpay+isnull(b.opaysale,0)
+from @custunpay a left join @custopaysale b on a.custno=b.custno
+
+update a
+set total=a.unpay-isnull((select SUM(paysales) from @paysale where custno=a.custno),0)
+from @custunpay a
+
+----------------------------------------------------------
+declare @tmp table(
+	recno int,
+	custno nvarchar(50),
+	datea nvarchar(20),
+	cno nvarchar(50),
+	acc1 nvarchar(50),
+	acc2 nvarchar(50),
+	money float,
+	chgs float,
+	checkno nvarchar(50),
+	account nvarchar(50),
+	bank nvarchar(50),
+	indate nvarchar(20),
+	memo nvarchar(MAX),
+	mon nvarchar(20),
+	vccno nvarchar(100),
+	paysales float
+)
+
+declare @custno nvarchar(50) 
+declare cursor_table cursor for
+select custno from (select custno from @umms union all select custno from @paysale) custtmp group by custno
+open cursor_table
+fetch next from cursor_table
+into @custno
+while(@@FETCH_STATUS <> -1)
+begin
+	if((select count(*) from @umms where custno=@custno )>=(select count(*) from @paysale where custno=@custno))
+	begin
+		insert @tmp
+		select a.recno,a.custno,a.datea,a.cno,a.acc1,a.acc2,a.money,a.chgs,a.checkno,a.account
+		,a.bank,a.indate,a.memo,b.mon,b.vccno,b.paysales
+		from @umms a left join @paysale b on a.custno=b.custno and a.datea=b.datea and a.recno=b.recno 
+		where a.custno=@custno
+	end
+	else
+	begin
+		insert @tmp
+		select b.recno,b.custno,b.datea,a.cno,a.acc1,a.acc2,a.money,a.chgs,a.checkno,a.account
+		,a.bank,a.indate,a.memo,b.mon,b.vccno,b.paysales
+		from @umms a right join @paysale b on a.custno=b.custno and a.datea=b.datea and a.recno=b.recno 
+		where b.custno=@custno
+	end
+
+	fetch next from cursor_table
+	into @custno
+end
+close cursor_table
+deallocate cursor_table
+
+declare @tmpa table(
+	gno nvarchar(10),
+	custno nvarchar(50),
+	comp nvarchar(50),
+	unpay float,
+	recno int,
+	datea nvarchar(20),
+	cno nvarchar(50),
+	acomp nvarchar(50),
+	acc1 nvarchar(50),
+	acc2 nvarchar(50),
+	money float,
+	chgs float,
+	checkno nvarchar(50),
+	account nvarchar(50),
+	bank nvarchar(50),
+	indate nvarchar(20),
+	memo nvarchar(MAX),
+	mon nvarchar(20),
+	vccno nvarchar(100),
+	paysales float,
+	total float
+)
+insert @tmpa
+select '0',a.custno,case when isnull(c.nick,'')!='' then c.nick else left(c.comp,4) end
+,a.unpay,b.recno,b.datea,b.cno,case when isnull(d.nick,'')!='' then d.nick else left(d.acomp,4) end
+,b.acc1,b.acc2,b.money,b.chgs,b.checkno,b.account,b.bank,b.indate
+,b.memo,b.mon,b.vccno,b.paysales,a.total
+from @custunpay a left join @tmp b on a.custno=b.custno
+left join cust c on a.custno=c.noa
+left join acomp d on b.cno=d.noa
+
+delete @tmpa where isnull(unpay,0)=0 and isnull(money,0)=0 and ISNULL(chgs,0)=0 and isnull(paysales,0)=0
+
+select 
+dbo.getComma(unpay,0)unpay
+,dbo.getComma(money,0)money
+,dbo.getComma(chgs,0)chgs
+,dbo.getComma(paysales,0)paysales
+,dbo.getComma(total,0)total
+,* 
+from @tmpa order by gno,custno,recno
+;
+--*******************************************************************************
 z_umm14:--z_umm14
 	declare @t_bdate nvarchar(10) = case when '#non'=[3] then '' else [3] end
 	declare @t_edate nvarchar(10) = case when '#non'=[4] then char(255) else [4] end
@@ -40,7 +216,7 @@ z_umm14:--z_umm14
 		,dbo.getComma(discount,0) a04
 		,* 
 	from @tmp order by gno,custno;
-	
+--************************************************************************************************
 z_umm4:--z_umm4
 declare @t_accy nvarchar(20)
 declare @t_bxdate nvarchar(20)
@@ -445,13 +621,13 @@ declare @tmp table(
 	typea nvarchar(50),
 	custno nvarchar(50),
 	comp nvarchar(MAX),
-	[money] int,
-	chgs int,
-	paysales int,
+	[money] float,
+	chgs float,
+	paysales float,
 	mons nvarchar(6),
 	part nvarchar(10),
 	vccno nvarchar(20),
-	unpay int,
+	unpay float,
 	checkno nvarchar(20),
 	bank nvarchar(20),
 	indate nvarchar(10),
@@ -499,9 +675,9 @@ from @tmp where gno='0'
 
 select gno,noa,noq,datea,cno,acc1,custno,comp,
 	case when len(typea)> 4 then REPLACE(typea,'銀行存款','') else typea end typea,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chgs),1)),4,12)) chgs,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,paysales),1)),4,12)) paysales,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,chgs),1)),4,30)) chgs,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,paysales),1)),4,30)) paysales,
 	mons,part,vccno,unpay,checkno,bank,indate,acomp,account,memo +(case when len(memo)>0 then '<BR>'+vccno else vccno end) memo
 from @tmp
 order by datea,gno,noa,noq;
