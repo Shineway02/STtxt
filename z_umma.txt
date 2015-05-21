@@ -44,10 +44,10 @@ from umma a where a.datea <=@t_edate group by cno,custno
 update a
 set bmoney=isnull((select SUM(total) from umma where a.cno=cno and a.custno=custno and datea< @t_bdate),0)
 -isnull((select SUM(discount) from umma where a.cno=cno and a.custno=custno and ddate< @t_bdate),0)
--isnull((select SUM(pb.total) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_bdate and pb.datea<@t_bdate),0)
+-isnull((select SUM(pb.money) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_bdate and pb.datea<@t_bdate),0)
 ,money1=isnull((select SUM(money) from umma where a.cno=cno and a.custno=custno and datea between @t_bdate and @t_edate),0)
 ,money2=isnull((select SUM(total) from umma where a.cno=cno and a.custno=custno and datea between @t_bdate and @t_edate),0)
-,paysale=isnull((select SUM(pb.total) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_edate and pb.datea between @t_bdate and @t_edate),0)
+,paysale=isnull((select SUM(pb.money) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_edate and pb.datea between @t_bdate and @t_edate),0)
 ,discount=isnull((select SUM(discount) from umma where a.cno=cno and a.custno=custno and ddate between @t_bdate and @t_edate),0)
 from #tmp a
 
