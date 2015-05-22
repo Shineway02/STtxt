@@ -15,6 +15,7 @@ declare @tmp table(
 	custno nvarchar(90),
 	comp nvarchar(150),
 	tel nvarchar(100),
+	mobile nvarchar(100),
 	addr nvarchar(150),
 	conn nvarchar(100),
 	timea nvarchar(100),
@@ -39,7 +40,7 @@ declare @tmp table(
 
 insert into @tmp 
 select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
-,a.noa,a.datea,a.custno,a.comp,a.tel,case when a.addr2!='' then a.addr2 else a.addr end,c.conntel,c.billmemo
+,a.noa,a.datea,a.custno,a.comp,a.tel,c.mobile,case when a.addr2!='' then a.addr2 else a.addr end,c.conntel,c.billmemo
 ,a.invono,replace(a.memo,'chr(10)','<BR>')
 ,case when isnull(cm.notprice,0)=1 then null else a.money end
 ,case when isnull(cm.notprice,0)=1 then null else a.tax end
@@ -67,7 +68,7 @@ while(@@FETCH_STATUS <> -1)
 begin
 	--新增空白欄
 	select @t_count=@t_pageline-(@count % @t_pageline)
-	while(@t_count>0)
+	while(@t_count>0 and @count % @t_pageline!=0)
 	begin
 		insert @tmp(gno,recno,noa)
 		select '0',@t_count+(@count % @t_pageline)+(FLOOR(cast(@count as float)/cast(@t_pageline as float))*@t_pageline),@t_noa
@@ -78,12 +79,12 @@ begin
 	set @t_count=ceiling(cast(@count as float)/cast(@t_pageline as float))
 	while(@t_count>0)
 	begin
-		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money)
-		select top 1 '1',((@t_count-1)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money
+		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,mobile,addr,invopay,checkvcc,paytype,amemo,tax,money,worker)
+		select top 1 '1',((@t_count-1)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,mobile,addr,invopay,checkvcc,paytype,amemo,tax,money,worker
 		from @tmp where noa=@t_noa and datea!=''
 		
-		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money)
-		select top 1 '2',((@t_count)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,addr,invopay,checkvcc,paytype,amemo,tax,money
+		insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,mobile,addr,invopay,checkvcc,paytype,amemo,tax,money,worker)
+		select top 1 '2',((@t_count)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,mobile,addr,invopay,checkvcc,paytype,amemo,tax,money,worker
 		from @tmp where noa=@t_noa and datea!=''
 		
 		set @t_count=@t_count-1
