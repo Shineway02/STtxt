@@ -87,6 +87,13 @@ begin
 		select top 1 '2',((@t_count)*@t_pageline),@t_count,@t_noa,datea,custno,comp,tel,mobile,addr,invopay,checkvcc,paytype,amemo,tax,money,worker
 		from @tmp where noa=@t_noa and datea!=''
 		
+		if(@t_count!=1)
+		begin
+			insert @tmp(gno,recno,pageno,noa,datea,custno,comp,tel,mobile,addr,invopay,checkvcc,paytype,amemo,tax,money,worker) 
+			select top 1 '3',((@t_count)*@t_pageline)-5,@t_count,@t_noa,datea,custno,comp,tel,mobile,addr,invopay,checkvcc,paytype,amemo,tax,money,worker 
+			from @tmp where noa=@t_noa and datea!='' 
+		end
+		
 		set @t_count=@t_count-1
 	end
 	

@@ -25,7 +25,7 @@ z_uccfe5:--z_uccfe5  批號庫存表
 	
 	select ROW_NUMBER()over(order by gno,productno,uno) rr
 		,productno a01
-		,product a02
+		,replace(product,'~#$',char(39)) a02
 		,uno a03
 		,dbo.getComma(mount,0) a04
 		,dbo.getComma([weight],0) a05 
@@ -49,7 +49,7 @@ z_uccfe4:--z_uccfe4
 		,ROW_NUMBER()over(order by noa) rr
 		,"uccfe?noa=\'"+noa+"\' and "+cast(ROW_NUMBER()over(order by noa) as nvarchar)+"=$rr?" ghref
 		,noa a01
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[product]+'</a>' a02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(product,'~#$',char(39))+'</a>' a02
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[unit]+'</a>' a03
 		,dbo.getComma(uweight,2) a04
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(ISNULL(tgg,''))=0 then tggno else tgg end+'</a>' a05
@@ -175,7 +175,7 @@ z_uccfe3:--z_uccfe3
 		,storeno a01
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+store+'</a>' a02
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+productno+'</a>' a03
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' a04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(product,'~#$',char(39))+'</a>' a04
 		,dbo.getComma(mount,0) a05
 		,dbo.getComma([weight],2) a06
 		,dbo.getComma(price,2) a07
@@ -628,7 +628,7 @@ z_uccfe2:--z_uccfe2
 	select * 
 		,case tablea when 'stkucc' then '' else replace(replace(tablea,'_Ｘ',''),'_Ｚ','')+"?noa=\'"+noa+"\' and "+cast(recno as nvarchar)+"=$rr?"+accy end ghref
 		,productno b01
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(product,''))=0 then productno else [product] end+'</a>' b02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(product,''))=0 then productno else replace(product,'~#$',char(39)) end+'</a>' b02
 		,recno rr
 		,datea a01
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[action]+'</a>' a02
@@ -790,7 +790,7 @@ z_uccfe1:--z_uccfe1
 	select * 
 	,grecno rr
 		,productno a01
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' a02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(product,'~#$',char(39))+'</a>' a02
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(store,''))=0 then storeno else store end+'</a>' a03
 		,dbo.getComma(mount,0) a04
 		,dbo.getComma([weight],2) a05
