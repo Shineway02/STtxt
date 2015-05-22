@@ -98,6 +98,7 @@ z_uccfe3:--z_uccfe3
 		store nvarchar(50),
 		productno nvarchar(30),
 		product nvarchar(50),
+		unit nvarchar(30),
 		mount float,
 		[weight] float,
 		price float,
@@ -111,7 +112,7 @@ z_uccfe3:--z_uccfe3
 	and productno between @t_bproductno and @t_eproductno
 	and storeno between @t_bstoreno and @t_estoreno
 	
-	update #z_uccfe3 set product=ISNULL(b.product,''),store=ISNULL(c.store,'')
+	update #z_uccfe3 set product=ISNULL(b.product,''),store=ISNULL(c.store,''),unit=isnull(b.unit,'')
 	from #z_uccfe3 a
 	left join ucc b on a.productno=b.noa
 	left join store c on a.storeno=c.noa
@@ -181,8 +182,14 @@ z_uccfe3:--z_uccfe3
 		,dbo.getComma(price,2) a07
 		,dbo.getComma([money],0) a08
 	from #z_uccfe3 order by storeno,pno,recno
-	drop table #z_uccfe3;
+	drop table #z_uccfe3
 	
+	IF OBJECT_ID('tempdb..#z_uccfe3')is not null
+	BEGIN
+		drop table #z_uccfe3
+	END
+	;
+--***********************************************************************************************
 z_uccfe2:--z_uccfe2 
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_bproductno nvarchar(20) = case when '#non'=[1] then '' else [1] end
@@ -762,7 +769,7 @@ z_uccfe1:--z_uccfe1
 	begin
 		insert @tmp
 		select case when a.gno='1' then '5' when a.gno='3' then '6' else a.gno end gno,
-			case when a.gno ='3'or a.gno ='6' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
+			case when a.gno ='3' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
 			a.price,a.[money],CEILING(a.mount/NULLIF(b.stdmount,0)) carton
 		from #z_uccfe1 a left join ucc b on a.productno = b.noa order by productno,recno
 	end
@@ -770,9 +777,12 @@ z_uccfe1:--z_uccfe1
 	begin
 		insert @tmp
 		select case when a.gno='1' then '7' when a.gno='2' then '4' when a.gno='3' then '8' else a.gno end gno,
-			case when a.gno ='3'or a.gno ='8' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
+			case when a.gno ='3' then 999999 else a.grecno end ,a.recno,a.storeno,a.store,a.productno,a.product,a.unit,a.mount,a.[weight],
 			a.price,a.[money],CEILING(a.mount/NULLIF(b.stdmount,0)) carton
 		from #z_uccfe1 a left join ucc b on a.productno = b.noa order by productno,recno
+		
+		update @tmp
+		set carton=(select SUM(isnull(carton,0)) from @tmp where gno in ('2','4')) where gno='8'
 	end
 	
 	set @counts=((select count(*) from @tmp)/@t_line)+1
@@ -796,4 +806,5 @@ z_uccfe1:--z_uccfe1
 		,dbo.getComma([weight],2) a05
 		,dbo.getComma(price,2) a06
 		,dbo.getComma([money],0) a07
+		,dbo.getComma(carton,0) carton
 	from @tmp order by grecno,gno;
