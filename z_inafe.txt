@@ -47,9 +47,13 @@ set money=case when isnull(UPPER(unit),'')='KG' or isnull(unit,'')='' then weigh
 --select '1',storeno,MAX(stores),sum(mount),sum(weight),sum(money),'ina'
 --from @tmp group by storeno
 
-insert into @tmp(gno,storeno,mount,weight,money,qhref)
-select '2' gno,'ZZZZZZ',sum(mount),sum(weight),sum(money),'ina'
-from @tmp where gno='0'
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,storeno,mount,weight,money,qhref)
+	select '2' gno,'ZZZZZZ',sum(mount),sum(weight),sum(money),'ina'
+	from @tmp where gno='0'
+end
+
 
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
