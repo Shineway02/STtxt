@@ -2870,3 +2870,725 @@ select
 from @result a order by custno,totpage,pageno,orderno,mon,datea,case when noa='前期帳款' then '0' else noa end,idno;
 
 --********************************************************************************************
+z_umm16:--z_umm16
+declare @t_cno nvarchar(20)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bmon nvarchar(7)
+declare @t_emon nvarchar(7)
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
+declare @t_bsalesno nvarchar(50)
+declare @t_esalesno nvarchar(50)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_showunpay nvarchar(30)
+declare @t_xcoin nvarchar(20)
+declare @t_showordetotal nvarchar(30)
+
+set @t_cno = case when '#non' = [1] then '' else [1] end
+set @t_bdate = case when '#non'=[3] then '' else [3] end
+set @t_edate = case when '#non'=[4] then char(255) else [4] end
+set @t_bmon = case when '#non'=[13] then '' else [13] end
+set @t_emon = case when '#non'=[14] then char(255) else [14] end
+set @t_bcustno = case when '#non'=[5] then '' else [5] end
+set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
+set @t_bsalesno = case when '#non'=[15] then '' else [15] end
+set @t_esalesno = case when '#non'=[16] then char(255) else [16] end
+set @t_bproductno = case when '#non'=[17] then '' else [17] end
+set @t_eproductno = case when '#non'=[18] then char(255) else [18] end
+set @t_showunpay = case when '#non'=[22] then '0' else [22] end
+set @t_xcoin = case when '#non' = [27] then '' else [27] end
+set @t_showordetotal = case when '#non'=[28] then '0' else [28] end
+-------------------------------------------------------------------------------------------------------------------------
+declare @coin nvarchar(20)
+
+declare @result table(
+	coin nvarchar(20),
+	gno nvarchar(1),
+	typea nvarchar(4),
+	noa nvarchar(15),
+	noq nvarchar(3),
+	datea nvarchar(10),
+	mon nvarchar(7),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
+	addr_invo nvarchar(90),
+	tel nvarchar(90),
+	productno nvarchar(MAX),
+	xproduct nvarchar(MAX),
+	unit nvarchar(8),
+	mount decimal(16,4),
+	weight decimal(16,4),
+	price decimal(16,4),
+	total decimal(18,0),
+	money decimal(18,0),
+	back decimal(18,0),
+	tax decimal(18,0),
+	total1 decimal(18,0),
+	pay decimal(18,0),
+	unpay decimal(18,0),
+	total2 decimal(18,0),
+	pcount int,
+	salesno nvarchar(30),
+	saless nvarchar(30)
+	primary key (coin,custno,gno,mon,datea,noa,noq)
+)
+
+if(@t_showunpay='0')
+begin
+	insert into @result
+		select @t_xcoin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+		       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+		from view_vccs b
+		left join view_vcc a on a.noa = b.noa
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+		where (a.datea between @t_bdate and @t_edate) and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
+			  (b.productno between @t_bproductno and @t_eproductno) and (len(@t_cno)=0 or a.cno=@t_cno)
+		union all --無發票系統
+		select @t_xcoin,'0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+			   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) * tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+		from view_vcc a
+		left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
+		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+		where tax > 0 and (taxtype='1' or taxtype='5') and
+			  (a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+			  and (len(@t_cno)=0 or a.cno=@t_cno)
+		union all --有發票系統
+		select @t_xcoin,'0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   a.custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+			   0 mount, 0 weight, 0 price, a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,c.salesno,c.sales
+		from vcca a left join cust c on a.custno = c.noa
+		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
+		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
+				(a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and
+			  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)
+		order by custno,gno,mon,datea,noa,noq
+end
+else
+begin
+	insert into @result
+	select @t_xcoin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
+			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+		       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+		from view_vccs b
+		left join view_vcc a on a.noa = b.noa
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+		where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
+			  (b.productno between @t_bproductno and @t_eproductno) and (len(@t_cno)=0 or a.cno=@t_cno)
+		union all --無發票系統
+		select @t_xcoin,'0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   (case when a.custno2!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+			   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) *a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+		from view_vcc a
+		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
+			  (a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+			  and (len(@t_cno)=0 or a.cno=@t_cno)
+		union all --有發票系統
+		select @t_xcoin,'0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+			   custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+			   0 mount, 0 weight, 0 price, a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+			   ,c.salesno,c.sales
+		from vcca a left join cust c on a.custno = c.noa
+		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
+				(a.datea between @t_bdate and @t_edate)and
+			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+			  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and 
+			  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)
+		order by custno,gno,mon,datea,noa,noq
+end
+
+if(@t_xcoin='ALL')
+begin
+	declare cursor_table cursor for
+	select coin from flors group by coin
+	open cursor_table
+	fetch next from cursor_table
+	into @coin
+	while(@@FETCH_STATUS <> -1)
+	begin
+		
+		if(@t_showunpay='0')
+		begin
+			insert into @result
+				select @coin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
+					   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+				       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+				       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+						,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+				from view_vccs b
+				left join view_vcc a on a.noa = b.noa
+				left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+				where (a.datea between @t_bdate and @t_edate) and
+					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+					  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
+					  (b.productno between @t_bproductno and @t_eproductno) and (len(@t_cno)=0 or a.cno=@t_cno)
+				union all --無發票系統
+				select @coin,'0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+					   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+					   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) * tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+					   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+						,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+				from view_vcc a
+				left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
+				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+				where tax > 0 and (taxtype='1' or taxtype='5') and
+					  (a.datea between @t_bdate and @t_edate)and
+					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+					  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+					  and (len(@t_cno)=0 or a.cno=@t_cno)
+				union all --有發票系統
+				select @coin,'0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+					   a.custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+					   0 mount, 0 weight, 0 price, a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+					   ,c.salesno,c.sales
+				from vcca a left join cust c on a.custno = c.noa
+				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
+				where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
+						(a.datea between @t_bdate and @t_edate)and
+					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+					  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and
+					  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)
+				order by custno,gno,mon,datea,noa,noq
+		end
+		else
+		begin
+			insert into @result
+			select @coin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
+					   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+				       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+				       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+						,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+				from view_vccs b
+				left join view_vcc a on a.noa = b.noa
+				left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+				where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
+					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+					  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
+					  (b.productno between @t_bproductno and @t_eproductno) and (len(@t_cno)=0 or a.cno=@t_cno)
+				union all --無發票系統
+				select @coin,'0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+					   (case when a.custno2!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+					   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) *a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+					   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+						,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+				from view_vcc a
+				left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
+				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+				where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
+					  (a.datea between @t_bdate and @t_edate)and
+					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+					  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+					  and (len(@t_cno)=0 or a.cno=@t_cno)
+				union all --有發票系統
+				select @coin,'0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+					   custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+					   0 mount, 0 weight, 0 price, a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+					   ,c.salesno,c.sales
+				from vcca a left join cust c on a.custno = c.noa
+				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
+				where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
+						(a.datea between @t_bdate and @t_edate)and
+					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+					  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and 
+					  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)
+				order by custno,gno,mon,datea,noa,noq
+		end
+
+		fetch next from cursor_table
+		into @coin
+	
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+
+declare @t_coin nvarchar(20)
+declare @gno nvarchar(1)
+declare @typea nvarchar(4)
+declare @noa nvarchar(15)
+declare @total decimal(18,0)
+declare @mon nvarchar(7)
+declare @custno nvarchar(50)
+declare @comp nvarchar(MAX)
+declare @t_custno nvarchar(50)
+declare @t_comp nvarchar(MAX)
+declare @t_money decimal(18,0)
+declare @t_back decimal(18,0)
+declare @t_tax decimal(18,0)
+declare @t_total1 decimal(18,0)
+declare @t_pay decimal(18,0)
+declare @t_unpay decimal(18,0)
+declare @t_total2 decimal(18,0)
+declare @t_pcount int
+set @t_custno = '#zzzz#zzzz'
+set @t_coin = '#zzzz#zzzz'
+set @t_comp = ''
+set @t_money = 0
+set @t_back = 0
+set @t_tax = 0
+set @t_total1 = 0
+set @t_pay = 0
+set @t_unpay = 0
+set @t_total2 = 0
+set @t_pcount = 0
+
+--declare cursor_table cursor for
+--select coin,gno,typea,custno,comp,mon,total from @result order by coin,custno
+--open cursor_table
+--fetch next from cursor_table
+--into @coin,@gno,@typea,@custno,@comp,@mon,@total
+--while(@@FETCH_STATUS <> -1)
+--begin
+--	if @t_custno != @custno or @t_coin!=@coin
+--	begin
+--		if @t_custno != '#zzzz#zzzz' and @t_coin!='#zzzz#zzzz'
+--		begin
+--			set @t_total1 = @t_money - @t_back + @t_tax
+--			insert into @result
+--			select @t_coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo, '' tel,
+--			       '' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total,
+--				   @t_money, @t_back, @t_tax, @t_total1
+--				   , isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=@t_custno)),0) --單據
+--					+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
+--					and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
+--					and ub.custno=@t_custno)),0) --月結
+--					 pay
+--				   , 0 unpay, 0 total2, @t_pcount,'',''
+--		end
+--		set @t_custno = @custno
+--		set @t_coin = @coin
+--		set @t_comp = @comp
+--		set @t_money = case when @typea = '1' then @total else 0 end
+--		set @t_back = case when @typea = '2' then @total else 0 end
+--		set @t_tax = case when @typea = '稅' then @total else 0 end
+--		set @t_pcount = 1
+--	end
+--	else
+--	begin
+--		set @t_money = @t_money + case when @typea = '1' then @total else 0 end
+--		set @t_back = @t_back + case when @typea = '2' then @total else 0 end
+--		set @t_tax = @t_tax + case when @typea = '稅' then @total else 0 end
+--		set @t_pcount = @t_pcount + 1
+--	end
+--	fetch next from cursor_table
+--	into @coin,@gno,@typea,@custno,@comp,@mon,@total
+--end
+--close cursor_table
+--deallocate cursor_table
+
+--if @t_custno != '#zzzz#zzzz' and @t_coin!='#zzzz#zzzz'
+--begin
+--	set @t_total1 = @t_money - @t_back + @t_tax
+--	insert into @result
+--	select @t_coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo, '' tel,
+--			'' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total,
+--			@t_money, @t_back, @t_tax, @t_total1
+--			, isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=@t_custno)),0) --單據
+--			+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
+--			and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
+--			and ub.custno=@t_custno)),0) --月結
+--			 pay
+--			, 0 unpay, 0 total2, @t_pcount,'',''
+--end
+
+insert @result
+select coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, custno, MAX(comp) comp, '' addr_invo, '' tel, '' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total, 
+sum(case when typea = '1' then total else 0 end), sum(case when typea = '2' then total else 0 end)
+,SUM(case when typea = '稅' then total else 0 end) , 0
+, isnull((select sum(ub.paysale) from umms ub where exists (select noa from @result where ub.vccno=noa and gno='0' and custno=a.custno)),0) --單據 
++isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
+and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
+and ub.custno=a.custno)),0) --月結 
+pay , 0 unpay, 0 total2, count(*),'',''  from @result a group by custno,coin
+
+update @result set total1=money-back+tax where gno='1'
+	
+update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
+
+--104/05/07單據插入小計
+if(@t_showordetotal='1')
+begin
+	insert @result
+	select coin,'2',CHAR(255),noa,CHAR(255),datea,mon,custno,MAX(comp),MAX(addr_invo),MAX(tel),'','',''
+	,null,null,null,SUM(total),null,null
+	,isnull((select sum(tax) from view_vcc where noa=a.noa),0)
+	+isnull((select sum(cb.tax) from view_vcc ca left join vcca cb on ca.invono=cb.noa where ca.noa=a.noa and (ca.taxtype='1' or ca.taxtype='5') and [21]!=3),0)
+	,null,null,null,null,null,MAX(salesno),MAX(saless)
+	from @result a where gno='0' and typea!='稅'
+	group by coin,gno,noa,datea,mon,custno
+end
+--已收款
+--update a 
+--set pay=isnull((select SUM(paysale*coin.floata) from umms ub
+--						left join view_vcc va on ub.vccno=va.noa
+--						outer apply (select isnull((select top 1 floata from flors where coin=a.coin and va.datea <=edate order by edate desc,noa desc),1) floata) coin
+--						where vccno in(select noa from @result where noa!='' and custno=a.custno)),0) --本期單據以沖金額 
+--+isnull((select SUM(ub.paysale*coin.floata) from umms ub 
+--			left join view_vcc va on ub.vccno=va.noa
+--			outer apply (select isnull((select top 1 floata from flors where coin=a.coin and ub.mon <=edate order by edate desc,noa desc),1) floata) coin
+--			where charindex(a.custno+'-',ub.vccno)>0 
+--			and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' between @t_bdate and @t_edate 
+--			and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6) between @t_bmon and @t_emon),0) --找出月結客戶與稅的內容 
+--from @result a 
+--where a.gno='1'
+
+--104/01/31
+--update a 
+--set pay= 
+--isnull((select sum(ub.paysale) from umms ub where ub.vccno=a.noa),0) 
+--from @result a 
+--where a.gno='0' and noa!=''
+
+--update a 
+--set pay= 
+--isnull((select sum(pay) from @result where custno=a.custno and gno='0'),0) --單據
+--+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno
+--and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
+--and ub.custno=a.custno)),0) --月結
+--from @result a 
+--where a.gno='1' 
+
+---begin 前期---------------------------------------------------------------------------------------------------
+--declare @tmp table(
+--	coin nvarchar(20),
+--	gno nvarchar(1),
+--	typea nvarchar(4),
+--	noa nvarchar(15),
+--	noq nvarchar(3),
+--	datea nvarchar(10),
+--	mon nvarchar(7),
+--	custno nvarchar(50),
+--	comp nvarchar(MAX),
+--	addr_invo nvarchar(90),
+--	tel nvarchar(90),
+--	productno nvarchar(MAX),
+--	xproduct nvarchar(MAX),
+--	unit nvarchar(8),
+--	mount decimal(16,2),
+--	weight decimal(16,2),
+--	price decimal(16,2),
+--	total decimal(18,0),
+--	money decimal(18,0),
+--	back decimal(18,0),
+--	tax decimal(18,0),
+--	total1 decimal(18,0),
+--	pay decimal(18,0),
+--	unpay decimal(18,0),
+--	total2 decimal(18,0),
+--	pcount int,
+--	salesno nvarchar(30),
+--	saless nvarchar(30)
+--	primary key (coin,custno,gno,mon,datea,noa,noq)
+--)
+
+--insert into @tmp
+--	select @t_xcoin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
+--		    (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+--	       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+--	       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+--			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+--	from view_vccs b	left join view_vcc a on a.noa = b.noa
+--	left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)  = c.noa
+--	outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+--	where ((a.datea < @t_bdate ) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
+--		  and ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+--		  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+--		  and (b.productno between @t_bproductno and @t_eproductno)
+--	union all
+--	select @t_xcoin,'0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+--		    (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+--		   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) *a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+--		   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+--			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+--	from view_vcc a left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)  = c.noa
+--	outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+--	where tax > 0 and (taxtype='1' or taxtype='5')
+--		  and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon))
+--		  and ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+--		  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+--	union all
+--	select @t_xcoin,'0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+--		   custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+--		   0 mount, 0 weight, 0 price, a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+--			,c.salesno,c.sales
+--	from vcca a left join cust c on a.custno = c.noa
+--	outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
+--	where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3)
+--		and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
+--		and  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and
+--		(isnull(c.salesno,'') between @t_bsalesno and @t_esalesno)
+--	order by custno,gno,mon,datea,noa,noq
+
+--if(@t_xcoin='ALL')
+--begin
+--	declare cursor_table cursor for
+--	select coin from flors group by coin
+--	open cursor_table
+--	fetch next from cursor_table
+--	into @coin
+--	while(@@FETCH_STATUS <> -1)
+--	begin
+		
+--		insert into @tmp
+--		select @coin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
+--			    (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
+--		       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+--		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+--				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+--		from view_vccs b	left join view_vcc a on a.noa = b.noa
+--		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)  = c.noa
+--		outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+--		where ((a.datea < @t_bdate ) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
+--			  and ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+--			  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+--			  and (b.productno between @t_bproductno and @t_eproductno)
+--		union all
+--		select @coin,'0' gno, '稅' typea, a.noa, CHAR(255) noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+--			    (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+--			   0 mount, 0 weight, 0 price, (case when a.typea!='1' then -1 else 1 end) *a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+--			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+--				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales
+--		from view_vcc a left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)  = c.noa
+--		outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
+--		where tax > 0 and (taxtype='1' or taxtype='5')
+--			  and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon))
+--			  and ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno)
+--			  and ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+--		union all
+--		select @coin,'0' gno, '稅' typea, a.noa, '' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+--			   custno, '' comp, '' addr_invo, '' tel, '' productno, '稅額' product, '' unit,
+--			   0 mount, 0 weight, 0 price, a.tax*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
+--				,c.salesno,c.sales
+--		from vcca a left join cust c on a.custno = c.noa
+--		outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
+--		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3)
+--			and ((a.datea < @t_bdate) or ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) < @t_bmon ))
+--			and  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and
+--			(isnull(c.salesno,'') between @t_bsalesno and @t_esalesno)
+--		order by custno,gno,mon,datea,noa,noq
+	
+--		fetch next from cursor_table
+--		into @coin
+	
+--	end
+--	close cursor_table
+--	deallocate cursor_table
+--end
+
+
+--set @t_coin = '#zzzz#zzzz'
+--set @t_custno = '#zzzz#zzzz'
+--set @t_comp = ''
+--set @t_money = 0
+--set @t_back = 0
+--set @t_tax = 0
+--set @t_total1 = 0
+--set @t_pay = 0
+--set @t_unpay = 0
+--set @t_total2 = 0
+--set @t_pcount = 0
+--declare @salesno nvarchar(30) =''
+--declare @sales nvarchar(30) =''
+
+--declare cursor_table cursor for
+--	select coin,gno,typea,custno,comp,mon,total,salesno,saless from @tmp order by coin,custno
+--open cursor_table
+--fetch next from cursor_table
+--into @coin,@gno,@typea,@custno,@comp,@mon,@total,@salesno,@sales
+--while(@@FETCH_STATUS <> -1)
+--begin
+--	if @t_custno != @custno or @t_coin !=@coin
+--	begin
+--		if @t_custno != '#zzzz#zzzz' and @t_coin!='#zzzz#zzzz'
+--		begin
+--			set @t_total1 = @t_money - @t_back + @t_tax
+--			insert into @tmp
+--			select @t_coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo, '' tel,
+--			       '' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total,
+--				   @t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,@salesno,@sales
+--		end
+--		set @t_coin = @coin
+--		set @t_custno = @custno
+--		set @t_comp = @comp
+--		set @t_money = case when @typea = '1' then @total else 0 end
+--		set @t_back = case when @typea = '2' then @total else 0 end
+--		set @t_tax = case when @typea = '稅' then @total else 0 end
+--		set @t_pcount = 1
+--	end
+--	else
+--	begin
+--		set @t_money = @t_money + case when @typea = '1' then @total else 0 end
+--		set @t_back = @t_back + case when @typea = '2' then @total else 0 end
+--		set @t_tax = @t_tax + case when @typea = '稅' then @total else 0 end
+--		set @t_pcount = @t_pcount + 1
+--		end
+--	fetch next from cursor_table
+--	into @coin,@gno,@typea,@custno,@comp,@mon,@total,@salesno,@sales
+--end
+--close cursor_table
+--deallocate cursor_table
+
+--if @t_custno != '#zzzz#zzzz' and @t_coin!='#zzzz#zzzz'
+--begin
+--	set @t_total1 = @t_money - @t_back + @t_tax
+--	insert into @tmp
+--	select @t_coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo, '' tel,
+--		       '' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total,
+--			   @t_money, @t_back, @t_tax, @t_total1, 0 pay, 0 unpay, 0 total2, @t_pcount,@salesno,@sales
+--end
+
+--update @tmp set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
+
+----已收款
+--update a
+--	set pay=isnull((select SUM(paysale*coin.floata) from umms ub left join view_vcc va on ub.vccno=va.noa
+--	outer apply (select isnull((select top 1 floata from flors where coin=a.coin and va.datea <=edate order by edate desc,noa desc),1) floata) coin
+--	where vccno in(select noa from @tmp where noa!='' and custno=a.custno)),0) --本期單據以沖金額
+--	+isnull((select SUM(ub.paysale*coin.floata) from umms ub left join view_vcc va on ub.vccno=va.noa
+--	outer apply (select isnull((select top 1 floata from flors where coin=a.coin and ub.mon <=edate order by edate desc,noa desc),1) floata) coin
+--				where charindex(a.custno+'-',ub.vccno)>0
+--				and (SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' < @t_bdate
+--				or SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6) < @t_bmon) ),0) --找出月結客戶與稅的內容
+--from @tmp a where a.gno='1'
+
+declare @tmp table( 
+coin nvarchar(20), 
+gno nvarchar(1), 
+custno nvarchar(50), 
+total decimal(18,0), 
+salesno nvarchar(30)
+) 
+
+insert into @tmp (coin,gno,custno,salesno,total)
+select @t_xcoin,'1',custno,salesno,SUM(money) from (
+	--trd
+	--select aa.custno,bb.salesno,SUM(isnull(unpay,0)) money from view_trd aa left join cust bb on aa.custno=bb.noa where (case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bsmon
+	--and len(@t_paytype)=0
+	--group by  aa.custno,bb.salesno
+	--union all
+	--vcc
+	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
+	--,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
+	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay*coin.floata,0))
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)*coin.floata money 
+	from view_vcc aa left join cust bb on aa.custno=bb.noa 
+	outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and aa.datea <=edate order by edate desc,noa desc),1) floata) coin 
+	where ((case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon and aa.datea <@t_bdate) and (left(isnull(kind,''),4)!='健勞勞退')
+	and (len(@t_cno)=0 or aa.cno=@t_cno)
+	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end),coin.floata
+	having SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay*coin.floata,0))	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)*coin.floata!=0
+	--vcca
+	union all
+	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
+	--,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon and left(vccno,len(vccno)-11)=ca.custno),0)
+	,SUM(isnull(ca.tax*coin.floata,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0) *coin.floata
+	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
+	outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and ca.datea <=edate order by edate desc,noa desc),1) floata) coin 
+	where ((case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bmon and ca.datea <@t_bdate) and ([21]!=3)
+	and (ca.taxtype='1' or ca.taxtype='5') and (len(@t_cno)=0 or ca.cno=@t_cno)
+	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end),ca.noa,coin.floata
+	having SUM(isnull(ca.tax*coin.floata,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0)*coin.floata !=0
+	--union all
+	--cara
+	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
+	--and len(@t_paytype)=0
+)tmp where (custno between @t_bcustno and @t_ecustno ) and (salesno between @t_bsalesno and @t_esalesno) group by custno,salesno
+
+-----end 前期----------------------------------------------------------------------------------
+
+--update a
+--	set unpay=isnull((select total1-pay from @tmp where custno=a.custno and coin=a.coin and gno='1'),0)
+--from @result a where a.gno='1'
+
+--insert into @result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay)
+--select coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,0,0,total1-pay+unpay from @tmp
+--where custno not in (select custno from @result) and gno='1' and (total1-pay+unpay)!=0
+
+update a 
+set unpay=isnull((select sum(total) from @tmp where custno=a.custno and coin=a.coin and gno='1'),0) 
+from @result a where a.gno='1' 
+
+--insert into @result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
+--select coin,gno,'','','','',a.custno,b.comp,a.salesno,c.namea,0,0,total from @tmp a 
+--left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa
+--where custno not in (select custno from @result) and gno='1' and total!=0 
+
+insert into @result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
+select coin,gno,'','','','',a.custno,b.comp,'','',0,0,sum(total) from @tmp a 
+left join cust b on a.custno=b.noa 
+where custno not in (select custno from @result) and gno='1' and total!=0 
+group by coin,gno,a.custno,b.comp
+
+update @result
+set salesno=(select top 1 (case when salesno2!='' then salesno2 else salesno end) from view_vcc order by datea desc )
+,saless=(select top 1 (case when salesno2!='' then sales2 else sales end) from view_vcc order by datea desc )
+where salesno=''
+
+update @result
+	set total2=total1+unpay-pay
+where gno='1'
+
+--當本期區間內沒有未收就不顯示
+if(@t_showunpay='1')
+delete @result where custno in (select custno from @result where gno='1' and total2=0)
+
+if(@t_xcoin='ALL')
+begin
+	update @result set coin='' where coin=@t_xcoin
+	update @tmp set coin='' where coin=@t_xcoin
+end
+
+select
+	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,xproduct,unit
+	,(select top 1 saless from @result where custno=a.custno and saless!='' order by datea desc)saless
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),(case when coin!='' then 0 else 4 end),30)) total
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),(case when coin!='' then 0 else 4 end),30)) money
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,back),1)),(case when coin!='' then 0 else 4 end),30)) back
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,tax),1)),(case when coin!='' then 0 else 4 end),30)) tax
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total1),1)),(case when coin!='' then 0 else 4 end),30)) total1
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pay),1)),(case when coin!='' then 0 else 4 end),30)) pay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),(case when coin!='' then 0 else 4 end),30)) unpay
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total2),1)),(case when coin!='' then 0 else 4 end),30)) total2
+	,pcount,case when coin!='' then '_'+coin else '' end coin 
+from @result a order by custno,coin,case when gno='2' then '0' else gno end,mon,datea,noa,noq;
+--**************************************************************************************************

@@ -25,14 +25,14 @@ declare @tmp table(
     carton float, 
     mount float, 
     weight float, 
-    price decimal(10,3), 
+    price float, 
     total float, 
     bmemo nvarchar(max),
     amemo nvarchar(max),
     apv nvarchar(30),
     worker nvarchar(30),
-    datea nvarchar(20)
-    
+    datea nvarchar(20),
+    discount float
  ) 
  
 declare @counts int 
@@ -40,16 +40,17 @@ declare @t_counts int
 declare @t_line int =12
 
 
-insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno,apv,worker,datea) 
+insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno,apv,worker,datea,discount) 
 select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,replace(b.product,'~#$',char(39)),b.unit,b.lengthc,b.mount,b.weight 
-,b.price,b.total,b.memo,a.memo 
+,b.price,b.total,b.memo,replace(a.memo,'chr(10)','<BR>') 
 ,ROW_NUMBER() over (partition by a.noa order by a.noa,b.no2)
-,a.apv,a.worker,b.datea
+,a.apv,a.worker,b.datea,a.weight
 from view_orde a left join view_ordes b on a.accy=b.accy and a.noa = b.noa 
 where (a.noa between @t_bno and @t_eno) 
 
 insert @tmp(gno,noa,carton,mount,weight,total,amemo,apv,worker,datea,recno) 
-select case when @t_isweight='1' then '5' else '6' end,noa,SUM(carton),SUM(mount),SUM(weight),SUM(total),MAX(amemo),MAX(apv),MAX(worker),MAX(datea),999999 from @tmp group by noa 
+select case when @t_isweight='1' then '5' else '6' end,noa,SUM(carton),SUM(mount),SUM(weight),SUM(total)-MAX(discount),MAX(amemo),MAX(apv),MAX(worker),MAX(datea),999999
+from @tmp group by noa 
 
 if (@t_isprice !='1')
 begin
@@ -57,9 +58,8 @@ begin
 	set price=null,total=null
 end
 
-
-
-set @counts=((select count(*) from @tmp)/@t_line)+1
+--表頭
+set @counts=((select count(*) from @tmp)/@t_line)+(case when (select count(*) from @tmp)%@t_line>0 then 1 else 0 end)
 set @t_counts=@counts
 while(@counts>0)
 begin
@@ -74,13 +74,13 @@ end
    declare @noa nvarchar(MAX) 
 
    declare cursor_table cursor for 
-   select noa,count(*) from @tmp group by noa 
+   select noa,count(*) from @tmp where gno not in ('1','3') group by noa 
    open cursor_table 
    fetch next from cursor_table 
    into @noa,@counts 
    while(@@FETCH_STATUS <> -1) 
     begin	
-     while ((@counts-@t_counts)%@t_line>0) 
+     while (@counts%@t_line>0) 
      begin 
 
          insert @tmp(gno,noa,noq,recno) 
@@ -94,5 +94,11 @@ end
   close cursor_table 
   deallocate cursor_table 
 
-  select * from @tmp order by noa,recno,gno,noq
+  select 
+  dbo.getComma(mount,case when @t_isweight=1 then 2 else 0 end)mount
+  ,dbo.getComma(weight,2)weight
+  ,dbo.getComma(price,2)price
+  ,dbo.getComma(total,0)total
+  ,* 
+  from @tmp order by noa,recno,gno,noq
  ;
