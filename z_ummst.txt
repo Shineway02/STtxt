@@ -359,15 +359,11 @@ z_ummst03:--z_ummst03
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
 
-	declare @t_bmon nvarchar(10) 
-	declare @t_emon nvarchar(10) 
-	declare @t_bcustno nvarchar(20) 
-	declare @t_ecustno nvarchar(20) 
-
-	set @t_bmon = case when '#non' = [13] then '' else [13] end
-	set @t_emon = case when '#non' = [14] then CHAR(255) else [14] end
-	set @t_bcustno = case when '#non' = [5] then '' else [5] end
-	set @t_ecustno = case when '#non' = [6] then CHAR(255) else [6] end
+	declare @t_bmon nvarchar(10) = case when '#non' = [13] then '' else [13] end
+	declare @t_emon nvarchar(10) = case when '#non' = [14] then CHAR(255) else [14] end
+	declare @t_bcustno nvarchar(20) = case when '#non' = [5] then '' else [5] end
+	declare @t_ecustno nvarchar(20) = case when '#non' = [6] then CHAR(255) else [6] end
+	declare @t_memo nvarchar(max) = case when '#non' = [19] then '' else [19] end
 	---------------------------------------------------------------------------------
 	declare @tmp1 table(
 		custno nvarchar(20),
@@ -666,20 +662,22 @@ z_ummst03:--z_ummst03
 	,a.[weight] a2
 	,a.price a3
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.[moneys]),1)),4,12)) a4
-	,b.comp comp
-	,b.nick nick
-	,b.addr_comp addr
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[money],0)),1)),4,12)) b1
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[bkmoney],0)),1)),4,12)) b2
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[tax],0)),1)),4,12)) b3
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[total],0)),1)),4,12)) b4
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[payed],0)),1)),4,12)) b5
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[unpay],0)),1)),4,12)) b6
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,isnull(a.[tot],0)),1)),4,12)) b7
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp +'</a>'comp
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.nick+'</a>' nick
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.addr_comp+'</a>' addr
+	,dbo.getComma(a.[money],0) b1
+	,dbo.getComma(a.[bkmoney],0) b2
+	,dbo.getComma(a.[tax],0) b3
+	,dbo.getComma(a.[total],0) b4
+	,dbo.getComma(a.[payed],0) b5
+	,dbo.getComma(a.[unpay],0) b6
+	,dbo.getComma(a.[tot],0) b7
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@t_memo+'</a>' memot
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' ppt
 	from @result a
 	left join cust b on a.custno=b.noa
 	order by a.custno,case when len(isnull(a.vccno,''))=0 then 2 else 1 end,isnull(a.vccno,''),a.pno;
-
+	
 z_ummst02:--z_ummst02 
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
