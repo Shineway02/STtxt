@@ -162,7 +162,7 @@ update @tmp set pertotal = case when isnull(@totTotal,0) = 0 then 0 else round((
 update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
 
 select
-	gno,rankno,productno,products,
+	gno,rankno,productno,replace(products,'~#$',char(39)) products,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),4,30)) mount,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
@@ -359,7 +359,7 @@ end
 
 	
 select 
-a.gno,a.salesno,a.saless,a.custno,a.custs,a.productno,a.products, 
+a.gno,a.salesno,a.saless,a.custno,a.custs,a.productno,replace(a.products,'~#$',char(39)) products, 
 case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m01),1)),4,30)) end m01, 
 case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m02),1)),4,30)) end m02, 
 case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m03),1)),4,30)) end m03, 
@@ -570,7 +570,7 @@ end
 	
 	
 select
-	a.gno,a.salesno,a.saless,a.productno,a.products,
+	a.gno,a.salesno,a.saless,a.productno,replace(a.products,'~#$',char(39)) products,
 	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m01),1)),4,30)) end m01, 
 	case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m02),1)),4,30)) end m02, 
 	case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m03),1)),4,30)) end m03, 

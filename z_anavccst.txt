@@ -4,12 +4,25 @@ z_anavccst04:--z_anavccst04
 	declare @t_bcustno nvarchar(20)
 	declare @t_ecustno nvarchar(20)
 	declare @t_detail nvarchar(max)
+	declare @t_bproductno nvarchar(20) = case when '#non'=[10] then '' else [10] end
+	declare @t_eproductno nvarchar(20) = case when '#non'=[11] then char(255) else [11] end
 	
 	set @t_bdate = case when '#non'=[1] then '' else [1] end
 	set @t_edate = case when '#non'=[2] then char(255) else [2] end
 	set @t_bcustno = case when '#non'=[3] then '' else [3] end
 	set @t_ecustno = case when '#non'=[4] then char(255) else [4] end
 	set @t_detail = case when '#non'=[8] then '' else [8] end
+	
+	declare @t_bdime float = 0
+	declare @t_edime float = 999
+	
+	begin try
+		set @t_bdime = cast([12] as float)
+		set @t_edime = cast([13] as float)
+	end try
+	begin catch
+		--nothing
+	end catch
 ------------------------------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(10),
@@ -39,6 +52,8 @@ from view_orde a left join view_ordes b on a.noa=b.noa
 where a.kind='A1' and b.productno!='' 
 and (a.odate between @t_bdate and @t_edate)
 and (a.custno between @t_bcustno and @t_ecustno)
+and (b.productno between @t_bproductno and @t_eproductno)
+and (b.dime between @t_bdime and @t_edime)
 --排除已加工
 and not exists (select * from view_cubs where ordeno=b.noa and no2=b.no2)
 and not exists (select * from view_cuts where ordeno=b.noa and no2=b.no2)

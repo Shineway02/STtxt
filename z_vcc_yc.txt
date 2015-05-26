@@ -1,0 +1,160 @@
+﻿z_vcc_yc1:--z_vcc_yc1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_btggno nvarchar(50)
+declare @t_etggno nvarchar(50)
+declare @t_typea nvarchar(30)
+declare @t_groupano nvarchar(30)
+declare @t_groupbno nvarchar(30)
+declare @t_groupcno nvarchar(30)
+declare @t_stype nvarchar(30)
+declare @t_salesgroup nvarchar(100)
+declare @t_showinvono nvarchar(10)
+declare @t_acomp nvarchar(MAX)='[3]'
+declare @qhref_acomp nvarchar(10) =''
+declare @vcctypea nvarchar(10) =''
+declare @t_partno nvarchar(30)
+declare @isspec nvarchar(10)='[25]'
+--------------------------------------------------
+--設定小數點--4表示無小數點--2表示小數點1位---0表示小數點2位--
+declare @mount_decimal int = 0
+declare @weight_decimal int = 0
+declare @price_decimal int = 0
+declare @total_decimal int = 4
+
+if(charindex('永勝',@t_acomp)>0)
+begin
+	set @mount_decimal =4
+	set @weight_decimal =4
+	set @price_decimal =4
+end
+if(charindex('英特瑞',@t_acomp)>0 or charindex('安美得',@t_acomp)>0)
+	set @mount_decimal =4
+--------------------------------------------------
+if(charindex('英特瑞',@t_acomp)>0 or charindex('安美得',@t_acomp)>0)
+	set @qhref_acomp='_it'
+if(charindex('永勝',@t_acomp)>0)
+	set @qhref_acomp='_uu'
+if(charindex('楊家',@t_acomp)>0 or charindex('德芳',@t_acomp)>0)
+	set @qhref_acomp='_tn'
+if(charindex('有達',@t_acomp)>0 )
+	set @qhref_acomp='_xy'
+if(charindex('義橋',@t_acomp)>0 )
+	set @qhref_acomp='_yc'
+-------------------------------------------------
+set @t_bdate = case when '#non'=[4] then '' else [4] end
+set @t_edate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[8] then '' else [8] end
+set @t_ecustno = case when '#non'=[9] then char(255) else [9] end
+set @t_bsalesno = case when '#non'=[10] then '' else [10] end
+set @t_esalesno = case when '#non'=[11] then char(255) else [11] end
+set @t_bproductno = case when '#non'=[12] then '' else [12] end
+set @t_eproductno = case when '#non'=[13] then char(255) else [13] end
+set @t_btggno = case when '#non' = [14] then '' else [14] end
+set @t_etggno = case when '#non' = [15] then char(255) else [15] end
+set @t_typea = case when '#non'=[16] then '' else [16] end
+set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+set @t_groupbno = case when '#non'=[18] then '' else (case when [18] = ' ' then '' else [18] end) end
+set @t_groupcno = case when '#non'=[19] then '' else (case when [19] = ' ' then '' else [19] end) end
+set @t_stype = case when '#non'=[20] then '' else [20] end
+set @t_salesgroup = case when '#non' = [21] then '' else [21] end
+set @t_showinvono = case when '#non' = [24] then 0 else [24] end
+set @vcctypea = case when '#non' = [22] then '' else [22] end
+set @t_partno = case when '#non' = [23] then '' else [23] end
+--***********************************************************************************
+declare @result table(
+	gno nvarchar(10),
+	noa nvarchar(30),
+	noq nvarchar(10),
+	typea nvarchar(12),
+	datea nvarchar(10),
+	mon nvarchar(7),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	productno nvarchar(30),
+	xproduct nvarchar(MAX),
+	unit nvarchar(12),
+	lengthc float,
+	mount float,
+	weight float,
+	price float,
+	total float,
+	qhref nvarchar(max),
+	invono nvarchar(30),
+	idate nvarchar(30),
+	imoney float,
+	itax float,
+	itotal float
+)
+insert into @result
+	select '91' gno, a.noa noa, b.noq noq, a.typea typea, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.custno, a.comp
+		, b.productno, b.product+(case when @isspec='1' then '<BR>&nbsp'+isnull(b.spec,'') else '' end), b.unit, 
+		   b.lengthc,b.mount, b.weight, b.price, b.total,'vcc'+@qhref_acomp+'?noa=$noa?'+a.accy
+		   ,a.invono,v.datea,v.money,v.tax,v.total
+	from view_vccs b
+	left join view_vcc a on a.noa = b.noa
+	left join view_ucaucc c on b.productno = c.noa
+	left join sss s on isnull(a.salesno,'')=s.noa
+	left join vcca v on a.invono=v.noa
+	where (a.datea between @t_bdate and @t_edate) and
+		  (a.custno between @t_bcustno and @t_ecustno) and
+		  (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) and
+		  (b.productno between @t_bproductno and @t_eproductno) and
+		  (len(@t_groupano)=0 or c.groupano = @t_groupano) and
+		  (len(@t_groupbno)=0 or c.groupbno = @t_groupbno) and
+		  (len(@t_groupcno)=0 or c.groupcno = @t_groupcno) and
+		  (len(@t_typea)=0 or isnull(c.typea,'null') = @t_typea) and (len(@t_stype)=0 or a.stype = @t_stype) 
+		  and (len(@t_salesgroup)=0 or s.salesgroup=@t_salesgroup)
+		  and (isnull(c.tggno,'') between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
+		  and (len(@t_partno)=0 or s.partno=@t_partno)
+	order by a.datea,gno,noa,noq
+	
+if(@t_showinvono='1')
+begin
+	insert into @result(gno,datea,noa,noq,invono,idate,imoney,itax,itotal)
+	select '92',datea,noa,'ZZZ',invono,idate,imoney,itax,itotal
+	from @result group by datea,noa,invono,idate,imoney,itax,itotal
+end
+	
+insert into @result(gno,datea,noa,mount,lengthc,price,total)
+	select '93',datea,'ZZZZZZZZZZZZ',
+		sum((case typea when '1' then mount else (-1)*mount end)),
+		sum((case typea when '1' then lengthc else (-1)*lengthc end)),
+		sum((case typea when '1' then price else (-1)*price end)),
+		sum((case typea when '1' then total else (-1)*total end))
+	from @result group by datea
+	
+insert into @result(gno,datea,noa,mount,price,total)
+	select '94',left(datea,6)+'z','ZZZZZZZZZZZZ',sum(mount),sum(price),sum(total)
+	from @result a where gno='93' group by left(datea,6)
+--*************************************************************************	
+update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
+update @result set gno='0' where gno='91'
+update @result set gno='1' where gno='92'
+update @result set gno='2' where gno='93'
+update @result set gno='3' where gno='94'
+
+
+update @result
+set mount=mount*-1,total=total*-1,lengthc=lengthc*-1
+where typea='退'
+
+select gno, noa, noq, typea, datea, LEFT(datea,6) xdatea, mon, custno, left(comp,10) comp, productno
+	,replace(xproduct,'~#$',char(39)) xproduct,unit,qhref
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,lengthc),1)),0,30)) lengthc 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),@mount_decimal,30)) mount 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),@weight_decimal,30)) weight 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),@price_decimal,30)) price 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),@total_decimal,30)) total 
+	,invono,idate
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,imoney),1)),@total_decimal,30)) imoney 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,itax),1)),@total_decimal,30)) itax 
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,itotal),1)),@total_decimal,30)) itotal 
+from @result order by datea,noa,noq;
+--*********************************************************************************************************
