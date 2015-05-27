@@ -130,8 +130,8 @@ insert into @result(gno,datea,noa,mount,lengthc,price,total)
 		sum((case typea when '1' then total else (-1)*total end))
 	from @result group by datea
 	
-insert into @result(gno,datea,noa,mount,price,total)
-	select '94',left(datea,6)+'z','ZZZZZZZZZZZZ',sum(mount),sum(price),sum(total)
+insert into @result(gno,datea,noa,mount,lengthc,price,total)
+	select '94',left(datea,6)+'z','ZZZZZZZZZZZZ',sum(mount),sum(lengthc),sum(price),sum(total)
 	from @result a where gno='93' group by left(datea,6)
 --*************************************************************************	
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'

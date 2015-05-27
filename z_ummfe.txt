@@ -413,7 +413,7 @@ z_ummfe03:--z_ummfe03
 	declare @t_bmon nvarchar(20) = case when '#non' = [6] then '' else [6] end
 	declare @t_emon nvarchar(20) = case when '#non' = [7] then CHAR(255) else [7] end	
 	declare @t_bdate nvarchar(20) = case when '#non' = [9] then '' else [9] end
-	declare @t_edate nvarchar(20) = case when '#non' = [10] then '' else [10] end
+	declare @t_edate nvarchar(20) = case when '#non' = [10] then CHAR(255) else [10] end
 	declare @date date 
 	declare @t_bbmon nvarchar(20)
 	begin try
@@ -679,7 +679,7 @@ z_ummfe03:--z_ummfe03
 		,case when xx=1 then a.datea else '' end b02
 		,case when xx=1 then a.noa else '' end b03
 		,case when xx=1 then dbo.getComma(a.[money],0) else '' end b04 
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' b05
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(a.product,'~#$',char(39)) +'</a>' b05
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.unit +'</a>' b06
 		,dbo.getComma(a.[mount],0) b07
 		,dbo.getComma(a.[price],2) b08

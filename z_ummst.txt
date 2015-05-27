@@ -335,7 +335,7 @@ z_ummst9:--z_ummst9
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">日期區間：'+@t_bmon+'至'+ @t_emon +'</a>' d02
 		,case when ROW_NUMBER()over(partition by custno,noa order by recno)=1 and gno='1' then '<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case typea when '1' then '出' else '退' end +'&nbsp'+CHAR(59)+ RIGHT(datea,5) +'</a>' else '' end b01
 		,case when ROW_NUMBER()over(partition by custno,noa order by recno)=1 and gno='1' then noa else '' end b02
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product +'</a>' b03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(product,'~#$',char(39)) +'</a>' b03
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when size='0' then '' else size end+'</a>' b04
 		,case when charindex('管',product)>0 then dbo.getComma(mount,0) else '' end b05
 		,case when charindex('運費',product)>0 then '' when charindex('管',product)=0 or charindex('廢料',product)>0 then dbo.getComma([weight],0) else '' end b06
@@ -673,7 +673,7 @@ z_ummst03:--z_ummst03
 	,dbo.getComma(a.[unpay],0) b6
 	,dbo.getComma(a.[tot],0) b7
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@t_memo+'</a>' memot
-	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' ppt
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(product,'~#$',char(39)) +'</a>' ppt
 	from @result a
 	left join cust b on a.custno=b.noa
 	order by a.custno,case when len(isnull(a.vccno,''))=0 then 2 else 1 end,isnull(a.vccno,''),a.pno;
@@ -1742,7 +1742,7 @@ update @result
 where gno='1'
 	
 select 
-	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,xproduct,unit
+	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39))  xproduct,unit
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price 
@@ -2105,7 +2105,7 @@ update @result set typea = (case typea when '1' then '出' when '2' then '退' e
 		,b.xaddr xaddr
 		,b.yaddr yaddr
 		,tel
-		,isnull(typea,'') + isnull(datea,'')  a1,noa,pno,products a2,csize,
+		,isnull(typea,'') + isnull(datea,'')  a1,noa,pno,replace(products,'~#$',char(39)) a2,csize,
 		b_mount,b_weight,
 		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
 		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_money),1)),4,12)) b_money,

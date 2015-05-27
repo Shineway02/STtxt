@@ -1192,7 +1192,7 @@ update @result
 where gno='1'
 
 select
-	'0'gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,xproduct,unit
+	'0'gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
@@ -1913,7 +1913,7 @@ begin
 end
 
 select
-	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,xproduct,unit
+	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
 	,(select top 1 saless from @result where custno=a.custno and saless!='' order by datea desc)saless
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight
@@ -3576,7 +3576,7 @@ begin
 end
 
 select
-	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,xproduct,unit
+	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
 	,(select top 1 saless from @result where custno=a.custno and saless!='' order by datea desc)saless
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight
