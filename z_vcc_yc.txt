@@ -15,10 +15,11 @@ declare @t_stype nvarchar(30)
 declare @t_salesgroup nvarchar(100)
 declare @t_showinvono nvarchar(10)
 declare @t_acomp nvarchar(MAX)='[3]'
-declare @qhref_acomp nvarchar(10) ='fe'
+declare @qhref_acomp nvarchar(10) ='yc'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
 declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
+declare @t_xproject nvarchar(MAX)='[36]'
 -------------------------------------------------------------------------------------------------------
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -38,21 +39,6 @@ set @t_showinvono = case when '#non' = [22] then 0 else [22] end
 set @vcctypea = case when '#non' = [20] then '' else [20] end
 set @t_partno = case when '#non' = [21] then '' else [21] end
 --***********************************************************************************
---設定小數點--4表示無小數點--2表示小數點1位---0表示小數點2位--
-declare @mount_decimal int = 0
-declare @weight_decimal int = 0
-declare @price_decimal int = 0
-declare @total_decimal int = 4
-
-if(charindex('永勝',@t_acomp)>0)
-begin
-	set @mount_decimal =4
-	set @weight_decimal =4
-	set @price_decimal =4
-end
-if(charindex('英特瑞',@t_acomp)>0 or charindex('安美得',@t_acomp)>0)
-	set @mount_decimal =4
---------------------------------------------------
 if(charindex('英特瑞',@t_acomp)>0 or charindex('安美得',@t_acomp)>0)
 	set @qhref_acomp='_it'
 if(charindex('永勝',@t_acomp)>0)
@@ -142,14 +128,14 @@ where typea='退'
 
 select gno, noa, noq, typea, datea, LEFT(datea,6) xdatea, mon, custno, left(comp,10) comp, productno
 	,replace(xproduct,'~#$',char(39)) xproduct,unit,qhref
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,lengthc),1)),0,30)) lengthc 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),@mount_decimal,30)) mount 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),@weight_decimal,30)) weight 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),@price_decimal,30)) price 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),@total_decimal,30)) total 
+	,dbo.getComma(lengthc,0)  lengthc
+	,dbo.getComma(mount,[23])  mount
+	,dbo.getComma(weight,[24])  weight
+	,dbo.getComma(price,[25])  price
+	,dbo.getComma(total,0)  total
 	,invono,idate
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,imoney),1)),@total_decimal,30)) imoney 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,itax),1)),@total_decimal,30)) itax 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,itotal),1)),@total_decimal,30)) itotal 
+	,dbo.getComma(imoney,0)  imoney
+	,dbo.getComma(itax,0)  itax
+	,dbo.getComma(itotal,0)  itotal
 from @result order by datea,noa,noq;
 --*********************************************************************************************************
