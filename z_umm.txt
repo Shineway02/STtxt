@@ -162,6 +162,16 @@ from @custunpay a left join @tmp b on a.custno=b.custno
 left join cust c on a.custno=c.noa
 left join acomp d on b.cno=d.noa
 
+insert @tmpa
+select '0',b.custno,case when isnull(c.nick,'')!='' then c.nick else left(c.comp,4) end 
+,isnull(a.unpay,0),b.recno,b.datea,b.cno,case when isnull(d.nick,'')!='' then d.nick else left(d.acomp,4) end 
+,b.acc1,b.acc2,b.money,b.chgs,b.checkno,b.account,b.bank,b.indate 
+,b.memo,b.mon,b.vccno,b.paysales,a.total 
+from @custunpay a right join @tmp b on a.custno=b.custno 
+left join cust c on b.custno=c.noa 
+left join acomp d on b.cno=d.noa 
+where not exists (select * from @tmpa where custno=b.custno)
+
 delete @tmpa where isnull(unpay,0)=0 and isnull(money,0)=0 and ISNULL(chgs,0)=0 and isnull(paysales,0)=0
 
 select 
