@@ -115,7 +115,7 @@ update @result
 set mount=mount*-1,total=total*-1
 where typea='退'
 
-select gno, noa, noq, typea, datea, LEFT(datea,6) xdatea, mon, custno, left(comp,10) comp, productno, xproduct,unit,qhref
+select gno, noa, noq, typea, datea, LEFT(datea,6) xdatea, mon, custno, left(comp,10) comp, productno, replace(xproduct,'~#$',char(39)) xproduct,unit,qhref
 	,dbo.getComma(lengthb,2)  lengthb
 	,dbo.getComma(mount,[23])  mount
 	,dbo.getComma(weight,[24])  weight
@@ -203,7 +203,7 @@ declare @tmp table(
 	select '1',cno,custnick,sum(mount),sum(weight),sum(total) 
 	from @tmp where gno='0' group by cno,custnick 
 	
-select gno,productno,products,cno,custnick
+select gno,productno,replace(products,'~#$',char(39)) products,cno,custnick
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -466,7 +466,7 @@ z_vccfe3:--z_vccfe3
 	where typea='退'
 
 	select gno, typea, noa, noq, datea, mon, custno, comp
-	,addr_invo,tel,productno,xproduct,unit
+	,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
 	,dbo.getComma(lengthb,2)  lengthb
 	,dbo.getComma(mount,[23])  mount
 	,dbo.getComma(weight,[24])  weight
@@ -560,7 +560,7 @@ declare @tmp table(
 	from @tmp where gno='0' group by productno,products 
 	
 	
-select gno,productno,products,cno,left(custnick,10) custnick
+select gno,productno,replace(products,'~#$',char(39)) products,cno,left(custnick,10) custnick
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -666,7 +666,7 @@ update @result
 	where typea='退'
 
 select 
-	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,xproduct,unit, qhref
+	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit, qhref
 	,dbo.getComma(lengthb,2)  lengthb
 	,dbo.getComma(mount,[23])  mount
 	,dbo.getComma(weight,[24])  weight
@@ -929,7 +929,7 @@ set @t_partno = case when '#non' = [21] then '' else [21] end
 	where typea='退'
 	
 	select gno, typea, noa, noq, datea, mon, custno, left(comp,10) comp
-	,addr_invo,tel,productno,xproduct,unit, qhref
+	,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit, qhref
 	,dbo.getComma(lengthb,2)  lengthb
 	,dbo.getComma(mount,[23])  mount
 	,dbo.getComma(weight,[24])  weight
@@ -1020,7 +1020,8 @@ insert into @tmp
 	from @tmp where gno='1'
 
 
-select gno,productno,(case when gno='0' then dbo.charbr(products,24) else products end )products,mon
+select gno,productno
+,replace((case when gno='0' then dbo.charbr(products,24) else products end ),'~#$',char(39)) products,mon
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -1118,7 +1119,8 @@ update @tmp
 set mount=mount*-1,weight=weight*-1,total=total*-1
 where typea='退'
 
-select gno,salesno,salesname,left(comp,10)comp,datea,noa,typea,productno,products,unit,qhref
+select gno,salesno,salesname,left(comp,10)comp,datea,noa,typea,productno
+,replace(products,'~#$',char(39)) products,unit,qhref
 ,dbo.getComma(lengthb,2)  lengthb
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -1305,7 +1307,7 @@ set mount=mount*-1,weight=weight*-1,total=total*-1
 where typea='退'
 
 select 
-gno,salesno,salesname,left(comp,10) comp,productno,products,datea,noa,typea,unit, qhref
+gno,salesno,salesname,left(comp,10) comp,productno,replace(products,'~#$',char(39)) products,datea,noa,typea,unit, qhref
 ,dbo.getComma(lengthb,2)  lengthb
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -1392,7 +1394,7 @@ insert into @tmp
 	from @tmp
 	
 
-select gno,salesno sno ,salesname,productno,products
+select gno,salesno sno ,salesname,productno,replace(products,'~#$',char(39)) products
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -1495,7 +1497,7 @@ update @tmp
 set mount=mount*-1,weight=weight*-1,total=total*-1
 where typea='退'
 
-select gno,custno,custnick,salesno,salesname,productno,products,datea,noa,typea,unit,qhref
+select gno,custno,custnick,salesno,salesname,productno,replace(products,'~#$',char(39)) products,datea,noa,typea,unit,qhref
 ,dbo.getComma(lengthb,2)  lengthb
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -1584,7 +1586,7 @@ insert into @tmp
 	select '1',	sum(mount),sum(weight),	sum(total)
 	from @tmp
 
-select gno,custno,left(custnick,7) custnick,salesno sno ,salesname,productno,products
+select gno,custno,left(custnick,7) custnick,salesno sno ,salesname,productno,replace(products,'~#$',char(39)) products
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -1685,7 +1687,7 @@ update @tmp
 set mount=mount*-1,weight=weight*-1,total=total*-1
 where typea='退'
 
-select gno,productno,products,sno,salesname,cno,custnick,datea,noa,typea, qhref
+select gno,productno,replace(products,'~#$',char(39)) products,sno,salesname,cno,custnick,datea,noa,typea, qhref
 ,dbo.getComma(lengthb,2)  lengthb
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -1774,7 +1776,7 @@ insert into @tmp(gno,productno,products,mount,weight,total)
 	select '1',productno,products,sum(mount),sum(weight),sum(total)
 	from @tmp group by productno,products
 	
-select gno,productno,products,sno,salesname,cno,left(custnick,10) custnick 
+select gno,productno,replace(products,'~#$',char(39)) products,sno,salesname,cno,left(custnick,10) custnick 
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
@@ -2454,5 +2456,6 @@ z_vccfe17:--z_vccfe17
 	,dbo.getComma(discount,0)  discount
 	,case when @t_evdate=char(255) then '帳款月份：' else '帳款日期：' end md1
 	,case when @t_evdate=char(255) then @t_bvmon+'~'+@t_evmon else @t_bvdate+'~'+@t_evdate end md2
+	,replace(product,'~#$',char(39)) product
 	,*
 	from @result order by custno,cast(gno as int),mon,datea,noa,noq;
