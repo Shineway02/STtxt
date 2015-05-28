@@ -139,3 +139,74 @@ select gno, noa, noq, typea, datea, LEFT(datea,6) xdatea, mon, custno, left(comp
 	,dbo.getComma(itotal,0)  itotal
 from @result order by datea,noa,noq;
 --*********************************************************************************************************
+z_vcc_yc2:--z_vcc_yc2
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_cno nvarchar(50)
+-------------------------------------------------------------------------------------------------------
+set @t_bdate = case when '#non'=[4] then '' else [4] end
+set @t_edate = case when '#non'=[5] then char(255) else [5] end
+set @t_cno = case when '#non'=[35] then '' else [35] end
+
+declare @tmp table(
+	gno nvarchar(10),
+	noa nvarchar(30),
+	noq nvarchar(10),
+	datea nvarchar(10),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	productno nvarchar(50),
+	product nvarchar(MAX),
+	lengthc float,
+	mount float,
+	weight float,
+	price float,
+	money float,
+	tax float,
+	total float,
+	qhref nvarchar(max)
+)
+--明細
+insert into @tmp
+select '0' gno,a.noa,b.noq ,a.datea,a.custno,case when isnull(c.nick,'')='' then c.nick else left(c.comp,4) end
+,b.productno,b.product,b.lengthc,b.mount,b.weight,b.price,b.total,a.tax,0
+,'vcc_yc'+'?noa=$noa?'+a.accy
+from view_vcc a
+left join view_vccs b on a.noa = b.noa
+left join cust c on a.custno=c.noa
+where (a.datea between @t_bdate and @t_edate)  and (len(@t_cno)=0 or @t_cno=a.cno)
+
+--折扣
+insert into @tmp
+select '0' gno,a.noa,'999',a.datea,a.custno,case when isnull(c.nick,'')='' then c.nick else left(c.comp,4) end
+,char(255),(case when charindex('現金價',a.paytype)>0 then '現金價' when charindex('月結現金',a.paytype)>0 then '月結現金' else '' end)+'扣'+cast(a.price as nvarchar(20))+'%'
+,null,1,null,a.discount,a.discount,a.tax,0
+,'vcc_yc'+'?noa=$noa?'+a.accy
+from view_vcc a
+left join view_vccs b on a.noa = b.noa
+left join cust c on a.custno=c.noa
+where (a.datea between @t_bdate and @t_edate)  and (len(@t_cno)=0 or @t_cno=a.cno)
+and (a.discount>0 or a.price>0) 
+
+--單據小計
+insert into @tmp
+select '1',noa,char(255),MAX(datea),MAX(custno),MAX(comp),'',''
+,sum(lengthc),sum(mount),sum(weight),0,sum(money),MAX(tax),0,''
+from @tmp where gno='0' group by noa
+
+--總計
+insert into @tmp
+select '2',char(255),char(255),MAX(datea),MAX(custno),MAX(comp),'',''
+,sum(lengthc),sum(mount),sum(weight),0,sum(money),sum(tax),sum(money)+sum(tax),''
+from @tmp where gno='1' 
+
+select 
+dbo.getComma(lengthc,0)  lengthc
+,dbo.getComma(mount,[23])  mount
+,dbo.getComma(weight,[24])  weight
+,dbo.getComma(price,[25])  price
+,dbo.getComma(money,0)  money
+,dbo.getComma(tax,0)  tax
+,dbo.getComma(total,0)  total
+,* from @tmp order by noa,gno,noq
+;

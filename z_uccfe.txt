@@ -136,12 +136,12 @@ if(@t_project='yc')
 		union all
 		select isnull(b.storeno,''),b.store,b.productno,b.product xproduct,isnull(b.datea,'') datea, '10' typea, '委外借入' typec,
 		       a.noa, isNull(a.tgg,'') comp, c.unit, b.mount, b.weight,'vcf'+@qhref_acomp+'?noa=$noa?' qhref
-		from vcft b left join vcf a on a.noa = b.noa left join view_ucaucc c on b.productno=c.noa
+		from vcfs b left join vcf a on a.noa = b.noa left join view_ucaucc c on b.productno=c.noa
 		where b.productno BETWEEN @t_bproductno AND @t_eproductno and a.datea<=@t_edate and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 		union all
 		select isnull(b.storeno,''),b.store,b.productno,b.product xproduct,isnull(b.datea,'') datea, 'C0' typea, '委外借出' typec,
 		       a.noa, isNull(a.tgg,'') comp, c.unit, b.mount, b.weight,'vcf'+@qhref_acomp+'?noa=$noa?' qhref
-		from vcfs b left join vcf a on a.noa = b.noa left join view_ucaucc c on b.productno=c.noa
+		from vcft b left join vcf a on a.noa = b.noa left join view_ucaucc c on b.productno=c.noa
 		where b.productno BETWEEN @t_bproductno AND @t_eproductno and a.datea<=@t_edate and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno
 		) as R1
 		

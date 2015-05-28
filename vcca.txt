@@ -1,0 +1,67 @@
+batchvcca_rb:--batchvcca_rb
+	declare @t_ordeno nvarchar(50) = [1]
+	declare @t_total nvarchar(50) = [2]
+	declare @t_money nvarchar(50) = [3]
+	declare @t_buyerno nvarchar(50) = [4]
+	declare @t_buyer nvarchar(100) = [5]
+	declare @t_serial nvarchar(50) = [6]
+	declare @t_vccano nvarchar(50) = [7]
+	declare @t_woker nvarchar(50) = [8]
+	declare @t_err nvarchar(200)
+	declare @t_datea nvarchar(20)=''
+	declare @t_mon nvarchar(20)=''
+	declare @t_vccarno nvarchar(20)
+	--------------------------------------------------------------------------------------------------------
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_vccacount int
+	set @t_vccacount= cast(@t_total as int)/cast(@t_money as int)
+	
+	if(len(@t_datea)=0)
+	begin
+		set @t_datea=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+		set @t_datea=left(@t_datea,3)+'/'+substring(@t_datea,4,2)+'/'+right(@t_datea,2)
+	end
+	set @t_mon=left(@t_datea,3)+'/'+substring(@t_datea,4,2)
+	
+	declare @vcca table(
+		vccano nvarchar(10)
+	)
+	
+	if(@t_vccano!='') --檢查是否被使用或不存在vcca
+	begin
+		if((select count(*) from vcca where noa=@t_vccano)>0)
+		begin
+			@t_err='發票號碼已存在';
+		end
+		
+		if((select count(*) from vccars where @t_vccano between binvono and einvono)=0)
+		begin
+			@t_err='發票號碼不存在發票主檔內';
+		end
+	end
+	else
+	begin
+		--找當天目前最後一張發票
+		set @t_vccano=isnull((select noa from vcca where noa=(select top 1 noa from vcca where datea<=@t_datea order by datea desc,noa desc)),'')
+		if(len(@t_vccano)=0) --找當月第一筆個發票
+		
+		
+	end
+	
+	if(len(@t_err)=0)
+	begin
+		while (@t_vccacount>0)
+		begin
+			insert @vcca
+			select @t_vccano
+			
+			--下一張發票
+		
+		end
+	end
+	
+	
+
+
+
+;
