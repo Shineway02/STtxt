@@ -54,7 +54,7 @@ select '0',ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),0,0
 ,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.price end) end
 ,case when isnull(cm.notprice,0)=1 then null else (case when b.mount=0 then 0 else b.total end) end
 ,replace(b.memo,'chr(10)','<BR>'),case when a.worker2!='' then a.worker2 else a.worker end
-,(select top 1 custno from view_orde where CHARINDEX(noa,a.ordeno)>0)
+,stuff((select ','+custorde from view_orde where CHARINDEX(noa,a.ordeno)>0 and custorde!='' for xml path('')),1,1,'')
 from view_vcc a left join view_vccs b on a.noa=b.noa left join cust c on a.custno=c.noa left join custm cm on a.custno=cm.noa
 left join ucc d on b.productno=d.noa
 where a.noa between @t_bxnoa and @t_exnoa
