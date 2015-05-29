@@ -43,7 +43,7 @@ z_vccp_yc01:--z_vccp_yc01
 	,case when isnull(a.addr2,'')!='' then a.addr2 else a.addr end,a.tel,a.paytype
 	,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.lengthc
 	,b.mount,b.weight,b.price,b.total
-	,a.money,a.tax,isnull(a.discount,0),a.total,a.worker
+	,a.money,a.tax,isnull(a.discount,0),a.money+a.tax,a.worker
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa 
 	where (len(@t_noa)=0 or @t_noa=a.noa)
