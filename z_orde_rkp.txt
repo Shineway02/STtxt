@@ -44,8 +44,8 @@ z_orde_rkp01:--z_orde_rkp01
 	declare @width float
 	declare @lengthb float
 	declare @spec nvarchar(20)
-	declare @classa nvarchar(20)
-	declare @style nvarchar(20)
+	declare @class nvarchar(20)
+	declare @ucolor nvarchar(20)
 	declare @source nvarchar(20)
 	declare @mount float
 	declare @unit nvarchar(20)
@@ -72,8 +72,8 @@ z_orde_rkp01:--z_orde_rkp01
 		width float,
 		lengthb float,
 		spec nvarchar(20),
-		classa nvarchar(20),
-		style nvarchar(20),
+		class nvarchar(20),
+		ucolor nvarchar(20),
 		[source] nvarchar(20),
 		mount float,
 		unit nvarchar(20),
@@ -110,13 +110,13 @@ z_orde_rkp01:--z_orde_rkp01
 		set @n = 1
 		declare cursor_table2 cursor for
 		select productno,product,dime,radius,width,lengthb,spec,class
-			,style,[source],mount,unit,price,memo
+			,ucolor,[source],mount,unit,price,memo
 		from view_ordes 
 		where noa=@t_noa	
 		open cursor_table2
 		fetch next from cursor_table2
-		into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@classa
-			,@style,@source,@mount,@unit,@price,@memos
+		into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
+			,@ucolor,@source,@mount,@unit,@price,@memos
 		while(@@FETCH_STATUS <> -1)
 		begin	
 			select @po='',@pn=''
@@ -126,19 +126,19 @@ z_orde_rkp01:--z_orde_rkp01
 				set @pn = SUBSTRING(@memos,CHARINDEX('chr(10)',@memos)+7,LEN(@memos))
 			end
 			
-			insert into @tmp(gno,recno,noa,productno,product,dime,radius,width,lengthb,spec,classa
-				,style,[source],mount,unit,price,po,pn)
-			values('2',@n,@noa,@productno,@product,@dime,@radius,@width,@lengthb,@spec,@classa
-				,@style,@source,@mount,@unit,@price,@po,@pn)
-			insert into @tmp(gno,recno,noa,productno,product,dime,radius,width,lengthb,spec,classa
-				,style,[source],mount,unit,price,po,pn)
-			values('3',@n,@noa,@productno,@product,@dime,@radius,@width,@lengthb,@spec,@classa
-				,@style,@source,@mount,@unit,@price,@po,@pn)
+			insert into @tmp(gno,recno,noa,productno,product,dime,radius,width,lengthb,spec,class
+				,ucolor,[source],mount,unit,price,po,pn)
+			values('2',@n,@noa,@productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
+				,@ucolor,@source,@mount,@unit,@price,@po,@pn)
+			insert into @tmp(gno,recno,noa,productno,product,dime,radius,width,lengthb,spec,class
+				,ucolor,[source],mount,unit,price,po,pn)
+			values('3',@n,@noa,@productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
+				,@ucolor,@source,@mount,@unit,@price,@po,@pn)
 			
 			set @n = @n + 1
 			fetch next from cursor_table2
-			into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@classa
-			,@style,@source,@mount,@unit,@price,@memos
+			into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
+			,@ucolor,@source,@mount,@unit,@price,@memos
 		end
 		close cursor_table2
 		deallocate cursor_table2
@@ -226,8 +226,8 @@ z_orde_rkp01:--z_orde_rkp01
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' pp
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+CAST(dime as nvarchar)+'+'+CAST(radius as nvarchar)+'*'+CAST(width as nvarchar)+'*'+CAST(lengthb as nvarchar)+'</a>' size
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+spec+'</a>' spec
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+classa+'</a>' classa
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+style+'</a>' style
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+class+'</a>' class
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+ucolor+'</a>' ucolor
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+[source]+'</a>' [source]
 		,dbo.getComma(mount,0) mount
 		,dbo.getComma(price,0) price
