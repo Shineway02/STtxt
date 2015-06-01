@@ -1,0 +1,137 @@
+z_vcc_rkp01:--z_vcc_rkp01 
+	SET QUOTED_IDENTIFIER OFF 
+	declare @t_path nvarchar(max) = '[1]'
+	declare @t_db nvarchar(max) = '[2]'
+	declare @t_noa nvarchar(max) = case when '#non' = [3] then '' else [3] end
+	------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1),
+		recno int,
+		pno nvarchar(10),
+		gno nvarchar(10),
+		accy nvarchar(20),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		comp nvarchar(50),
+		nick nvarchar(20),
+		tel nvarchar(50),
+		fax nvarchar(50),
+		addr nvarchar(max),
+		conn nvarchar(20),
+		
+		ordeno nvarchar(20),
+		no2 nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(50),
+		spec nvarchar(20),
+		class nvarchar(20),
+		dime float,
+		radius float,
+		width float,
+		lengthb float,
+		size nvarchar(max),
+		checker nvarchar(50),--包裝內容
+		lengthc float,--件數
+		mount float,
+		[weight] float,
+		memo nvarchar(max)
+	)
+	insert into @tmp(pno,gno,accy,noa,noq,datea
+		,custno,comp,nick,tel,fax,addr,conn
+		,ordeno,no2,productno,product,spec,class
+		,dime,radius,width,lengthb,size
+		,checker,lengthc,mount,[weight],memo)	
+	select '1','1',a.accy,a.noa,a.noq,b.datea
+		,b.custno,b.comp,b.nick,b.tel,b.fax
+		,case when len(isnull(b.addr2,''))>0 then b.addr2 else b.addr end addr,e.conn
+		,a.ordeno,a.no2,a.productno,a.product,a.spec,a.class
+		,a.dime,a.radius,a.width,a.lengthb
+		,CAST(a.dime as nvarchar)+case when a.radius=0 then '' else '+'+CAST(a.radius as nvarchar)end + '*'+CAST(a.width as nvarchar)+ '*'+CAST(a.lengthb as nvarchar) size
+		,a.checker,a.lengthc,a.mount,a.[weight],a.memo
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa 
+	left join view_ordes c on a.ordeno=b.noa and a.no2=c.no2
+	left join view_orde d on a.ordeno=d.noa
+	left join view_quat e on d.quatno=e.noa
+	where b.noa is not null
+	and (len(@t_noa)=0 or a.noa=@t_noa)
+
+	
+	insert into @tmp(pno,gno,productno,spec,size,lengthc,mount,[weight])
+	select '2','2',productno,spec,size,SUM(ISNULL(lengthc,0)),SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0))
+	from @tmp
+	group by productno,spec,size
+	------------------------------------------------------------------------------------
+	declare @noa nvarchar(20) = ''
+	declare @custno nvarchar(20) = ''
+	declare @comp nvarchar(50) = ''
+	declare @nick nvarchar(20) = ''
+	declare @datea nvarchar(20) = ''
+	declare @tel nvarchar(50) = ''
+	declare @addr nvarchar(max) = ''
+	declare @conn nvarchar(20) = ''
+	declare @fax nvarchar(50) = ''
+	
+	select @noa=noa,@custno=custno,@comp=comp,@nick=nick
+		,@datea=datea,@tel=tel,@addr=addr,@conn=conn,@fax=fax 
+	from @tmp where sel=1
+	
+	declare @pagecount int = 20
+	declare @n int
+	
+	declare cursor_table cursor for
+	select count(1) from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while @n%@pagecount !=0
+		begin
+			insert into @tmp(pno,gno)
+			values('3','3')
+			set @n = @n +1
+		end
+		fetch next from cursor_table
+		into @n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @tmp set recno=b.recno,noa=@noa,custno=@custno,comp=@comp,nick=@nick
+		,datea=@datea,tel=@tel,addr=@addr,conn=@conn,fax=@fax 
+	from @tmp a
+	left join (select ROW_NUMBER()over(order by case when pno='3' then 1 else 0 end,productno,spec,size,pno)recno,sel from @tmp) b on a.sel=b.sel
+	----------------------------------------------------------------------------------
+	declare @reportno nvarchar(max) = '表單編號：LC-16-00-08-02'
+	--declare @sign1 nvarchar(max) = N'<a style="font-family:'+CHAR(39)+'Wingdings 2'+CHAR(39)+'">R</a>'
+	--declare @sign2 nvarchar(max) = N'<a style="font-family:'+CHAR(39)+'Wingdings 2'+CHAR(39)+'">'+NCHAR(163)+'</a>'
+	
+	select gno
+		,'<img src="'+@t_path+'getlogo.aspx?noa=lienchy'+CHAR(38)+'db='+@t_db+'"/>' logo
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@reportno +'</a>' reportno
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+noa +'</a>' noa
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+custno +'</a>' custno
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+nick +'</a>' nick
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+datea +'</a>' datea
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+tel +'</a>' tel
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+addr +'</a>' addr
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+conn +'</a>' conn
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+fax +'</a>' fax
+		
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+cast(recno as nvarchar) +'</a>' rr
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+ordeno+'-'+no2 +'</a>' ordeno
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+productno +'</a>' ppno
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product +'</a>' ppt
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+spec +'</a>' spec
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+class +'</a>' class
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+size +'</a>' size
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+checker +'</a>' checker
+		,dbo.getComma(lengthc,0) lengthc
+		,dbo.getComma(mount,0) mount
+		,dbo.getComma([weight],-1) [weight]
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+memo+'</a>' memo
+	from @tmp
+	order by case when recno is null then 'z' else '' end,recno;
