@@ -12,7 +12,8 @@ declare @tmp table(
     noa nvarchar(20), 
     noq nvarchar(20), 
     acomp nvarchar(max), 
-    cust nvarchar(max), 
+    custno nvarchar(max), 
+    comp nvarchar(max), 
     tel nvarchar(max), 
     fax nvarchar(max), 
     addr nvarchar(max), 
@@ -37,11 +38,12 @@ declare @tmp table(
  
 declare @counts int 
 declare @t_counts int 
-declare @t_line int =12
+declare @t_line int =10
 
 
-insert @tmp(gno,noa,noq,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno,apv,worker,datea,discount) 
-select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,replace(b.product,'~#$',char(39)),b.unit,b.lengthc,b.mount,b.weight 
+insert @tmp(gno,noa,noq,acomp,custno,comp,tel,fax,addr,odate,stype,paytype,trantype,product,unit,carton,mount,weight,price,total,bmemo,amemo,recno,apv,worker,datea,discount) 
+select case when @t_isweight='1' then '2' else '4' end,a.noa,b.no2,a.acomp
+,a.custno,a.comp,a.tel,a.fax,a.addr,a.odate,a.stype,a.paytype,a.trantype,replace(b.product,'~#$',char(39)),b.unit,b.lengthc,b.mount,b.weight 
 ,b.price,b.total,b.memo,replace(a.memo,'chr(10)','<BR>') 
 ,ROW_NUMBER() over (partition by a.noa order by a.noa,b.no2)
 ,a.apv,a.worker,b.datea,a.weight
@@ -64,9 +66,9 @@ set @t_counts=@counts
 while(@counts>0)
 begin
 	
-	insert @tmp(recno,gno,noa,acomp,cust,tel,fax,addr,odate,stype,paytype,trantype,amemo,apv,worker,datea)
+	insert @tmp(recno,gno,noa,acomp,custno,comp,tel,fax,addr,odate,stype,paytype,trantype,amemo,apv,worker,datea)
 	select ((@counts-1)*@t_line)+1,
-	case when @t_isweight='1' then '1' else '3' end,noa,MAX(acomp),MAX(cust),MAX(tel),MAX(fax),MAX(addr),MAX(odate),MAX(stype),MAX(paytype),MAX(trantype),MAX(amemo),MAX(apv),MAX(worker),MAX(datea) from @tmp group by noa 
+	case when @t_isweight='1' then '1' else '3' end,noa,MAX(acomp),MAX(custno),MAX(comp),MAX(tel),MAX(fax),MAX(addr),MAX(odate),MAX(stype),MAX(paytype),MAX(trantype),MAX(amemo),MAX(apv),MAX(worker),MAX(datea) from @tmp group by noa 
 	
 	set @counts=@counts-1
 end

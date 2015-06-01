@@ -111,7 +111,7 @@ declare @tmp table(
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 	
 	select
-		gno,noa,no2,datea,odate,tggno,left(comp,4) comp,pno,pname,spec,csize,pmount,pweight,price,ptotal,e,a,
+		gno,noa,no2,datea,odate,tggno,left(comp,4) comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,pmount,pweight,price,ptotal,e,a,
 		row_number()over(partition by left(odate,6) order by left(odate,6),noa,no2,gno) idno,qhref
 		,rc2no rc2noa
 		,rc2noq
@@ -248,7 +248,7 @@ insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,pmo
 
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 	select
-		gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,
+		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,size,
 		dbo.getComma( pmount,0) pmount,
 		dbo.getComma( pweight,0) pweight,
 		dbo.getComma( price,-1) price,
@@ -395,7 +395,7 @@ declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 	select
-		gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
+		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,
 		dbo.getComma( pmount,0) pmount,
 		dbo.getComma( pweight,0) pweight,
 		dbo.getComma( price,-1) price,
@@ -539,7 +539,7 @@ declare @tmp table(
 		select '3',CHAR(255),null,CHAR(255),sum(pmount),sum(pweight),sum(notva),sum(notvb),sum(noptotal) from @tmp where gno='0'
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 	select
-		gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,
+		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,
 		dbo.getComma( pmount,0) pmount,
 		dbo.getComma( pweight,0) pweight,
 		dbo.getComma( price,-1) price,
