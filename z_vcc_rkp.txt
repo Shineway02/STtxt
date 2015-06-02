@@ -63,6 +63,10 @@ z_vcc_rkp01:--z_vcc_rkp01
 	select '2','2',productno,spec,size,SUM(ISNULL(lengthc,0)),SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0))
 	from @tmp
 	group by productno,spec,size
+	
+	insert into @tmp(pno,gno,lengthc,mount,[weight])
+	select '3','3',SUM(ISNULL(lengthc,0)),SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0))
+	from @tmp
 	------------------------------------------------------------------------------------
 	declare @noa nvarchar(20) = ''
 	declare @custno nvarchar(20) = ''
@@ -91,7 +95,7 @@ z_vcc_rkp01:--z_vcc_rkp01
 		while @n%@pagecount !=0
 		begin
 			insert into @tmp(pno,gno)
-			values('3','3')
+			values('4','4')
 			set @n = @n +1
 		end
 		fetch next from cursor_table
@@ -103,35 +107,43 @@ z_vcc_rkp01:--z_vcc_rkp01
 	update @tmp set recno=b.recno,noa=@noa,custno=@custno,comp=@comp,nick=@nick
 		,datea=@datea,tel=@tel,addr=@addr,conn=@conn,fax=@fax 
 	from @tmp a
-	left join (select ROW_NUMBER()over(order by case when pno='3' then 1 else 0 end,productno,spec,size,pno)recno,sel from @tmp) b on a.sel=b.sel
+	left join (select ROW_NUMBER()over(order by case pno when '3' then 1 when '4' then 2 else 0 end,productno,spec,size,pno)recno,sel from @tmp) b on a.sel=b.sel
 	----------------------------------------------------------------------------------
 	declare @reportno nvarchar(max) = '表單編號：LC-16-00-08-02'
-	--declare @sign1 nvarchar(max) = N'<a style="font-family:'+CHAR(39)+'Wingdings 2'+CHAR(39)+'">R</a>'
-	--declare @sign2 nvarchar(max) = N'<a style="font-family:'+CHAR(39)+'Wingdings 2'+CHAR(39)+'">'+NCHAR(163)+'</a>'
-	
+	declare @sign1 nvarchar(max) = N'<a style="font-family:'+CHAR(39)+'Wingdings 2'+CHAR(39)+'">R</a>'
+	declare @sign2 nvarchar(max) = N'<a style="font-family:'+CHAR(39)+'Wingdings 2'+CHAR(39)+'">'+NCHAR(163)+'</a>'
+	declare @c1 nvarchar(max) = @sign2+N'A.我方拖運'
+	declare @c2 nvarchar(max) = @sign2+N'B.客戶自運'
+	declare @c3 nvarchar(max) = N'1.貨物及重量如有錯誤或須退回請於一星期內告知，逾期視同無誤。'
+	declare @c4 nvarchar(max) = N'2.出貨應加蓋雨帆，如淋雨或損毀由承運者負責賠償。'
+	declare @c5 nvarchar(max) = N'3.出貨前確認事項：'+@sign2+N'煙燻章'+@sign2+N'外觀包裝 <a style="font-weight:bolder">確認者：</a>'
+
 	select gno
 		,'<img src="'+@t_path+'getlogo.aspx?noa=lienchy'+CHAR(38)+'db='+@t_db+'"/>' logo
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@reportno +'</a>' reportno
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+noa +'</a>' noa
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+custno +'</a>' custno
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+nick +'</a>' nick
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+datea +'</a>' datea
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+tel +'</a>' tel
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+addr +'</a>' addr
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+conn +'</a>' conn
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+fax +'</a>' fax
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">No&nbsp'+char(59)+'&nbsp'+char(59)+noa +'</a>' b00
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+custno +'</a>' b01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+nick +'</a>' b02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+datea +'</a>' b03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+tel +'</a>' b04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+addr +'</a>' b05
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+conn +'</a>' b06
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+fax +'</a>' b07
 		
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+cast(recno as nvarchar) +'</a>' rr
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+ordeno+'-'+no2 +'</a>' ordeno
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+productno +'</a>' ppno
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product +'</a>' ppt
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+spec +'</a>' spec
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+class +'</a>' class
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+size +'</a>' size
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+checker +'</a>' checker
-		,dbo.getComma(lengthc,0) lengthc
-		,dbo.getComma(mount,0) mount
-		,dbo.getComma([weight],-1) [weight]
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+memo+'</a>' memo
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+ordeno+'-'+no2 +'</a>' a01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product +'</a>' a02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+spec +'</a>' a03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+productno+' '+size +'</a>' a04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+checker +'</a>' a05
+		,dbo.getComma(lengthc,0) a06
+		,dbo.getComma(mount,0) a07
+		,dbo.getComma([weight],-1) a08
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+memo+'</a>' a09
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@c1+'</a>' c01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@c2+'</a>' c02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@c3+'</a>' c03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@c4+'</a>' c04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@c5+'</a>' c05
 	from @tmp
 	order by case when recno is null then 'z' else '' end,recno;
