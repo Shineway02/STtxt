@@ -93,7 +93,7 @@ declare @tmp table(
 )
 
 insert @tmp
-select '0',datea,noa,noq,custno,comp,productno,product,unit,lengthb,mount,weight,price,storeno,store,memo
+select '0',datea,noa,noq,custno,comp,productno,replace(product,'~#$',char(39)),unit,lengthb,mount,weight,price,storeno,store,memo
 ,isnull(ordeno,'')+case when isnull(ordeno,'')!='' and isnull(no2,'')!='' then '-'+isnull(no2,'') else '' end
 ,case when UPPER(unit) in ('KG','M2','M','批','公斤','噸','頓') then weight*price else mount*price end
 from vcfs 
@@ -136,7 +136,7 @@ declare @tmp table(
 )
 
 insert @tmp
-select '0',datea,noa,noq,uno,productno,product,unit,lengthb,mount,weight,storeno,store,memo
+select '0',datea,noa,noq,uno,productno,replace(product,'~#$',char(39)),unit,lengthb,mount,weight,storeno,store,memo
 from vcft
 where datea between @t_bdate and @t_edate
 
