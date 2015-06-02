@@ -45,11 +45,6 @@ if(@t_project='yc')
 	select
 		'0' gno, ROW_NUMBER()over(order by R1.productno,R1.storeno,R1.datea,R1.typea)as recno,R1.*, 0 totmount, 0 totweight,''
 	from(
-		--select storeno,store,noa productno,product xproduct,isnull(datea,'') datea,'01' typea,'期初' typec, 
-		--       '' noa,'' comp, unit, start mount, start weight,'' qhref
-		--from ucc
-		--where  noa BETWEEN @t_bproductno AND @t_eproductno and datea<=@t_edate and storeno between @t_bstoreno and @t_estoreno
-		--union all
 		select isnull(storeno,'')storeno ,store,productno,product xproduct,isnull(datea,'') datea,'01' typea,'盤點調整' typec, 
 		       noa,'' comp, unit, mount mount, weight weight,'ucce?noa=$noa?'+accy qhref
 		from view_ucces
