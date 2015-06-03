@@ -2,12 +2,12 @@ batchvcca_rb:--batchvcca_rb
 	declare @t_ordeno nvarchar(50) = [1]
 	declare @t_total nvarchar(50) = [2]
 	declare @t_money nvarchar(50) = [3]
-	declare @t_buyerno nvarchar(50) = [4]
-	declare @t_buyer nvarchar(100) = [5]
-	declare @t_serial nvarchar(50) = [6]
-	declare @t_vccano nvarchar(50) = [7]
-	declare @t_woker nvarchar(50) = [8]
-	declare @t_err nvarchar(200)
+	declare @t_buyerno nvarchar(50) = case when '#non'=[4] then '' else [4] end 
+	declare @t_buyer nvarchar(100) = case when '#non'=[5] then '' else [5] end 
+	declare @t_serial nvarchar(50) = case when '#non'=[6] then '' else [6] end 
+	declare @t_vccano nvarchar(50) = case when '#non'=[7] then '' else [7] end 
+	declare @t_woker nvarchar(50) = case when '#non'=[8] then '' else [8] end 
+	declare @t_err nvarchar(200)=''
 	declare @t_datea nvarchar(20)=''
 	declare @t_mon nvarchar(20)=''
 	declare @t_vccarno nvarchar(20)
@@ -23,10 +23,11 @@ batchvcca_rb:--batchvcca_rb
 		set @t_datea=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
 		set @t_datea=left(@t_datea,3)+'/'+substring(@t_datea,4,2)+'/'+right(@t_datea,2)
 	end
-	set @t_mon=left(@t_datea,3)+'/'+substring(@t_datea,4,2)
-	
+	set @t_mon=left(@t_datea,3)+'/'+substring(@t_datea,5,2)
+		
 	--批次開立的發票號碼
 	declare @vcca table(
+		recno int identity(1,1),
 		vccano nvarchar(20)
 	)
 	
@@ -35,19 +36,17 @@ batchvcca_rb:--batchvcca_rb
 		noa nvarchar(20),
 		vccano nvarchar(20)
 	)
-	
-	
-	
+
 	if(@t_vccano!='') --檢查是否被使用或不存在vcca
 	begin
 		if((select count(*) from vcca where noa=@t_vccano)>0)
 		begin
-			set @t_err='發票號碼已存在';
+			set @t_err='發票號碼已存在'
 		end
 		
 		if((select count(*) from vccars where @t_vccano between binvono and einvono)=0)
 		begin
-			set @t_err='發票號碼不存在發票主檔內';
+			set @t_err='發票號碼不存在發票主檔內'
 		end
 	end
 
@@ -117,13 +116,30 @@ batchvcca_rb:--batchvcca_rb
 			order by noa,vccano
 		
 		end
+		
+		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,total,tax,trdno,worker)
+		select a.vccano,b.custno,b.comp,b.nick,@t_serial,@t_buyerno,@t_buyer
+		,@t_datea,case when isnull(b.mon,'')!='' then b.mon else @t_mon end
+		,case when isnull(b.cno,'')!='' then b.cno else (select top 1 noa from acomp order by noa) end
+		,case when isnull(b.cno,'')!='' then b.acomp else (select top 1 acomp from acomp order by noa) end
+		,case when isnull((select top 1 zip_invo from cust where noa=@t_buyerno),'')!='' then 
+		isnull((select top 1 addr_invo from cust where noa=@t_buyerno),'')
+		else isnull((select top 1 zip_invo from cust where noa=b.custno),'') end
+		,case when isnull((select top 1 addr_invo from cust where noa=@t_buyerno),'')!='' then 
+		isnull((select top 1 addr_invo from cust where noa=@t_buyerno),'')
+		else isnull((select top 1 addr_invo from cust where noa=b.custno),'') end
+		,b.taxtype
+		,b.money/@t_vccacount
+		,b.tax/@t_vccacount
+		,b.total/@t_vccacount
+		,@t_ordeno,@t_woker
+		from @vcca a outer apply (select * from view_orde where noa=@t_ordeno) b
+		
+		insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea)
+		select b.vccano,a.no2,a.custno,a.productno,a.product,a.unit,1
+		,round(a.total/@t_vccacount,0),round(a.total/@t_vccacount,0),@t_datea
+		from view_ordes a , @vcca b where a.noa=@t_ordeno
 	end
 	
-	
-	select @t_err
-	
-	
-	select * from @cvcca order by noa,vccano
-	select * from @vcca
-
+	select @t_err err
 ;
