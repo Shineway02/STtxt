@@ -103,23 +103,33 @@ begin
 	from @result group by datea,noa,invono,idate,imoney,itax,itotal
 end
 	
+--insert into @result(gno,datea,noa,mount,lengthc,price,total)
+--	select '93',datea,'ZZZZZZZZZZZZ',
+--		sum((case typea when '1' then mount else (-1)*mount end)),
+--		sum((case typea when '1' then lengthc else (-1)*lengthc end)),
+--		sum((case typea when '1' then price else (-1)*price end)),
+--		sum((case typea when '1' then total else (-1)*total end))
+--	from @result group by datea
+	
+--insert into @result(gno,datea,noa,mount,lengthc,price,total)
+--	select '94',left(datea,6)+'z','ZZZZZZZZZZZZ',sum(mount),sum(lengthc),sum(price),sum(total)
+--	from @result a where gno='93' group by left(datea,6)
+
 insert into @result(gno,datea,noa,mount,lengthc,price,total)
-	select '93',datea,'ZZZZZZZZZZZZ',
+	select '95',char(255),'ZZZZZZZZZZZZ',
 		sum((case typea when '1' then mount else (-1)*mount end)),
 		sum((case typea when '1' then lengthc else (-1)*lengthc end)),
 		sum((case typea when '1' then price else (-1)*price end)),
 		sum((case typea when '1' then total else (-1)*total end))
-	from @result group by datea
-	
-insert into @result(gno,datea,noa,mount,lengthc,price,total)
-	select '94',left(datea,6)+'z','ZZZZZZZZZZZZ',sum(mount),sum(lengthc),sum(price),sum(total)
-	from @result a where gno='93' group by left(datea,6)
+	from @result
+
 --*************************************************************************	
 update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 update @result set gno='0' where gno='91'
 update @result set gno='1' where gno='92'
 update @result set gno='2' where gno='93'
 update @result set gno='3' where gno='94'
+update @result set gno='4' where gno='95'
 
 
 update @result
@@ -201,7 +211,8 @@ select '2',char(255),char(255),MAX(datea),MAX(custno),MAX(comp),'',''
 from @tmp where gno='1' 
 
 select 
-dbo.getComma(lengthc,0)  lengthc
+replace(product,'~#$',char(39)) product
+,dbo.getComma(lengthc,0)  lengthc
 ,dbo.getComma(mount,[23])  mount
 ,dbo.getComma(weight,[24])  weight
 ,dbo.getComma(price,[25])  price
@@ -210,3 +221,240 @@ dbo.getComma(lengthc,0)  lengthc
 ,dbo.getComma(total,0)  total
 ,* from @tmp order by noa,gno,noq
 ;
+--******************************************************************************************
+z_vcc_yc3:--z_vcc_yc2 ref. z_anavccfe5
+declare @t_year nvarchar(10)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+declare @t_vccstype nvarchar(10)
+declare @t_showlengthc nvarchar(10)
+set @t_year = [37]
+set @t_bsalesno = case when '#non'=[10] then '' else [10] end
+set @t_esalesno = case when '#non'=[11] then char(255) else [11] end
+set @t_bcustno = case when '#non'=[8] then '' else [8] end
+set @t_ecustno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[12] then '' else [12] end
+set @t_eproductno = case when '#non'=[13] then char(255) else [13] end
+set @t_vccstype = case when '#non'=[18] then '' else [18] end
+set @t_showlengthc = case when '#non'=[38] then '0' else [38] end
+
+declare @tmp table(
+	gno nvarchar(10),
+	salesno nvarchar(35),
+	saless nvarchar(90),
+	productno nvarchar(90),
+	products nvarchar(max),
+	m01 float,
+	m02 float,
+	m03 float,
+	m04 float,
+	m05 float,
+	m06 float,
+	m07 float,
+	m08 float,
+	m09 float,
+	m10 float,
+	m11 float,
+	m12 float,
+	total float,
+	w01 float,--重量
+	w02 float,
+	w03 float,
+	w04 float,
+	w05 float,
+	w06 float,
+	w07 float,
+	w08 float,
+	w09 float,
+	w10 float,
+	w11 float,
+	w12 float,
+	wtotal float,
+	c01 float,--箱數
+	c02 float,
+	c03 float,
+	c04 float,
+	c05 float,
+	c06 float,
+	c07 float,
+	c08 float,
+	c09 float,
+	c10 float,
+	c11 float,
+	c12 float,
+	ctotal float,
+	t01 float,--金額
+	t02 float,
+	t03 float,
+	t04 float,
+	t05 float,
+	t06 float,
+	t07 float,
+	t08 float,
+	t09 float,
+	t10 float,
+	t11 float,
+	t12 float,
+	ttotal float
+)
+insert into @tmp
+	select '99',a.salesno,a.sales,b.productno,b.product,
+		case when substring(a.datea,5,2)='01' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='02' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum((case when a.typea='1' then 1 else -1 end)*b.mount) else 0 end,
+		0 total,
+		case when substring(a.datea,5,2)='01' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='02' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum((case when a.typea='1' then 1 else -1 end)*b.weight) else 0 end,
+		0 wtotal,
+		case when substring(a.datea,5,2)='01' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='02' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum((case when a.typea='1' then 1 else -1 end)*b.lengthc) else 0 end,
+		0 ctotal,
+		case when substring(a.datea,5,2)='01' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='02' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='03' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='04' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='05' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='06' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='07' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='08' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='09' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='10' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='11' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		case when substring(a.datea,5,2)='12' then sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) else 0 end,
+		0 ttotal
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa
+	where (left(a.datea,3) = @t_year) and 
+			 (a.custno between @t_bcustno and @t_ecustno) and
+			 (b.productno between @t_bproductno and @t_eproductno) and
+			 (a.salesno between @t_bsalesno and @t_esalesno) and (len(@t_vccstype)=0 or @t_vccstype=a.stype)
+	group by a.salesno,a.sales,b.productno,b.product,substring(a.datea,5,2)
+	
+insert into @tmp
+	select '1',a.salesno,a.saless,a.productno,a.products,
+		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),0,
+		sum(a.w01),sum(a.w02),sum(a.w03),sum(a.w04),sum(a.w05),sum(a.w06),
+		sum(a.w07),sum(a.w08),sum(a.w09),sum(a.w10),sum(a.w11),sum(a.w12),0,
+		sum(a.c01),sum(a.c02),sum(a.c03),sum(a.c04),sum(a.c05),sum(a.c06),
+		sum(a.c07),sum(a.c08),sum(a.c09),sum(a.c10),sum(a.c11),sum(a.c12),0,
+		sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06), 
+		sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.ttotal)
+	from @tmp a
+	group by a.salesno,a.saless,a.productno,a.products
+	
+delete @tmp where gno='99'
+
+update @tmp set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10+m11+m12
+			,wtotal = w01+w02+w03+w04+w05+w06+w07+w08+w09+w10+w11+w12
+			,ctotal = c01+c02+c03+c04+c05+c06+c07+c08+c09+c10+c11+c12
+			,ttotal = t01+t02+t03+t04+t05+t06+t07+t08+t09+t10+t11+t12 
+			
+insert into @tmp
+	select '2',a.salesno,a.saless,'' productno,'' products,
+		sum(a.m01),sum(a.m02),sum(a.m03),sum(a.m04),sum(a.m05),sum(a.m06),
+		sum(a.m07),sum(a.m08),sum(a.m09),sum(a.m10),sum(a.m11),sum(a.m12),sum(a.total),
+		sum(a.w01),sum(a.w02),sum(a.w03),sum(a.w04),sum(a.w05),sum(a.w06),
+		sum(a.w07),sum(a.w08),sum(a.w09),sum(a.w10),sum(a.w11),sum(a.w12),sum(a.wtotal),
+		sum(a.c01),sum(a.c02),sum(a.c03),sum(a.c04),sum(a.c05),sum(a.c06),
+		sum(a.c07),sum(a.c08),sum(a.c09),sum(a.c10),sum(a.c11),sum(a.c12),sum(a.ctotal),
+		sum(a.t01),sum(a.t02),sum(a.t03),sum(a.t04),sum(a.t05),sum(a.t06), 
+		sum(a.t07),sum(a.t08),sum(a.t09),sum(a.t10),sum(a.t11),sum(a.t12),sum(a.ttotal)
+	from @tmp a
+	group by a.salesno,a.saless
+	
+	if(@t_showlengthc='1')
+	begin
+		update @tmp
+		set gno=case when gno='1' then '3' when gno='2' then '4' else gno end
+	end
+	
+select
+	a.gno,a.salesno,a.saless,a.productno,replace(a.products,'~#$',char(39)) products,
+	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m01),1)),4,30)) end m01, 
+	case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m02),1)),4,30)) end m02, 
+	case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m03),1)),4,30)) end m03, 
+	case when a.m04=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m04),1)),4,30)) end m04, 
+	case when a.m05=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m05),1)),4,30)) end m05, 
+	case when a.m06=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m06),1)),4,30)) end m06, 
+	case when a.m07=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m07),1)),4,30)) end m07, 
+	case when a.m08=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m08),1)),4,30)) end m08, 
+	case when a.m09=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m09),1)),4,30)) end m09, 
+	case when a.m10=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m10),1)),4,30)) end m10, 
+	case when a.m11=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m11),1)),4,30)) end m11, 
+	case when a.m12=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.m12),1)),4,30)) end m12,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.total ),1)),4,30)) total,
+	case when a.m01=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w01),1)),0,30)) end w01, 
+	case when a.m02=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w02),1)),0,30)) end w02, 
+	case when a.m03=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w03),1)),0,30)) end w03, 
+	case when a.m04=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w04),1)),0,30)) end w04, 
+	case when a.m05=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w05),1)),0,30)) end w05, 
+	case when a.m06=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w06),1)),0,30)) end w06, 
+	case when a.m07=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w07),1)),0,30)) end w07, 
+	case when a.m08=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w08),1)),0,30)) end w08, 
+	case when a.m09=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w09),1)),0,30)) end w09, 
+	case when a.m10=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w10),1)),0,30)) end w10, 
+	case when a.m11=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w11),1)),0,30)) end w11, 
+	case when a.m12=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.w12),1)),0,30)) end w12, 
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.wtotal),1)),0,30)) wtotal, 
+	case when a.c01=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c01),1)),0,30)) end c01, 
+	case when a.c02=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c02),1)),0,30)) end c02, 
+	case when a.c03=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c03),1)),0,30)) end c03, 
+	case when a.c04=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c04),1)),0,30)) end c04, 
+	case when a.c05=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c05),1)),0,30)) end c05, 
+	case when a.c06=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c06),1)),0,30)) end c06, 
+	case when a.c07=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c07),1)),0,30)) end c07, 
+	case when a.c08=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c08),1)),0,30)) end c08, 
+	case when a.c09=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c09),1)),0,30)) end c09, 
+	case when a.c10=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c10),1)),0,30)) end c10, 
+	case when a.c11=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c11),1)),0,30)) end c11, 
+	case when a.c12=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.c12),1)),0,30)) end c12, 
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.ctotal),1)),0,30)) ctotal, 
+	case when a.t01=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t01),1)),4,30)) end t01, 
+	case when a.t02=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t02),1)),4,30)) end t02, 
+	case when a.t03=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t03),1)),4,30)) end t03, 
+	case when a.t04=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t04),1)),4,30)) end t04, 
+	case when a.t05=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t05),1)),4,30)) end t05, 
+	case when a.t06=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t06),1)),4,30)) end t06, 
+	case when a.t07=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t07),1)),4,30)) end t07, 
+	case when a.t08=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t08),1)),4,30)) end t08, 
+	case when a.t09=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t09),1)),4,30)) end t09, 
+	case when a.t10=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t10),1)),4,30)) end t10, 
+	case when a.t11=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t11),1)),4,30)) end t11, 
+	case when a.t12=0 then null else reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.t12),1)),4,30)) end t12, 
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.ttotal ),1)),4,30)) ttotal
+from @tmp a
+order by a.salesno,a.saless,a.gno,a.productno,a.products;
