@@ -1,3 +1,78 @@
+getuno_norm:--getuno_norm
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_buno nvarchar(max) = replace([1],'　','')
+	declare @string nvarchar(max)
+	declare @n int,@m int
+	declare @listBuno table(
+		recno int,
+		buno nvarchar(30)
+	)
+	set @m = 0
+	set @string = @t_buno
+	while(1=1)
+	begin
+		set @n = PATINDEX('%&%',@string)
+		if @n=0
+		begin
+			set @m=@m+1
+			insert into @listBuno select @m,@string
+			break
+		end
+		set @m=@m+1
+		insert into @listBuno select @m,LEFT(@string,@n-1)	
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	-------------------------------------------------------------------------------
+	set @string =  '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	declare @maxLength int = 30  --編碼最多30碼(依UNO欄位長度決定)
+	declare @buno nvarchar(max)
+	declare @key nvarchar(max)
+	declare @tmp table(
+		uno nvarchar(30)
+	)
+	declare @maxuno1 nvarchar(max), @maxuno2 nvarchar(max), @maxuno nvarchar(max)
+	
+	declare cursor_table cursor for
+	select buno from @listBuno order by recno
+	open cursor_table
+	fetch next from cursor_table
+	into @buno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if(LEN(@buno)+3>@maxLength)
+		begin
+			insert into @tmp(uno)values('')--長度過大,無法產生新批號
+		end
+		else
+		begin
+			select @maxuno1='',@maxuno2=''
+			select top 1 @maxuno1=uno from view_uccb where uno like @buno+'-[0-9,A-Z][0-9]' order by uno desc
+			select top 1 @maxuno2=uno from unolist where uno like @buno+'-[0-9,A-Z][0-9]' order by uno desc
+			set @maxuno = case when @maxuno1>@maxuno2 then @maxuno1 else @maxuno2 end
+			if len(@maxuno)=0
+			begin
+				set @maxuno = @buno+'-01'
+			end
+			else
+			begin
+				set @key = right(@maxuno,2)
+				set @n = (charindex(left(@key,1),@string)-1)*10 + cast(right(@key,1) as int) + 1
+				set @key = SUBSTRING(@string,@n/10+1,1)+CAST(@n%10 as nvarchar)
+				set @maxuno = @buno+'-'+@key
+			end
+			insert into @tmp(uno)values(@maxuno)
+			insert into unolist(uno)values(@maxuno)
+		end
+		
+		fetch next from cursor_table
+		into @buno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select uno from @tmp;
+	
 getuno:--getuno
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
