@@ -269,11 +269,13 @@
 	
 	select
 		recno,recno2,gno,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,
-		a07,a08,a09,sales,a10,a11,
-		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a12),1)),4,12)) a12,
-		replace(a13,'chr(10)','<BR>') a13,b01,b02,b03,b04,b05,b06,b07,
-		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b08),1)),4,12)) b08,
-		c01,b09,comptel,pno
+		a07,a08,a09,sales,a10,a11
+		,dbo.getComma(a12,0) a12
+		,replace(a13,'chr(10)','<BR>') a13,b01,b02,b03,b04,b05,b06,b07
+		,dbo.getComma(b08,0) b08
+		,c01
+		,dbo.getComma(b09,-1) b09
+		,comptel,pno
 	from @tmpx order by noa,recno,recno2;
 -------------------------************************************--------------------------
 z_ordestp2:--z_ordestp2 
