@@ -11,6 +11,7 @@ z_vccp_yc01:--z_vccp_yc01
 		recno int,
 		cno nvarchar(30),
 		acomp nvarchar(50),
+		typea nvarchar(30),
 		noa nvarchar(30),
 		noq nvarchar(10),
 		datea nvarchar(10),
@@ -39,7 +40,7 @@ z_vccp_yc01:--z_vccp_yc01
 	insert into @tmp
 	select case when @t_showweight='1' then '2' else '4' end gno,
 	ROW_NUMBER()over(partition by a.noa order by b.noq) recno
-	,a.cno,a.acomp,a.noa,b.noq,a.datea,a.custno,a.comp
+	,a.cno,a.acomp,a.typea,a.noa,b.noq,a.datea,a.custno,a.comp
 	,case when isnull(a.addr2,'')!='' then a.addr2 else a.addr end,a.tel,a.paytype
 	,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.lengthc
 	,b.mount,b.weight,b.price,b.total
@@ -73,9 +74,9 @@ z_vccp_yc01:--z_vccp_yc01
 		while (@counts%@t_line>0) 
 		begin 
 
-			insert @tmp(gno,noa,noq,recno,tmoney,ttax,tdiscount,ttotal,worker) 
+			insert @tmp(gno,noa,typea,noq,recno,tmoney,ttax,tdiscount,ttotal,worker) 
 			select top 1
-			case when @t_showweight ='1' then '2' else '4' end ,@noa,CHAR(255),999999
+			case when @t_showweight ='1' then '2' else '4' end ,@noa,MAX(typea),CHAR(255),999999
 			,MAX(tmoney),MAX(ttax),MAX(tdiscount),MAX(ttotal),MAX(worker)
 			from @tmp where noa=@noa and (gno='2' or gno='4') and recno!=999999
 			
@@ -87,10 +88,10 @@ z_vccp_yc01:--z_vccp_yc01
 		while(@t_counts>0)
 		begin
 		
-			insert @tmp(recno,gno,cno,acomp,noa,custno,comp,tel,addr,datea,paytype)
+			insert @tmp(recno,gno,cno,acomp,noa,typea,custno,comp,tel,addr,datea,paytype)
 			select ((@t_counts-1)*@t_line)+1,
 			case when @t_showweight='1' then '1' else '3' end
-			,MAX(cno),MAX(acomp),noa,MAX(custno),MAX(comp),MAX(tel),MAX(addr),MAX(datea),MAX(paytype)
+			,MAX(cno),MAX(acomp),noa,MAX(typea),MAX(custno),MAX(comp),MAX(tel),MAX(addr),MAX(datea),MAX(paytype)
 			from @tmp where noa=@noa group by noa
 			
 			set @t_counts=@t_counts-1
@@ -104,7 +105,8 @@ z_vccp_yc01:--z_vccp_yc01
 	deallocate cursor_table 
 
 	select 
-	cast(productno as varchar(14)) productno
+	case when typea='1' then '出貨單' else '退貨單' end typea
+	,cast(productno as varchar(14)) productno
 	,dbo.getComma(mount,[6]) mount
 	,dbo.getComma(weight,[7]) weight
 	,dbo.getComma(price,[8]) price

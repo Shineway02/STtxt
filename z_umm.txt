@@ -487,8 +487,14 @@ from @tmp a where custno+'_'+ left(isnull(memo,''),6) !=
 and gno!='3' 
 
 delete @tmp where money=0 and total=0 and payed=0
-update @tmp
-set comp=(select top 1 nick from ((select nick from cust where noa=custno union select namea from carOwner where noa=custno union select namea from sss where noa=custno))tmp)
+
+update a 
+set comp=(select top 1 nick from (select nick from cust where noa=a.custno)tmp) 
+from @tmp a
+
+update a 
+set comp=(select top 1 namea from (select namea from carOwner where noa=a.custno union select namea from sss where noa=a.custno)tmp) 
+from @tmp a where isnull(comp,'')=''
 
 select gno,custno,comp,memo
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),(case when coin!='' then 0 else 4 end),30)) money

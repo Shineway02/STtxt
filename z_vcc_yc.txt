@@ -179,7 +179,13 @@ declare @tmp table(
 --明細
 insert into @tmp
 select '0' gno,a.noa,b.noq ,a.datea,a.custno,case when isnull(c.nick,'')='' then c.nick else left(c.comp,4) end
-,b.productno,b.product,b.lengthc,b.mount,b.weight,b.price,b.total,a.tax,0
+,b.productno,b.product
+,(case when a.typea='2' then -1 else 1 end)*b.lengthc
+,(case when a.typea='2' then -1 else 1 end)*b.mount
+,(case when a.typea='2' then -1 else 1 end)*b.weight
+,b.price
+,(case when a.typea='2' then -1 else 1 end)*b.total
+,(case when a.typea='2' then -1 else 1 end)*a.tax,0
 ,'vcc_yc'+'?noa=$noa?'+a.accy
 from view_vcc a
 left join view_vccs b on a.noa = b.noa
@@ -190,10 +196,10 @@ where (a.datea between @t_bdate and @t_edate)  and (len(@t_cno)=0 or @t_cno=a.cn
 insert into @tmp
 select '0' gno,a.noa,'999',a.datea,a.custno,case when isnull(c.nick,'')='' then c.nick else left(c.comp,4) end
 ,char(255),(case when charindex('現金價',a.paytype)>0 then '現金價' when charindex('月結現金',a.paytype)>0 then '月結現金' else '' end)+'扣'+cast(a.price as nvarchar(20))+'%'
-,null,1,null,a.discount,a.discount,a.tax,0
+,null,(case when a.typea='2' then 1 else -1 end)
+,null,a.discount,(case when a.typea='2' then 1 else -1 end)*a.discount,a.tax,0
 ,'vcc_yc'+'?noa=$noa?'+a.accy
 from view_vcc a
-left join view_vccs b on a.noa = b.noa
 left join cust c on a.custno=c.noa
 where (a.datea between @t_bdate and @t_edate)  and (len(@t_cno)=0 or @t_cno=a.cno)
 and (a.discount>0 or a.price>0) 
