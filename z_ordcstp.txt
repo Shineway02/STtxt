@@ -358,10 +358,10 @@ z_ordcstp1:--z_ordcstp1
 		,'付款方式：'+paytype a08
 		,'交運方式：'+trantype a09
 		,mount a10
-		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,[weight]),1)),4,12)) a11
-		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) a12
-		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) a13
-		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a14
+		,dbo.getComma([weight],0) a11
+		,dbo.getComma(money,0) a12
+		,dbo.getComma(tax,0) a13
+		,dbo.getComma(total,0) a14
 		,replace(memo,'chr(10)','<br>') a15
 		,sales a16
 		
@@ -372,9 +372,9 @@ z_ordcstp1:--z_ordcstp1
 		,replace(size,'~#$',"'") b05
 		,unit b06
 		,mounts b07
-		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weights),1)),4,12)) b08
-		,price b09
-		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) b10
+		,dbo.getComma(weights,0) b08
+		,dbo.getComma(price,-1) b09
+		,dbo.getComma(totals,0) b10
 		,memos b11
 		from @tmp a
 		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
