@@ -2544,7 +2544,8 @@ insert @result
 select '1' gno,0 pageno,0 totpage,0 orderno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, custno, MAX(comp) comp
 		,MAX(addr_invo) addr_invo,MAX(serial) serial, MAX(tel) tel,0 total
 		,SUM(case when typea = '1' then total else 0 end), sum(case when typea = '2' then total else 0 end)
-		,SUM(case when typea = '稅' then total else 0 end) , 0
+		--,SUM(case when typea = '稅' then total else 0 end),0
+		,sum(tax),0
 		,isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=a.custno)),0) --單據
 		+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 		and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 

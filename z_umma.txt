@@ -78,5 +78,87 @@ BEGIN
 	EXECUTE sp_executesql @cmd
 END
 ;
+--********************************************************************************************
+z_umma02:--z_umma02
+SET QUOTED_IDENTIFIER OFF
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bcno nvarchar(30)
+declare @t_ecno nvarchar(30)
+declare @t_bcustno nvarchar(30)
+declare @t_ecustno nvarchar(30)
+
+set @t_bdate = case when '#non'=[1] then '' else [1] end
+set @t_edate = case when '#non'=[2] then CHAR(255) else [2] end
+set @t_bcno = case when '#non'=[3] then '' else [3] end
+set @t_ecno = case when '#non'=[4] then CHAR(255) else [4] end
+set @t_bcustno = case when '#non'=[5] then '' else [5] end
+set @t_ecustno = case when '#non'=[6] then CHAR(255) else [6] end
+----------------------------------------------------------------------------------------------------------------------------
+declare @cmd nvarchar(max)
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	set @cmd = 'drop table #tmp'
+	EXECUTE sp_executesql @cmd
+END
+	
+create table #tmp(
+	gno nvarchar(1), 
+	cno nvarchar(30),
+	acomp nvarchar(20),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	noa nvarchar(90),
+	btotal float,
+	btax float,
+	ptotal float,
+	ptax float,
+	etotal float,
+	etax float,
+	discount float
+)
+
+insert #tmp (gno,cno,acomp,custno,comp,a.noa,btotal,btax,ptotal,ptax,discount)
+select '9',a.cno,(select acomp from acomp where a.cno=noa)
+,a.custno,(select case when isnull(nick,'')='' then left(comp,6) else nick end from cust where a.custno=noa)
+,a.noa,a.total,round(a.total*0.05,2)
+,isnull((select SUM(pb.money) from view_vcc pb where a.noa=pb.ummano),0)
+,round(isnull((select SUM(pb.money) from view_vcc pb where a.noa=pb.ummano),0)*0.05,2)
+,discount
+from umma a where a.datea between @t_bdate and @t_edate
+
+update a set etotal=btotal-ptotal,etax=btax-ptax from #tmp a
+
+if((select count(*) from #tmp)>0)
+begin
+	insert #tmp
+	select '0',cno,MAX(acomp),custno,MAX(comp),CHAR(255)
+	,SUM(btotal),SUM(btax),SUM(ptotal),SUM(ptax),sum(etotal),SUM(etax),SUM(discount)
+	from #tmp group by cno,custno
+	
+	delete #tmp where gno='9'
+
+	insert #tmp
+	select '1',CHAR(255),CHAR(255),CHAR(255),CHAR(255),CHAR(255)
+	,SUM(btotal),SUM(btax),SUM(ptotal),SUM(ptax),sum(etotal),SUM(etax),SUM(discount)
+	from #tmp where gno='0'
+end
+
+select 
+dbo.getComma(btotal,0) btotal
+,dbo.getComma(btax,0) btax
+,dbo.getComma(ptotal,0) ptotal
+,dbo.getComma(ptax,0) ptax
+,dbo.getComma(etotal,0) etotal
+,dbo.getComma(etax,0) etax
+,dbo.getComma(discount,0) discount
+,* from #tmp order by cno,gno,custno
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	set @cmd = 'drop table #tmp'
+	EXECUTE sp_executesql @cmd
+END
 ;
 

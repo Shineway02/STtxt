@@ -159,9 +159,12 @@ where isnull(b.productno,'') != '' and (a.datea between @t_bdate and @t_edate) a
 group by b.productno,b.product
 order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) desc,sum((case when a.typea='1' then 1 else -1 end)*b.mount) desc
 
-insert into @tmp
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp
 	select '1','','','',sum(mount),sum(weight),sum(total),0,sum(maori),0,SUM(costa) from @tmp 
-	
+end
+
 declare @totTotal float
 declare @totMoney float
 

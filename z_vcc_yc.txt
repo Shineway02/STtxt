@@ -464,3 +464,80 @@ select
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.ttotal ),1)),4,30)) ttotal
 from @tmp a
 order by a.salesno,a.saless,a.gno,a.productno,a.products;
+---************************************************************************************
+z_vcc_yc4:--z_vcc_yc4 ref. z_anavccfe3
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
+declare @t_groupano nvarchar(30)
+
+set @t_bdate = case when '#non'=[4] then '' else [4] end
+set @t_edate = case when '#non'=[5] then char(255) else [5] end
+set @t_bproductno = case when '#non'=[12] then '' else [12] end
+set @t_eproductno = case when '#non'=[13] then char(255) else [13] end
+set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+
+declare @tmp table(
+	gno nvarchar(1),
+	rankno int identity(1,1),
+	productno nvarchar(MAX),
+	products nvarchar(MAX),
+	unit nvarchar(MAX),
+	lengthc float,
+	mount float,
+	weight float,
+	total float,
+	pertotal float,
+	maori float,
+	perscnt float,
+	costa float
+)
+insert into @tmp
+select
+	'0',b.productno,b.product,MAX(b.unit)
+	,sum((case when a.typea='1' then 1 else -1 end)*b.lengthc)
+	,sum((case when a.typea='1' then 1 else -1 end)*b.mount)
+	,sum((case when a.typea='1' then 1 else -1 end)*b.weight)
+	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)),0
+	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)
+	-((case when a.typea='1' then 1 else -1 end)*(case when UPPER(b.unit)='KG' or charindex('斤',b.unit)>0 then b.weight else b.mount end)*isnull(c.price,0))),0
+	,sum((case when a.typea='1' then 1 else -1 end)*(case when UPPER(b.unit)='KG' or charindex('斤',b.unit)>0 then b.weight else b.mount end)*isnull(c.price,0))
+from view_vcc a
+left join view_vccs b on a.noa = b.noa
+left join view_costs c on b.productno = c.productno and left(a.datea,6) = c.mon
+left join view_ucaucc d on b.productno = d.noa
+where isnull(b.productno,'') != '' and (a.datea between @t_bdate and @t_edate) and
+		  (len(@t_groupano)=0 or d.groupano = @t_groupano)
+		  and (isnull(b.productno,'') between @t_bproductno and @t_eproductno)
+group by b.productno,b.product
+order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) desc,sum((case when a.typea='1' then 1 else -1 end)*b.mount) desc
+
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp
+	select '1','','','',sum(lengthc),sum(mount),sum(weight),sum(total),0,sum(maori),0,SUM(costa) from @tmp 
+end
+
+declare @totTotal float
+declare @totMoney float
+
+select @totTotal = (select total from @tmp where gno = '1')
+select @totMoney = (select maori from @tmp where gno = '1')
+
+update @tmp set pertotal = case when isnull(@totTotal,0) = 0 then 0 else round((total/@totTotal)*100,2) end
+update @tmp set perscnt =case when total=0 then 0 else round(maori/total*100,2) end 
+--case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+
+select
+	gno,rankno,productno,replace(products,'~#$',char(39)) products,unit,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,lengthc),1)),4,30)) lengthc,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),4,30)) mount,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,maori),1)),4,30)) maori,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,costa),1)),4,30)) costa,
+	cast(perscnt as nvarchar) + '%' perscnt,
+	cast(pertotal as nvarchar) + '%' pertotal
+from @tmp order by rankno;
+---************************************************************************************
