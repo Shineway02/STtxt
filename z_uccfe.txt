@@ -450,6 +450,7 @@ z_uccfe3:--z_uccfe3
 	--declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	--declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
 	declare @t_project nvarchar(20) = case when '#non'='[10]' then '' else '[10]' end
+	declare @t_showprice nvarchar(20) = case when '#non'=[14] then '0' else [14] end
 	------------------------------------------------------------------------------------
 	--前期
 	declare @tmpa table(
@@ -546,6 +547,11 @@ z_uccfe3:--z_uccfe3
 	end
 	close cursor_table
 	deallocate cursor_table
+	
+	if(@t_showprice='0')
+	begin
+		update #z_uccfe3 set price=null,money=null
+	end
 	
 	select * 
 		,recno rr
@@ -1044,6 +1050,7 @@ z_uccfe1:--z_uccfe1
 	declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
 	declare @t_showcarton nvarchar(20) = case when '#non'=[9] then '' else [9] end
 	declare @t_project nvarchar(20) = case when '#non'='[10]' then '' else '[10]' end
+	declare @t_showprice nvarchar(20) = case when '#non'=[14] then '0' else [14] end
 	------------------------------------------------------------------------------------
 --前期
 	declare @tmpa table(
@@ -1179,6 +1186,11 @@ z_uccfe1:--z_uccfe1
 	case when @t_showcarton='1' then '3' else '1' end
 	
 	set @counts=@counts-1
+	end
+	
+	if(@t_showprice='0')
+	begin
+		update @tmp set price=null,money=null
 	end
   
 	select * 
