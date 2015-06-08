@@ -27,8 +27,8 @@ z_uccst5:--z_uccst5
 		
 		uno nvarchar(50),
 		datea nvarchar(10),
-		productno nvarchar(20),
-		product nvarchar(20),
+		productno nvarchar(50),
+		product nvarchar(50),
 		style nvarchar(20),
 		kind nvarchar(20),
 		dime float,
@@ -121,7 +121,7 @@ z_acx02:--z_acx02
 	create table #z_acx02(
 		tablea nvarchar(20),
 		uno nvarchar(50),
-		productno nvarchar(20),
+		productno nvarchar(50),
 		style nvarchar(20),
 		size nvarchar(max),
 		ranka int,
@@ -511,7 +511,7 @@ z_acx02:--z_acx02
 	declare @tmp table(
 		gno nvarchar(20),
 		pno nvarchar(10),
-		productno nvarchar(20),
+		productno nvarchar(50),
 		size nvarchar(max),
 		ranka int,
 		style nvarchar(20),
@@ -675,7 +675,7 @@ z_acx01:--z_acx01
 	create table #z_acx(
 		tablea nvarchar(20),
 		uno nvarchar(50),
-		productno nvarchar(20),
+		productno nvarchar(50),
 		style nvarchar(20),
 		
 		brc2s decimal(14,3),
@@ -1040,7 +1040,7 @@ z_acx01:--z_acx01
 	declare @tmp table(
 		gno nvarchar(20),
 		pno nvarchar(10),
-		productno nvarchar(20),
+		productno nvarchar(50),
 		style nvarchar(20),
 		a01 decimal(20,3),
 		a02 decimal(20,3),
@@ -1578,7 +1578,7 @@ declare @tmp table(
 	storeno nvarchar(30),
 	uno nvarchar(50),
 	products nvarchar(90),
-	productno nvarchar(30),
+	productno nvarchar(50),
 	class nvarchar(30),
 	spec nvarchar(30),
 	sizea nvarchar(max),
@@ -1703,7 +1703,7 @@ declare @tmp table(
 	spec nvarchar(30),
 	csize nvarchar(max),
 	mount float,
-	weight float,
+	[weight] float,
 	ordeno nvarchar(50),
 	no2 nvarchar(10),
 	sfi nvarchar(max),
@@ -1714,7 +1714,8 @@ declare @tmp table(
 	kind nvarchar(10),
 	sprice float,
 	memo nvarchar(max),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	[source] nvarchar(20)
 )
 insert into @tmp
 	select
@@ -1758,13 +1759,13 @@ insert into @tmp
 				when (a.dime >= 1.9 and a.width >= (3.1416*21.4-a.dime*3.5)) then '1/2"'
 				when (a.dime < 1.9 and a.width >= (3.1416*21.2-a.dime*3.5)) then '1/2"'
 			end
-		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo,'ordest'+a.accy
+		end,a.radius,a.dime,a.width,a.lengthb,a.kind,a.sprice,a.memo,'ordest'+a.accy,a.[source]
 	from (
 		select
 			a.tablea,'0' gno,'0' sortno,a.noa,a.style,a.waste,a.itype,a.datea,a.storeno,
 			a.custno,a.uno,a.productno,a.product,a.class,a.spec,a.size,a.kind,a.dime,a.width,a.lengthb,a.radius,
 			a.emount mount,a.eweight weight,a.ordeno,a.no2,(case when b.typea='1' then 'B' else 'A' end) stype,round(a.sprice,3) sprice,
-			a.memo,a.accy
+			a.memo,a.accy,a.[source]
 		from view_uccc a
 		left join view_cub b on (a.noa=b.noa) and (a.tablea = 'cubu')
 		left join uccy c on a.uno = c.uno 
@@ -1773,7 +1774,7 @@ insert into @tmp
 			'ordet' tablea,'1' gno,'1' sortno,a.noa,c.style style,
 			'' waste,'1' itype,c.datea,c.storeno,
 			b.custno,c.uno,a.productno,a.product,'' class,'' spec,'' size,b.kind,
-			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,'',a.accy
+			a.dime,a.width,a.lengthb,a.radius,a.mount,a.weight,a.noa,a.no3,'A' stype,null sprice,'',a.accy,a.[source]
 		from view_ordet a
 		left join view_orde b on a.noa = b.noa 
 		left join view_uccc c on a.uno = c.uno
@@ -1978,6 +1979,11 @@ else if(@t_sortby = 'MEMO')
 		ROW_NUMBER()over(order by g2,memo,dime,radius,width,lengthb,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 		qhref ghref,uno2 u2,sfi,memo
 	from @tmp order by g2,memo,dime,radius,width,lengthb,datea,csize,uno,gno,sortno
+else if(@t_sortby = 'SOURCE')
+	select
+		ROW_NUMBER()over(order by g2,memo,dime,radius,width,lengthb,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
+		qhref ghref,uno2 u2,sfi,memo
+	from @tmp order by g2,[source],dime,radius,width,lengthb,datea,csize,uno,gno,sortno
 else
 	select
 		ROW_NUMBER()over(	order by g2,
@@ -2087,7 +2093,7 @@ declare @tmp table(
 	custs nvarchar(90),
 	uno nvarchar(90),
 	uno2 nvarchar(90),
-	productno nvarchar(35),
+	productno nvarchar(50),
 	products nvarchar(90),
 	class nvarchar(30),
 	spec nvarchar(30),
