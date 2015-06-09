@@ -1,0 +1,111 @@
+z_vccp_pk01:--z_vccp_pk01
+	SET QUOTED_IDENTIFIER OFF	
+	declare @t_noa nvarchar(max) = case when '#non'=[1] then '' else [1] end
+	declare @t_isweight nvarchar(max) = case when '#non'=[2] then '' else [2] end
+	declare @t_isprice nvarchar(max) = case when '#non'=[3] then '' else [3] end
+	-------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1),
+		curpage int,
+		totpage int,
+		gno nvarchar(10),
+		pno nvarchar(10),
+		accy nvarchar(20),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		datea nvarchar(20),
+		custno nvarchar(20),
+		comp nvarchar(50),
+		nick nvarchar(20),
+		tel nvarchar(max),
+		addr nvarchar(max),
+		serial nvarchar(20),
+		[money] float,
+		tax float,
+		total float,
+		
+		productno nvarchar(20),
+		product nvarchar(50),
+		dime float,
+		width float,
+		lengthb float,
+		radius float,
+		size nvarchar(max),
+		mount float,
+		item nvarchar(20),
+		[weight] float,
+		unit nvarchar(20),
+		price float,
+		moneys float
+	)
+
+	insert into @tmp(gno,pno,accy,noa,noq,productno,product
+		,dime,width,lengthb,radius,size
+		,mount,item,[weight],unit,price,moneys)
+	select '1','1',b.accy,b.noa,b.noq,b.productno,b.product
+		,b.dime,b.width,b.lengthb,b.radius,b.size
+		,b.mount,b.item,b.[weight],b.unit,b.price,b.total 
+	from view_vcc a
+	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
+	where a.noa = @t_noa
+	---------------------------------------------------------------------------------
+	declare @pagecount int = 6
+	declare @n int
+	declare @accy nvarchar(20)
+	declare @noa nvarchar(20)
+	
+	declare cursor_table cursor for
+	select count(1),accy,noa from @tmp group by accy,noa
+	open cursor_table
+	fetch next from cursor_table
+	into @n,@accy,@noa
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while @n%@pagecount !=0
+		begin
+			insert into @tmp(gno,pno,accy,noa)values('2','2',@accy,@noa)
+			set @n = @n +1
+		end
+		
+		fetch next from cursor_table
+		into @n,@accy,@noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	---------------------------------------------------------------------------------
+	update @tmp set datea=b.datea,custno=b.custno,comp=b.comp,nick=b.nick
+		,tel=b.tel,addr=case when len(isnull(b.addr2,0))>0 then b.addr2 else c.addr_fact end
+		,serial=c.serial
+		,[money]=b.[money],tax=b.tax,total=b.total
+	from @tmp a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on b.custno=c.noa
+	---------------------------------------------------------------------------------
+	declare @maxcount int = 0
+	select @maxcount = count(1) from @tmp
+	declare @totpage int = (@maxcount-1)/@pagecount + 1
+	
+	if @maxcount > 0
+	begin
+		update @tmp set curpage = (b.recno-1)/@pagecount + 1
+			,totpage = @totpage 
+		from @tmp a
+		left join (select ROW_NUMBER()over(order by pno,sel) recno,sel from @tmp) b on a.sel=b.sel 
+	end
+	update @tmp set [money]=null,tax=null,total=null where curpage!=@totpage	
+	---------------------------------------------------------------------------------
+	select *
+	,CAST(curpage as nvarchar)+' / '+CAST(totpage as nvarchar) ppp
+	,product b01
+	,size b02
+	,dbo.getComma([mount],0) b03
+	,item b04
+	,case when len(@t_isweight)>0 then dbo.getComma([weight],0) else '' end b05
+	,case when len(@t_isweight)>0 then unit  else '' end b06
+	,case when len(@t_isprice)>0 then dbo.getComma([price],0) else '' end b07
+	,case when len(@t_isprice)>0 then dbo.getComma([moneys],0) else '' end b08
+	,case when len(@t_isprice)>0 then dbo.getComma([money],0) else '' end c01
+	,case when len(@t_isprice)>0 then dbo.getComma([tax],0) else '' end c02
+	,case when len(@t_isprice)>0 then dbo.getComma([total],0) else '' end C03 
+	from @tmp 
+	order by pno,sel;
