@@ -1,4 +1,4 @@
-z_vccpkp01:--z_vccpkp01
+z_vccp_pk01:--z_vccp_pk01
 	SET QUOTED_IDENTIFIER OFF	
 	declare @t_noa nvarchar(max) = case when '#non'=[1] then '' else [1] end
 	declare @t_isweight nvarchar(max) = case when '#non'=[2] then '' else [2] end
@@ -74,7 +74,8 @@ z_vccpkp01:--z_vccpkp01
 	deallocate cursor_table
 	---------------------------------------------------------------------------------
 	update @tmp set datea=b.datea,custno=b.custno,comp=b.comp,nick=b.nick
-		,tel=b.tel,addr=b.addr,serial=c.serial
+		,tel=b.tel,addr=case when len(isnull(b.addr2,0))>0 then b.addr2 else c.addr_fact end
+		,serial=c.serial
 		,[money]=b.[money],tax=b.tax,total=b.total
 	from @tmp a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
@@ -94,6 +95,7 @@ z_vccpkp01:--z_vccpkp01
 	update @tmp set [money]=null,tax=null,total=null where curpage!=@totpage	
 	---------------------------------------------------------------------------------
 	select *
+	,CAST(curpage as nvarchar)+' / '+CAST(totpage as nvarchar) ppp
 	,product b01
 	,size b02
 	,dbo.getComma([mount],0) b03
