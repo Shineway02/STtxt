@@ -11,11 +11,13 @@ batchvcca_rb:--batchvcca_rb
 	declare @t_datea nvarchar(20)=''
 	declare @t_mon nvarchar(20)=''
 	declare @t_vccarno nvarchar(20)
+	declare @t_vccno nvarchar(50)
 	--------------------------------------------------------------------------------------------------------
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_vccacount int,@vccacount int
 	set @t_vccacount= cast(@t_total as int)/cast(@t_money as int)
 	set @vccacount= cast(@t_total as int)/cast(@t_money as int)
+	set @t_vccno=isnull((select MAX(ordeno) from view_vccs where ordeno=@t_ordeno),'')
 	
 	--現在日期
 	if(len(@t_datea)=0)
@@ -117,7 +119,7 @@ batchvcca_rb:--batchvcca_rb
 		
 		end
 		
-		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,total,tax,trdno,worker)
+		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,tax,total,trdno,worker,vccno)
 		select a.vccano,b.custno,b.comp,b.nick,@t_serial,@t_buyerno,@t_buyer
 		,@t_datea,case when isnull(b.mon,'')!='' then b.mon else @t_mon end
 		,case when isnull(b.cno,'')!='' then b.cno else (select top 1 noa from acomp order by noa) end
@@ -132,7 +134,7 @@ batchvcca_rb:--batchvcca_rb
 		,b.money/@t_vccacount
 		,b.tax/@t_vccacount
 		,b.total/@t_vccacount
-		,@t_ordeno,@t_woker
+		,@t_ordeno,@t_woker,@t_vccno
 		from @vcca a outer apply (select * from view_orde where noa=@t_ordeno) b
 		
 		insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea)
