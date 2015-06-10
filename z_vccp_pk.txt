@@ -96,16 +96,17 @@ z_vccp_pk01:--z_vccp_pk01
 	---------------------------------------------------------------------------------
 	select *
 	,CAST(curpage as nvarchar)+' / '+CAST(totpage as nvarchar) ppp
-	,product b01
-	,size b02
-	,dbo.getComma([mount],0) b03
-	,item b04
-	,case when len(@t_isweight)>0 then dbo.getComma([weight],0) else '' end b05
-	,case when len(@t_isweight)>0 then unit  else '' end b06
-	,case when len(@t_isprice)>0 then dbo.getComma([price],0) else '' end b07
-	,case when len(@t_isprice)>0 then dbo.getComma([moneys],0) else '' end b08
-	,case when len(@t_isprice)>0 then dbo.getComma([money],0) else '' end c01
-	,case when len(@t_isprice)>0 then dbo.getComma([tax],0) else '' end c02
-	,case when len(@t_isprice)>0 then dbo.getComma([total],0) else '' end C03 
+	--,product b01
+	--,size b02
+	,product +'&nbsp'+char(59)+'&nbsp'+char(59)+size b01
+	,case when [mount]!=0 then dbo.getComma([mount],0) else '' end b03
+	,case when [mount]!=0 then item  else '' end b04
+	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],0) else '' end b05
+	,case when len(@t_isweight)>0 and [weight]!=0 then unit  else '' end b06
+	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma([price],0) else '' end b07
+	,case when len(@t_isprice)>0 and [moneys]!=0 then dbo.getComma([moneys],0) else '' end b08
+	,case when len(@t_isprice)>0 and [money]!=0 then dbo.getComma([money],0) else '' end c01
+	,case when len(@t_isprice)>0 and [tax]!=0 then dbo.getComma([tax],0) else '' end c02
+	,case when len(@t_isprice)>0 and [total]!=0 then dbo.getComma([total],0) else '' end C03 
 	from @tmp 
 	order by pno,sel;
