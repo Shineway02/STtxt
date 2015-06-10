@@ -64,7 +64,7 @@ declare @result table(
 	from view_vccs b
 	left join view_vcc a on a.noa = b.noa
 	left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
-	where (a.datea between @t_bdate and @t_edate) and
+	where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
 		  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 		  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
@@ -103,7 +103,7 @@ declare @result table(
 			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
 	from view_vcc a
 	left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
-	where a.discount > 0 and
+	where a.discount > 0 and a.unpay>0 and
 		  (a.datea between @t_bdate and @t_edate)and
 		  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
@@ -204,6 +204,8 @@ update @result
 	set total2=total1+unpay-pay
 where gno='1'
 
+delete @result where custno in (select custno from @result where gno='1' and total2=0)
+
 select
 	gno,typea,noa,noq,datea,mon,custno,comp,serial,addr,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
 	,(select top 1 saless from @result where custno=a.custno and saless!='' order by datea desc)saless
@@ -223,5 +225,5 @@ select
 	,(select top 1 tel  from acomp where (noa=@t_cno or len(@t_cno)=0) order by noa) atel
 	,(select top 1 fax  from acomp where (noa=@t_cno or len(@t_cno)=0) order by noa) afax
 	,(case when @t_bdate!='' then '帳款日期：'+@t_bdate+'~'+@t_edate	else '帳款月份：'+@t_bmon+'~'+@t_emon	end) mondate
-from @result a order by custno,case when gno='2' then '0' else gno end,mon,datea,noa,noq;
+from @result a where typea!='稅' order by custno,case when gno='2' then '0' else gno end,mon,datea,noa,noq;
 --**************************************************************************************************
