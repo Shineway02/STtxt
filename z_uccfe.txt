@@ -1203,4 +1203,5 @@ z_uccfe1:--z_uccfe1
 		,dbo.getComma(price,2) a06
 		,dbo.getComma([money],0) a07
 		,dbo.getComma(carton,0) carton
-	from @tmp order by grecno,gno;
+		,dbo.getComma(isnull((select safemount from ucc where noa=a.productno),0),0) safe
+	from @tmp a order by grecno,gno;

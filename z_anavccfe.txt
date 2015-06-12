@@ -101,9 +101,12 @@ order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when
 insert into @tmp
 	select '1','','',sum(mount),sum(weight),sum(total),sum(maori),0 from @tmp
 	
-declare @totMoney float
-select @totMoney = (select maori from @tmp where gno = '1')
-update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+--declare @totMoney float
+--select @totMoney = (select maori from @tmp where gno = '1')
+--update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+
+update @tmp set perscnt =case when total=0 then 0 else round(maori/total*100,2) end 
+
 select
 	gno,rankno,custno,custs,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),4,30)) mount,
