@@ -48,6 +48,10 @@ z_vccp_pk01:--z_vccp_pk01
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
 	where a.noa = @t_noa
+	
+	update @tmp set size = cast(dime as nvarchar) +' X '+cast(width as nvarchar) +' X '
+		+case when lengthb=0 then 'C' else cast(lengthb as nvarchar) end
+	where len(isnull(size,''))=0 and dime!=0
 	---------------------------------------------------------------------------------
 	declare @pagecount int = 6
 	declare @n int
