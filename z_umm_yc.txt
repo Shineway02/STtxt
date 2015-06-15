@@ -77,7 +77,7 @@ declare @result table(
 			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
 	from view_vcc a
 	left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
-	where tax > 0 and (taxtype='1' or taxtype='5') and
+	where tax > 0 and (taxtype='1' or taxtype='5') and a.unpay>0 and
 		  (a.datea between @t_bdate and @t_edate)and
 		  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and

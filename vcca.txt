@@ -2,9 +2,9 @@ batchvcca_rb:--batchvcca_rb
 	declare @t_ordeno nvarchar(50) = [1]
 	declare @t_total nvarchar(50) = [2]
 	declare @t_money nvarchar(50) = [3]
-	declare @t_buyerno nvarchar(50) = case when '#non'=[4] then '' else [4] end 
-	declare @t_buyer nvarchar(100) = case when '#non'=[5] then '' else [5] end 
-	declare @t_serial nvarchar(50) = case when '#non'=[6] then '' else [6] end 
+	declare @t_buyerno nvarchar(MAX) = case when '#non'=[4] then '' else [4] end 
+	declare @t_buyer nvarchar(MAX) = case when '#non'=[5] then '' else [5] end 
+	declare @t_serial nvarchar(MAX) = case when '#non'=[6] then '' else [6] end 
 	declare @t_vccano nvarchar(50) = case when '#non'=[7] then '' else [7] end 
 	declare @t_woker nvarchar(50) = case when '#non'=[8] then '' else [8] end 
 	declare @t_err nvarchar(200)=''
@@ -12,12 +12,15 @@ batchvcca_rb:--batchvcca_rb
 	declare @t_mon nvarchar(20)=''
 	declare @t_vccarno nvarchar(20)
 	declare @t_vccno nvarchar(50)
+	declare @t_vccaccy nvarchar(50)
+	declare @x_vccano nvarchar(MAX)
 	--------------------------------------------------------------------------------------------------------
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_vccacount int,@vccacount int
 	set @t_vccacount= cast(@t_total as int)/cast(@t_money as int)
 	set @vccacount= cast(@t_total as int)/cast(@t_money as int)
-	set @t_vccno=isnull((select MAX(ordeno) from view_vccs where ordeno=@t_ordeno),'')
+	set @t_vccno=isnull((select MAX(noa) from view_vccs where ordeno=@t_ordeno),'')
+	set @t_vccaccy=isnull((select accy from view_vcc where noa=@t_vccno),'')
 	
 	--現在日期
 	if(len(@t_datea)=0)
@@ -120,15 +123,18 @@ batchvcca_rb:--batchvcca_rb
 		end
 		
 		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,tax,total,trdno,worker,vccno)
-		select a.vccano,b.custno,b.comp,b.nick,@t_serial,@t_buyerno,@t_buyer
+		select a.vccano,b.custno,b.comp,b.nick--,@t_serial,@t_buyerno,@t_buyer
+		,dbo.split(@t_serial,'^^',recno-1)
+		,dbo.split(@t_buyerno,'^^',recno-1)
+		,dbo.split(@t_buyer,'^^',recno-1)
 		,@t_datea,case when isnull(b.mon,'')!='' then b.mon else @t_mon end
 		,case when isnull(b.cno,'')!='' then b.cno else (select top 1 noa from acomp order by noa) end
 		,case when isnull(b.cno,'')!='' then b.acomp else (select top 1 acomp from acomp order by noa) end
-		,case when isnull((select top 1 zip_invo from cust where noa=@t_buyerno),'')!='' then 
-		isnull((select top 1 addr_invo from cust where noa=@t_buyerno),'')
+		,case when isnull((select top 1 zip_invo from cust where noa=dbo.split(@t_buyerno,'^^',recno-1)),'')!='' then 
+		isnull((select top 1 addr_invo from cust where noa=dbo.split(@t_buyerno,'^^',recno-1)),'')
 		else isnull((select top 1 zip_invo from cust where noa=b.custno),'') end
-		,case when isnull((select top 1 addr_invo from cust where noa=@t_buyerno),'')!='' then 
-		isnull((select top 1 addr_invo from cust where noa=@t_buyerno),'')
+		,case when isnull((select top 1 addr_invo from cust where noa=dbo.split(@t_buyerno,'^^',recno-1)),'')!='' then 
+		isnull((select top 1 addr_invo from cust where noa=dbo.split(@t_buyerno,'^^',recno-1)),'')
 		else isnull((select top 1 addr_invo from cust where noa=b.custno),'') end
 		,b.taxtype
 		,b.money/@t_vccacount
@@ -141,6 +147,11 @@ batchvcca_rb:--batchvcca_rb
 		select b.vccano,a.no2,a.custno,a.productno,a.product,a.unit,1
 		,round(a.total/@t_vccacount,0),round(a.total/@t_vccacount,0),@t_datea
 		from view_ordes a , @vcca b where a.noa=@t_ordeno
+		
+		set @x_vccano=stuff((select ','+vccano from @vcca for xml path('')),1,1,'') 
+		
+		exec("update vcc"+@t_vccaccy+" set invono='"+@x_vccano+"' where noa='"+@t_vccno+"'") 
+		
 	end
 	
 	select @t_err err
