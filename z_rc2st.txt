@@ -77,10 +77,10 @@ z_rc2st1:--z_rc2st1
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 	
 	select gno, noa, noq, type, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4) comp, productno, xproduct,unit,csize
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
+	,dbo.getComma(mount,-1) mount
+	,dbo.getComma(weight,-1) weight
+	,dbo.getComma(price,-1) price
+	,dbo.getComma(total,0) total
 	,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno,qhref
 	from @tmp order by datea desc,gno,noa,noq;
 --***********************************************************************************
