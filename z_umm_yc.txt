@@ -109,6 +109,20 @@ declare @result table(
 		  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 		  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
 		  and (len(@t_cno)=0 or a.cno=@t_cno)
+	union all --預收
+	select '0' gno, '預' typea, a.noa, '999' noq, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
+		   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end), '' comp,'' serial, '' addr_comp, '' tel, '' productno, '預收扣抵' product, '' unit,
+		   0 mount, 0 weight, 0 price, (case when a.typea!='1' then 1 else -1 end) * a.money, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2
+		   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno
+			,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
+	from view_vcc a
+	left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
+	where len(a.ummano) > 0 and a.unpay>0 and
+		  (a.datea between @t_bdate and @t_edate)and
+		  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
+		  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
+		  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
+		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	
 	order by custno,gno,mon,datea,noa,noq
 
@@ -141,7 +155,7 @@ set @t_total2 = 0
 
 insert @result
 select '1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, custno, MAX(comp) comp,MAX(serial), MAX(addr) addr_comp, MAX(tel) tel, '' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total, 
-sum(case when typea in ('1','折') then total else 0 end), sum(case when typea = '2' then total else 0 end)
+sum(case when typea in ('1','折','預') then total else 0 end), sum(case when typea = '2' then total else 0 end)
 ,SUM(case when typea = '稅' then total else 0 end) , 0
 , isnull((select sum(ub.paysale) from umms ub where exists (select noa from @result where ub.vccno=noa and gno='0' and custno=a.custno)),0) --單據 
 +isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
