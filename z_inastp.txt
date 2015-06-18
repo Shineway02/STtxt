@@ -1,0 +1,171 @@
+﻿z_inastp1:--z_inastp1
+	declare @t_bnoa nvarchar(20)
+	declare @t_enoa nvarchar(20)
+	declare @t_itype nvarchar(max)
+	declare @t_pagecount int = 14   --------一頁幾行
+	set @t_bnoa = case when '#non' = [6] then '' else [6] end
+	set @t_enoa = case when '#non' = [7] then CHAR(255) else [7] end
+	set @t_itype = case when '#non' = '[8]' then '' else '[8]' end
+------------------------------------------------------------------------------------------------
+	declare @string nvarchar(max),@noa nvarchar(max),@namea nvarchar(max)
+	declare @itype table(
+		noa nvarchar(20),
+		namea nvarchar(20)
+	)
+	while CHARINDEX('@',@t_itype)>0
+	begin
+		if charindex(',',@t_itype)>0
+		begin
+			set @string = LEFT(@t_itype,charindex(',',@t_itype)-1)
+			set @t_itype = RIGHT(@t_itype,LEN(@t_itype)-len(@string)-1)
+		end
+		else
+		begin
+			set @string = @t_itype
+			set @t_itype = ''
+		end
+		set @noa = left(@string,CHARindex('@',@string)-1)
+		set @namea = RIGHT(@string,LEN(@string)-len(@noa)-1)
+		insert into @itype(noa,namea)values(@noa,@namea)
+	end
+	--------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		tggno nvarchar(20),
+		tgg nvarchar(40),
+		custno nvarchar(20),
+		cust nvarchar(40),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		itype nvarchar(20),
+		typea nvarchar(20),
+		memo nvarchar(max),
+		
+		uno nvarchar(30),
+		productno nvarchar(20),
+		class nvarchar(20),
+		product nvarchar(40),
+		spec nvarchar(40),
+		size nvarchar(40),
+		unit nvarchar(20),
+		mount float,
+		[weight] float,
+		memos nvarchar(max)
+	)
+		--批號	品號	等級	品名	規格	尺寸	單位	數量	重量	備註
+	insert into @tmp(gno,pno,tggno,custno,noa,datea,itype,typea,memo
+		,uno,productno,class,product,spec,size,unit,mount,[weight],memos)
+		select '1','1',a.tggno,a.custno,a.noa,a.datea
+		,c.namea
+		,a.typea
+		,a.memo
+		,b.uno,b.productno,b.class,b.product,b.spec
+		,case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end
+		,b.unit,b.mount,b.[weight],b.memo
+		
+		from view_ina a
+		left join view_inas b on a.accy=b.accy and a.noa = b.noa
+		left join @itype c on a.itype=c.noa
+		where a.noa between @t_bnoa and @t_enoa
+	-------------------------------------------------------------------
+	declare @n int
+	
+	insert into @tmp(gno,pno,noa)
+	select '2','3',noa from @tmp group by noa
+	insert into @tmp(gno,pno,noa)
+	select '3','4',noa from @tmp group by noa
+	insert into @tmp(gno,pno,noa)
+	select '4','5',noa from @tmp group by noa
+
+	declare cursor_table cursor for
+		select noa,count(1) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while @n%@t_pagecount!=0
+		begin
+			insert into @tmp(gno,pno,noa)values('5','2',@noa)
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	update @tmp set tggno=b.tggno,tgg=d.nick,custno=b.custno,cust=e.nick
+	,datea=b.datea,itype=b.itype,typea=b.typea,memo=b.memo
+	,mount=case when a.gno='1' then a.mount when a.gno!='5' then c.mount else null end
+	,[weight]=case when a.gno='1' then a.[weight] when a.gno!='5' then c.[weight] else null end
+	from @tmp a
+	left join (select top 1 * from @tmp where gno='1') b on a.noa=b.noa 
+	left join (select noa,SUM(mount) mount,SUM([weight]) [weight] from @tmp group by noa) c on a.noa=c.noa
+	left join tgg d on b.tggno=d.noa
+	left join cust e on b.custno=e.noa
+	
+	select * 
+	,case when itype='寄庫' then '出' else '入' end + '庫單' titlea
+	,class a1
+	,product a2
+	,memos b1
+	,case when len(ISNULL(tggno,'')+ISNULL(tgg,''))>0 then '廠&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'商：' else '客&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'&nbsp'+CHAR(59)+'戶：' end xx1
+	,case when len(ISNULL(tggno,'')+ISNULL(tgg,''))>0 then ISNULL(tggno,'')+'&nbsp'+CHAR(59)+ISNULL(tgg,'') else ISNULL(custno,'')+'&nbsp'+CHAR(59)+ISNULL(cust,'') end xx2
+	from @tmp order by noa,pno;
+--*******************************************************************************************************************
+z_inastp2:--z_inastp2
+declare @t_accy nvarchar(20)
+declare @t_itype nvarchar(20)
+declare @t_typea nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+set @t_accy = '[1]'
+set @t_typea = case when '#non' = [2] then '' when '全部'=[2] then '' else [2] end
+set @t_itype = case when '#non' = [3] then '' when '全部'=[3] then '' else [3] end
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then CHAR(255) else [5] end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(20),
+	noq nvarchar(20),
+	datea nvarchar(10),
+	typea nvarchar(10),
+	itype nvarchar(10),
+	comp nvarchar(50),
+	s nvarchar(20),
+	uno nvarchar(30),
+	spec nvarchar(20),
+	class nvarchar(20),
+	pno nvarchar(50),
+	product nvarchar(50),
+	size nvarchar(90),
+	mount float,
+	weightb float,
+	price float,
+	moneys float,
+	title nvarchar(20),
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0' gno,a.noa,b.noq,a.datea,a.typea,a.itype,left(a.comp,4),c.source,b.uno,b.spec,c.class,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		b.mount,b.weight,c.price,b.weight*c.price,
+		case when len(@t_typea)=0 then '全部' else a.typea end,'inast'+a.accy
+	from view_ina[1] a
+	left join view_inas[1] b on a.noa = b.noa
+	left join uccb c on b.uno = c.noa
+	where (LEN(@t_typea) = 0 or @t_typea = a.typea) and
+	(LEN(@t_itype) = 0 or @t_itype = a.itype) and
+	(isnull(a.datea,'') between @t_bdate and @t_edate)
+
+insert into @tmp(gno,mount,weightb,moneys)
+select '1',SUM(mount),SUM(weightb),SUM(moneys) from @tmp
+update @tmp set size = replace(size,'~#$','''')
+update @tmp set itype= case itype when '1' then '買賣' when '2' then '代工' when '3' then '寄庫' end
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+select
+	*
+from @tmp;

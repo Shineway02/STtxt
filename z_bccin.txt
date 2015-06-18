@@ -1,0 +1,386 @@
+z_bccinst1:--z_bccinst1
+declare @t_bbccno nvarchar(20)
+declare @t_ebccno nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_storeno nvarchar(max)
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+set @t_bbccno = case when '#non' = [9] then '' else [9] end
+set @t_ebccno = case when '#non' = [10] then CHAR(255) else [10] end
+set @t_storeno = case when '#non'=[13] then '' else [13] end
+
+declare @tmp  table(
+		storeno nvarchar(20),
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		datea nvarchar(10),
+		bccno nvarchar(20),
+		sbccno nvarchar(50),
+		bccname nvarchar(50),
+		unit nvarchar(10),
+		price int,
+		mount int,
+		total int
+)
+
+	insert into @tmp
+	select b.storeno,'0' gno,a.noa,b.noq,a.datea,b.bccno,b.bccno,b.bccname,b.unit,b.price
+	,(case when a.typea='2' then -1 else 1 end)*b.mount,(case when a.typea='2' then -1 else 1 end)*b.total
+	from bccin a
+	left join bccins b on a.noa = b.noa
+	where (a.datea between @t_bdate and @t_edate) and
+	(b.bccno between @t_bbccno and @t_ebccno) and (len(@t_storeno) = 0 or b.storeno = @t_storeno)
+	order by b.storeno,b.bccno,a.noa
+
+declare @t_bccno nvarchar(20)
+declare @t_bccname nvarchar(50)
+declare @t_unit nvarchar(20)
+declare @bccno nvarchar(20)
+declare @sbccno nvarchar(20)
+declare @bccname nvarchar(50)
+declare @unit nvarchar(20)
+declare @datea nvarchar(20)
+declare @noa nvarchar(20)
+set @t_bccno = 'wderfff'
+set @t_bccname = 'erwereee'
+set @t_unit = 'ererere'
+
+declare cursor_table cursor for
+select datea,noa,sbccno,bccno,bccname
+from @tmp 
+open cursor_table 
+fetch next from cursor_table
+into @datea,@noa,@sbccno,@bccno,@bccname
+while(@@FETCH_STATUS <> -1)
+begin
+	if (@bccno = @t_bccno)  and(@t_bccno != 'wderfff') 
+	begin
+		update @tmp set bccno = '' , bccname = '',unit = '' where current of cursor_table
+	end
+	else
+	begin
+		set @t_bccno = @bccno
+		set @t_bccname = @bccname
+	end
+fetch next from cursor_table
+into @datea,@noa,@sbccno,@bccno,@bccname
+end
+close cursor_table
+deallocate cursor_table
+
+insert into @tmp
+select storeno,'1' gno,'','','','',sbccno,'','',0,SUM(mount),SUM(total)
+from @tmp
+group by storeno,sbccno
+
+insert into @tmp
+select storeno,'2' gno,'','','','','zzzzzzzz','','',0,SUM(mount),SUM(total)
+from @tmp
+where gno = '1'
+group by storeno
+
+select b.store,a.gno,a.noa,a.noq,a.datea,a.bccno,a.sbccno,a.bccname,a.unit
+,dbo.getComma(price,[2])price
+,dbo.getComma(mount,[1])mount
+,dbo.getComma(total,0)total
+from @tmp a left join store b on a.storeno=b.noa 
+order by a.storeno,a.sbccno,a.gno;
+-----------------------------------------------------------------------------------------------------------------
+z_bccinst2:--z_bccinst2
+declare @pagecount int
+declare @t_xnoa nvarchar(20)
+set @pageCount = 7
+set @t_xnoa = case when '#non' = [4] then '' else [4] end
+declare @tmpa table (
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		mon nvarchar(10),
+		tggno nvarchar(20),
+		comp nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(20),
+		addr nvarchar(50),
+		datea nvarchar(10),
+		ordcno nvarchar(20),
+		bccname nvarchar(90),
+		weightb float,
+		mount int,
+		unit nvarchar(20),
+		price float,
+		total int,
+		paytype nvarchar(20),
+		tmemo nvarchar(200),
+		memo nvarchar(200),
+		tmount int,
+		ttotal int,
+		mttotal int,
+		tax int,
+		tmoney int,
+		w nvarchar(20),
+		store nvarchar(20),
+		part nvarchar(20),
+		invono nvarchar(20),
+		buyer nvarchar(20)
+)
+insert into @tmpa
+select '0' gno,a.noa,b.noq,a.mon,a.tggno,a.tgg,c.tel,c.fax,c.addr_invo,a.datea,a.ordcno,
+b.bccname,(case when a.typea='2' then -1 else 1 end)*b.weight,(case when a.typea='2' then -1 else 1 end)*b.mount
+,b.unit,b.price,(case when a.typea='2' then -1 else 1 end)*b.total
+,c.paytype,a.memo,b.memo,0
+,(case when a.typea='2' then -1 else 1 end)*a.money,(case when a.typea='2' then -1 else 1 end)*a.money
+,(case when a.typea='2' then -1 else 1 end)*a.tax,(case when a.typea='2' then -1 else 1 end)*a.total
+,a.worker,d.store,a.part,a.invono,a.buyer
+from bccin a
+left join bccins b on a.noa = b.noa
+left join tgg c on a.tggno = c.noa
+left join store d on a.storeno=d.noa
+where @t_xnoa = a.noa
+
+declare @tmp table (
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		mon nvarchar(10),
+		tggno nvarchar(20),
+		comp nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(20),
+		addr nvarchar(50),
+		datea nvarchar(10),
+		ordcno nvarchar(20),
+		bccname nvarchar(90),
+		weightb float,
+		mount int,
+		unit nvarchar(20),
+		price float,
+		total int,
+		paytype nvarchar(20),
+		tmemo nvarchar(200),
+		memo nvarchar(200),
+		tmount int,
+		ttotal int,
+		mttotal int,
+		tax int,
+		tmoney int,
+		w nvarchar(20),
+		store nvarchar(20),
+		part nvarchar(20),
+		invono nvarchar(20),
+		buyer nvarchar(20),
+		recno int,
+		currecno int,
+		curpage int,
+		totpage int
+)
+insert into @tmp
+select a.*,ROW_NUMBER()over(order by gno) recno,0 currecno,0 curpage,0 totpage 
+				 from( 
+				select  gno,noa,noq,mon,tggno,comp,tel,fax,addr,datea,ordcno,bccname,weightb,mount,unit,price,
+				total,paytype,tmemo,memo,tmount,ttotal,mttotal,tax,tmoney,w,store,part,invono,buyer
+				from @tmpa a
+				 )a
+
+
+declare @noa nvarchar(20)
+declare @gno nvarchar(20)
+declare @tmount float
+declare @count int
+declare @t_count int
+declare @recno int
+declare @currecno int
+declare @t_curpage int
+declare @curpage int
+declare @totpage int
+declare @ttotal int
+declare @mttotal int
+declare @tax int
+declare @tmoney int
+declare @mount int
+declare @t_mount int
+declare @total int
+declare @t_total int
+declare @tt_total int
+declare @w nvarchar(30)
+declare @paytype nvarchar(20)
+declare @tmemo nvarchar(20)
+declare @t_noa nvarchar(30)
+declare @t_currecno float
+set @t_currecno = 0
+
+	declare cursor_table cursor for
+	select noa,min(recno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set currecno = recno - @recno +1 where noa=@noa
+		fetch next from cursor_table
+		into @noa,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	--------------------------------------------------
+	----------------------------------------------------
+	declare @count1 int
+	declare @count2 int
+	declare cursor_table cursor for
+	select noa,sum(mount),max(ttotal),max(mttotal),max(tax),max(tmoney),max(w),max(paytype),max(tmemo),count(*) count1,(count(*)/@pageCount+1)*@pageCount count2 from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@tmount,@ttotal,@mttotal,@tax,@tmoney,@w,@paytype,@tmemo,@count1,@count2
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while(@count1<@count2) and not(@count1 % @pagecount = 0)
+		begin
+			insert into @tmp (gno,noa,noq,tmount,ttotal,mttotal,tax,tmoney,w,paytype,tmemo,currecno)VALUES
+			(0,@noa,CHAR(255),@tmount,@ttotal,@mttotal,@tax,@tmoney,@w,@paytype,@tmemo,@count1+1)
+			set @count1=@count1+1
+		end
+		fetch next from cursor_table
+		into @noa,@tmount,@ttotal,@mttotal,@tax,@tmoney,@w,@paytype,@tmemo,@count1,@count2
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	---------------------------------------------------
+	declare cursor_table cursor for
+	select noa,max(currecno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set totpage = (@currecno-@currecno%@pagecount)/@pagecount where noa=@noa
+		fetch next from cursor_table
+		into @noa,@currecno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,recno,currecno from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set curpage = FLOOR((@currecno-1)/@pagecount)+1 where noa=@noa and recno=@recno
+		fetch next from cursor_table
+		into @noa,@recno,@currecno
+	end
+		close cursor_table
+	deallocate cursor_table
+	
+	set @t_curpage=0
+	set @t_mount=0
+	set @t_total=0
+	set @tt_total=0
+	set @t_noa='xxxxxxxx'
+	set @t_curpage=0
+	
+	declare cursor_table cursor for
+	select noa,mount,total,curpage from @tmp order by noa,currecno
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@mount,@total,@curpage
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if(@t_curpage!=@curpage and @t_noa!='xxxxxxxx')
+		begin
+			update @tmp set tmount=@t_mount where curpage=@t_curpage and noa=@t_noa
+			update @tmp set ttotal=@t_total where curpage=@t_curpage and noa=@t_noa
+			update @tmp set mttotal=@tt_total where curpage=@t_curpage and noa=@t_noa
+			set @t_mount=0
+			set @t_total=0
+			if(@noa!=@t_noa)
+			set @tt_total=0
+		end
+		if(@t_curpage!=@curpage)
+			set @t_curpage=@curpage
+		if(@t_noa!=@noa)
+			set @t_noa=@noa
+			
+		set @t_mount=@t_mount+isnull(@mount,0)
+		set @t_total=@t_total+isnull(@total,0)
+		set @tt_total=@tt_total+isnull(@total,0)
+		
+		fetch next from cursor_table
+		into @noa,@mount,@total,@curpage
+	end
+		close cursor_table
+	deallocate cursor_table
+	--最後一筆
+	update @tmp set tmount=@t_mount where (curpage=@t_curpage or curpage is null) and noa=@t_noa
+	update @tmp set ttotal=@t_total where (curpage=@t_curpage or curpage is null) and noa=@t_noa
+	update @tmp set mttotal=@tt_total where (curpage=@t_curpage or curpage is null) and noa=@t_noa
+	
+	select gno,noa,noq,mon,tggno,comp,tel,fax,addr,datea,ordcno,bccname,store,part,invono,buyer,unit,paytype
+	,dbo.getComma(weightb,[3])weightb
+	,dbo.getComma(mount,[1])mount
+	,dbo.getComma(price,[2])price
+	,dbo.getComma(total,0)total
+	,dbo.getComma(tmount,[1])tmount
+	,dbo.getComma(ttotal,0)ttotal
+	,dbo.getComma(mttotal,0)mttotal
+	,dbo.getComma(tax,0)tax
+	,dbo.getComma(tmoney,0)tmoney
+	,memo,tmemo
+	,w,recno,currecno,curpage,totpage,CONVERT(nvarchar(5),curpage)+'/'+CONVERT(nvarchar(5),totpage) page
+	from @tmp where gno = 0
+	order by noa,currecno;
+--*********************************************************************************************
+z_bccinst3:--z_bccinst3
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_bbccno nvarchar(20)
+declare @t_ebccno nvarchar(20)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+set @t_bbccno = case when '#non' = [9] then '' else [9] end
+set @t_ebccno = case when '#non' = [10] then CHAR(255) else [10] end
+set @t_btggno = case when '#non' = [11] then '' else [11] end
+set @t_etggno = case when '#non' = [12] then CHAR(255) else [12] end
+
+
+declare @tmp  table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		noq nvarchar(20),
+		contract nvarchar(50),
+		datea nvarchar(10),
+		bccno nvarchar(50),
+		bccname nvarchar(100),
+		tggno nvarchar(50),
+		comp nvarchar(100),
+		unit nvarchar(10),
+		price float,
+		mount float,
+		c1 float,
+		notv float
+)
+
+insert @tmp
+select '0',a.noa,b.no2,a.contract,a.datea,b.productno,b.product
+,a.tggno,case when a.nick!='' then a.nick else left(a.tgg,8) end,b.unit,b.price,b.mount,b.c1,b.notv
+from view_ordc a left join view_ordcs b on a.noa=b.noa
+where a.tggno between @t_btggno and @t_etggno
+and b.productno between @t_bbccno and @t_ebccno
+and a.datea between @t_bdate and @t_edate
+and a.kind='2' and b.enda!='1'
+
+insert @tmp (gno,tggno,c1,notv)
+select '1',tggno,sum(c1),sum(notv) from @tmp group by tggno
+
+select gno,noa,noq,contract,datea,bccno,bccname,tggno,comp,unit
+,dbo.getComma(price,[2])price
+,dbo.getComma(mount,[1])mount
+,dbo.getComma(c1,[1])c1
+,dbo.getComma(notv,[1])notv
+from @tmp order by tggno,gno,datea,noa,noq;

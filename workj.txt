@@ -1,0 +1,241 @@
+orde:-- workj -> orde 
+	--一張鋼筋加工單 只會產生一張訂單
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @ordekey nvarchar(20) = [1]
+	declare @workjno nvarchar(20) = [2]
+	------------------------------------------------------------------------------------------------
+	declare @accy nvarchar(20)
+	declare @ordeno nvarchar(20)
+	select  top 1 @accy=accy,@ordeno =noa from view_ordes where quatno=@workjno
+	if len(isnull(@ordeno,''))=0
+		select  @accy=ordeaccy,@ordeno = ordeno from workj where noa=@workjno
+	
+	if len(@ordeno)!=0
+	begin
+		--訂單若結案則不異動
+		if exists(select * from view_orde where accy=@accy and noa=@ordeno and isnull(enda,0)=1)
+		or exists(select * from view_ordes where accy=@accy and noa=@ordeno and isnull(enda,0)=1)
+		begin
+			select '訂單【'+@ordeno+'】已結案' msg
+			return 
+		end
+	end
+	else
+	begin
+		declare @odate nvarchar(10) = ''
+		select @odate = datea from workj where noa=@workjno
+		set @accy = LEFT(@odate,3)
+		declare @noa nvarchar(20)= @ordekey+replace(@odate,'/','')
+		select top 1 @ordeno=noa from view_orde where LEFT(noa,len(@noa))=@noa order by noa desc
+		if len(ISNULL(@ordeno,''))=0
+			set @ordeno = @noa + '001'
+		else
+		begin
+			set @ordeno = REPLACE(@ordeno,@noa,'')
+			set @ordeno = @noa + RIGHT('000'+cast(CAST(@ordeno as int)+1 as nvarchar),3)
+		end
+	end
+	---========================================================================================
+	--已出貨則不異動  
+	if exists(select top 1 noa from view_vccs where ordeno=@ordeno)
+	begin
+		select '訂單【'+@ordeno+'】已出貨' msg
+		return 
+	end
+	---========================================================================================
+	declare @credit float = 0
+	--檢查額度  credit.txt  fe
+	declare @t_custno nvarchar(20) = ''
+	declare @t_ordeno nvarchar(20) = @ordeno
+	declare @t_rate float = 0.05
+	
+	select @t_custno = custno from workj where noa=@workjno
+	----------------------------------------------------------------------------------
+	declare @grpno nvarchar(20) = ''
+	IF OBJECT_ID('tempdb..#tmpcust')is not null
+	BEGIN
+		drop table #tmpcust
+	END
+	create  table #tmpcust(
+		custno nvarchar(20),
+		grpno nvarchar(20),
+		credit float,
+		orde float,--未出訂單
+		ordetax float,
+		vccmoney float,--出貨
+		vcctax float,--出貨
+		vcctotal float,--出貨
+		vcca float,--發票
+		gqb float,--未兌現支票
+		umm float,--收款
+		total float -- 可用額度
+	)
+	create index noa on #tmpcust(custno)
+	
+	insert into #tmpcust(custno,grpno)
+	select noa,case when len(isnull(grpno,''))=0 then noa else grpno end from cust
+	
+	if(LEN(@t_custno)>0)
+	begin
+		select @grpno=grpno from #tmpcust where custno=@t_custno
+		if(LEN(ISNULL(@grpno,''))>0)
+			delete #tmpcust where grpno!=@grpno
+		else
+			delete #tmpcust where custno=@t_custno
+	end
+	-----------------------------------------------------------------------------------
+	--****
+	update #tmpcust set credit=ISNULL( b.credit,0)
+	from #tmpcust a
+	left join cust b on a.grpno=b.noa
+	
+	-----------------------------------------------------------------------------------
+	--未結案訂單
+	update #tmpcust set orde = ISNULL(b.total,0),ordetax=ROUND(ISNULL(b.total,0)*@t_rate,0)
+	from #tmpcust a
+	LEFT join(
+		select isnull(a.custno,'')custno,sum(isnull(b.notv,0)*isnull(b.price,0)) total
+		from view_orde a
+		left join view_ordes b on a.accy=b.accy and a.noa=b.noa
+		left join #tmpcust c on a.custno=c.custno
+		where isnull(a.enda,0)=0
+		and ISNULL(a.cancel,0)=0
+		and ISNULL(b.enda,0)=0
+		and ISNULL(b.cancel,0)=0
+		and c.custno is not null
+		and (len(@t_ordeno)=0 or a.noa!=@t_ordeno)
+		group by isnull(a.custno,''))b on a.custno=b.custno
+	--未兌現、票貼 支票
+	update #tmpcust set gqb = ISNULL(b.[money],0)
+	from #tmpcust a
+	LEFT join(
+		select ISNULL(a.compno,'') custno,SUM(ISNULL(a.[money],0))[money] 
+		from gqb a
+		left join #tmpcust c on a.compno=c.custno
+		where ISNULL(a.enda,'')!='Y'
+		and len(ISNULL(a.usage,''))=0
+		and ISNULL(a.typea,'')='1'
+		and c.custno is not null
+		group by ISNULL(a.compno,''))b on a.custno=b.custno
+		
+	update #tmpcust set vccmoney = b.sale
+		,vcctax = b.tax
+		,vcctotal = b.totsale
+		,vcca = 0
+		,umm = b.pay 
+	from #tmpcust a
+	left join (select noa,SUM(ISNULL(sale,0)) sale,SUM(ISNULL(tax,0)) tax
+		,SUM(ISNULL(totsale,0)) totsale,SUM(ISNULL(pay,0)) pay from cust_2s group by noa) b on a.custno=b.noa		
+	
+	/*--出貨	
+	update #tmpcust set vccmoney = ISNULL(b.[money],0)
+		,vcctax = ISNULL(b.tax,0)
+		,vcctotal = ISNULL(b.total,0)
+	from #tmpcust a
+	LEFT join(
+		select isnull(a.custno,'')custno,sum(isnull(a.[money],0)) [money],sum(isnull(a.tax,0)) tax,sum(isnull(a.total,0)) total
+		from view_vcc a
+		left join #tmpcust c on a.custno=c.custno
+		where c.custno is not null
+		group by isnull(a.custno,''))b on a.custno=b.custno
+	--發票
+	update #tmpcust set vcca = ISNULL(b.tax,0)
+	from #tmpcust a
+	LEFT join(
+		select isnull(a.custno,'')custno,sum(isnull(a.tax,0)) tax
+		from vcca a
+		left join #tmpcust c on a.custno=c.custno
+		where c.custno is not null
+		group by ISNULL(a.custno,''))b on a.custno=b.custno
+	
+	--收款
+	update #tmpcust set umm = ISNULL(b.[money],0)
+	from #tmpcust a
+	LEFT join(
+		select ISNULL(a.custno,'') custno,sum(ISNULL(a.paysale,0)) [money]
+		from umm a
+		left join #tmpcust c on a.custno=c.custno
+		where c.custno is not null
+		group by ISNULL(a.custno,''))b on a.custno=b.custno*/
+	--==========================================================================
+	select @credit =(b.credit - b.orde - b.ordetax - b.vcctotal - b.vcca - b.gqb + b.umm) 
+	from #tmpcust a
+	left join(	
+		select grpno,credit
+			,SUM(ISNULL(orde,0)) orde
+			,SUM(ISNULL(ordetax,0)) ordetax
+			,SUM(ISNULL(vccmoney,0)) vccmoney
+			,SUM(ISNULL(vcctax,0)) vcctax
+			,SUM(ISNULL(vcctotal,0)) vcctotal
+			,SUM(ISNULL(vcca,0)) vcca
+			,SUM(ISNULL(gqb,0)) gqb
+			,SUM(ISNULL(umm,0)) umm
+		from #tmpcust		
+		where len(ISNULL(grpno,''))>0
+		group by grpno,credit) b on a.grpno=b.grpno
+	where a.custno=@t_custno
+	order by a.custno
+	drop table #tmpcust
+	
+	if @credit<0
+	begin
+		select '客戶【'+@t_custno+'】額度不足，可用額度【'+dbo.getComma(@credit,0)+'】' msg
+		return 
+	end
+	---========================================================================================
+	--刪除訂單，重新產生
+	set @cmd  = "delete orde"+@accy+" where noa=@ordeno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20)',@ordeno=@ordeno
+	set @cmd  = "delete ordes"+@accy+" where noa=@ordeno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20)',@ordeno=@ordeno
+	
+	--quatno  no3
+	set @cmd=
+	"insert into orde"+@accy+"(noa,datea,odate,custno,comp,nick,isproj,stype,enda,cancel,apv,trantype,memo2,memo)
+	select @ordeno,odate,datea,custno,cust,nick,1,'1',0,0,'*',trantype,trantype2,site
+	from workj where noa=@workjno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
+	-------------------------------------------------------------------------------------------
+	--合併productno
+	set @cmd =
+	"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total
+		,quatno,no3,tablea,enda,cancel,c1,notv)
+	select @ordeno,right('000'+cast(ROW_NUMBER()over(order by a.productno) as nvarchar),3)
+		,c.datea,c.custno,a.productno,a.product,a.unit,0,a.[weight],a.mount,a.price,a.total
+		,'','','workj',0,0,0,a.notv
+	from(
+		select a.productno,a.product,isnull(b.unit,'') unit,isnull(b.price,0) price
+			,SUM(a.[weight]) [weight],SUM(a.mount) mount
+			,sum(round(case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end * isnull(b.price,0),0)) total
+			,sum(case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end) notv
+		from workjs a
+		left join conts b on a.contno=b.noa and a.contnoq=b.noq
+		where a.noa=@workjno
+		group by a.productno,a.product,b.unit,b.price) a
+	left join workj c on noa=@workjno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
+	--------------------------------------------------------------------------------------------
+	--set @cmd=
+	--"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total,quatno,no3,tablea,enda,cancel,c1,notv)
+	--select @ordeno,right('000'+cast(ROW_NUMBER()over(order by a.noq) as nvarchar),3),c.odate,c.custno
+	--	,a.productno,a.product,b.unit,a.lengthb,a.[weight],a.mount,b.price
+	--	,round(case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end * b.price,0)
+	--	,a.noa,a.noq,'workj',0,0,0
+	--	,case when UPPER(b.unit)='KG' or UPPER(b.unit)='公斤' or len(b.unit)=0 then a.[weight] else a.mount end
+	--from workjs a 
+	--left join conts b on a.contno=b.noa and a.contnoq=b.noq
+	--left join workj c on a.noa=c.noa
+	--where a.noa=@workjno"
+	--execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
+	--------------------------------------------------------------------------------------------
+	set @cmd=
+	"update orde"+@accy+" set [money] = b.total,tax = ROUND(b.total*0.05,0),total=b.total+ROUND(b.total*0.05,0)
+	from orde"+@accy+" a
+	outer apply (select SUM(total) total from ordes"+@accy+" where noa=a.noa) b
+	where a.noa=@ordeno"
+	execute sp_executesql @cmd,N'@ordeno nvarchar(20),@workjno nvarchar(20)',@ordeno=@ordeno,@workjno=@workjno
+	
+	update workj set ordeaccy=@accy,ordeno=@ordeno where noa=@workjno
+	
+	select '匯出訂單【'+@ordeno+'】' msg,@accy ordeaccy,@ordeno ordeno;

@@ -1,0 +1,583 @@
+z_unobd01:--z_unobd01          z_uno1
+declare @t_uno nvarchar(50)
+set @t_uno = case when '#non' = [2] then '#non' else [2] end
+set @t_uno = rtrim(ltrim(@t_uno))
+declare @cubType nvarchar(max)
+set @cubType = case when '#non' = '[3]' then '' else '[3]' end
+declare @t_split_Tmp nvarchar(max)
+declare @cubTypeList table(
+	noa nvarchar(30),
+	namea nvarchar(90)
+)
+set @cubType += ','
+while(CHARINDEX(',',@cubType) > 0)
+begin
+	set @t_split_Tmp = LEFT(@cubType,CHARINDEX(',',@cubType)-1)
+	insert into @cubTypeList
+		select LEFT(@t_split_Tmp,CHARINDEX('@',@t_split_Tmp)-1),right(@t_split_Tmp,len(@t_split_Tmp)-CHARINDEX('@',@t_split_Tmp))
+	set @cubType = RIGHT(@cubType,LEN(@cubType)-CHARINDEX(',',@cubType))
+end
+declare @tmpa table(
+	auno nvarchar(30),
+	aproduct nvarchar(90),
+	aunit nvarchar(12),
+	adatea nvarchar(10),
+	asize nvarchar(90),
+	alengthb float,
+	astoreno nvarchar(30),
+	aspec nvarchar(25),
+	aclass nvarchar(25),
+	ahard float,
+	amount float,
+	aweight float,
+	aemount float,
+	aeweight float
+)
+declare @tmp table(
+	gno nvarchar(1),
+	auno nvarchar(30),
+	aproduct nvarchar(90),
+	aunit nvarchar(12),
+	adatea nvarchar(10),
+	asize nvarchar(90),
+	alengthb float,
+	astoreno nvarchar(30),
+	aspec nvarchar(25),
+	aclass nvarchar(25),
+	ahard float,
+	amount float,
+	aweight float,
+	aemount float,
+	aeweight float,
+	btypea nvarchar(15),
+	bnoa nvarchar(30),
+	bdatea nvarchar(10),
+	bcomp nvarchar(90),
+	bmount float,
+	bweight float,
+	bgmount float,
+	bgweight float,
+	buno nvarchar(max),
+	bmemo nvarchar(max),
+	bproduct nvarchar(90),
+	bsize nvarchar(90),
+	bprice float,
+	qhref nvarchar(max),
+	orderby int,
+	sprice float,
+	sprice2 float
+)
+insert into @tmpa
+	select top 1
+		a.uno ,a.product ,a.unit ,a.datea ,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) asize,
+		a.lengthb ,a.storeno,a.spec ,a.class ,a.hard ,a.mount,a.weight ,b.emount,b.eweight
+	from view_uccb a
+	left join uccy b on a.uno = b.uno
+	where rtrim(ltrim(a.uno)) = @t_uno or left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno order by a.uno
+
+insert into @tmp
+		select '0',c.*,'生計轉入', a.noa,d.odate,'訂序='+a.no2,a.ordmount,a.ordweight,0,0,a.uno,b.memo,a.product,
+		dbo.csize('A1',a.dime,a.width,a.lengthb,0),isnull(b.price,0),'ordest'+a.accy,3,null,null
+		from view_ordet a
+		left join uccb b on a.uno = b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join view_orde d on a.noa = d.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,'盤點',a.noa,a.datea,'',a.mount,a.eweight,0,0,a.uno,a.memo,a.product,
+		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius),a.price,'uccest'+a.accy,13,null,null
+		from view_ucces a
+		left join view_ucce b on a.noa = b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,(case when len(isnull(d.nick,e.nick)) = 0 then '入庫' else '轉入' end),
+			a.noa,a.datea,isnull(d.nick,e.nick),a.mount,a.weight,0,0,
+			a.uno+case when isnull(a.uno2,'')='' then '' else '<br>&nbsp'+char(59)+'原批號：' + isnull(a.uno2,'') end,
+			a.memo,a.product,
+			(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end),
+			a.price,'inast'+a.accy,2,a.sprice,a.sprice2
+		from view_inas a
+		left join view_ina b on a.noa = b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on b.tggno = d.noa
+		left join tgg e on b.tggno = e.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,(case b.typea when '1' then '進貨' else '進退' end),a.noa,
+		a.datea,isnull(d.nick,e.nick),a.mount,a.weight,0,0,
+			a.uno+case when isnull(a.uno2,'')='' then '' else '<br>&nbsp'+char(59)+'原批號：' + isnull(a.uno2,'') end,
+		a.memo,a.product,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end),
+		a.price,'rc2st'+a.accy,1,a.sprice,a.sprice2
+		from view_rc2s a
+		left join view_rc2 b on a.noa = b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on b.tggno = d.noa
+		left join tgg e on b.tggno = e.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,(case b.typea when '1' then '調撥' when '2' then '委出' when '3' then '委入' when '4' then '客戶借出' when '5' then '客戶歸還' when '6' then '委外加工' end),a.noa,
+		b.datea,isnull(d.nick,e.nick),a.mount,a.weight,0,0,a.uno,a.memo,a.product,
+		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius),a.price,'cngst'+a.accy,
+		(case b.typea when '1' then 7 when '2' then 8 when '3' then 6 end),null,null
+		from view_cngs a
+		left join view_cng b on a.noa = b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on b.tggno = d.noa
+		left join tgg e on b.tggno = e.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,'裁領',a.noa,a.datea,isnull(d.nick,e.nick),0,0,a.gmount,a.gweight,a.uno,a.memo,a.product,
+		dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius),0,'cut'+a.accy,9,null,null
+		from view_cut a
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on a.custno = d.noa
+		left join tgg e on a.custno = e.noa
+		outer apply(select top 1 * from view_cuts where (noa=a.noa) and (left(rtrim(ltrim(bno)),len(@t_uno)) = @t_uno)) f
+		where (left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno) or (isnull(f.bno,'') != '')
+	union all
+		select '0',c.*,
+		case isnull(b.typea,'')
+			when '1' then '分條'
+			when '2' then '剪板'
+			when '3' then '分捲'
+			when '4' then '貼膜'
+			when '5' then '壓延'
+			when '6' then '領料'
+			when '7' then '退火'
+			when '8' then '壓脫'
+			else '裁入' end,
+		a.noa,a.datea,isnull(d.nick,e.nick),a.mount,a.weight,0,0,a.bno,a.memo,a.product,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end),
+		0,'cut'+a.accy,5,a.sprice,a.sprice2
+		from view_cuts a
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on a.custno = d.noa
+		left join tgg e on a.custno = e.noa
+		left join view_cut b on a.noa = b.noa
+		where left(rtrim(ltrim(a.bno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,'製領',a.noa,f.datea,isnull(d.nick,e.nick),0,0,a.gmount,a.gweight,a.uno,a.memo,a.product,
+		dbo.csize((case when f.typea='1' then 'A1' else 'B2' end),a.dime,a.width,a.lengthb,a.radius),0,'cubpi'+a.accy,4,null,null
+		from view_cubt a
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on a.custno = d.noa
+		left join tgg e on a.custno = e.noa
+		left join view_cub f on a.noa = f.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,(case when a.waste > 0 then '廢料' else f.namea end),
+			a.noa,a.datea,isnull(d.nick,e.nick),a.mount,a.weight,0,0,a.uno,a.memo,a.product,
+			dbo.csize('B2',a.dime,a.width,a.lengthb,a.radius),0,'cubu_b'+a.accy,10,a.sprice,a.sprice2
+		from view_cubu a
+		left join view_cub b on a.noa = b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on a.custno = d.noa
+		left join tgg e on a.custno = e.noa
+		left join @cubTypeList f on b.typea=f.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',d.*,(case when c.noa is null then '領料' else '轉出' end),
+		a.noa,b.datea,isnull(f.nick,e.nick),
+		(case when c.noa is null then 0 else c.mount2 end),
+		(case when c.noa is null then 0 else c.weight2 end),
+		a.gmount,a.gweight,a.uno,
+		(case when c.noa is null then a.memo else c.ordeno+'-'+c.no2 end),
+		a.product,dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius),0,'getst'+a.accy,11,null,null
+		from view_gets a
+		left join view_get b on a.noa = b.noa
+		left join ucch c on a.noa = c.noa
+		left join @tmpa d on left(rtrim(ltrim(d.auno)),len(@t_uno)) = @t_uno
+		left join cust f on b.custno =f.noa
+		left join tgg e on b.custno = e.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	union all
+		select '0',c.*,(case a.typea when '1' then '出貨' else '出退' end),
+		a.noa,a.datea,isnull(d.nick,e.nick)
+		,(case a.typea when '1' then 0 else a.mount end),(case a.typea when '1' then 0 else a.weight end)
+		,(case a.typea when '1' then a.mount else 0 end),(case a.typea when '1' then a.weight else 0 end),
+		a.uno,a.memo,a.product,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end),
+		a.price,'vccst'+a.accy,12,
+		case when a.weight=0 then null else (a.total/a.weight) end,
+		case when a.weight=0 then null else (a.total/a.weight)+b.price end
+		from view_vccs a
+		left join view_vcc b on a.noa = b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join cust d on a.custno = d.noa
+		left join tgg e on a.custno = e.noa
+		where left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno
+	--103/12/05 顯示領料的批號
+	union all
+		select '0',c.*,'用料',a.noa,b.datea,b.station,0,0,a.mount,a.weight,a.uno,a.memo,a.product,
+		c.asize,0,'workb'+a.accy,13,d.sprice,d.sprice2
+		from view_workbt a left join view_workb b on a.noa=b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join view_uccc d on left(rtrim(ltrim(d.uno)),len(@t_uno)) = @t_uno
+		where (left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno)
+	union all
+		select '0',c.*,'委外用料',a.noa,b.datea,b.tgg,0,0,a.mount,a.weight,a.uno,a.memo,a.product,
+		c.asize,0,'workd'+a.accy,14,d.sprice,d.sprice2
+		from view_workdt a left join view_workd b on a.noa=b.noa
+		left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+		left join view_uccc d on left(rtrim(ltrim(d.uno)),len(@t_uno)) = @t_uno
+		where (left(rtrim(ltrim(a.uno)),len(@t_uno)) = @t_uno)
+
+update a
+set aemount=aemount
+-isnull((select sum(mount) from view_workbt wa left join view_workb wb on wa.noa=wb.noa where wa.uno=a.auno and wb.noa>=isnull((select top 1 datea from view_ucce where uno=wa.uno order by datea desc),'000/00/00')),0)
+-isnull((select sum(mount) from view_workdt wa left join view_workd wb on wa.noa=wb.noa where wa.uno=a.auno and wb.noa>=isnull((select top 1 datea from view_ucce where uno=wa.uno order by datea desc),'000/00/00')),0)
+,aeweight=aeweight
+-isnull((select sum(weight) from view_workbt wa left join view_workb wb on wa.noa=wb.noa where wa.uno=a.auno and wb.noa>=isnull((select top 1 datea from view_ucce where uno=wa.uno order by datea desc),'000/00/00')),0)
+-isnull((select sum(weight) from view_workdt wa left join view_workd wb on wa.noa=wb.noa where wa.uno=a.auno and wb.noa>=isnull((select top 1 datea from view_ucce where uno=wa.uno order by datea desc),'000/00/00')),0)
+from @tmp a
+	
+if((select count(*) from @tmp where btypea = '進貨' or btypea='轉入') = 0)
+begin
+	declare @SearchUno nvarchar(90) = @t_uno
+	while(1=1)
+	begin
+		if((select count(*) from view_rc2s a left join view_rc2 b on a.noa = b.noa where  a.uno = @SearchUno) >0)
+		begin
+			insert into @tmp
+				select
+					'0',c.*,'進貨',b.noa,b.datea,d.nick,a.mount,a.weight,0,0,
+					a.uno+case when isnull(a.uno2,'')='' then '' else '<br>&nbsp'+char(59)+'原批號：' + isnull(a.uno2,'') end,
+					a.memo,a.product,
+					dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius),a.price,'rc2st'+a.accy,1,a.sprice,a.sprice2
+				from view_rc2s a
+				left join view_rc2 b on a.noa =  b.noa
+				left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+				left join tgg d on b.tggno = d.noa
+				where a.uno = @SearchUno
+				break
+		end
+		else if((select count(*) from view_inas a left join view_ina b on a.noa = b.noa  where a.uno = @SearchUno) >0)
+		begin
+			insert into @tmp
+				select
+					'0',c.*,(case when len(isnull(d.nick,e.nick)) = 0 then '入庫' else '轉入' end),
+					b.noa,b.datea,d.nick,a.mount,a.weight,0,0,
+					a.uno+case when isnull(a.uno2,'')='' then '' else '<br>&nbsp'+char(59)+'原批號：' + isnull(a.uno2,'') end,
+					a.memo,a.product,
+					dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius),a.price,'inast'+a.accy,1,a.sprice,a.sprice2
+				from view_inas a
+				left join view_ina b on a.noa =  b.noa
+				left join @tmpa c on left(rtrim(ltrim(c.auno)),len(@t_uno)) = @t_uno
+				left join tgg d on b.tggno = d.noa
+				left join cust e on b.tggno = e.noa
+				where a.uno = @SearchUno
+				break
+		end
+		else
+		begin
+			if((select count(*) from view_cuts a where a.bno = @SearchUno) >0)
+			begin
+				set @SearchUno = (select top 1 b.uno from view_cuts a left join view_cut b on a.noa = b.noa where a.bno = @SearchUno)
+			end
+			else if((select count(*) from view_cubu a where a.uno = @SearchUno) >0)
+			begin
+				set @SearchUno = (
+					select top 1 b.uno from view_cubu a left join view_cubt b on a.noa = b.noa where (a.uno = @SearchUno) and (left(a.uno,len(a.uno)-3) = b.uno)
+				)
+			end
+			else
+				break
+		end
+	end
+end
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(bnoa) as nvarchar)+')=$bnoa?'+substring(qhref,len(qhref)-2,len(qhref))
+update @tmp set asize = replace(asize,'~#$','''')
+update @tmp set bsize = replace(bsize,'~#$','''')
+
+select
+	gno,auno,aproduct,aunit,adatea,asize,alengthb,astoreno,aspec,aclass,ahard,aweight,
+	aemount,aeweight,btypea,bnoa,bdatea,bcomp,bmount,bweight,bgmount,bgweight,buno,bmemo,
+	bproduct,bsize,bprice,qhref,orderby,
+	case when sprice is null then null else round(sprice,3) end sp1,
+	case when sprice2 is null then null else round(sprice2,3) end sp2
+from @tmp order by gno desc,bdatea,orderby,bnoa,buno;
+--**************************************************************************************
+z_unobd02:--z_unobd02   z_uno2
+declare @t_uno nvarchar(50)
+set @t_uno = case when '#non' = [2] then '' else [2] end
+
+--workb(批號、爐號)
+--派車vcce (批號)
+-- 出貨 vcc(批號)
+
+select '0' gno,
+a.uno,a.noa wbnoa,a.datea wbdate,a.productno pno,a.product,a.spec,a.unit
+,cast(a.dime as nvarchar(50))+'x'+cast(a.width as nvarchar(50))+'x'+cast(a.lengthb as nvarchar(50)) size
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.weight),1)),0,30)) wbweight
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,a.mount),1)),4,30)) wbmount
+,b.noa venoa,d.datea vedate
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,b.weight),1)),0,30)) veweight
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,b.mount),1)),4,30)) vemount
+,c.noa vcnoa,c.datea vcdate
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,c.weight),1)),0,30)) vcweight
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,c.mount),1)),0,30)) vcmount
+,a.ordeno,a.no2,d.carno
+from workbs[1] a left join vcces[1] b
+on a.uno=b.uno left join vccs[1] c on b.uno=c.uno left join vcce[1] d on b.noa=d.noa
+where (len(@t_uno)=0 or a.uno=@t_uno) and a.uno!=''
+;
+--****************************************************************************************
+z_unobf03:--z_unobf03  z_uno3
+declare @t_uno nvarchar(50)
+set @t_uno = case when '#non' = [2] then '' else [2] end
+
+
+declare @tmp table(
+	gno nvarchar(1),
+	uno nvarchar(90),
+	pno nvarchar(90),
+	product nvarchar(90),
+	spec nvarchar(90),
+	unit nvarchar(90),
+	size nvarchar(90),
+	wbmount float,
+	wbweight float,
+	wapno nvarchar(90),
+	waproduct nvarchar(90),
+	typea nvarchar(20),
+	waunit nvarchar(20),
+	wamount float,
+	waweight float
+)
+
+declare @gno nvarchar(1),
+	@uno nvarchar(90),
+	@pno nvarchar(90),
+	@product nvarchar(90),
+	@spec nvarchar(90),
+	@unit nvarchar(90),
+	@size nvarchar(90),
+	@wbmount float,
+	@wbweight float,
+	@wapno nvarchar(90),
+	@waproduct nvarchar(90),
+	@typea nvarchar(20),
+	@waunit nvarchar(20),
+	@wamount float,
+	@waweight float,
+	@x_uno nvarchar(90)
+
+set @x_uno='XXXXXYYYYY'
+
+declare cursor_table cursor for
+select '0'gno,
+a.uno,a.productno pno,a.product,a.spec,a.unit
+,cast(a.dime as nvarchar(50))+'x'+cast(a.width as nvarchar(50))+'x'+cast(a.lengthb as nvarchar(50)) size
+,a.born wbmount,a.bweight wbweight
+,b.productno wapno,b.product waproduct,(case when b.typea!='' then b.typea else (select process from view_worka[1] where noa=b.noa) end)typea,b.unit waunit
+,round((b.mount/(case when(select SUM(mount) from workas[1] where cuano=a.cuano)=0 then null else (select SUM(mount) from workas[1] where cuano=a.cuano) end))*((select SUM(mount) from workas[1] where cuano=a.cuano)*((select sum(born) from workbs[1] where cuano=a.cuano and productno=a.productno and spec=a.spec)/(case when(select SUM(born) from workbs[1] where cuano=a.cuano)=0then null else(select SUM(born) from workbs[1] where cuano=a.cuano)end))),3) wamount
+,round((b.weight/(case when(select SUM(weight) from workas[1] where cuano=a.cuano)=0 then null else (select SUM(weight) from workas[1] where cuano=a.cuano) end))*((select SUM(weight) from workas[1] where cuano=a.cuano)*((select sum(bweight) from workbs[1] where cuano=a.cuano and productno=a.productno and spec=a.spec)/(case when(select SUM(bweight) from workbs[1] where cuano=a.cuano)=0then null else(select SUM(bweight) from workbs[1] where cuano=a.cuano)end))),3) waweight
+from view_workbs[1] a
+left join view_workas[1] b on a.cuano=b.cuano
+where len(@t_uno)=0 or a.uno=@t_uno
+order by a.uno
+open cursor_table
+fetch next from cursor_table
+into @gno,@uno,@pno,@product,@spec,@unit,@size,@wbmount,@wbweight,
+	@wapno,@waproduct,@typea,@waunit,@wamount,@waweight
+while(@@FETCH_STATUS <> -1)
+begin
+
+	if(@x_uno!=@uno)
+	begin
+		insert into @tmp
+		select @gno,@uno,@pno,@product,@spec,@unit,@size,round(@wbmount,0),round(@wbweight,0),
+	@wapno,@waproduct,@typea,@waunit,round(@wamount,0),round(@waweight,0)
+	end
+	else
+	begin
+		insert into @tmp
+		select @gno,@uno,'','','','','','','',
+	@wapno,@waproduct,@typea,@waunit,round(@wamount,0),round(@waweight,0)
+	end
+
+	set @x_uno=@uno
+
+	fetch next from cursor_table
+	into @gno,@uno,@pno,@product,@spec,@unit,@size,@wbmount,@wbweight,
+	@wapno,@waproduct,@typea,@waunit,@wamount,@waweight
+end
+close cursor_table
+deallocate cursor_table
+
+select
+gno,uno,pno,product,spec,unit,size
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,wbmount),1)),4,30)) wbmount
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,wbweight),1)),0,30)) wbweight
+,wapno,waproduct,typea,waunit
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,wamount),1)),4,30)) wamount
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,waweight),1)),0,30)) waweight
+from @tmp;
+
+--*************************************************************************************************
+z_unobd04:--z_unobd04  z_uno4
+declare @t_uno nvarchar(50)
+declare @t_enddate nvarchar(50)
+declare @t_bpno nvarchar(100)
+declare @t_epno nvarchar(100)
+
+set @t_uno = case when '#non' = [2] then '' else [2] end
+set @t_enddate = case when '#non' = [4] then '' else [4] end
+set @t_bpno = case when '#non' = [5] then '' else [5] end
+set @t_epno = case when '#non' = [6] then char(255) else [6] end
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+if(@t_enddate='')
+begin
+	set @t_enddate=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+	set @t_enddate=left(@t_enddate,3)+'/'+substring(@t_enddate,4,2)+'/'+right(@t_enddate,2)
+end
+
+declare @tmp table(
+	recno int,
+	uno nvarchar(30),
+	productno nvarchar(MAX),
+	product nvarchar(MAX),
+	unit nvarchar(50),
+	tablea nvarchar(90),
+	datea nvarchar(20),
+	storeno nvarchar(50),
+	mount float,
+	weight float
+)
+insert @tmp
+select 2,b.uno,b.productno,b.product,b.unit,'rc2' tablea,a.datea,b.storeno,(case when a.typea='1' then 1 else -1 end)*b.mount mount
+,(case when a.typea='1' then 1 else -1 end)*(case when isnull(b.gweight,0) > 0 then b.gweight else b.weight end) weight 
+from view_rc2 a left join view_rc2s b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno) 
+union all
+select 3,b.uno,b.productno,b.product,b.unit,'inas' tablea,a.datea,b.storeno,b.mount,b.weight 
+from view_ina a left join view_inas b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 4,b.bno,b.productno,b.product,'' unit,'cuts' tablea,a.datea,b.storeno,b.mount,b.weight
+from view_cut a left join view_cuts b on a.noa=b.noa 
+where isnull(b.bno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.bno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 5,b.uno,b.productno,b.product,'' unit,'cubu' tablea,a.datea,b.storeno,b.mount,b.weight 
+from view_cub a left join view_cubu b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+
+union all
+select 1,b.uno,b.productno,b.product,b.unit,'ucce' tablea,a.datea,b.storeno,b.mount,b.eweight 
+from view_ucce a left join view_ucces b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 6,b.uno,b.productno,b.product,b.unit,'cngout' tablea,a.datea,a.storeno,-1*b.mount,-1*isnull(b.weight,0)
+from view_cng a left join view_cngs b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 7,b.uno,b.productno,b.product,b.unit,'cngin' tablea,a.datea,a.storeinno,b.mount,isnull(b.weight,0)
+from view_cng a left join view_cngs b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+
+union all
+select 8,a.uno,a.productno,a.product,'' unit,'cut' tablea,a.datea,a.storeno,-1*a.gmount,-1*a.gweight 
+from view_cut a 
+where isnull(a.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or a.uno=@t_uno) and (isnull(a.productno,'') between @t_bpno and @t_epno)
+union all
+select 9,b.uno,b.productno,b.product,'' unit,'cubt' tablea,a.datea,b.storeno,-1*b.gmount,-1*b.gweight 
+from view_cub a left join view_cubt b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 10,b.uno,b.productno,b.product,b.unit,'get' tablea,a.datea,b.storeno,-1*b.gmount,-1*b.gweight 
+from view_get a left join view_gets b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 11,b.uno,b.productno,b.product,b.unit,'vcc' tablea,a.datea,b.storeno
+,(case when a.typea='1' then -1 else 1 end)*(case when isnull(b.gmount,0) > 0 then b.gmount else b.mount end) mount
+,(case when a.typea='1' then -1 else 1 end)*(case when isnull(b.gweight,0) > 0 then b.gweight else b.weight end) weight
+from view_vcc a left join view_vccs b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 12,b.uno,b.productno,b.product,'' unit,'workbt' tablea,a.datea,b.storeno,-1*b.mount,-1*b.weight 
+from view_workb a left join view_workbt b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+union all
+select 13,b.uno,b.productno,b.product,'' unit,'workdt' tablea,a.datea,b.storeno,-1*b.mount,-1*b.weight 
+from view_workd a left join view_workdt b on a.noa=b.noa 
+where isnull(b.uno,'')!='' and a.datea<=@t_enddate and (len(@t_uno)=0 or b.uno=@t_uno) and (isnull(b.productno,'') between @t_bpno and @t_epno)
+
+declare @tmpa table(
+	uno nvarchar(30),
+	productno nvarchar(MAX),
+	products nvarchar(MAX),
+	unit nvarchar(50),
+	storeno nvarchar(50),
+	mount float,
+	weight float
+)
+
+declare @x_uno nvarchar(50)=''
+declare @x_storeno nvarchar(50)=char(255)
+declare @uno nvarchar(50)
+declare @productno nvarchar(MAX)
+declare @product nvarchar(MAX)
+declare @unit nvarchar(50)
+declare @tablea nvarchar(50)
+declare @datea nvarchar(50)
+declare @storeno nvarchar(50)
+declare @mount float
+declare @weight float
+
+declare cursor_table cursor for
+select uno,productno,product,unit,tablea,isnull(datea,''),isnull(storeno,''),isnull(mount,0),isnull(weight,0) 
+from @tmp order by uno,storeno,datea,recno
+open cursor_table
+fetch next from cursor_table
+into @uno,@productno,@product,@unit,@tablea,@datea,@storeno,@mount,@weight
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@x_uno='' or @x_uno!=@uno or @x_storeno!=@storeno)
+	begin
+		insert @tmpa
+		select @uno,@productno,@product,@unit,@storeno,@mount,@weight
+	end
+	else
+	begin
+		if(@tablea='ucce')
+		begin
+			--同批號的東西都會放再同一個倉庫
+			--update @tmpa
+			--set mount=@mount,weight=@weight,storeno=@storeno
+			--where uno=@uno
+			update @tmpa
+			set mount=@mount,weight=@weight
+			where uno=@uno and storeno=@storeno
+		end
+		--else if (@tablea='cngout' or @tablea='cngin')
+		--begin
+		--	--調撥
+		--	update @tmpa set storeno=@storeno 
+		--	where uno=@uno
+		--end
+		else
+		begin
+			update @tmpa
+			set mount=mount+@mount,weight=weight+@weight
+			where uno=@uno and storeno=@storeno
+		end
+	end
+	
+	set @x_uno=@uno
+	set @x_storeno=@storeno
+
+	fetch next from cursor_table
+	into @uno,@productno,@product,@unit,@tablea,@datea,@storeno,@mount,@weight
+end
+close cursor_table
+deallocate cursor_table
+
+select '0' gno,
+dbo.getComma(mount,2)mount,
+dbo.getComma(weight,2)weight,
+case when isnull((select top 1 store from store where noa=a.storeno),'')='' then a.storeno else (select top 1 store from store where noa=a.storeno) end store,
+* from @tmpa a where mount>0 or weight>0 order by productno,uno;

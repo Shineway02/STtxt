@@ -1,0 +1,252 @@
+z_vccfep01:--z_vccfep01	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_showprice nvarchar(20) = case when '#non' = [11] then '0' else [11] end
+	--------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		page nvarchar(20),
+		
+		accy nvarchar(10),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		addr nvarchar(50),
+		cno nvarchar(20),
+		acomp nvarchar(50),
+		
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		price float,
+		lengthb float,
+		mount float,
+		[weight] float,
+		[money] float,
+		memo nvarchar(max)
+	)
+	
+	insert into @tmp(gno,pno,recno,accy,noa,datea,custno,cust,addr
+		,cno,acomp
+		,productno,product,unit,price,lengthb,mount,[weight],[money],memo)
+	select '1','1',ROW_NUMBER()over(partition by a.noa order by b.noq)
+		,a.accy,a.noa,a.datea,a.custno,a.custno,a.addr2
+		,a.cno,a.acomp
+		,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.price,b.lengthb,b.mount,b.[weight],b.total,b.memo
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa
+	where (len(@t_noa)=0 or @t_noa=a.noa)
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	
+------------------------------------------------------
+	insert into @tmp (gno,pno,noa,datea,custno,cust,addr,cno,acomp,mount,[weight],[money])
+	select '3','3',noa,datea,custno,cust,addr,cno,acomp,sum(isnull(mount,'')),sum(isnull([weight],'')),sum(isnull([money],''))
+	from @tmp
+	group by noa,datea,custno,cust,addr,cno,acomp
+	---------------------------------------------------------------
+	declare @t_pageline int = 15 --一頁幾行
+	declare @noa nvarchar(20)
+	declare @datea nvarchar(20)
+	declare @custno nvarchar(20)
+	declare @cust nvarchar(50)
+	declare @addr nvarchar(100)
+	declare @cno nvarchar(20)
+	declare @acomp nvarchar(50)
+	declare @n int
+	declare @recno int
+	
+	declare cursor_table cursor for
+	select noa,datea,custno,cust,addr,cno,acomp
+		,count(1),max(recno) from @tmp group by noa,datea,custno,cust,addr,cno,acomp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while @n%@t_pageline !=0
+		begin
+			set @recno = @recno + 1
+			insert into @tmp(gno,pno,noa,datea,custno,cust,addr,cno,acomp,recno)
+			values('2','2',@noa,@datea,@custno,@cust,@addr,@cno,@acomp,@recno)
+			set @n=@n+1
+		end
+		
+		fetch next from cursor_table
+		into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	------------------------------------------------------------------
+	update @tmp set page = CAST(ceiling(cast(a.recno as float)/cast(@t_pageline as float)) as nvarchar)+'/'+CAST(ceiling(cast(b.recno as float)/cast(@t_pageline as float)) as nvarchar)
+	from @tmp a
+	left join (select noa,MAX(recno) recno from @tmp group by noa) b on a.noa=b.noa
+	
+	if(@t_showprice!='1')
+	begin
+		update @tmp set price=null,money=null
+	end
+	
+
+
+	select a.recno rr
+		,a.productno a01
+		,a.product a02
+		,a.unit a03
+		,a.mount a04
+		,a.[weight] a05
+		,a.price a06
+		,a.[money] a07
+		,a.noa b01
+		,a.cust b02
+		,a.addr b03
+		,a.* 
+		,a.acomp xxxx
+	from @tmp a
+	order by a.noa,a.pno,a.recno;
+	
+--****************************************************************************************************
+z_vccfep02:--z_vccfep02
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
+declare @t_showprice nvarchar(20)
+declare @t_pageline int = 7--------一頁幾行
+set @t_bxnoa = case when '#non' = [9] then '' else [9] end
+set @t_exnoa = case when '#non' = [10] then CHAR(255) else [10] end
+set @t_showprice = case when '#non' = [11] then '0' else [11] end
+
+declare @nowtime nvarchar(50) --今天時間
+set @nowtime=left(CONVERT (time, GETDATE()),5)
+
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	noa nvarchar(50),
+	noq nvarchar(50),
+	custno nvarchar(50),
+	comp nvarchar(100),
+	addr nvarchar(100),
+	tel nvarchar(100),
+	datea nvarchar(20),
+	trantype nvarchar(max),
+	transtartno nvarchar(max),
+	transtart nvarchar(max),
+	driverno nvarchar(max),
+	driver nvarchar(max),
+	carno nvarchar(max),
+	timea nvarchar(max),
+	cartrips nvarchar(max),
+	cardealno nvarchar(max),
+	cardeal nvarchar(max),
+	worker nvarchar(max),
+	
+	atotal float,
+	pno nvarchar(50),
+	product nvarchar(100),
+	unit nvarchar(50),
+	mount float,
+	price float,
+	total float,
+	counta float,
+	mw nvarchar(10) --判斷是重量還是數量
+)
+
+insert into @tmp
+select
+	'0',
+	ROW_NUMBER()over(partition by a.noa order by a.noa),1
+	,a.noa,b.noq,a.custno,a.comp,case when isnull(a.addr2,'')='' then a.addr else a.addr2 end
+	,a.tel,a.datea,a.trantype,a.transtartno,a.transtart,a.driverno,a.driver,a.carno
+	,'',a.cartrips,a.cardealno,a.cardeal,a.worker
+	,a.total,b.productno,replace(b.product,'~#$',char(39)),b.unit,case when isnull(b.unit,'')='KG' or isnull(b.unit,'')='' then b.weight else b.mount end
+	,b.price,b.total,case when isnull(b.unit,'')='KG' or isnull(b.unit,'')='' then b.mount else null end
+	,case when isnull(b.unit,'')='KG' or isnull(b.unit,'')='' then 'w' else 'm' end
+from view_vcc a
+left join view_vccs b on a.noa = b.noa
+where (a.noa between @t_bxnoa and @t_exnoa)
+
+if(@t_showprice!='1')
+begin
+	update @tmp set price=null,total=null,atotal=null
+end
+
+declare @a_noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+	select noa,count(*),max(orderno) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @a_noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare cursor_table cursor for
+	select distinct noa,max(orderno),pageno,min(idno),count(*) from @tmp group by noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,noa)
+				select '0',(@orderno+1),@pageno,@a_noa from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+		insert into @tmp(gno,orderno,pageno,noa,tel,trantype,transtartno,transtart,driverno,driver,carno,timea,cartrips,cardealno,cardeal,worker)
+		select '1',(@t_pageline+1),pageno,noa,MAX(tel),MAX(trantype),MAX(transtartno),MAX(transtart),MAX(driverno),MAX(driver),MAX(carno),MAX(timea),MAX(cartrips),MAX(cardealno),MAX(cardeal),MAX(worker) 
+		from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+		insert into @tmp(gno,orderno,pageno,noa,tel,trantype,transtartno,transtart,driverno,driver,carno,timea,cartrips,cardealno,cardeal,worker)
+		select '2',(@t_pageline+1),pageno,noa,MAX(tel),MAX(trantype),MAX(transtartno),MAX(transtart),MAX(driverno),MAX(driver),MAX(carno),MAX(timea),MAX(cartrips),MAX(cardealno),MAX(cardeal),MAX(worker) 
+		from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+		
+	fetch next from cursor_table
+	into @a_noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+
+
+select 
+left(datea,3) year,right(left(datea,6),2) mon,right(datea,2) day,@nowtime timea
+,dbo.getComma(mount,case when mw ='W' then [7] else [6] end) mount
+,dbo.getComma(counta,case when mw ='W' then [6] else 0 end) counta
+,dbo.getComma(price,[8]) price
+,dbo.getComma(total,0) total
+,dbo.getComma(atotal,0) atotal
+,*
+from @tmp order by noa desc,pageno,gno,orderno;

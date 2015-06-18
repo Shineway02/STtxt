@@ -1,0 +1,282 @@
+﻿z_salaryp_rb1:--z_salaryp_rb1
+declare @t_xmon nvarchar(20)
+set @t_xmon = case when '#non' = [1] then '' else [1] end
+declare @t_pmon nvarchar(20)
+set @t_pmon=left(dbo.q_cdn(@t_xmon+'/01',-1),6)
+---------------------------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(1),
+		partno nvarchar(20),
+		part nvarchar(50),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		account nvarchar(50),--轉帳資料
+		total1 float,
+		total2 float,
+		total3 float,
+		total4 float,
+		total5 float,
+		tax1 float,--應稅總額
+		tax2 float,--免稅總額
+		tax3 float,--本期應稅總額
+		tax4 float,--前期應稅總額
+		--加項
+		money float,
+		mtotal float,
+		meals float,
+		bo_admin float,
+		bo_oth float,
+		bo_full float,	
+		bo_traffic float,
+		hplus1 float,
+		--減項
+		mi_person float,
+		mi_sick float,
+		ch_labor float,
+		ch_health float,
+		hplus2 float,
+		minus1 float,	
+		minus2 float,
+		minus3 float,
+		minus4 float,
+		counts int
+)
+
+insert into @tmp
+select '9',isnull(b.partno,''),isnull(b.part,''),b.sno,b.namea,c.account,b.total1,b.total2,b.total3,b.total4,b.total5
+,b.tax_other+b.tax6+b.tax12+b.tax18+b.tax+b.tax5,b.tax_other2,b.tax_other+b.tax6+b.tax12+b.tax18+b.tax+b.tax5-b.tax_other2
+,isnull((select sum(pb.tax_other+pb.tax6+pb.tax12+pb.tax18+pb.tax+pb.tax5-pb.tax_other2) from salary pa left join salarys pb on pa.noa=pb.noa where pa.mon=@t_pmon and pb.sno=b.sno),0)
+,b.money,b.mtotal,b.meals,b.bo_admin,b.bo_oth,b.bo_full,b.bo_traffic
+,isnull((select SUM(plus) from salchg c left join salchgitem d on c.plusitem=d.noa where sssno=b.sno and mon=@t_xmon and d.item like '%退補健保費%'),0)
+,b.mi_person,b.mi_sick,b.ch_labor,b.ch_health,b.hplus2
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and (d.item not like '%代扣租金%' and d.item like '%代扣租金%') and d.item not like '%奉獻%' and d.item not like '%生命園丁%' and d.item like '%停車費%'),0)
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and d.item like '%代扣租金%'),0)
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and (d.item like '%奉獻%' or d.item like '%生命園丁%')),0)
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and d.item like '%停車費%'),0),1
+from salary a left join salarys b on a.noa=b.noa left join sss c on b.sno=c.noa
+where a.mon=@t_xmon
+
+insert into @tmp
+select '0',partno,part,CHAR(255),CHAR(255),CHAR(255),SUM(total1),SUM(total2),SUM(total3),SUM(total4),SUM(total5)
+,SUM(tax1),SUM(tax2),SUM(tax3),SUM(tax4)
+,SUM(money),SUM(mtotal),SUM(meals),SUM(bo_admin),SUM(bo_oth),SUM(bo_full),SUM(bo_traffic),SUM(hplus1)
+,SUM(mi_person),SUM(mi_sick),SUM(ch_labor),SUM(ch_health),SUM(hplus2),SUM(minus1),SUM(minus2),SUM(minus3),SUM(minus4),SUM(counts)
+from @tmp where gno='9'
+group by partno,part
+
+insert into @tmp
+select '1',CHAR(255),CHAR(255),CHAR(255),CHAR(255),CHAR(255),SUM(total1),SUM(total2),SUM(total3),SUM(total4),SUM(total5)
+,SUM(tax1),SUM(tax2),SUM(tax3),SUM(tax4)
+,SUM(money),SUM(mtotal),SUM(meals),SUM(bo_admin),SUM(bo_oth),SUM(bo_full),SUM(bo_traffic),SUM(hplus1)
+,SUM(mi_person),SUM(mi_sick),SUM(ch_labor),SUM(ch_health),SUM(hplus2),SUM(minus1),SUM(minus2),SUM(minus3),SUM(minus4),SUM(counts)
+from @tmp where gno='9'
+
+select 
+dbo.getComma(total1,0)total1,
+dbo.getComma(total2,0)total2,
+dbo.getComma(total3,0)total3,
+dbo.getComma(total4,0)total4,
+dbo.getComma(total5,0)total5,
+dbo.getComma(tax1,0)tax1,
+dbo.getComma(tax2,0)tax2,
+dbo.getComma(tax3,0)tax3,
+dbo.getComma(tax4,0)tax4,
+dbo.getComma(money,0)money,
+dbo.getComma(mtotal,0)mtotal,
+dbo.getComma(bo_admin,0)bo_admin,
+dbo.getComma(bo_oth,0)bo_oth,
+dbo.getComma(bo_full,0)bo_full,
+dbo.getComma(bo_traffic,0)bo_traffic,
+dbo.getComma(hplus1,0)hplus1,
+dbo.getComma(mi_person,0)mi_person,
+dbo.getComma(mi_sick,0)mi_sick,
+dbo.getComma(ch_labor,0)ch_labor,
+dbo.getComma(ch_health,0)ch_health,
+dbo.getComma(hplus2,0)hplus2,
+dbo.getComma(minus1,0)minus1,
+dbo.getComma(minus2,0)minus2,
+dbo.getComma(minus3,0)minus3,
+dbo.getComma(minus4,0)minus4,
+* from @tmp where gno!='9' order by gno,partno
+;
+------------------------------------------------------------------------------------------------------------------------------
+z_salaryp_rb2:--z_salaryp_rb2
+declare @t_xmon nvarchar(20)
+set @t_xmon = case when '#non' = [1] then '' else [1] end
+declare @t_pmon nvarchar(20)
+set @t_pmon=left(dbo.q_cdn(@t_xmon+'/01',-1),6)
+---------------------------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(1),
+		partno nvarchar(20),
+		part nvarchar(50),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		account nvarchar(50),--轉帳資料
+		total1 float,
+		total2 float,
+		total3 float,
+		total4 float,
+		total5 float,
+		tax1 float,--應稅總額
+		tax2 float,--免稅總額
+		tax3 float,--本期應稅總額
+		tax4 float,--前期應稅總額
+		--加項
+		money float,
+		mtotal float,
+		meals float,
+		bo_admin float,
+		bo_oth float,
+		bo_full float,	
+		bo_traffic float,
+		hplus1 float,
+		--減項
+		mi_person float,
+		mi_sick float,
+		ch_labor float,
+		ch_health float,
+		hplus2 float,
+		minus1 float,	
+		minus2 float,
+		minus3 float,
+		minus4 float,
+		counts int
+)
+
+insert into @tmp
+select '0',isnull(b.partno,''),isnull(b.part,''),b.sno,b.namea,c.account,b.total1,b.total2,b.total3,b.total4,b.total5
+,b.tax_other+b.tax6+b.tax12+b.tax18+b.tax+b.tax5,b.tax_other2,b.tax_other+b.tax6+b.tax12+b.tax18+b.tax+b.tax5-b.tax_other2
+,isnull((select sum(pb.tax_other+pb.tax6+pb.tax12+pb.tax18+pb.tax+pb.tax5-pb.tax_other2) from salary pa left join salarys pb on pa.noa=pb.noa where pa.mon=@t_pmon and pb.sno=b.sno),0)
+,b.money,b.mtotal,b.meals,b.bo_admin,b.bo_oth,b.bo_full,b.bo_traffic
+,isnull((select SUM(plus) from salchg c left join salchgitem d on c.plusitem=d.noa where sssno=b.sno and mon=@t_xmon and d.item like '%退補健保費%'),0)
+,b.mi_person,b.mi_sick,b.ch_labor,b.ch_health,b.hplus2
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and (d.item not like '%代扣租金%' and d.item like '%代扣租金%') and d.item not like '%奉獻%' and d.item not like '%生命園丁%' and d.item like '%停車費%'),0)
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and d.item like '%代扣租金%'),0)
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and (d.item like '%奉獻%' or d.item like '%生命園丁%')),0)
+,isnull((select SUM(minus) from salchg c left join salchgitem d on c.minusitem=d.noa where sssno=b.sno and mon=@t_xmon and d.item like '%停車費%'),0),1
+from salary a left join salarys b on a.noa=b.noa left join sss c on b.sno=c.noa
+where a.mon=@t_xmon
+
+insert into @tmp
+select '1',partno,part,CHAR(255),CHAR(255),CHAR(255),SUM(total1),SUM(total2),SUM(total3),SUM(total4),SUM(total5)
+,SUM(tax1),SUM(tax2),SUM(tax3),SUM(tax4)
+,SUM(money),SUM(mtotal),SUM(meals),SUM(bo_admin),SUM(bo_oth),SUM(bo_full),SUM(bo_traffic),SUM(hplus1)
+,SUM(mi_person),SUM(mi_sick),SUM(ch_labor),SUM(ch_health),SUM(hplus2),SUM(minus1),SUM(minus2),SUM(minus3),SUM(minus4),SUM(counts)
+from @tmp where gno='0' group by partno,part
+
+insert into @tmp
+select '2',CHAR(255),CHAR(255),CHAR(255),CHAR(255),CHAR(255),SUM(total1),SUM(total2),SUM(total3),SUM(total4),SUM(total5)
+,SUM(tax1),SUM(tax2),SUM(tax3),SUM(tax4)
+,SUM(money),SUM(mtotal),SUM(meals),SUM(bo_admin),SUM(bo_oth),SUM(bo_full),SUM(bo_traffic),SUM(hplus1)
+,SUM(mi_person),SUM(mi_sick),SUM(ch_labor),SUM(ch_health),SUM(hplus2),SUM(minus1),SUM(minus2),SUM(minus3),SUM(minus4),SUM(counts)
+from @tmp where gno='0'
+
+select 
+dbo.getComma(total1,0)total1,
+dbo.getComma(total2,0)total2,
+dbo.getComma(total3,0)total3,
+dbo.getComma(total4,0)total4,
+dbo.getComma(total5,0)total5,
+dbo.getComma(tax1,0)tax1,
+dbo.getComma(tax2,0)tax2,
+dbo.getComma(tax3,0)tax3,
+dbo.getComma(tax4,0)tax4,
+dbo.getComma(money,0)money,
+dbo.getComma(mtotal,0)mtotal,
+dbo.getComma(bo_admin,0)bo_admin,
+dbo.getComma(bo_oth,0)bo_oth,
+dbo.getComma(bo_full,0)bo_full,
+dbo.getComma(bo_traffic,0)bo_traffic,
+dbo.getComma(hplus1,0)hplus1,
+dbo.getComma(mi_person,0)mi_person,
+dbo.getComma(mi_sick,0)mi_sick,
+dbo.getComma(ch_labor,0)ch_labor,
+dbo.getComma(ch_health,0)ch_health,
+dbo.getComma(hplus2,0)hplus2,
+dbo.getComma(minus1,0)minus1,
+dbo.getComma(minus2,0)minus2,
+dbo.getComma(minus3,0)minus3,
+dbo.getComma(minus4,0)minus4,
+* from @tmp order by partno,gno,sssno
+;
+------------------------------------------------------------------------------------------------------------------------------
+z_salaryp_rb3:--z_salaryp_rb3
+declare @t_xmon nvarchar(20)
+set @t_xmon = case when '#non' = [1] then '' else [1] end
+---------------------------------------------------------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(1),
+		partno nvarchar(20),
+		parts nvarchar(50),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		-- 員工負擔
+		la_person float,--勞保費
+		he_person float,--健保費
+		we_person float,--福利金
+		pr_person float,--團保費
+		re_person float,--退休準備金
+		pe_person float,--退休金
+		-- 公司負擔
+		la_comp float,--勞保費
+		disaster float,--職災
+		he_comp float,--健保費
+		we_comp float,--福利金
+		pr_xcomp float,--團保費
+		re_comp float,--退休準備金
+		pe_comp float,--退休金
+		
+		insur_fund float --工資墊償基金
+)
+
+insert @tmp
+select '0',isnull(c.partno,''),isnull(c.part,''),a.noa,c.namea
+,SUM(b.la_person),SUM(b.he_person)
+,(select SUM(sb.welfare) from salary sa left join salarys sb on sa.noa=sb.noa where sa.mon=@t_xmon and sb.sno=a.noa)
+,null,SUM(b.re_person),null
+,SUM(b.la_comp),SUM(b.disaster),SUM(b.he_comp),null,null,SUM(b.re_comp),null
+,SUM(a.insur_fund*b.sa_labor)
+from labase a left join salinsures b on a.noa=b.noa
+left join sss c on a.noa=c.noa
+where b.mon=@t_xmon
+group by c.partno,c.part,a.noa,c.namea
+
+insert @tmp (gno,partno,parts,insur_fund)
+select '1',partno,parts,SUM(insur_fund) from @tmp where gno='0' group by partno,parts
+
+insert @tmp (gno,partno,parts,la_person,he_person,we_person,pr_person,re_person,pe_person
+,la_comp,disaster,he_comp,we_comp,pr_xcomp,re_comp,pe_comp,insur_fund)
+select '2',partno,parts,SUM(la_person),SUM(he_person),SUM(we_person),SUM(pr_person)
+,SUM(re_person),SUM(pe_person),SUM(la_comp),SUM(disaster),SUM(he_comp),SUM(we_comp) 
+,SUM(pr_xcomp),SUM(re_comp),SUM(pe_comp),SUM(insur_fund)
+from @tmp where gno='0' group by partno,parts
+
+insert @tmp (gno,partno,parts,la_person,he_person,we_person,pr_person,re_person,pe_person
+,la_comp,disaster,he_comp,we_comp,pr_xcomp,re_comp,pe_comp,insur_fund)
+select '3',CHAR(255),CHAR(255),SUM(la_person),SUM(he_person),SUM(we_person),SUM(pr_person)
+,SUM(re_person),SUM(pe_person),SUM(la_comp),SUM(disaster),SUM(he_comp),SUM(we_comp) 
+,SUM(pr_xcomp),SUM(re_comp),SUM(pe_comp),SUM(insur_fund)
+from @tmp where gno='0'
+
+select 
+dbo.getComma(la_person,0)la_person
+,dbo.getComma(he_person,0)he_person
+,dbo.getComma(we_person,0)we_person
+,dbo.getComma(pr_person,0)pr_person
+,dbo.getComma(re_person,0)re_person
+,dbo.getComma(pe_person,0)pe_person
+,dbo.getComma(la_comp,0)la_comp
+,dbo.getComma(disaster,0)disaster
+,dbo.getComma(he_comp,0)he_comp
+,dbo.getComma(we_comp,0)we_comp
+,dbo.getComma(pr_xcomp,0)pr_xcomp
+,dbo.getComma(re_comp,0)re_comp
+,dbo.getComma(pe_comp,0)pe_comp
+,dbo.getComma(insur_fund,0)insur_fund
+,* 
+from @tmp 
+order by partno,(case when gno='1' then '0' when gno='0' then '1' else gno end),sssno
+;
+
+------------------------------------------------------------------------------------------------------------------------------

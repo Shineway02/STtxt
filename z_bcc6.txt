@@ -1,0 +1,148 @@
+z_bcc6st:--z_bcc6st
+	declare @t_year nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_btggno nvarchar(20)
+	declare @t_etggno nvarchar(20)
+	set @t_year = case when '#non'=[3] then '' else [3] end
+	set @t_bbccno = case when '#non'=[4] then '' else [4] end
+	set @t_ebccno = case when '#non'=[5] then char(255) else [5] end
+	set @t_btggno = case when '#non'=[6] then '' else [6] end
+	set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+	--*****************************************************************************************	
+SET QUOTED_IDENTIFIER OFF
+
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+	drop table #tmpa
+END
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+
+create table #tmp(
+		mon nvarchar(20),
+		tggno nvarchar(10),
+		tgg nvarchar(40),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		unit nvarchar(10),
+		memo nvarchar(200),
+		datea nvarchar(20),
+		price float,
+		chkname nvarchar(50)
+)
+
+insert into #tmp
+select  left(b.datea,6),a.tggno,a.tgg,a.bccno,a.bccname,a.unit,a.memo,b.datea,b.price,b.chkname
+from bcch a left join bcchs b on a.noa=b.noa
+where (len(@t_year)=0 or @t_year=left(b.datea,3))
+and a.tggno between @t_btggno and @t_etggno
+and a.bccno between @t_bbccno and @t_ebccno
+and isnull(qdate,'')!=''
+
+create table #tmpa(
+	gno nvarchar(1),
+	accy nvarchar(50),
+	tggno nvarchar(50),
+	comp nvarchar(90),
+	bccno nvarchar(90),
+	bccname nvarchar(120),
+	unit nvarchar(20),
+	memo nvarchar(200),
+	p01 float,
+	p02 float,
+	p03 float,
+	p04 float,
+	p05 float,
+	p06 float,
+	p07 float,
+	p08 float,
+	p09 float,
+	p10 float,
+	p11 float,
+	p12 float,
+	c01 nvarchar(50),
+	c02 nvarchar(50),
+	c03 nvarchar(50),
+	c04 nvarchar(50),
+	c05 nvarchar(50),
+	c06 nvarchar(50),
+	c07 nvarchar(50),
+	c08 nvarchar(50),
+	c09 nvarchar(50),
+	c10 nvarchar(50),
+	c11 nvarchar(50),
+	c12 nvarchar(50)
+)
+
+declare @bccno nvarchar(50)
+declare @tggno nvarchar(50)
+declare @mon nvarchar(50)
+declare @field nvarchar(50)
+declare @accy nvarchar(50)
+
+declare bccno_table cursor for
+select tggno,bccno,mon from #tmp group by tggno,bccno,mon
+open bccno_table
+fetch next from bccno_table
+into @tggno,@bccno,@mon
+while(@@FETCH_STATUS <> -1)
+begin
+	set @field=right(@mon,2)
+	set @accy=left(@mon,3)
+	
+	--檢查該年度廠商產品是否已建立
+	if(select COUNT(*) from #tmpa where tggno=@tggno and bccno=@bccno and accy=@accy)>0
+	begin	
+		exec("update #tmpa set p"+@field+"=(select top 1 price from #tmp where bccno='"+@bccno+"' and tggno='"+@tggno+"' and mon='"+@mon+"' order by datea desc)
+		,c"+@field+"=(select top 1 chkname from #tmp where bccno='"+@bccno+"' and tggno='"+@tggno+"' and mon='"+@mon+"' order by datea desc)
+		where bccno='"+@bccno+"' and tggno='"+@tggno+"' and accy='"+@accy+"'
+		")
+	end
+	else
+	begin
+		exec("insert #tmpa (gno,accy,bccno,bccname,tggno,comp,unit,memo,p"+@field+",c"+@field+")
+		select top 1 '0','"+@accy+"',bccno,bccname,tggno,tgg,unit,memo,price,chkname
+		from #tmp where bccno='"+@bccno+"' and tggno='"+@tggno+"' and mon='"+@mon+"'
+		order by datea desc ")
+	
+	end
+
+	fetch next from bccno_table
+	into @tggno,@bccno,@mon
+end
+close bccno_table
+deallocate bccno_table
+
+insert #tmpa(gno,tggno,accy)
+select '1',tggno,accy from #tmpa group by tggno,accy
+
+select gno,accy,tggno,comp,bccno,bccname,unit,memo
+,c01,c02,c03,c04,c05,c06,c07,c08,c09,c10,c11,c12
+,dbo.getComma(p01,[2]) p01
+,dbo.getComma(p02,[2]) p02
+,dbo.getComma(p03,[2]) p03
+,dbo.getComma(p04,[2]) p04
+,dbo.getComma(p05,[2]) p05
+,dbo.getComma(p06,[2]) p06
+,dbo.getComma(p07,[2]) p07
+,dbo.getComma(p08,[2]) p08
+,dbo.getComma(p09,[2]) p09
+,dbo.getComma(p10,[2]) p10
+,dbo.getComma(p11,[2]) p11
+,dbo.getComma(p12,[2]) p12
+from #tmpa order by tggno,accy,gno,bccno
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+	drop table #tmpa
+END
+;

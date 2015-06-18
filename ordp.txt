@@ -1,0 +1,382 @@
+ordp_ordc:--ordp_ordc	
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_noa nvarchar(20) = [1]
+	-----------------------------------------------------
+	--尚未匯到ORDC才執行
+	if exists(select * from view_ordc where ordbno=@t_noa)
+	begin
+		return
+	end
+	-----------------------------------------------------
+	IF OBJECT_ID('tempdb..#ordp_tmps')is not null
+	BEGIN
+		drop table #ordp_tmps
+	END
+	create table #ordp_tmps(
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		ordpno nvarchar(20),
+		ordpnoq nvarchar(10),
+		cno nvarchar(20),
+		kind nvarchar(20),
+		tggno nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		spec nvarchar(50),
+		unit nvarchar(20),
+		omount float,
+		mount float,
+		price float,
+		total float,
+		trandate nvarchar(10),--預定交貨日
+		tmpdate date,
+		memo nvarchar(max)
+	)
+	insert into #ordp_tmps(ordpno,ordpnoq,cno,kind,tggno,productno,product,spec,unit,omount,mount,price,total,memo)
+	select a.noa,a.noq,a.cno,a.kind,a.tggno,a.productno,a.product,a.spec,a.unit,a.omount,a.mount,a.price,a.total,a.memo
+	from ordps a
+	where a.noa=@t_noa
+	--最慢需求日(Ldate)減一天 才是預定交貨日(Trandate)
+	update #ordp_tmps set trandate=b.ldate
+	from #ordp_tmps a
+	outer apply(
+		select MIN(x.ldate) ldate
+		from view_ordbs x
+		left join(
+		select ordbaccy,ordbno,no3
+		from ordpt
+		where noa=a.ordpno and noq=a.ordpnoq) y on x.accy=y.ordbaccy and x.noa=y.ordbno and x.no3=y.no3
+		where y.ordbaccy is not null
+		)b
+	where b.ldate is not null
+	
+	update #ordp_tmps set tmpdate = dateadd(dd,-1,cast(cast(cast(left(trandate,3) as int)+1911 as nvarchar)+RIGHT(trandate,6) as DATE)) where len(trandate)>0
+	update #ordp_tmps set trandate = right('000'+cast(YEAR(tmpdate)-1911 as nvarchar),3)+'/'+RIGHT('00'+CAST(month(tmpdate) as nvarchar),2)+'/'+RIGHT('00'+CAST(day(tmpdate) as nvarchar),2)
+	------------------------------------------------------------------------------------------------------
+	IF OBJECT_ID('tempdb..#ordp_tmpt')is not null
+	BEGIN
+		drop table #ordp_tmpt
+	END
+	create table #ordp_tmpt(
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		noq nvarchar(10),
+			
+		ordpno nvarchar(20),
+		ordpnoq nvarchar(10),
+		ordbaccy nvarchar(10),
+		ordbno nvarchar(20),
+		no3 nvarchar(10),
+		productno nvarchar(20),
+		unit nvarchar(10),
+		mount float		
+	)
+	insert into #ordp_tmpt(ordpno,ordpnoq,ordbaccy,ordbno,no3,productno,unit,mount)
+	select a.ordpno,a.ordpnoq,b.ordbaccy,b.ordbno,b.no3,a.productno,a.unit,b.mount
+	from #ordp_tmps a
+	left join ordpt b on a.ordpno=b.noa and a.ordpnoq = b.noq
+	-------------------------------------------------------------------------------------------------------
+	declare @cno nvarchar(20)
+	declare @kind nvarchar(20)
+	declare @tggno nvarchar(20)
+	declare @odate nvarchar(10)
+	declare @datea nvarchar(10)
+	
+	--採購日: 當天
+	--有效日: 當天加2星期
+	declare @xdate date = getDate()
+	set @odate = right('000'+cast(YEAR(@xdate)-1911 as nvarchar),3)+'/'+ right('00'+cast(MONTH(@xdate) as nvarchar),2)+'/'+ right('00'+cast(Day(@xdate) as nvarchar),2)
+	set @xdate = DATEADD(DD,14,@xdate)
+	set @datea = right('000'+cast(YEAR(@xdate)-1911 as nvarchar),3)+'/'+ right('00'+cast(MONTH(@xdate) as nvarchar),2)+'/'+ right('00'+cast(Day(@xdate) as nvarchar),2)
+	
+	declare @key nvarchar(20) = 'P'
+	declare @noa nvarchar(20)
+	declare @no2 nvarchar(10)
+	declare @noq nvarchar(10)
+	declare @tnoa nvarchar(20)
+	declare @total float
+	
+	declare @ordpno nvarchar(20)
+	declare @ordpnoq nvarchar(10)
+	
+	declare @n int
+	declare @string nvarchar(max)='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	
+	IF OBJECT_ID('tempdb..#ordp_tmp')is not null
+	BEGIN
+		drop table #ordp_tmp
+	END
+	create table #ordp_tmp(
+		noa nvarchar(20),
+		cno nvarchar(20),
+		kind nvarchar(20),
+		tggno nvarchar(20),
+		total float
+	)
+
+	declare cursor_table cursor for
+	select cno,kind,tggno,sum(isnull(total,0)) from #ordp_tmps group by cno,kind,tggno
+	open cursor_table
+	fetch next from cursor_table
+	into @cno,@kind,@tggno,@total
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		select @noa='',@tnoa = @key + REPLACE(@odate,'/','') 
+		select top 1 @noa=noa from view_ordc where LEFT(noa,len(@tnoa))=@tnoa order by noa desc
+		select top 1 @noa=isnull(noa,@noa) from #ordp_tmp where LEFT(noa,len(@tnoa))=@tnoa order by noa desc		
+		if len(isnull(@noa,''))=0
+			set @noa = @tnoa+'001'
+		else
+		begin
+			set @n = (charindex(SUBSTRING(@noa,LEN(@tnoa)+1,1),@string)-1)*100+cast(RIGHT(@noa,2) as int)+1		
+			set @noa = @tnoa + SUBSTRING(@string,floor(@n/100)+1,1)+right('00'+cast(@n%100 as nvarchar),2) 
+		end
+		insert into #ordp_tmp(noa,cno,kind,tggno,total)values(@noa,@cno,@kind,@tggno,@total)
+		update #ordp_tmps set noa=@noa,no2=RIGHT('000'+CAST(b.recno as nvarchar),3)	
+		from #ordp_tmps a
+		left join (select ordpno,ordpnoq
+			,row_number()over(partition by cno,kind,tggno order by ordpno,ordpnoq) recno 
+			from #ordp_tmps ) b on a.ordpno=b.ordpno and a.ordpnoq=b.ordpnoq
+		where a.cno=@cno and a.kind=@kind and a.tggno=@tggno
+		
+		update #ordp_tmpt set noa=@noa,no2=b.no2
+		from #ordp_tmpt a
+		left join #ordp_tmps b on a.ordpno=b.ordpno and a.ordpnoq=b.ordpnoq
+		where b.cno=@cno and b.kind=@kind and b.tggno=@tggno
+
+		fetch next from cursor_table
+		into @cno,@kind,@tggno,@total
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update #ordp_tmpt set noq=RIGHT('000'+CAST(b.recno as nvarchar),3)	
+	from #ordp_tmpt a
+	left join(select ordbno,no3 
+		,ROW_NUMBER()over(PARTITION by noa order by no2,ordbno,no3) recno
+		from #ordp_tmpt) b on a.ordbno=b.ordbno and a.no3=b.no3
+	-------------------------------------------------------------------------------------------
+	declare @accy nvarchar(10) = left(@datea,3)
+	set @cmd = 
+		"insert into ordc"+@accy+" (noa,datea,odate,cno,acomp,kind,tggno,tgg,nick,money,total,ordbno,memo,isproj)
+		select a.noa,@datea,@odate,a.cno,b.acomp,a.kind,a.tggno,c.comp,c.nick,a.total,a.total,@t_noa,'採購建議書【'+@t_noa+'】轉來',1
+		from #ordp_tmp a
+		left join acomp b on a.cno=b.noa
+		left join tgg c on a.tggno=c.noa
+		"
+	execute sp_executesql @cmd,N'@datea nvarchar(10),@odate nvarchar(10),@t_noa nvarchar(20)'
+		,@datea=@datea,@odate=@odate,@t_noa=@t_noa
+	
+	set @cmd = 
+		"insert into ordcs"+@accy+"(noa,no2,tablea,ordbno,no3,productno,product,spec,unit,omount,mount,price,total,trandate,tggno)
+		select noa,no2,'ordp',ordpno,ordpnoq,productno,product,spec,unit,omount,mount,price,total,trandate,tggno 
+		from #ordp_tmps"
+	execute sp_executesql @cmd
+	
+	set @cmd = 
+		"insert into ordct"+@accy+"(noa,no2,noq,ordbaccy,ordbno,no3,productno,unit,mount)
+		select noa,no2,noq,ordbaccy,ordbno,no3,productno,unit,mount from #ordp_tmpt"
+	execute sp_executesql @cmd
+	
+	drop table #ordp_tmp
+	drop table #ordp_tmps
+	drop table #ordp_tmpt;
+
+import:--ordb -> ordp	
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max) 
+
+	declare @t_kind nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_btggno nvarchar(20) = [2] 
+	declare @t_etggno nvarchar(20) = case when len([3])=0 then char(255) else [3] end 
+	declare @t_bproductno nvarchar(20) = [4] 
+	declare @t_eproductno nvarchar(20) = case when len([5])=0 then char(255) else [5] end
+	declare @t_bodate nvarchar(10) = [6]
+	declare @t_eodate nvarchar(10) = case when len([7])=0 then char(255) else [7] end
+	declare @t_ordbno nvarchar(20) = [8] 
+	declare @t_bldate nvarchar(10) = [9] 
+	declare @t_eldate nvarchar(10) = case when len([10])=0 then char(255) else [10] end
+
+	declare @t_ordbsign nvarchar(10) = [11] 
+	declare @t_uccgano nvarchar(20) = [12] 
+	declare @t_uccgbno nvarchar(20) = [13] 
+	declare @t_uccgcno nvarchar(20) = [14] 
+	-------------------------------------------------------------------------
+	declare @tmp table(
+		pno nvarchar(10),
+		isout int,
+		accy nvarchar(10),
+		noa nvarchar(20),
+		no3 nvarchar(10),
+		no4 nvarchar(10),
+		cno nvarchar(20),
+		kind nvarchar(20),
+		datea nvarchar(10),
+		
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		spec nvarchar(50),
+		style nvarchar(20),
+		unit nvarchar(20),
+		mount float,
+		omount float,
+		price float,
+		total float,
+		ldate nvarchar(10),
+		tmpdate date
+	)	
+
+	-- ordb 有廠商 單價為0也無所謂
+	insert into @tmp(pno,accy,noa,no3,cno,kind,datea,tggno,tgg,productno,product,spec,style,unit,mount,omount,price,total,ldate)
+	select '1',a.accy,a.noa,a.no3,isnull(b.cno,''),b.kind,isnull(b.datea,''),b.tggno,b.tgg,a.productno,a.product,a.spec,a.style,a.unit,isnull(a.mount,0),a.omount,isnull(a.price,0),isnull(a.total,0),isnull(a.ldate,'')
+	from view_ordbs a
+	left join view_ordb b on a.accy=b.accy and a.noa=b.noa
+	left join ucc c on a.productno=c.noa
+	where len(b.tggno)>0 and len(a.productno)>0 and a.mount!=0
+	and (len(@t_kind)=0 or b.kind=@t_kind)
+	and (b.tggno between @t_btggno and @t_etggno)
+	and a.productno between @t_bproductno and @t_eproductno
+	and a.ldate between @t_bldate and @t_eldate
+	and (len(@t_ordbno)=0 or a.noa=@t_ordbno)
+	and b.odate between @t_bodate and @t_eodate
+	and isnull(a.cancel,0)=0
+	and isnull(b.cancel,0)=0
+	and (len(@t_uccgano)=0 or c.groupano=@t_uccgano)
+	and (len(@t_uccgbno)=0 or c.groupbno=@t_uccgbno)
+	and (len(@t_uccgcno)=0 or c.groupcno=@t_uccgcno)
+	and (@t_ordbsign='0' or exists(select top 1 * from sign where zno=b.noa and ISNULL(enda,'')='Y'))
+	-- ordb 無廠商 就找詢價議價找
+	insert into @tmp(pno,accy,noa,no3,no4,cno,kind,datea,tggno,tgg,productno,product,spec,style,unit,mount,omount,price,total,ldate)
+	select '2',a.accy,a.noa,a.no3,c.no4,isnull(b.cno,''),b.kind,isnull(b.datea,''),c.tggno,c.tgg,a.productno,a.product,a.spec,a.style,a.unit,a.mount,a.omount,c.fprice,ROUND(a.mount*c.fprice,0),isnull(a.ldate,'')
+	from view_ordbs a
+	left join view_ordb b on a.accy=b.accy and a.noa=b.noa
+	outer apply (select top 1 * from view_ordbt 
+		where accy=a.accy and noa=a.noa and no3=a.no3 
+		and len(ISNULL(fdate,''))>0 
+		and isnull(fprice,0)!=0 
+		and len(ISNULL(tggno,''))>0 
+		order by fdate desc) c
+	where len(b.tggno)=0  and c.fdate is not null
+	and (len(@t_kind)=0 or b.kind=@t_kind)
+	and (b.tggno between @t_btggno and @t_etggno)
+	and a.productno between @t_bproductno and @t_eproductno
+	and a.ldate between @t_bldate and @t_eldate
+	and (len(@t_ordbno)=0 or a.noa=@t_ordbno)
+	and b.odate between @t_bodate and @t_eodate
+	and isnull(a.cancel,0)=0
+	and isnull(b.cancel,0)=0
+	and (@t_ordbsign='0' or exists(select top 1 * from sign where zno=b.noa and ISNULL(enda,'')='Y'))
+	------------------------------------------------------------------------
+	--剔除己再採購建議書
+	delete @tmp
+	from @tmp a
+	left join ordpt b on a.accy=b.ordbaccy and a.noa=b.ordbno and a.no3=b.no3
+	where b.noa is not null
+	------------------------------------------------------------------------
+	declare @tmps table(
+		noq nvarchar(10),
+		cno nvarchar(20),
+		kind nvarchar(20),
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		spec nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		price float,
+		total float,
+		memo nvarchar(max)
+	)
+	declare @tmpt table(
+		noq nvarchar(10),
+		ordbaccy nvarchar(10),
+		ordbno nvarchar(20),
+		no3 nvarchar(10),
+		mount float,
+		price float,
+		total float,
+		memo nvarchar(max)
+	)
+	declare @accy nvarchar(10)
+	declare @noa nvarchar(20)
+	declare @no3 nvarchar(10)
+	declare @no4 nvarchar(10)
+	declare @cno nvarchar(20)
+	declare @kind nvarchar(20)
+	declare @datea nvarchar(10)
+	declare @tggno nvarchar(20)
+	declare @tgg nvarchar(50)
+	declare @productno nvarchar(20)
+	declare @product nvarchar(50)
+	declare @unit nvarchar(20)
+	declare @spec nvarchar(50)
+	declare @mount float
+	declare @price float
+	declare @total float
+	declare @ldate nvarchar(max)
+
+	declare @n int = 0
+	declare @noq nvarchar(10)
+	
+	declare cursor_table cursor for
+	select accy,noa,no3,no4,cno,kind,tggno,tgg,productno,product,spec,unit,mount,price,total,ldate 
+	from @tmp
+	order by tggno,productno
+	open cursor_table
+	fetch next from cursor_table
+	into @accy,@noa,@no3,@no4,@cno,@kind,@tggno,@tgg,@productno,@product,@spec,@unit,@mount,@price,@total,@ldate
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		if not exists(select * from @tmps where cno=@cno and kind=@kind and tggno=@tggno and productno=@productno and spec=@spec and unit=@unit)
+		begin
+			set @n = @n + 1
+			set @noq = RIGHT('0000'+CAST(@n as nvarchar),4) 
+			insert into @tmps(noq,cno,kind,tggno,tgg,productno,product,spec,unit,mount,total)
+			values(@noq,@cno,@kind,@tggno,@tgg,@productno,@product,@spec,@unit,@mount,@total)
+		end
+		else
+		begin
+			select @noq = noq from @tmps where cno=@cno and kind=@kind and tggno=@tggno and productno=@productno and spec=@spec and unit=@unit
+			update @tmps set mount=mount+@mount,total=total+@total 
+			where cno=@cno and kind=@kind and tggno=@tggno and productno=@productno and spec=@spec and unit=@unit
+		end
+		
+		insert into @tmpt(noq,ordbaccy,ordbno,no3,mount,price,total)
+		values(@noq,@accy,@noa,@no3,@mount,@price,@total)
+		
+		fetch next from cursor_table
+		into @accy,@noa,@no3,@no4,@cno,@kind,@tggno,@tgg,@productno,@product,@spec,@unit,@mount,@price,@total,@ldate
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @tmps set price = case when total !=0 then round(total/mount,2) else 0 end
+	----------------------------------------------------------------------------------------
+	declare @tmpa table(
+		k nvarchar(10),
+		noq nvarchar(20),
+		cno nvarchar(20),
+		kind nvarchar(20),
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		spec nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		price float,
+		total float,
+		memo nvarchar(max),
+		ordbaccy nvarchar(10),
+		ordbno nvarchar(20),
+		no3 nvarchar(10)
+	)
+	insert into @tmpa(k,noq,cno,kind,tggno,tgg,productno,product,spec,unit,mount,price,total,memo)
+	select 'bbs',noq,cno,kind,tggno,tgg,productno,product,spec,unit,mount,price,total,memo from @tmps
+	insert into @tmpa(k,noq,ordbaccy,ordbno,no3,mount,price,total,memo)
+	select 'bbt',noq,ordbaccy,ordbno,no3,mount,price,total,memo from @tmpt
+	select * from @tmpa;

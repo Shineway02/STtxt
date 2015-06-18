@@ -1,0 +1,134 @@
+z_workfe01:--z_workfe01	
+	declare @t_bdate nvarchar(10) = case when '#non' = [1] then '' else [1] end
+	declare @t_edate nvarchar(10) = case when '#non' = [2] then CHAR(255) else [2] end
+	declare @t_bproductno nvarchar(20) = case when '#non' = [3] then '' else [3] end
+	declare @t_eproductno nvarchar(20) = case when '#non' = [4] then CHAR(255) else [4] end
+	declare @t_btggno nvarchar(20) = case when '#non' = [5] then '' else [5] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [6] then CHAR(255) else [6] end
+	
+	declare @tmp table(
+		typea nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		tggno nvarchar(20),
+		price float,
+		outweight float,
+		outmount float,
+		inweight float,
+		inmount float
+	)
+	
+	insert into @tmp(typea,productno,product,tggno,price,outweight,outmount)
+	select '出',b.productno,b.product,a.tggno
+		,0,b.mount,b.[weight]
+	from view_workc a 
+	left join view_workcs b on a.accy=b.accy and a.noa=b.noa
+	where a.datea between @t_bdate and @t_edate
+	and isnull(b.productno,'') between @t_bproductno and @t_eproductno
+	and isnull(a.tggno,'') between @t_btggno and @t_etggno
+	
+	insert into @tmp(typea,productno,product,tggno,price,inweight,inmount)
+	select '入',b.productno,b.product,a.tggno
+		,b.price,b.mount,b.[weight]
+	from view_workd a 
+	left join view_workds b on a.accy=b.accy and a.noa=b.noa
+	where a.datea between @t_bdate and @t_edate
+	and isnull(b.productno,'') between @t_bproductno and @t_eproductno
+	and isnull(a.tggno,'') between @t_btggno and @t_etggno
+	---------------------------------------------------------------------------------------------
+	--前期未入
+	declare @tmpa table(
+		productno nvarchar(20),
+		tggno nvarchar(20),
+		mount float,
+		[weight] float
+	)
+	insert into @tmpa(productno,tggno,mount,[weight])
+	select b.productno,a.tggno,SUM(ISNULL(b.[mount],0)),SUM(ISNULL(b.[weight],0))
+	from view_workc a 
+	left join view_workcs b on a.accy=b.accy and a.noa=b.noa
+	where a.datea < @t_bdate
+	and isnull(b.productno,'') between @t_bproductno and @t_eproductno
+	and isnull(a.tggno,'') between @t_btggno and @t_etggno
+	group by b.productno,a.tggno
+	declare @tmpb table(
+		productno nvarchar(20),
+		tggno nvarchar(20),
+		mount float,
+		[weight] float
+	)
+	insert into @tmpb(productno,tggno,mount,[weight])
+	select b.productno,a.tggno,SUM(ISNULL(b.[mount],0)),SUM(ISNULL(b.[weight],0))
+	from view_workd a 
+	left join view_workds b on a.accy=b.accy and a.noa=b.noa
+	where a.datea < @t_bdate
+	and isnull(b.productno,'') between @t_bproductno and @t_eproductno
+	and isnull(a.tggno,'') between @t_btggno and @t_etggno
+	group by b.productno,a.tggno
+	declare @tmpc table(
+		gno nvarchar(10),
+		productno nvarchar(20),
+		tggno nvarchar(20),
+		bmount float,
+		bweight float,
+		outweight float,
+		outmount float,
+		inweight float,
+		inmount float,
+		eweight float,
+		emount float
+	)
+	
+	insert into @tmpc(productno,tggno,bmount,bweight)
+	select productno,tggno,SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0))
+	from(
+		select productno,tggno,mount,[weight] from @tmpa
+		union all
+		select productno,tggno,-mount,-[weight] from @tmpb
+		) a
+	group by productno,tggno
+	
+	-------------------------------------------------------------------------------
+	update @tmpc set outweight=b.outweight, outmount=b.outmount
+		,inweight=b.inweight, inmount=b.inmount
+	from @tmpc a
+	left join (select productno,tggno
+		,SUM(ISNULL(outweight,0)) outweight,SUM(ISNULL(outmount,0)) outmount
+		,SUM(ISNULL(inweight,0)) inweight,SUM(ISNULL(inmount,0)) inmount
+		from @tmp
+		group by productno,tggno
+		) b on a.productno=b.productno and a.tggno=b.tggno
+	where b.productno is not null
+	
+	insert into @tmpc(productno,tggno,outweight,outmount,inweight,inmount)
+	select a.productno,a.tggno,a.outweight,a.outmount,a.inweight,a.inmount
+	from (select productno,tggno
+		,SUM(ISNULL(outweight,0)) outweight,SUM(ISNULL(outmount,0)) outmount
+		,SUM(ISNULL(inweight,0)) inweight,SUM(ISNULL(inmount,0)) inmount
+		from @tmp
+		group by productno,tggno
+		) a
+	where not exists(select * from @tmpc where productno=a.productno and tggno=a.tggno)
+	---------------------------------------------------------------------------
+	update @tmpc set gno='1', eweight = isnull(bweight,0)+ISNULL(outweight,0)-ISNULL(inweight,0)
+		,emount = isnull(bmount,0)+ISNULL(outmount,0)-ISNULL(inmount,0)
+	
+	insert into @tmpc(gno,bmount,bweight,outmount,outweight,inmount,inweight,emount,eweight)
+	select '2',SUM(ISNULL(bmount,0)),SUM(ISNULL(bweight,0))
+		,SUM(ISNULL(outmount,0)),SUM(ISNULL(outweight,0))
+		,SUM(ISNULL(inmount,0)),SUM(ISNULL(inweight,0))
+		,SUM(ISNULL(emount,0)),SUM(ISNULL(eweight,0))
+	from @tmpc
+	
+	select a.productno a01
+		,b.product a02
+		,c.nick a03
+		,dbo.getComma(bweight,0) a04
+		,dbo.getComma(outweight,0) a05
+		,dbo.getComma(inweight,0) a06
+		,dbo.getComma(eweight,0) a07
+		,a.* 
+	from @tmpc a
+	left join ucc b on a.productno=b.noa
+	left join tgg c on a.tggno=c.noa
+	order by gno,a.productno,a.tggno;

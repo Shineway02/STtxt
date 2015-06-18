@@ -1,0 +1,121 @@
+z_ordhfep01:--z_ordhfep01
+	declare @t_worker nvarchar(20) = '[1]'
+	declare @t_noa nvarchar(20) = case when '#non' = [2] then '' else [2] end
+	declare @t_bdate nvarchar(10) = case when '#non' = [3] then '' else [3] end
+	declare @t_edate nvarchar(10) = case when '#non' = [4] then CHAR(255) else [4] end
+	declare @t_btggno nvarchar(20) = case when '#non' = [5] then '' else [5] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [6] then CHAR(255) else [6] end
+	----------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		noa nvarchar(20),
+		cno nvarchar(20),
+		acomp nvarchar(50),
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(50),
+		datea nvarchar(10),
+		memo nvarchar(max),
+		
+		noq nvarchar(10),
+		comp nvarchar(50),
+		indate nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		mount float,
+		[weight] float,
+		price float,
+		[money] float,
+		memos nvarchar(max),
+		mm1 nvarchar(max),
+		mm2 nvarchar(max),
+		mm3 nvarchar(max)
+	)
+	
+	insert into @tmp(gno,noa,cno,acomp,tggno,tgg,tel,fax,datea,memo
+		,noq,comp,indate,productno,product,unit,mount,[weight],price,[money],memos)
+	select '1',a.noa,a.cno,a.acomp,a.tggno,a.tgg,a.tel,a.fax,a.datea,a.memo
+		,b.noq,b.comp,b.indate,b.productno,b.product,b.unit,b.mount,b.[weight],b.price,b.[money],b.memo 
+	from ordh a
+	left join ordhs b on a.noa=b.noa
+	where (len(@t_noa)=0 or a.noa=@t_noa)
+	and ISNULL(a.tggno,'') between @t_btggno and @t_etggno
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	--備註只印前三行
+	------------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	declare @cno nvarchar(20)
+	declare @comp nvarchar(40)
+	declare @tggno nvarchar(20)
+	declare @tgg nvarchar(50)
+	declare @tel nvarchar(50)
+	declare @fax nvarchar(50)
+	declare @datea nvarchar(10)
+	declare @memo nvarchar(max)
+	
+	declare @mm1 nvarchar(max)
+	declare @mm2 nvarchar(max)
+	declare @n int
+	
+	declare cursor_table cursor for
+	select noa,cno,comp,tggno,tgg,tel,fax,datea,memo
+	from @tmp
+	group by noa,cno,comp,tggno,tgg,tel,fax,datea,memo
+    open cursor_table
+    fetch next from cursor_table
+    into @noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@memo
+    while(@@FETCH_STATUS <> -1)
+    begin
+		select @mm1='',@mm2=''
+		set @n = CHARINDEX('chr(10)',@memo)
+		if @n>0
+		begin
+			set @mm1 = SUBSTRING(@memo,1,@n)
+			set @memo = RIGHT(@memo,LEN(@memo)-@n-7)
+			
+			set @n = CHARINDEX('chr(10)',@memo)
+			if @n>0
+			begin
+				set @mm2 = SUBSTRING(@memo,1,@n)
+				set @memo = RIGHT(@memo,LEN(@memo)-@n-7)
+			end
+		end
+		else
+		begin
+			set @mm1 = @memo
+			set @memo = ''
+		end
+		
+		insert into @tmp(gno,noa,cno,comp,tggno,tgg,tel,fax,datea,mm1)
+		select '2',@noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@mm1
+		
+		insert into @tmp(gno,noa,cno,comp,tggno,tgg,tel,fax,datea,mm2)
+		select '3',@noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@mm2
+		
+		insert into @tmp(gno,noa,cno,comp,tggno,tgg,tel,fax,datea,mm3)
+		select '4',@noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@memo
+
+        fetch next from cursor_table
+        into @noa,@cno,@comp,@tggno,@tgg,@tel,@fax,@datea,@memo
+    end
+    close cursor_table
+    deallocate cursor_table
+	
+	select noa a01
+		,tgg a02
+		,@t_worker a03
+		,tel a04
+		,fax a05
+		,comp b01
+		,indate b02
+		,product b03
+		,unit b04
+		,mount b05
+		,[weight] b06
+		,price b07
+		,[money] b08
+		,memos b09
+		,* 
+	from @tmp;

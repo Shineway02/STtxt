@@ -1,0 +1,29 @@
+getuno:--getuno
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+
+	declare @uno nvarchar(max) = [1]
+	declare @maxuno nvarchar(max) = ''
+	declare @maxuno1 nvarchar(max) = ''
+	select top 1 @maxuno1 = uno from view_uccb 
+	where uno like @uno+'-[0-9,A-Z][0-9]'
+	order by uno desc
+	declare @maxuno2 nvarchar(max) = ''
+	select top 1 @maxuno2 = uno from unolist
+	where uno like @uno+'-[0-9,A-Z][0-9]'
+	order by uno desc
+	set @maxuno = case when @maxuno1>@maxuno2 then @maxuno1 else @maxuno2 end
+	if(LEN(@maxuno)=0)
+	begin
+		set @maxuno = @uno + '-01'
+	end
+	else
+	begin
+		declare @string nvarchar(max) = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+		declare @key nvarchar(2) = right(@maxuno,2)
+		declare @n int = (charindex(left(@key,1),@string)-1)*10 + cast(right(@key,1) as int) + 1
+		set @key = SUBSTRING(@string,@n/10+1,1)+CAST(@n%10 as nvarchar)
+		set @maxuno = @uno+'-'+@key
+	end
+	insert into unolist(uno)values(@maxuno)
+	select @maxuno uno;

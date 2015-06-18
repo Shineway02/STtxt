@@ -1,0 +1,120 @@
+z_quatfep01:--	z_quatfep01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	--================================================================
+	declare @tmp table(
+		gno nvarchar(20),
+		pno nvarchar(20),
+		noa nvarchar(20),
+		cno nvarchar(20),
+		custno nvarchar(20),
+		comp nvarchar(50),
+		tel nvarchar(50),
+		fax nvarchar(50),
+		trantype nvarchar(50),
+		paytype nvarchar(50),
+		serial nvarchar(20),
+		post nvarchar(10),
+		addr nvarchar(max),
+		post2 nvarchar(10),
+		addr2 nvarchar(max),
+		[money] float,
+		tax float,
+		total float,
+		memo nvarchar(max),
+		smemo nvarchar(max),
+		
+		recno int,
+		productno nvarchar(20),
+		product nvarchar(50),
+		[weight] float,
+		mount float,
+		unit nvarchar(20),
+		price float,
+		moneys float
+	)
+	insert into @tmp(gno,pno,noa,cno,custno,comp,tel,fax,trantype,paytype
+		,serial,post,addr,post2,addr2,[money],tax,total,memo
+		,recno,productno,product,[weight],mount,unit,price,moneys)
+	select '1','1',a.noa,a.cno,a.custno,a.comp,a.tel,a.fax,a.trantype,a.paytype
+		,c.serial,a.post,a.addr,a.post2,a.addr2,a.[money],a.tax,a.total,a.memo
+		,ROW_NUMBER()over(order by b.noq),b.productno,b.product,b.[weight],b.mount,b.unit,b.price,b.total
+	from view_quat a
+	left join view_quats b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on a.custno=c.noa
+	where a.noa=@t_noa
+	--------------------------------------------------------------------------------------
+	declare @t_memoline int = 7--備註最多分成7行
+	declare @n int = 0
+	declare @string nvarchar(max) =''
+	declare @memo nvarchar(max) = ''
+	select top 1 @string = memo from @tmp
+	
+	while @n<@t_memoline
+	begin
+		if CHARINDEX('chr(10)',@string)>0
+		begin
+			set @memo = SUBSTRING(@string,0,CHARINDEX('chr(10)',@string))
+			set @string = SUBSTRING(@string,LEN(@memo)+8,len(@string))
+		end
+		else
+		begin
+			set @memo = @string
+			set @string = '' 
+		end
+		insert into @tmp(gno,pno,noa,cno,custno,comp,tel,fax,trantype,paytype
+		,serial,post,addr,post2,addr2,[money],tax,total,smemo)
+		select top 1 CAST(@n+3 as nvarchar),'3',noa,cno,custno,comp,tel,fax,trantype,paytype
+		,serial,post,addr,post2,addr2,[money],tax,total,@memo
+		from @tmp
+		set @n = @n +1
+	end
+	
+	-----------------------------------------------------------------------------
+	declare @t_pageline int = 30 -- 一頁幾行
+	
+	set @n = 0
+	select @n = COUNT(1) from @tmp
+	
+	set @memo=''
+	if(@t_pageline-@n!=@t_memoline)
+		set @memo = '---以下空白---'
+		
+	while @n%@t_pageline != 0
+	begin
+		insert into @tmp(gno,pno,noa,cno,custno,comp,tel,fax,trantype,paytype
+		,serial,post,addr,post2,addr2,[money],tax,total,smemo,recno)
+		select top 1 '2','2',noa,cno,custno,comp,tel,fax,trantype,paytype
+		,serial,post,addr,post2,addr2,[money],tax,total,@memo,@n
+		from @tmp
+		set @memo=''
+		set @n = @n + 1
+	end
+	
+	select '<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.comp+'</a>' a01
+		,'' a02
+		,a.noa a03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.addr2+'</a>' a04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.trantype+'</a>' a05
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.paytype+'</a>' a06
+		
+		,a.recno b01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' b02
+		,dbo.getComma(a.[weight],2) b03
+		,dbo.getComma(a.[mount],0) b04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.unit+'</a>' b05
+		,dbo.getComma(a.[price],2) b06
+		,dbo.getComma(a.[moneys],0) b07
+		,dbo.getComma(a.[money],0) c01
+		,dbo.getComma(a.[tax],0) c02
+		,dbo.getComma(a.[total],0) c03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.smemo+'</a>' smm
+		,a.* 
+		
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+isnull(b.acomp,'')+'</a>' acomp
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(b.tel,''))>0 then 'TEL：'+isnull(b.tel,'')+'&nbsp'+char(59)+'&nbsp'+char(59) else '' end
+			+case when len(isnull(b.fax,''))>0 then'FAX：'+isnull(b.fax,'')+'</a>' else '' end atel
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+isnull(b.addr,'')+'</a>' aaddr
+	from @tmp a
+	left join acomp b on a.cno=b.noa
+	order by a.noa,a.pno,a.recno;

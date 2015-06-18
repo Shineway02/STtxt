@@ -1,0 +1,122 @@
+z_bank6a:--z_bank6a
+SET QUOTED_IDENTIFIER OFF
+declare @t_bankt nvarchar(20)
+declare @t_lcno nvarchar(20)
+declare @t_bbank nvarchar(20)
+declare @t_ebank nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+
+set @t_bankt = case when '#non'=[2] then '' else [2] end 
+set @t_lcno = case when '#non'=[3] then '' else [3] end 
+set @t_bbank = case when '#non'=[4] then '' else [4] end 
+set @t_ebank = case when '#non'=[5] then char(255) else [5] end 
+set @t_bdate = case when '#non'=[6] then '' else [6] end 
+set @t_edate = case when '#non'=[7] then char(255) else [7] end 
+------------------------------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(2),
+	idno int identity(0,1),
+	bankno nvarchar(50),
+	bank nvarchar(50),
+	lcno nvarchar(50),
+	banktno nvarchar(50),
+	banktname nvarchar(50),
+	lmoney float,
+	datea nvarchar(20),
+	ldate nvarchar(20),
+	pdate nvarchar(30),
+	money float,
+	total float,
+	memo nvarchar(MAX)
+)
+		
+	insert @tmp
+	select '0',a.bankno,a.bank,a.lcno,a.banktno,a.banktname,a.money,a.datea,a.enddate
+	,b.datea+' '+b.typea,b.money,a.money,b.memo from 
+	(select * from banks where bankt='1') a left join 
+	(select lcno,datea,money money,'還本' typea,memo from banks where bankt='2' and isnull(money,0)!=0 and (datea between @t_bdate and @t_edate) union all 
+	select lcno,datea,money2 money,'付息' typea,memo from banks where bankt='2' and isnull(money2,0)!=0 and (datea between @t_bdate and @t_edate)
+	) b on a.lcno=b.lcno
+	where (len(@t_bankt)=0 or a.banktno=@t_bankt ) and (len(@t_lcno)=0 or a.lcno=@t_lcno)
+	and (a.bankno between @t_bbank and @t_ebank) and (a.datea between @t_bdate and @t_edate)
+	order by a.bankno,a.lcno,a.datea,a.enddate,b.datea
+	
+	update a
+	set total=lmoney-isnull((select money from @tmp where lcno=a.lcno and charindex('還本',pdate)>0 ),0)
+	from @tmp a
+	
+	if((select count(*) from @tmp)>0)
+	begin
+		insert @tmp (gno,bankno,lcno)
+		select '1',bankno,lcno from @tmp group by bankno,lcno
+		
+		insert @tmp (gno,bankno,lcno)
+		select '2',char(255),char(255)
+	end
+	
+select 
+dbo.getComma(lmoney,0) lmoney,
+dbo.getComma(money,0) money,
+dbo.getComma(total,0) total,
+*
+from @tmp order by bankno,lcno,gno,datea,ldate,pdate;
+-----------------------------------------------------------------------------------------------------------------
+z_bank6b:--z_bank6b
+SET QUOTED_IDENTIFIER OFF
+declare @t_bankt nvarchar(20)
+declare @t_lcno nvarchar(20)
+declare @t_bbank nvarchar(20)
+declare @t_ebank nvarchar(20)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+
+set @t_bankt = case when '#non'=[2] then '' else [2] end 
+set @t_lcno = case when '#non'=[3] then '' else [3] end 
+set @t_bbank = case when '#non'=[4] then '' else [4] end 
+set @t_ebank = case when '#non'=[5] then char(255) else [5] end 
+set @t_bdate = case when '#non'=[6] then '' else [6] end 
+set @t_edate = case when '#non'=[7] then char(255) else [7] end 
+------------------------------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(2),
+	idno int identity(0,1),
+	bankno nvarchar(50),
+	bank nvarchar(50),
+	lcno nvarchar(50),
+	banktno nvarchar(50),
+	banktname nvarchar(50),
+	lmoney float,
+	float float,
+	datea nvarchar(20),
+	ldate nvarchar(20),
+	money float,
+	total float
+)
+		
+	insert @tmp
+	select '0',a.bankno,a.bank,a.lcno,a.banktno,a.banktname,a.money,a.float,a.datea,a.enddate
+	,isnull((select sum(money) from banks where bankt='2' and (datea between @t_bdate and @t_edate) and lcno=a.lcno),0)	,0
+	from banks a where bankt='1' 
+	and (len(@t_bankt)=0 or a.banktno=@t_bankt ) and (len(@t_lcno)=0 or a.lcno=@t_lcno)
+	and (a.bankno between @t_bbank and @t_ebank) and (a.datea between @t_bdate and @t_edate)
+	order by a.bankno,a.banktno,a.lcno,a.datea,a.enddate
+	
+	update a
+	set total=lmoney-money
+	from @tmp a
+	
+	if((select count(*) from @tmp)>0)
+	begin
+		insert @tmp (gno,lmoney,total)
+		select '1',sum(lmoney),sum(total) from @tmp
+	end
+	
+select 
+dbo.getComma(lmoney,0) lmoney,
+dbo.getComma(money,0) money,
+dbo.getComma(total,0) total,
+dbo.getComma(float,4) float,
+*
+from @tmp order by gno,bankno,banktno,lcno,datea,ldate;
+-----------------------------------------------------------------------------------------------------------------

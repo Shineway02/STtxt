@@ -1,0 +1,183 @@
+z_vccwp1:--z_vccwp1
+SET QUOTED_IDENTIFIER OFF 
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
+declare @t_pageline int = 5   --------一頁幾行
+declare @t_showprice nvarchar(10)
+declare @t_stype nvarchar(max) 
+set @t_stype = '[5]' 
+set @t_bxnoa = case when '#non' = [6] then '' else [6] end
+set @t_exnoa = case when '#non' = [7] then CHAR(255) else [7] end
+set @t_showprice = case when '#non' = [8] then 0 else [8] end
+------------------------------------------------------------------------------------------
+	declare @cmd nvarchar(max) 
+	declare @string nvarchar(max)
+	declare @n int
+	--解析要計算的種類
+	declare @listStype table(
+		noa nvarchar(20),
+		namea nvarchar(max)
+	)
+	set @string = @t_stype
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @listStype select LEFT(@string,CHARINDEX('@',@string)-1),RIGHT(@string,len(@string)-CHARINDEX('@',@string))
+			end
+			break
+		end
+		insert into @listStype select LEFT(@string,CHARINDEX('@',@string)-1), SUBSTRING(LEFT(@string,@n-1),CHARINDEX('@',LEFT(@string,@n-1))+1,@n)
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+------------------------------------------------------------------------------------------
+
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	topage int,
+	a_cno nvarchar(90),
+	a_acomp nvarchar(90),
+	a_ctel nvarchar(100),
+	a_cfax nvarchar(100),
+	a_caddr nvarchar(200),
+	a_noa nvarchar(30),
+	a_stype nvarchar(15),
+	a_custno nvarchar(90),
+	a_comp nvarchar(90),
+	a_tel nvarchar(90),
+	a_fax nvarchar(90),
+	a_sales nvarchar(50),
+	a_invo nvarchar(50),
+	a_title nvarchar(50),
+	a_trantype nvarchar(100),
+	a_addr nvarchar(max),
+	a_datea nvarchar(10),
+	a_cardeal nvarchar(20),
+	a_memo nvarchar(max),
+	a_tax float,
+	a_money float,
+	a_total float,
+	b_uno nvarchar(100),
+	b_productno nvarchar(30),
+	b_products nvarchar(30),
+	b_unit nvarchar(15),
+	b_mount float,
+	b_weight float,
+	b_price float,
+	b_total float,
+	b_memo nvarchar(max)
+)
+
+insert into @tmp
+	select
+		'0',
+		ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),1,1,a.cno,a.acomp,d.tel,d.fax,d.addr
+		,a.noa,a.stype,a.custno,c.comp,a.tel,a.fax,a.sales,a.invono,c.invoicetitle,a.trantype
+		,(case when a.addr2!='' then a.addr2 else a.addr end),a.datea,a.cardeal,a.memo
+		--,a.tax,a.money,a.total
+		,(case when a.taxtype='1' then round(a.money*0.05,0) when a.taxtype='3' then e.tax else 0 end)
+		,(case when a.taxtype='1' then a.money when a.taxtype='3' then a.total-e.tax else a.money end)
+		,(case when a.taxtype='1' then a.money+round(a.money*0.05,0) when a.taxtype='3' then a.total else a.money end)
+		,'',b.bccno,b.bccname,b.unit,b.mount,b.weight 
+		,b.price,b.total,b.memo
+	from vccw a
+	left join vccws b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	left join acomp d on a.cno=d.noa
+	outer apply(select noa,sum(round(total/1.05,0)) tax from vccws where a.noa=noa group by noa) e
+where (a.noa between @t_bxnoa and @t_exnoa)
+
+declare @a_noa nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+	select a_noa,count(*),max(orderno) from @tmp group by a_noa
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @a_noa,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare cursor_table cursor for
+select distinct a_noa,max(orderno),pageno,min(idno),count(*) from @tmp group by a_noa,pageno
+open cursor_table
+fetch next from cursor_table
+into @a_noa,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,a_noa,a_memo,a_comp)
+				select '0',(@orderno+1),@pageno,@a_noa,a_memo,a_comp from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,a_noa,a_comp,a_tax,a_money,a_total)
+		select '1',(@t_pageline+1),pageno,a_noa,a_comp,MAX(a_tax),MAX(a_money),MAX(a_total) from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_comp
+	insert into @tmp(gno,orderno,pageno,a_noa,a_memo) 
+		select '2',(@t_pageline+2),pageno,a_noa,a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_memo
+	fetch next from cursor_table
+	into @a_noa,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+
+--update @tmp set a_total = a_tax + a_money where gno = '1'
+update a set a_stype =b.namea+'單'
+from @tmp a left join @listStype b on a.a_stype=b.noa
+ 
+if(@t_showprice = '0')
+begin
+	update @tmp set a_tax = null,a_money = null,a_total = null,b_price = null,b_total = null
+end
+
+update a
+set topage=(select MAX(pageno) from @tmp where a_noa=a.a_noa)
+from @tmp a
+
+select
+	gno,a_noa,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_invo,a_title,a_trantype,a_cardeal
+	,Replace(a_memo,'chr(10)','</BR>&nbsp') a_memo,
+	dbo.getComma(a_tax,0)  a_tax,
+	dbo.getComma(a_money,0)  a_money,
+	dbo.getComma(a_total,0)  a_total,
+	b_productno,dbo.charbr(b_products,38) b_products,b_unit,
+	dbo.getComma(b_mount,[2])  b_mount,
+	dbo.getComma(b_weight,[3])  b_weight,
+	dbo.getComma(b_price,[4])  b_price,
+	dbo.getComma(b_total,0)  b_total
+	,b_uno+(case when len(b_uno)>0 and len(b_memo)>0 then '<BR> &nbsp' else '' end)+b_memo  b_memo
+	,topage,pageno,a_cno,a_acomp,a_ctel,a_cfax,a_caddr
+from @tmp order by a_noa desc,pageno,gno,orderno;

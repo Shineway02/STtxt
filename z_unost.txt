@@ -1,0 +1,78 @@
+z_unost01:--z_unost01
+	declare @t_uno nvarchar(max)
+	set @t_uno = case when '#non' = [1] then '#non' else [1] end
+	set @t_uno = rtrim(ltrim(@t_uno))
+	
+	declare @tmp table(
+		uno nvarchar(max),
+		accy nvarchar(10),
+		tablea nvarchar(20),
+		typea nvarchar(20),
+		noa nvarchar(20),
+		[weight] float,
+		sprice decimal(15,4),
+		buno nvarchar(max)
+	)
+	
+	declare @uno nvarchar(max)
+	declare @accy nvarchar(10)
+	declare @tablea nvarchar(20)
+	declare @weight float
+	declare @sprice float
+	
+	declare @noa nvarchar(20)
+	declare @buno nvarchar(max)
+	
+	set @uno = @t_uno
+	while 1=1
+	begin
+		select @accy='',@tablea='',@weight=0,@sprice=0,@buno=''
+		
+		if exists(select uno from view_rc2s where uno=@uno and len(@uno)>0)
+		begin
+			select @noa=noa,@accy=accy,@tablea='rc2s',@weight=[weight],@sprice=price 
+			from view_rc2s where uno=@uno
+
+			insert into @tmp(uno,accy,tablea,typea,noa,[weight],sprice,buno)
+			values(@uno,@accy,@tablea,'進貨',@noa,@weight,@sprice,'')
+			
+			break
+		end
+		if exists(select uno from view_inas where uno=@uno and len(@uno)>0)
+		begin
+			select @noa=noa,@accy=accy,@tablea='inas',@weight=[weight],@sprice=price 
+			from view_inas where uno=@uno
+
+			insert into @tmp(uno,accy,tablea,typea,noa,[weight],sprice,buno)
+			values(@uno,@accy,@tablea,'入庫',@noa,@weight,@sprice,'')
+			
+			break
+		end
+		if exists(select bno from view_cuts where bno=@uno and len(@uno)>0)
+		begin
+			select @noa=noa,@accy=accy,@tablea='cuts',@weight=[weight],@sprice=sprice 
+			from view_cuts where bno=@uno
+			
+			select @buno=uno from view_cut where noa=@noa and @uno like uno+'%' order by len(uno) desc
+			insert into @tmp(uno,accy,tablea,typea,noa,[weight],sprice,buno)
+			values(@uno,@accy,@tablea,'裁剪',@noa,@weight,@sprice,@buno)
+			
+			set @uno=@buno
+			continue
+		end
+		if exists(select uno from view_cubu where uno=@uno and len(@uno)>0)
+		begin
+			select @noa=noa,@accy=accy,@tablea='cubu',@weight=[weight],@sprice=sprice 
+			from view_cubu where uno=@uno
+			
+			select @buno=uno from view_cubt where noa=@noa and @uno like uno+'%' order by len(uno) desc
+			insert into @tmp(uno,accy,tablea,typea,noa,[weight],sprice,buno)
+			values(@uno,@accy,@tablea,'派令',@noa,@weight,@sprice,@buno)
+			
+			set @uno=@buno
+			continue
+		end
+		break
+	end
+
+	select '0' gno,* from @tmp;

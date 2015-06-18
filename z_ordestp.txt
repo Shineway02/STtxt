@@ -1,0 +1,559 @@
+﻿z_ordestp1:--z_ordestp1 
+	SET QUOTED_IDENTIFIER OFF 
+	declare @cmd nvarchar(max) 
+	declare @t_accy nvarchar(max) 
+	declare @t_kind nvarchar(max) 
+	declare @t_bno nvarchar(20) 
+	declare @t_eno nvarchar(20) 
+	declare @t_showtype nvarchar(max)   
+	
+	set @t_accy = '[1]' 
+	set @t_kind = '[2]' 
+	set @t_bno = case when '#non' = [3] then '' else [3] end
+	set @t_eno = case when '#non' = [4] then CHAR(255) else [4] end
+	set @t_showtype = [5]
+	----------------------------------------------------------------------------------------------
+	declare @t_pageline int = 6   --------一頁幾行
+	----------------------------------------------------------------------------------------------
+	declare @string nvarchar(max)
+	declare @n int
+	--解析要計算的種類
+	declare @listKind table(
+		noa nvarchar(20),
+		namea nvarchar(max)
+	)
+	set @string = @t_kind
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @listKind select LEFT(@string,CHARINDEX('@',@string)-1),RIGHT(@string,len(@string)-CHARINDEX('@',@string))
+			end
+			break
+		end
+		insert into @listKind select LEFT(@string,CHARINDEX('@',@string)-1), SUBSTRING(LEFT(@string,@n-1),CHARINDEX('@',LEFT(@string,@n-1))+1,@n)
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	----------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		cno nvarchar(10),
+		noa nvarchar(20),
+		custno nvarchar(20),
+		cust nvarchar(max),
+		tel nvarchar(max),
+		fax nvarchar(max),
+		addr nvarchar(max),
+		odate nvarchar(20),
+		kind nvarchar(20),
+		ckind nvarchar(max),
+		paytype nvarchar(20),
+		trantype nvarchar(20),
+		sales nvarchar(90),
+		memo nvarchar(max),
+		mount float,
+		[weight] float,
+		[money] float,
+		
+		no2 nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(max),
+		unit nvarchar(20),
+		mounts float,
+		weights float,
+		price decimal(10,3),
+		totals float,
+		size nvarchar(max),
+		spec nvarchar(max),
+		memos nvarchar(max)
+	)
+	
+	set @cmd =
+	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
+	" ,b.cno,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
+	" ,b.tel,b.fax,case when len(isnull(b.addr2,''))>0 then b.addr2 else b.addr end"+
+	" ,b.odate,b.kind,b.paytype,b.trantype,b.sales,ISNULL(b.memo,'')"+
+	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,case when @t_showtype='1' then a.size "+
+	"		when @t_showtype='2' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)"+
+	"		else (case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) end"+
+	" ,a.spec,a.memo"+
+	" from view_ordes"+@t_accy+" a"+
+	" left join view_orde"+@t_accy+" b on a.noa = b.noa"+
+	" left join cust c on b.custno = c.noa"+
+	" where b.noa is not null "+
+	" and a.noa between @t_bno and @t_eno"+
+	" order by a.noa,a.no2 "
+	
+	insert into @tmp(gno,cno,noa,custno,cust,tel,fax,addr,odate,kind,paytype,trantype,sales,memo
+		,no2,productno,product,unit,mounts,weights,price,totals,size,spec,memos)
+	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_showtype nvarchar(max)'
+	,@t_bno=@t_bno,@t_eno=@t_eno,@t_showtype=@t_showtype
+	
+	update @tmp set ckind=b.namea
+	from @tmp a left join @listKind b on a.kind= b.noa
+	----------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		insert into @tmp(noa,no2,gno,memos)
+		values(@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
+	
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while(@n%@t_pageline!=0)
+		begin
+			insert into @tmp(noa,no2,gno)values(@noa,'zzz','4')
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,fax=b.fax,addr=b.addr
+		,odate=b.odate,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,sales=b.sales,memo=b.memo
+		,mount=c.mount,[weight]=c.[weight],[money]=c.[money]
+	from @tmp a
+	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
+	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight],SUM(isnull(totals,0)) [money] from @tmp group by noa ) c on a.noa=c.noa
+	---------------------------------------
+	declare @tmpx table(
+		recno int,
+		recno2 int,
+		gno nvarchar(10),
+		cno nvarchar(20),
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		rrno int,
+		ttno int,
+		a01 nvarchar(max),
+		a02 nvarchar(max),
+		a03 nvarchar(max),
+		a04 nvarchar(max),
+		a05 nvarchar(max),
+		a06 nvarchar(max),
+		a07 nvarchar(max),
+		a08 nvarchar(max),
+		a09 nvarchar(max),
+		sales nvarchar(30),
+		a10 float,
+		a11 float,
+		a12 float,
+		a13 nvarchar(max),
+		
+		b01 nvarchar(max),
+		b02 nvarchar(max),
+		b03 nvarchar(max),
+		b04 nvarchar(max),
+		b05 float,
+		b06 float,
+		b07 float,
+		b08 float,
+		c01 nvarchar(max),
+		b09 nvarchar(max),
+		comptel nvarchar(max),
+		pno nvarchar(max)
+	)
+	
+	
+	insert into @tmpx
+	select ROW_NUMBER()over(partition by a.noa order by a.no2),1
+		,a.*,b.comptel,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	from(
+		select gno,cno,noa,no2
+		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+		,b.rrno ttno
+		,noa a01
+		,custno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+cust a02
+		,tel a03
+		,fax a04
+		,addr a05
+		,ckind a06
+		,odate a07
+		,paytype a08
+		,trantype a09
+		,sales
+		,mount a10
+		,[weight] a11
+		,[money] a12
+		,memo a13
+		
+		,productno b01
+		,product b02
+		,replace(size,'~#$',"'") b03
+		,unit b04
+		,mounts b05
+		,weights b06
+		,price b07
+		,totals b08
+		,spec c01
+		,memos b09
+		from @tmp a
+		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
+	)a
+	left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end comptel from acomp) b on a.cno=b.noa
+	order by a.noa,a.no2
+
+	--管 不顯示重量
+	declare @gno nvarchar(10)
+	declare @recno int
+	declare @recno2 int
+
+	declare cursor_table cursor for
+	select recno,recno2,noa from @tmpx where recno%@t_pageline=1 and recno2=1 
+	open cursor_table
+	fetch next from cursor_table
+	into @recno,@recno2,@noa
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		select top(1) @gno=case when kind='B2' then '6' else '5' end from @tmp where noa=@noa 
+		
+		insert into @tmpx
+		select recno,0,@gno
+			,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,a07,a08,a09,sales,a10,a11,a12,a13
+			,b01,b02,b03,b04,b05,b06,b07,b08,c01,b09,comptel,pno
+		from @tmpx where recno=@recno and recno2=@recno2 and noa=@noa
+		if @gno='6'
+		begin
+			update @tmpx set gno=case when gno='1' then '7' when gno='2' then '8' else gno end where noa=@noa
+		end
+
+		fetch next from cursor_table
+		into @recno,@recno2,@noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select recno,recno2,noa from @tmpx where recno%@t_pageline=0 and recno2=1 
+	open cursor_table
+	fetch next from cursor_table
+	into @recno,@recno2,@noa
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		select top(1) @gno=case when kind='B2' then '6' else '5' end from @tmp where noa=@noa 
+			
+		insert into @tmpx
+		select recno,999,case when @gno='6' then '10' else '9' end
+			,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,a07,a08,a09,sales,a10,a11,a12,a13
+			,b01,b02,b03,b04,b05,b06,b07,b08,c01,b09,comptel,pno
+		from @tmpx where recno=@recno and recno2=@recno2 and noa=@noa
+		fetch next from cursor_table
+		into @recno,@recno2,@noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select
+		recno,recno2,gno,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,
+		a07,a08,a09,sales,a10,a11
+		,dbo.getComma(a12,0) a12
+		,replace(a13,'chr(10)','<BR>') a13,b01,b02,b03,b04,b05,b06,b07
+		,dbo.getComma(b08,0) b08
+		,c01
+		,b09
+		,comptel,pno
+	from @tmpx order by noa,recno,recno2;
+-------------------------************************************--------------------------
+z_ordestp2:--z_ordestp2 
+	SET QUOTED_IDENTIFIER OFF 
+	declare @cmd nvarchar(max) 
+	declare @t_accy nvarchar(max) 
+	declare @t_kind nvarchar(max) 
+	declare @t_bno nvarchar(20) 
+	declare @t_eno nvarchar(20) 
+	declare @t_showtype nvarchar(max)   
+	
+	set @t_accy = '[1]' 
+	set @t_kind = '[2]' 
+	set @t_bno = case when '#non' = [3] then '' else [3] end
+	set @t_eno = case when '#non' = [4] then CHAR(255) else [4] end
+	set @t_showtype = [5]
+	----------------------------------------------------------------------------------------------
+	declare @t_pageline int = 25   --------一頁幾行
+	----------------------------------------------------------------------------------------------
+	declare @string nvarchar(max)
+	declare @n int
+	--解析要計算的種類
+	declare @listKind table(
+		noa nvarchar(20),
+		namea nvarchar(max)
+	)
+	set @string = @t_kind
+	while(1=1)
+	begin
+		set @n = PATINDEX('%,%',@string)
+		if @n=0
+		begin
+			if LEN(@string)>0
+			begin
+				insert into @listKind select LEFT(@string,CHARINDEX('@',@string)-1),RIGHT(@string,len(@string)-CHARINDEX('@',@string))
+			end
+			break
+		end
+		insert into @listKind select LEFT(@string,CHARINDEX('@',@string)-1), SUBSTRING(LEFT(@string,@n-1),CHARINDEX('@',LEFT(@string,@n-1))+1,@n)
+		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
+	end
+	----------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		cno nvarchar(10),
+		noa nvarchar(20),
+		custno nvarchar(20),
+		cust nvarchar(max),
+		tel nvarchar(max),
+		fax nvarchar(max),
+		addr nvarchar(max),
+		odate nvarchar(20),
+		kind nvarchar(20),
+		ckind nvarchar(max),
+		paytype nvarchar(20),
+		trantype nvarchar(20),
+		sales nvarchar(90),
+		memo nvarchar(max),
+		mount float,
+		[weight] float,
+		[money] float,
+		
+		no2 nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(max),
+		unit nvarchar(20),
+		mounts float,
+		weights float,
+		price decimal(10,3),
+		totals float,
+		size nvarchar(max),
+		spec nvarchar(max),
+		memos nvarchar(max)
+	)
+	
+	set @cmd =
+	" select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end"+ 
+	" ,b.cno,a.noa,b.custno,case when len(isnull(b.comp,''))=0 then c.comp else b.comp end"+
+	" ,b.tel,b.fax,case when len(isnull(b.addr2,''))>0 then b.addr2 else b.addr end"+
+	" ,b.odate,b.kind,b.paytype,b.trantype,b.sales,ISNULL(b.memo,'')"+
+	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,case when @t_showtype='1' then a.size "+
+	"		when @t_showtype='2' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius)"+
+	"		else (case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) end"+
+	" ,a.spec,a.memo"+
+	" from view_ordes"+@t_accy+" a"+
+	" left join view_orde"+@t_accy+" b on a.noa = b.noa"+
+	" left join cust c on b.custno = c.noa"+
+	" where b.noa is not null "+
+	" and a.noa between @t_bno and @t_eno"+
+	" order by a.noa,a.no2 "
+	
+	insert into @tmp(gno,cno,noa,custno,cust,tel,fax,addr,odate,kind,paytype,trantype,sales,memo
+		,no2,productno,product,unit,mounts,weights,price,totals,size,spec,memos)
+	execute sp_executesql @cmd,N'@t_bno nvarchar(20),@t_eno nvarchar(20),@t_showtype nvarchar(max)'
+	,@t_bno=@t_bno,@t_eno=@t_eno,@t_showtype=@t_showtype
+	
+	update @tmp set ckind=b.namea
+	from @tmp a left join @listKind b on a.kind= b.noa
+	----------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		insert into @tmp(noa,no2,gno,memos)
+		values(@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
+	
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while(@n%@t_pageline!=0)
+		begin
+			insert into @tmp(noa,no2,gno)values(@noa,'zzz','4')
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	update @tmp set custno=b.custno,cust=b.cust,tel=b.tel,fax=b.fax,addr=b.addr
+		,odate=b.odate,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,sales=b.sales,memo=b.memo
+		,mount=c.mount,[weight]=c.[weight],[money]=c.[money]
+	from @tmp a
+	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
+	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight],SUM(isnull(totals,0)) [money] from @tmp group by noa ) c on a.noa=c.noa
+	---------------------------------------
+	declare @tmpx table(
+		recno int,
+		recno2 int,
+		gno nvarchar(10),
+		cno nvarchar(20),
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		rrno int,
+		ttno int,
+		a01 nvarchar(max),
+		a02 nvarchar(max),
+		a03 nvarchar(max),
+		a04 nvarchar(max),
+		a05 nvarchar(max),
+		a06 nvarchar(max),
+		a07 nvarchar(max),
+		a08 nvarchar(max),
+		a09 nvarchar(max),
+		sales nvarchar(30),
+		a10 float,
+		a11 float,
+		a12 float,
+		a13 nvarchar(max),
+		
+		b01 nvarchar(max),
+		b02 nvarchar(max),
+		b03 nvarchar(max),
+		b04 nvarchar(max),
+		b05 float,
+		b06 float,
+		b07 float,
+		b08 float,
+		c01 nvarchar(max),
+		b09 nvarchar(max),
+		comptel nvarchar(max),
+		pno nvarchar(max)
+	)
+	
+	
+	insert into @tmpx
+	select ROW_NUMBER()over(partition by a.noa order by a.no2),1
+		,a.*,b.comptel,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	from(
+		select gno,cno,noa,no2
+		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+		,b.rrno ttno
+		,noa a01
+		,custno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+cust a02
+		,tel a03
+		,fax a04
+		,addr a05
+		,ckind a06
+		,odate a07
+		,paytype a08
+		,trantype a09
+		,sales
+		,mount a10
+		,[weight] a11
+		,[money] a12
+		,memo a13
+		
+		,productno b01
+		,product b02
+		,replace(size,'~#$',"'") b03
+		,unit b04
+		,mounts b05
+		,weights b06
+		,price b07
+		,totals b08
+		,spec c01
+		,memos b09
+		from @tmp a
+		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
+	)a
+	left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end comptel from acomp) b on a.cno=b.noa
+	order by a.noa,a.no2
+
+	--管 不顯示重量
+	declare @gno nvarchar(10)
+	declare @recno int
+	declare @recno2 int
+
+	declare cursor_table cursor for
+	select recno,recno2,noa from @tmpx where recno%@t_pageline=1 and recno2=1 
+	open cursor_table
+	fetch next from cursor_table
+	into @recno,@recno2,@noa
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		select top(1) @gno=case when kind='B2' then '6' else '5' end from @tmp where noa=@noa 
+		
+		insert into @tmpx
+		select recno,0,@gno
+			,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,a07,a08,a09,sales,a10,a11,a12,a13
+			,b01,b02,b03,b04,b05,b06,b07,b08,c01,b09,comptel,pno
+		from @tmpx where recno=@recno and recno2=@recno2 and noa=@noa
+		if @gno='6'
+		begin
+			update @tmpx set gno=case when gno='1' then '7' when gno='2' then '8' else gno end where noa=@noa
+		end
+
+		fetch next from cursor_table
+		into @recno,@recno2,@noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select recno,recno2,noa from @tmpx where recno%@t_pageline=0 and recno2=1 
+	open cursor_table
+	fetch next from cursor_table
+	into @recno,@recno2,@noa
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		select top(1) @gno=case when kind='B2' then '6' else '5' end from @tmp where noa=@noa 
+			
+		insert into @tmpx
+		select recno,999,case when @gno='6' then '10' else '9' end
+			,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,a07,a08,a09,sales,a10,a11,a12,a13
+			,b01,b02,b03,b04,b05,b06,b07,b08,c01,b09,comptel,pno
+		from @tmpx where recno=@recno and recno2=@recno2 and noa=@noa
+		fetch next from cursor_table
+		into @recno,@recno2,@noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select
+		recno,recno2,gno,cno,noa,no2,rrno,ttno,a01,a02,a03,a04,a05,a06,
+		a07,a08,a09,sales,a10,a11,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a12),1)),4,12)) a12,
+		replace(a13,'chr(10)','<BR>') a13,b01,b02,b03,b04,b05
+		,b06
+		,b07,
+		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b08),1)),4,12)) b08,
+		c01,b09,comptel,pno
+	from @tmpx order by noa,recno,recno2;

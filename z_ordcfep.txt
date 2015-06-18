@@ -1,0 +1,156 @@
+z_ordcfep01:--z_ordcfep01 
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+
+	declare @t_noa nvarchar(30) 
+	
+	set @t_noa = case when '#non' = [1] then '' else [1] end
+	----------------------------------------------------------------------------------------------
+	declare @t_pageline int = 20   --------一頁幾行
+	declare @n int
+	----------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		noa nvarchar(20),
+		cno nvarchar(20),
+		acomp nvarchar(max),
+		ctel nvarchar(max),
+		cfax nvarchar(max),
+		tggno nvarchar(20),
+		tgg nvarchar(max),
+		taddr nvarchar(max),
+		tel nvarchar(max),
+		fax nvarchar(max),
+		addr nvarchar(max),
+		addr2 nvarchar(max),
+		sales nvarchar(max),
+		odate nvarchar(20),
+		kind nvarchar(20),
+		ckind nvarchar(max),
+		paytype nvarchar(20),
+		trantype nvarchar(20),
+		memo nvarchar(max),
+		mount float,
+		[weight] float,
+		[money] float,
+		tax float,
+		total float,
+		
+		no2 nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(max),
+		class nvarchar(max),
+		spec nvarchar(max),
+		unit nvarchar(20),
+		mounts float,
+		weights float,
+		price decimal(10,3),
+		totals float,
+		lengthb float,
+		size nvarchar(max),
+		memos nvarchar(max) 
+	)
+	
+	insert into @tmp(gno,noa,cno,acomp,ctel,cfax,tggno,tgg,taddr,tel,fax,addr,sales,odate,kind,paytype,trantype,memo,[money],tax,total
+		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos,lengthb)
+	select case when row_number()over(partition by a.noa order by a.no2)=1 then '1' else '2' end
+	,a.noa,b.cno,d.acomp,d.tel,d.fax,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end
+	,b.addr,b.tel,b.fax,b.addr2,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')
+	,b.[money],b.tax,b.total
+	,a.no2,a.productno,a.product,a.class,a.spec,a.unit,a.mount,a.[weight],a.price,a.total
+	,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo,a.lengthb
+	from view_ordc b 
+	left join view_ordcs a on a.accy=b.accy and a.noa = b.noa
+	left join tgg c on b.tggno = c.noa
+	left join acomp d on b.cno=d.noa
+	where b.noa is not null 
+	and (len(@t_noa)=0 or @t_noa=a.noa)
+	order by a.noa,a.no2
+	
+	----------------------------------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa having (COUNT(1)%@t_pageline)!=0
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		insert into @tmp(noa,no2,gno,memos)
+		values(@noa,'yyy','3','---&nbsp'+CHAR(59)+'以下空白&nbsp'+CHAR(59)+'---')
+	
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,COUNT(1) n from @tmp group by noa 
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@n
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while(@n%@t_pageline!=0)
+		begin
+			insert into @tmp(noa,no2,gno)values(@noa,'zzz','4')
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @noa,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	update @tmp set cno=b.cno,acomp=b.acomp,ctel=b.ctel,cfax=b.cfax,sales=b.sales
+		,tggno=b.tggno,tgg=b.tgg,tel=b.tel,fax=b.fax,addr=b.addr
+		,odate=b.odate,kind=b.kind,ckind=b.ckind,paytype=b.paytype,trantype=b.trantype,memo=b.memo
+		,[money]=b.[money],tax=b.tax,total=b.total
+		,mount=c.mount,[weight]=c.[weight]
+	from @tmp a
+	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
+	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
+	
+	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	from(
+		select gno,noa,no2
+		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+		,b.rrno ttno
+		,cno
+		,acomp
+		,case when len(ISNULL(ctel,''))>0 then 'TEL：'+ctel else '' end +case when len(ISNULL(cfax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+cfax else '' end comptel
+		,noa a01
+		,tggno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+tgg a02
+		,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end a03
+		,replace(taddr,'~#$',"'") a04
+		,replace(addr,'~#$',"'") a05
+		,ckind a06
+		,odate a07
+		,'付款方式：'+paytype a08
+		,'交運方式：'+trantype a09
+		,mount a10
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,[weight]),1)),4,12)) a11
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) a12
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) a13
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) a14
+		,replace(memo,'chr(10)','<br>') a15
+		,sales a16
+		
+		,productno b01
+		,replace(product,'~#$',char(39)) b02
+		,lengthb b03
+		,spec b04
+		,replace(size,'~#$',"'") b05
+		,unit b06
+		,mounts b07
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weights),1)),4,12)) b08
+		,price b09
+		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) b10
+		,memos b11
+		from @tmp a
+		outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
+			from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 desc)b
+	)a
+	order by a.noa,a.no2;

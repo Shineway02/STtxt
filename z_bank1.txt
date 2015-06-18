@@ -1,0 +1,417 @@
+z_bank1a:--z_bank1a
+SET QUOTED_IDENTIFIER OFF
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+------------------------------------------------------------------------------------------------------
+--讀取會計傳票的年度
+declare @listaccc table(
+	tablea nvarchar(20),
+	accy nvarchar(20),
+	yy nvarchar(10)
+)
+
+insert into @listaccc(tablea,accy,yy)
+SELECT TABLE_NAME 
+,replace(TABLE_NAME,'accc','')
+,substring(replace(TABLE_NAME,'accc',''),1,CHARINDEX('_',replace(TABLE_NAME,'accc',''))-1)
+FROM INFORMATION_SCHEMA.TABLES 
+where TABLE_NAME like 'accc[0-9][0-9][0-9]%' 
+
+delete @listaccc where not(yy between LEFT(@t_bdate,3) and LEFT(@t_edate,3))
+--------------------------------------------------------------------------------------------------------
+--輸出報表
+declare @tmp  table(
+	gno nvarchar(2),
+	idno int identity(0,1),
+	ac1 nvarchar(50),
+	mo1 nvarchar(50),
+	total1 float,
+	ac2 nvarchar(50),
+	mo2 nvarchar(50),
+	checkno nvarchar(50),
+	total2 float,
+	tgg1 nvarchar(50),
+	date1 nvarchar(50),
+	tgg2 nvarchar(50),
+	date2 nvarchar(50),
+	acc nvarchar(50),
+	c1 float,
+	c2 float,
+	c3 float,
+	c4 float,
+	t1 float,
+	t2 float,
+	t3 float,
+	t4 float,
+	t5 float,
+	t6 float
+)
+
+--會計科目1112
+declare @tmpacc  table(
+	zno nvarchar(50),
+	accc2 nvarchar(50),
+	accc4 nvarchar(50),
+	accc5 nvarchar(50),
+	accc6 nvarchar(50),
+	accc7 nvarchar(50),
+	accc8 float
+)
+
+--會計科目1112.1117
+declare @tmpacc2  table(
+	zno nvarchar(50),
+	accc2 nvarchar(50),
+	accc4 nvarchar(50),
+	accc5 nvarchar(50),
+	accc6 nvarchar(50),
+	accc7 nvarchar(50),
+	accc8 float
+)
+
+--會計科目1112 整合存款用
+declare @tmpacc3  table(
+	ACCNO nvarchar(50),
+	ACCNAME nvarchar(50),
+	BEFOREM  float,
+	TODAYA float,	--本日收入
+	TODAYB float,	--本日支出
+	TODAYM float,
+	INTOTAL float,
+	TOTALM float
+)
+
+--收入
+declare @tmpacca  table(
+	idno int identity(0,1),
+	accc5 nvarchar(50),
+	ac1 nvarchar(50),
+	mo1 nvarchar(50),
+	total1 float
+)
+--支出
+declare @tmpaccd  table(
+	idno int identity(0,1),
+	accc5 nvarchar(50),
+	ac2 nvarchar(50),
+	mo2 nvarchar(50),
+	checkno nvarchar(50),
+	total2 float
+)
+
+--抓取在日期內的會計內容
+	declare @tablea nvarchar(20)
+	declare @tableas nvarchar(20)
+	declare @tableacc nvarchar(20)
+	declare @accy nvarchar(10)
+	declare @yy nvarchar(10)
+	
+	declare cursor_table cursor for
+	select tablea,replace(tablea,'accc','acccs'),replace(tablea,'accc','acc'),accy,yy from @listaccc
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea,@tableas,@tableacc,@accy,@yy
+	while(@@FETCH_STATUS <> -1)
+	begin
+		insert @tmpacc
+		EXEC("select zno,'"+@yy+"/'+accc2,accc4,accc5,accc6,accc7,accc8 
+		from "+@tableas+" where ('"+@yy+"/'+accc2 between '"+@t_bdate+"' and '"+@t_edate+"') and left(accc5,4)='1112'")	
+		
+		insert @tmpacc2
+		EXEC("select zno,'"+@yy+"/'+accc2,accc4,accc5,accc6,accc7,accc8 
+		from "+@tableas+" where ('"+@yy+"/'+accc2 <= '"+@t_edate+"') and (left(accc5,4)='1112' or left(accc5,4)='1117')")
+	
+		fetch next from cursor_table
+		into @tablea,@tableas,@tableacc,@accy,@yy
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
+	insert @tmpacca
+	select accc5,case when replace(replace(accc6,'銀行存款-',''),'銀行存款','')='' then '銀行存款' else replace(replace(accc6,'銀行存款-',''),'銀行存款','') end
+	,accc7,accc8 from @tmpacc where accc4='借' order by accc5
+
+	insert @tmpaccd --zno=uf accc7才是支票號碼
+	select accc5,case when replace(replace(accc6,'銀行存款-',''),'銀行存款','')='' then '銀行存款' else replace(replace(accc6,'銀行存款-',''),'銀行存款','') end
+	,case when zno!='uf' then accc7 else '' end, case when zno='uf' then accc7 else '' end,accc8 
+	from @tmpacc where accc4='貸' order by accc5
+
+	--表頭
+	insert @tmp (gno)	select '1'
+	
+	if(select COUNT(*) from @tmpacca)>=(select COUNT(*) from @tmpaccd)
+	begin
+		insert @tmp (gno,ac1,mo1,total1,ac2,mo2,checkno,total2)
+		select '2',ac1,mo1,total1,ac2,mo2,checkno,total2 from @tmpacca a left join @tmpaccd b on a.idno=b.idno
+	end
+	else
+	begin
+		insert @tmp (gno,ac1,mo1,total1,ac2,mo2,checkno,total2)
+		select '2',ac1,mo1,total1,ac2,mo2,checkno,total2 from @tmpacca a right join @tmpaccd b on a.idno=b.idno
+	end
+	
+	if((select count(*) from @tmp where gno='2')=0)
+	begin
+		insert @tmp (gno) select '2'
+	end 
+	
+	insert @tmp (gno,total1,total2)
+	select '3',isnull((select SUM(total1) from @tmpacca),0),isnull((select SUM(total2) from @tmpaccd),0)
+	
+	--空行用
+	insert @tmp (gno)	select '4'
+	insert @tmp (gno)	select '4'
+	
+	--應收票據-------------------------
+	
+	declare @tmpgqb  table(
+		idno int identity(0,1),
+		tgg nvarchar(50),
+		datea nvarchar(50),
+		total float
+	)
+	
+	--表頭
+	insert @tmp (gno) select '5'
+	
+	--所需資料
+	insert @tmpgqb
+	select comp,indate,money
+	from gqb where (datea<=@t_edate
+	and not(typea='1' or (typea='3' and isnull(bkdate,'')>=@t_bdate))
+	and not(enda!='Y' or (enda='Y' and tdate>=@t_bdate) or (isnull(bkdate,'')=@t_bdate)))
+	and (datea between @t_bdate and @t_edate or (isnull(bkdate,'') between @t_bdate and @t_edate))
+	order by indate
+	
+	insert @tmp(gno,tgg1,date1,total1,tgg2,date2,total2)
+	select '6',a.tgg,a.datea,a.total,b.tgg,b.datea,b.total from 
+	(select * from @tmpgqb where idno%2=0) a left join (select * from @tmpgqb where idno%2=1)b
+	on a.idno=b.idno-1
+	
+	if((select count(*) from @tmp where gno='6')=0)
+	begin
+		insert @tmp (gno) select '6'
+	end 
+	
+	--本日增加張數,金額
+	insert @tmp(gno,total1,total2)
+	select '7',COUNT(*),isnull(sum(money),0)
+	from gqb where (datea<=@t_edate
+	and not(typea='1' or (typea='3' and isnull(bkdate,'')>=@t_bdate))
+	and not(enda!='Y' or (enda='Y' and tdate>=@t_bdate) or (isnull(bkdate,'')=@t_bdate)))
+	and (datea between @t_bdate and @t_edate or (isnull(bkdate,'') between @t_bdate and @t_edate))
+	
+	--收退張數
+	if((select COUNT(*) from umm a left join umms b on a.noa=b.noa where a.datea between @t_bdate and @t_edate and left(b.checkno,1)='*')>0)
+	begin
+		insert @tmp(gno,total1,total2)
+		select '8',COUNT(*),isnull(SUM(money),0) from umm a left join umms b on a.noa=b.noa 
+		where a.datea between @t_bdate and @t_edate and left(b.checkno,1)='*'
+	end
+	
+	--手存合計
+	insert @tmp(gno,c1,t1,c2,t2,c3,t3,c4,t4)
+	select '9',b.c1,b.t1,c.c2,c.t2,d.c3,d.t3,b.c1+c.c2-d.c3,b.t1+c.t2-d.t3
+	from @tmp a
+	outer apply(--前日張數,金額
+	select COUNT(*) c1,isnull(sum(money),0) t1
+	from gqb where datea < @t_edate 
+	and not(typea='1' or (typea='3' and isnull(bkdate,'')>=@t_bdate))
+	and not(enda!='Y' or (enda='Y' and tdate>=@t_bdate) or (isnull(bkdate,'')=@t_bdate))
+	and datea <@t_bdate and ISNULL(bkdate,'')>@t_edate )b
+	outer apply(--本日增加張數,金額
+	select COUNT(*) c2,isnull(sum(money),0) t2
+	from gqb where (datea<=@t_edate
+	and not(typea='1' or (typea='3' and isnull(bkdate,'')>=@t_bdate))
+	and not(enda!='Y' or (enda='Y' and tdate>=@t_bdate) or (isnull(bkdate,'')=@t_bdate)))
+	and (datea between @t_bdate and @t_edate or (isnull(bkdate,'') between @t_bdate and @t_edate)) )c
+	outer apply(--本日減少張數,金額
+	select COUNT(*) c3,isnull(sum(money),0) t3 from chk2s where datea between @t_bdate and @t_edate and sel=1 )d
+	where a.gno='7'
+	
+	--換頁
+	insert @tmp (gno) select '10'
+
+	--銀行借款區-------------------------------------------------------------------------------------------------------------------------------------
+	
+	--表頭
+	insert @tmp (gno) select '11'
+	
+	insert @tmp (gno,acc,t1,t2,t3,t4)
+	select '12',namea 
+	,isnull((select sum(case when bankt='1' then 1 else -1 end*money) from banks where datea<@t_bdate and banktno=a.noa),0)
+	,isnull((select sum(money) from banks where datea between @t_bdate and @t_edate and bankt='1' and banktno=a.noa),0)--貸
+	,isnull((select sum(money) from banks where datea between @t_bdate and @t_edate and bankt='2' and banktno=a.noa),0)--借
+	,isnull((select sum(case when bankt='1' then 1 else -1 end*money) from banks where datea <= @t_edate and banktno=a.noa),0)
+	from bankt a group by noa,namea order by noa
+	
+	--定期存款
+	insert @tmp (gno,acc,t1,t2,t3,t4)
+	select '12','定期存款'
+	,ISNULL((select SUM((case when accc4='借' then 1 else -1 end)*accc8) from @tmpacc2 where LEFT(accc5,4)='1117' and accc2<@t_bdate),0)
+	,ISNULL((select SUM(accc8) from @tmpacc2 where LEFT(accc5,4)='1117' and accc2 between @t_bdate and @t_edate and accc4='借'),0)
+	,ISNULL((select SUM(accc8) from @tmpacc2 where LEFT(accc5,4)='1117' and accc2 between @t_bdate and @t_edate and accc4='貸'),0)
+	,ISNULL((select SUM((case when accc4='借' then 1 else -1 end)*accc8) from @tmpacc2 where LEFT(accc5,4)='1117'),0)
+	
+	--有價證券
+	insert @tmp (gno,acc,t1,t2,t3,t4)
+	select '12','有價證券',0,0,0,0
+	
+	--插入空白
+	insert @tmp (gno) select '13'
+	
+	--應收承兌匯票------------------------------------------------------------------------------------------------------------
+	--插入表頭
+	insert @tmp (gno) select '14'
+	
+	--插入資料
+	declare @LCBEFORE1 float=0--即期前日餘額
+	declare @LCBEFORE2 float=0--遠期前日餘額
+	declare @LCTODAYA1 float=0--即期本日增加
+	declare @LCTODAYA2 float=0--遠期本日增加
+	declare @LCTODAYB1 float=0--即期本日減少
+	declare @LCTODAYB2 float=0--遠期本日減少
+	declare @LCTOTAL1 float=0--即期本日餘額
+	declare @LCTOTAL2 float=0--遠期本日餘額
+	declare @LCBCANCEL1 float=0--即期前期取消金額
+	declare @LCBCANCEL2 float=0--遠期前期取消金額
+	declare @lcno nvarchar(100) --lcno
+	declare @typea nvarchar(100)
+	declare @datea nvarchar(100)
+	declare @cdate nvarchar(100)
+	declare @money float
+	
+	declare cursor_table cursor for
+	select lcno,typea,datea,isnull(cdate,''),money from lcu where datea<=@t_edate
+	open cursor_table
+	fetch next from cursor_table
+	into @lcno,@typea,@datea,@cdate,@money
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @LCBCANCEL1=0--即期前期取消金額(單張匯票)
+		set @LCBCANCEL2=0--遠期前期取消金額(單張匯票)
+		
+		--本日承兌視同減少
+		if(@typea='1')
+			set @LCTODAYB1=@LCTODAYB1+isnull((select SUM(money) from lcv where lcno=@lcno and datea between @t_bdate and @t_edate),0)
+		if(@typea='2')
+			set @LCTODAYB2=@LCTODAYB2+isnull((select SUM(money) from lcv where lcno=@lcno and datea between @t_bdate and @t_edate),0)
+			
+		--取消
+		if(@cdate!='')
+		begin
+			if(@cdate>=@t_bdate and @cdate<=@t_edate)--本日減少
+			begin
+				if(@typea='1')
+					set @LCTODAYB1=@LCTODAYB1+(@money-isnull((select SUM(money) from lcv where lcno=@lcno and datea<=@cdate),0))
+				if(@typea='2')
+					set @LCTODAYB2=@LCTODAYB2+(@money-isnull((select SUM(money) from lcv where lcno=@lcno and datea<=@cdate),0))
+			end
+			
+			if(@cdate<@t_bdate)--前期減少
+			begin
+				if(@typea='1')
+					set @LCBCANCEL1=(@money-isnull((select SUM(money) from lcv where lcno=@lcno and datea<=@cdate),0))
+				if(@typea='2')
+					set @LCBCANCEL2=(@money-isnull((select SUM(money) from lcv where lcno=@lcno and datea<=@cdate),0))
+			end
+		end
+		
+		--本日餘額
+		if(@datea between @t_bdate and @t_edate)
+		begin
+			if(@typea='1')
+				set @LCTODAYA1=@LCTODAYA1+@money
+			if(@typea='2')
+				set @LCTODAYA2=@LCTODAYA2+@money
+		end
+		else--前日餘額,未承兌完的LC-前期取消
+		begin
+			if(@datea<@t_bdate)
+			begin
+				if(@typea='1')
+					set @LCBEFORE1=@LCBEFORE1+@money-isnull((select SUM(money) from lcv where lcno=@lcno and datea<=dbo.q_cdn(@t_bdate,-1)),0)-@LCBCANCEL1
+				if(@typea='2')
+					set @LCBEFORE2=@LCBEFORE2+@money-isnull((select SUM(money) from lcv where lcno=@lcno and datea<=dbo.q_cdn(@t_bdate,-1)),0)-@LCBCANCEL2
+			end
+		end
+	
+		fetch next from cursor_table
+		into @lcno,@typea,@datea,@cdate,@money
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
+	insert @tmp (gno,acc,t1,t2,t3,t4) 
+	select '15','即期LC',@LCBEFORE1,@LCTODAYA1,@LCTODAYB1,@LCBEFORE1+@LCTODAYA1-@LCTODAYB1
+	
+	insert @tmp (gno,acc,t1,t2,t3,t4) 
+	select '15','遠期LC',@LCBEFORE2,@LCTODAYA2,@LCTODAYB2,@LCBEFORE2+@LCTODAYA2-@LCTODAYB2
+	
+	--插入空白
+	insert @tmp (gno) select '16'
+	
+	--銀行存款總覽表-----------------------------------------------------------------------------------------------------------------------------------------------------
+	
+	--插入表頭
+	insert @tmp (gno) select '17'
+	
+	--插入資料
+	insert @tmpacc3(ACCNO,ACCNAME,BEFOREM,TODAYA,TODAYB,TODAYM,INTOTAL,TOTALM)
+	select ACCNO,MAX(ACCNAME),SUM(BEFOREM),SUM(TODAYA),SUM(TODAYB),SUM(BEFOREM)+SUM(TODAYA)-SUM(TODAYB)
+	,SUM(INTOTAL),SUM(BEFOREM)+SUM(TODAYA)-SUM(TODAYB)+SUM(INTOTAL)
+	from (
+		select accc5 ACCNO,MAX(accc6) ACCNAME
+		,isnull((select SUM((case when accc4='借' then 1 else -1 end)*accc8) from @tmpacc2 where accc2 <@t_bdate and accc5=a.accc5),0) BEFOREM
+		,isnull((select SUM(accc8) from @tmpacc2 where accc2 between @t_bdate and @t_edate and accc5=a.accc5 and accc4='借'),0) TODAYA
+		,isnull((select SUM(accc8) from @tmpacc2 where accc2 between @t_bdate and @t_edate and accc5=a.accc5 and accc4='貸'),0) TODAYB
+		,0 INTOTAL 
+		from @tmpacc2 a where left(accc5,4)='1112' 
+		group by accc5
+		union all
+		select a.accl ACCNO,d.acc2 ACCNAME,0 BEFOREM,0 TODAYA,0 TODAYB,b.money INTOTAL 
+		from chk2 a left join chk2s b on a.noa=b.noa 
+		left join gqb c on b.checkno=c.gqbno left join view_acc[1]_1 d on a.accl=d.acc1
+		where a.datea between @t_bdate and @t_edate 
+		and @t_bdate=@t_edate and b.sel=1 and c.datea=@t_edate
+	)tmp
+	group by ACCNO
+	
+	insert @tmp (gno,ac1,t1,t2,t3,t4,t5,t6)
+	select '18',REPLACE(REPLACE(ACCNAME,'銀行存款-',''),'銀行存款','')ACCNAME
+	,BEFOREM,TODAYA,TODAYB,TODAYM,INTOTAL,TOTALM
+	from @tmpacc3 order by ACCNO
+	
+	--插入總計
+	insert @tmp (gno,ac1,t1,t2,t3,t4,t5,t6)
+	select '19',char(255),SUM(BEFOREM),SUM(TODAYA),SUM(TODAYB),SUM(TODAYM),SUM(INTOTAL),SUM(TOTALM)
+	from @tmpacc3 
+	
+	if(@t_bdate!=@t_edate)
+	begin
+		delete @tmp where right('00'+gno,2)<='10'
+	end
+	
+select 
+( case when @t_bdate=@t_edate then '銀行存款日報表' else '銀行存款月報表' end) mtitle,
+( case when @t_bdate=@t_edate then @t_bdate else @t_bdate+'~'+@t_edate end) mdate,
+dbo.getComma(total1,0) total1,
+dbo.getComma(total2,0) total2,
+dbo.getComma(c1,0) c1,
+dbo.getComma(c2,0) c2,
+dbo.getComma(c3,0) c3,
+dbo.getComma(c4,0) c4,
+dbo.getComma(t1,0) t1,
+dbo.getComma(t2,0) t2,
+dbo.getComma(t3,0) t3,
+dbo.getComma(t4,0) t4,
+dbo.getComma(t5,0) t5,
+dbo.getComma(t6,0) t6,
+*
+from @tmp order by idno
+;
+-----------------------------------------------------------------------------------------------------------------

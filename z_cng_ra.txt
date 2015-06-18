@@ -1,0 +1,127 @@
+z_cng_ra1:--z_cng_ra1
+declare @t_bnoa nvarchar(50) = case when '#non' = [2] then '' else [2] end
+declare @t_enoa nvarchar(50) = case when '#non' = [3] then char(255) else [3] end
+declare @t_btggno nvarchar(max) = case when '#non' = [4] then '' else [4] end
+declare @t_etggno nvarchar(max) = case when '#non' = [5] then char(255) else [5] end
+
+------------報表設定<<Start>>------------
+declare @pageline int = 7 --每頁幾行
+------------報表設定<<End>>------------
+declare @tmp table(
+	gno nvarchar(10),
+	idno int identity(0,1),
+	pageno int,
+	noapageno int,
+	noatotpno int,
+	recno int,
+	tggno nvarchar(50),
+	tggs nvarchar(90),
+	cardealno nvarchar(50),
+	cardeals nvarchar(90),
+	carno nvarchar(50),
+	cngtype nvarchar(20),
+	datea nvarchar(10),
+	noa nvarchar(50),
+	instoreno nvarchar(50),
+	instores nvarchar(90),
+	outstoreno nvarchar(50),
+	outstores nvarchar(90),
+	productno nvarchar(max),
+	products nvarchar(max),
+	spec nvarchar(max),
+	unit nvarchar(15),
+	amount float,
+	rackmount float,
+	memo nvarchar(max)
+)
+insert into @tmp
+	select
+		'0' gno,0 pageno,0 noapageno,0 noatotpno,0 recno,
+		a.tggno,a.tgg,a.cardealno,a.cardeal,a.carno,a.typea,a.datea,a.noa,
+		a.storeinno,a.storein,a.storeno,a.store,b.productno,b.product,b.spec,b.unit,
+		b.mount,0 rackmount,b.memo
+	from view_cng a
+	left join view_cngs b on (a.noa=b.noa)
+	where (a.noa between @t_bnoa and @t_enoa) and
+		  (isnull(a.tggno,'') between @t_btggno and @t_etggno)
+	order by a.noa,b.noq
+------gno-> 1=空白行,2=加總
+declare @idno int
+declare @noa nvarchar(50)
+declare @pageno int
+declare @recCount int
+declare @noapageno int
+------------更新頁數<<Start>>------------
+declare @pageno_int int = 0
+declare @lastidno int
+declare @lastnoa nvarchar(50) = ''
+declare cursor_table cursor for
+	select idno,noa from @tmp order by idno
+open cursor_table
+fetch next from cursor_table
+into @idno,@noa
+while(@@FETCH_STATUS <> -1)
+begin
+	if((@recCount > @pageline) or (@noa != @lastnoa))
+	begin
+		if(@noa != @lastnoa)
+			set @noapageno = 1
+		else if((@recCount > @pageline))
+			set @noapageno = @noapageno + 1
+		set @pageno_int = @pageno_int+1
+		set @recCount = 1
+	end
+	update @tmp set pageno=@pageno_int,recno=@recCount,noapageno=@noapageno where idno=@idno
+	set @lastnoa = @noa
+	set @recCount = @recCount+1
+	fetch next from cursor_table
+	into @idno,@noa
+end
+close cursor_table
+deallocate cursor_table
+------------更新頁數<<End>>-------------
+------------插入空白行<<Start>>------------
+set @recCount = 0
+declare cursor_table cursor for
+	select pageno,noapageno,noa,max(recno) from @tmp where (gno='0') group by pageno,noapageno,noa
+open cursor_table
+fetch next from cursor_table
+into @pageno,@noapageno,@noa,@recCount
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@recCount<@pageline)
+	begin
+		while(@recCount<@pageline)
+		begin
+			set @recCount = @recCount+1
+			insert into @tmp(gno,noa,pageno,noapageno,recno)
+				values('1',@noa,@pageno,@noapageno,@recCount)
+		end
+	end
+	fetch next from cursor_table
+	into @pageno,@noapageno,@noa,@recCount
+end
+close cursor_table
+deallocate cursor_table
+------------插入空白行<<End>>-------------
+------------插入合計<<Start>>-------------
+insert into @tmp(gno,noa,pageno,noapageno,recno,amount,rackmount)
+	select
+		'2' gno,noa,pageno,noapageno,max(recno)+1,b.amount,b.rackmount
+	from @tmp a
+	outer apply(select sum(amount) amount,sum(rackmount) rackmount from @tmp where (gno='0') and (noa=a.noa)) b
+	group by noa,pageno,noapageno,b.amount,b.rackmount
+------------插入合計<<End>>-------------
+update a
+	set noatotpno = b.pageno
+from @tmp a
+outer apply(select max(noapageno) pageno from @tmp where a.noa=noa) b
+select
+	a.gno,a.idno,a.pageno,a.noapageno npno1,a.noatotpno npno2,a.recno,
+	a.tggno,a.tggs,a.cardealno,a.cardeals,a.carno,a.cngtype,a.datea,a.noa,
+	a.instoreno,a.instores,a.outstoreno,a.outstores,a.productno,a.products,
+	a.spec,a.unit,a.amount,a.rackmount,a.memo,
+	isnull(a.instoreno,'') + '→' + isnull(a.outstoreno,'') usestore
+from @tmp a
+order by a.pageno,a.gno,a.recno;
+----------------------------------------------------------------------------------------------------------*

@@ -1,0 +1,111 @@
+drv2vcce:--drv2vcce
+SET QUOTED_IDENTIFIER OFF
+declare @t_carno nvarchar(100)= case when '#non'=[1] then '' else [1] end --車號
+declare @t_driverno nvarchar(100)= case when '#non'=[2] then '' else [2] end --司機
+declare @t_ordenos nvarchar(100)= [3] --要轉派車的訂單號碼
+declare @vccekey nvarchar(100)= [4] --vcce的KEY
+declare @userno nvarchar(100)= [5] --製單人編號
+declare @woker nvarchar(100)= [6] --製單人名字
+declare @t_handle nvarchar(MAX)=[7]
+declare @t_handle2 nvarchar(MAX)=[8]
+
+declare @nowdate nvarchar(50) --今天日期
+set @nowdate=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+set @nowdate=left(@nowdate,3)+'/'+substring(@nowdate,4,2)+'/'+right(@nowdate,2)
+
+declare @nowtime nvarchar(50) --今天時間
+set @nowtime=left(CONVERT (time, GETDATE()),5)
+
+declare @vcceno nvarchar(100) --新派車單號碼
+set @vcceno=
+case when isnull((select MAX(noa) from view_vcce where datea=@nowdate),'') >= isnull((select MAX(noa) from dno where tablea='vcce' and noa like @vccekey+REPLACE(@nowdate,'/','')+'%'),'')
+then isnull((select MAX(noa) from view_vcce where datea=@nowdate),'') else (select MAX(noa) from dno where tablea='vcce' and noa like @vccekey+REPLACE(@nowdate,'/','')+'%') end
+set @vcceno=@vccekey+REPLACE(@nowdate,'/','')+right('000'+cast(cast(right(@vcceno,3) as int) +1 as nvarchar(50)),3)
+
+declare @accy nvarchar(50) = left(@nowdate,3) --年度
+declare @driver nvarchar(100)= (select top 1 namea from driver where noa=@t_driverno) --司機名稱
+--*********************************************************************************************
+declare @cmd nvarchar(max)
+IF OBJECT_ID('tempdb..#handle')is not null
+BEGIN
+	set @cmd = 'drop table #handle'
+	EXECUTE sp_executesql @cmd
+END
+IF OBJECT_ID('tempdb..#handle2')is not null
+BEGIN
+	set @cmd = 'drop table #handle2'
+	EXECUTE sp_executesql @cmd
+END
+
+create table #handle( 
+	noa nvarchar(50), 
+	handle nvarchar(30) 
+) 
+
+set @t_handle=REPLACE(@t_handle,'#non#','')
+
+while (CHARINDEX('#',@t_handle)>0)
+begin
+	insert #handle
+	select left(@t_handle,CHARINDEX('^',@t_handle)-1)
+	,SUBSTRING(left(@t_handle,CHARINDEX('#',@t_handle)-1),CHARINDEX('^',@t_handle)+1,len(@t_handle))
+	
+	set @t_handle=SUBSTRING(@t_handle,CHARINDEX('#',@t_handle)+1,LEN(@t_handle))
+end
+
+create table #handle2( 
+	noa nvarchar(50), 
+	handle nvarchar(30)
+) 
+set @t_handle2=REPLACE(@t_handle2,'#non#','')
+
+while (CHARINDEX('#',@t_handle2)>0)
+begin
+	insert #handle2
+	select left(@t_handle2,CHARINDEX('^',@t_handle2)-1)
+	,SUBSTRING(left(@t_handle2,CHARINDEX('#',@t_handle2)-1),CHARINDEX('^',@t_handle2)+1,len(@t_handle2))
+	
+	set @t_handle2=SUBSTRING(@t_handle2,CHARINDEX('#',@t_handle2)+1,LEN(@t_handle2))
+end
+--*********************************************************************************************
+if(len(@t_ordenos)>0)
+begin
+	exec("insert vcce"+@accy+" (noa,datea,timea,carno,driverno,driver,worker)
+	select '"+@vcceno+"','"+@nowdate+"','"+@nowtime+"','"+@t_carno+"','"+@t_driverno+"','"+@driver+"','"+@woker+"' ")
+
+	exec("insert vcces"+@accy+" (noa,noq,ordeno,custno,comp,datea,timea,odate,salesno,sales,worker,handle,handle2)
+	select '"+@vcceno+"',right('000'+cast(ROW_NUMBER() over(order by noa) as nvarchar(50)),3)
+	,noa,custno,comp,datea,timea,odate,salesno,sales,worker
+	,(select handle from #handle where noa=a.noa)
+	,(select handle from #handle2 where noa=a.noa)
+	from view_orde a where CHARINDEX(noa,'"+@t_ordenos+"')>0 ")
+
+	insert dno (tablea,noa,usera)
+	select 'vcce',@vcceno,@userno
+	
+end
+
+IF OBJECT_ID('tempdb..#handle')is not null
+BEGIN
+	set @cmd = 'drop table #handle'
+	EXECUTE sp_executesql @cmd
+END
+IF OBJECT_ID('tempdb..#handle2')is not null
+BEGIN
+	set @cmd = 'drop table #handle2'
+	EXECUTE sp_executesql @cmd
+END
+;
+------------------------------------------------------------------------------------------------------------------------------------------------
+ordeenda:--ordeenda
+SET QUOTED_IDENTIFIER OFF
+declare @t_ordeno nvarchar(100)= [1] --要結案的訂單號碼
+declare @accy nvarchar(50) = [2] --年度
+
+if(len(@t_ordeno)>0)
+begin
+	set @accy=(select top 1 accy from view_orde where noa=@t_ordeno)
+	exec(" update orde"+@accy+" set enda=1 where noa= '"+@t_ordeno+"'")
+	exec(" update ordes"+@accy+" set enda=1 where noa= '"+@t_ordeno+"'")
+end
+;

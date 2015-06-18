@@ -1,0 +1,168 @@
+z_uccefep1:--z_uccefep1
+declare @t_bnoa nvarchar(50)
+declare @t_enoa nvarchar(50)
+
+set @t_bnoa = case when '#non' = [5] then '' else [5] end
+set @t_enoa = case when '#non' = [6] then CHAR(255) else [6] end
+
+declare @tmp table(
+	gno nvarchar(1),
+	datea nvarchar(10),
+	noa nvarchar(30),
+	storeno nvarchar(30),
+	store nvarchar(30),
+	uno nvarchar(50),
+	productno nvarchar(30),
+	products nvarchar(90),
+	unit nvarchar(50),
+	emount2 float, ----帳面數量
+	eweight2 float, ----帳面重量
+	mount float, -----盤點數量
+	weight float, -----盤點數量
+	dmount float, --差異數量
+	dweight float,--差異重量
+	memo nvarchar(max),
+	amemo nvarchar(max),
+	worker nvarchar(50)
+)
+
+insert into @tmp
+	select
+		'0',a.datea,a.noa,b.storeno,b.store,b.uno,b.productno,b.product,b.unit,b.emount2,b.eweight2,isnull(b.mount,0),isnull(b.weight,0),0,0,b.memo
+		,a.memo,a.worker
+	from view_ucce a
+	left join view_ucces b on a.noa = b.noa
+	where (a.noa between @t_bnoa and @t_enoa) 
+			 
+update @tmp set dmount = emount2-mount,dweight=eweight2-weight
+
+insert into @tmp(gno,noa,mount,weight,amemo,worker)
+	select '1',noa,sum(mount),sum(weight),MAX(amemo),MAX(worker) from @tmp group by noa
+	
+select
+	gno,datea,noa,dbo.charbr(store,18) store,uno,productno,dbo.charbr(products,28) products,unit,amemo,worker
+	,dbo.getComma(emount2,[2])  emount2
+	,dbo.getComma(eweight2,[3])  eweight2
+	,dbo.getComma(mount,[2])  mount
+	,dbo.getComma(weight,[3])  weight
+	,dbo.getComma(dmount,[2])  dmount
+	,dbo.getComma(dweight,[3])  dweight
+	,dbo.charbr(memo,22) memo
+from @tmp order by noa,gno,storeno;
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+z_uccefep2:--z_uccefep2
+declare @t_stkdate nvarchar(50)
+declare @t_uccedate nvarchar(50)
+declare @t_show nvarchar(50)
+
+set @t_stkdate = case when '#non' = [7] then '' else [7] end
+set @t_uccedate = case when '#non' = [8] then '' else [8] end
+set @t_show = case when '#non' = [9] then '' else [9] end
+--------------------------------------------------------------------------------------------
+declare @stktmp table(
+	productno nvarchar(50),
+	mount float, -----庫存數量
+	weight float -----庫存數量
+)
+
+insert @stktmp
+select productno,SUM(mount),SUM(weight) from stkucc(@t_stkdate,'','')
+group by productno 
+
+declare @tmp table(
+	gno nvarchar(1),
+	productno nvarchar(30),
+	products nvarchar(90),
+	unit nvarchar(50),
+	mount float, -----盤點數量
+	weight float, -----盤點數量
+	emount float, ----帳面數量
+	eweight float, ----帳面重量
+	dmount float, --差異數量
+	dweight float,--差異重量
+	money float,--金額
+	umoney float,--盤點金額
+	smoney1 float,--庫存金額(盤點日)
+	smoney2 float,--庫存金額(庫存日),
+	sprice1 float,--盤點成本
+	sprice2 float--庫存成本
+)
+
+insert @tmp(gno,productno,products,unit,mount,weight,emount,eweight)
+select '0',b.productno,MAX(b.product),MAX(b.unit),sum(b.mount),sum(b.weight)
+,isnull(c.mount,0),isnull(c.weight,0)
+from view_ucce a left join view_ucces b on a.noa=b.noa
+outer apply (select * from @stktmp where b.productno=productno)c
+where a.datea=@t_uccedate group by b.productno,c.mount,c.weight
+
+insert @tmp(gno,productno,products,unit,mount,weight,emount,eweight)
+select '0',productno,product,unit,0,0,mount,weight
+from @stktmp a left join ucc b on a.productno=b.noa
+where productno not in (select productno from @tmp)
+
+update a
+set unit=isnull(b.unit,'')
+from @tmp a left join ucc b on a.productno=b.noa
+where isnull(a.unit,'')=''
+
+declare @spricetmp1 table(
+	productno nvarchar(50),
+	sprice float
+)
+
+declare @spricetmp2 table(
+	productno nvarchar(50),
+	sprice float
+)
+
+insert @spricetmp1 
+select productno,sprice from uccps where productno+'_'+datea+'_'+noq in (select productno+'_'+MAX(datea+'_'+noq) from uccps where datea<=@t_uccedate group by productno) 
+insert @spricetmp2 
+select productno,sprice from uccps where productno+'_'+datea+'_'+noq in (select productno+'_'+MAX(datea+'_'+noq) from uccps where datea<=@t_stkdate group by productno)
+ 
+update a
+set dmount=mount-emount,dweight=weight-eweight
+,sprice1=isnull((select sprice from @spricetmp1 where a.productno=productno),0)--盤點
+,sprice2=isnull((select sprice from @spricetmp2 where a.productno=productno),0)--庫存
+from @tmp a 
+
+update @tmp
+set umoney=(case when UPPER(unit)='KG' then weight else mount end)*sprice1
+,smoney1=(case when UPPER(unit)='KG' then eweight else emount end)*sprice1
+,smoney2=(case when UPPER(unit)='KG' then eweight else emount end)*sprice2
+
+update @tmp set money=umoney-smoney1
+
+if(CHARINDEX('1',@t_show)=0 and CHARINDEX('2',@t_show)>0)
+begin
+	delete @tmp where (case when UPPER(unit)='KG' then dweight else dmount end)>=0
+end
+
+if(CHARINDEX('1',@t_show)>0 and CHARINDEX('2',@t_show)=0)
+begin
+	delete @tmp where (case when UPPER(unit)='KG' then dweight else dmount end)<=0
+end
+
+if(CHARINDEX('1',@t_show)=0 and CHARINDEX('2',@t_show)=0)
+begin
+	delete @tmp where (case when UPPER(unit)='KG' then dweight else dmount end)!=0
+end
+
+insert @tmp(gno,mount,weight,emount,eweight,dmount,dweight,money,umoney,smoney1,smoney2)
+select '1',sum(mount),sum(weight),sum(emount),sum(eweight),sum(dmount),sum(dweight),sum(money),sum(umoney),sum(smoney1),sum(smoney2) 
+from @tmp
+
+
+select
+dbo.getComma(mount,[2])  mount,
+dbo.getComma(weight,[3])  weight,
+dbo.getComma(emount,[2])  emount,
+dbo.getComma(eweight,[3])  eweight,
+dbo.getComma(dmount,[2])  dmount,
+dbo.getComma(dweight,[3])  dweight,
+dbo.getComma(money,0)  money,
+dbo.getComma(umoney,0)  umoney,
+dbo.getComma(smoney1,0)  smoney1,
+dbo.getComma(smoney2,0)  smoney2,
+*
+from @tmp order by gno,productno;

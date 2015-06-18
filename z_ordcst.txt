@@ -1,0 +1,557 @@
+﻿z_ordcst1:--z_ordcst1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(2)
+declare @t_enda nvarchar(2)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
+
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
+
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		no2 nvarchar(15),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		tggno nvarchar(30),
+		comp nvarchar(90),
+		pno nvarchar(30),
+		pname nvarchar(90),
+		spec nvarchar(40),
+		csize nvarchar(max),
+		pmount float,
+		pweight float,
+		price float,
+		ptotal float,
+		e nvarchar(10),
+		a nvarchar(10),
+		qhref nvarchar(max),
+	
+		rc2accy nvarchar(20),
+		rc2no nvarchar(20),
+		rc2noq nvarchar(20),
+		rc2date nvarchar(20),
+		rc2productno nvarchar(20),
+		rc2product nvarchar(50),
+		rc2mount float,
+		rc2weight float,
+		rc2size nvarchar(max),
+		rc2memo nvarchar(max)
+	)
+	insert into @tmp(gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,pmount,pweight
+		,price,ptotal,e,a,qhref)
+	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg,
+		   b.productno pno,b.product pname,b.spec,
+		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
+		   'ordcst'+b.accy
+	from view_ordcs b
+	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
+	where 
+	      (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	      (len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
+	order by a.odate,gno,a.noa,b.no2
+	update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+	update @tmp set csize = replace(csize,'~#$','''')
+	if(len(@detail)>0)
+	begin
+		--進貨明細
+		insert into @tmp(gno,noa,no2,odate
+			,rc2accy,rc2no,rc2noq,rc2date,rc2productno,rc2product,rc2mount,rc2weight,rc2size,rc2memo)
+		select '1',a.noa,a.no2,a.odate
+			,b.accy,b.noa,b.noq,b.datea,b.productno,b.product,b.mount,b.[weight],b.size,b.memo
+		from @tmp a
+		left join view_rc2s b on a.noa = b.ordeno and a.no2 = b.no2 
+		where b.noa is not null
+	end
+	--小計
+	insert into @tmp(gno,odate,noa,no2,pmount,pweight,ptotal)
+		select '2',left(odate,6),CHAR(255),CHAR(255),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0' group by left(odate,6)
+	insert into @tmp(gno,odate,noa,no2,pmount,pweight,ptotal)
+		select '3',char(255),CHAR(255),CHAR(255),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0'
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	
+	select
+		gno,noa,no2,datea,odate,tggno,left(comp,4) comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,pmount,pweight,price,ptotal,e,a,
+		row_number()over(partition by left(odate,6) order by left(odate,6),noa,no2,gno) idno,qhref
+		,rc2no rc2noa
+		,rc2noq
+		,rc2date
+		,dbo.getComma( rc2weight,1) rc2weight
+		,dbo.getComma( rc2mount,1) rc2mount
+		,rc2size
+	from @tmp order by left(odate,6),noa,no2,gno;
+--****************************************************************************************************
+z_ordcst2a:--z_ordcst2a
+--鋼捲  重量差10%以內當結案
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(1)
+declare @t_enda nvarchar(1)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
+
+declare @tmp table(
+	gno nvarchar(1),
+	kind nvarchar(15),
+	noa nvarchar(30),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	odate nvarchar(10),
+	tggno nvarchar(30),
+	comp nvarchar(90),
+	pno nvarchar(30),
+	pname nvarchar(90),
+	spec nvarchar(40),
+	size nvarchar(max),
+	pmount float,
+	pweight float,
+	price float,
+	ptotal float,
+	e nvarchar(10),
+	a nvarchar(10),
+	notva float,
+	notvb float,
+	noptotal float,
+	qhref nvarchar(max),
+	
+	rc2accy nvarchar(20),
+	rc2no nvarchar(20),
+	rc2noq nvarchar(20),
+	rc2date nvarchar(20),
+	rc2productno nvarchar(20),
+	rc2product nvarchar(50),
+	rc2mount float,
+	rc2weight float,
+	rc2size nvarchar(max),
+	rc2memo nvarchar(max)
+)	
+insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,pmount,pweight
+	,price,ptotal,e,a,notva,notvb,noptotal,qhref)
+	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
+			b.spec,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+			b.mount pmount, b.weight pweight, b.price,b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
+			case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
+			case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
+			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
+				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
+			'ordcst'+b.accy
+	from view_ordcs b
+	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
+	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
+	outer apply(select sum(bccins.mount) mount,0 weight from bccins bccins where (bccins.ordcno=b.noa) and (b.no2=bccins.no2)) d
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	     -- (len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
+	order by a.tggno,gno,a.noa,b.no2
+	
+	update @tmp set e = case when e='1' then '1' when kind='A1' and notvb<=pweight*0.1 then '1' else '0' end  
+	delete @tmp where not((len(@t_enda)=0 or @t_enda=e))
+	update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+	update @tmp set size = replace(size,'~#$','''')
+	update @tmp set notva=0 where (notva<=0)
+	update @tmp set notvb=0 where (notvb<=0)
+	----------------------------------------------------------------------------------------------------------
+	if(len(@detail)>0)
+	begin
+		--進貨明細
+		insert into @tmp(tggno,comp,gno,odate,noa,no2
+			,rc2accy,rc2no,rc2noq,rc2date,rc2productno,rc2product,rc2mount,rc2weight,rc2size,rc2memo)
+		select a.tggno,a.comp,'1',a.odate,a.noa,a.no2
+			,b.accy,b.noa,b.noq,b.datea,b.productno,b.product,b.mount,b.[weight],b.size,b.memo
+		from @tmp a
+		left join view_rc2s b on a.noa = b.ordeno and a.no2 = b.no2 
+		where b.noa is not null
+	end
+	--小計
+	insert into @tmp(gno,noa,tggno,comp,pmount,pweight,ptotal,noptotal,notva,notvb)
+	select '2',CHAR(255),tggno,comp,sum(pmount),sum(pweight),sum(ptotal),sum(noptotal),sum(notva),sum(notvb) 
+	from @tmp where gno='0' group by tggno,comp
+
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	select
+		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,size,
+		dbo.getComma( pmount,0) pmount,
+		dbo.getComma( pweight,0) pweight,
+		dbo.getComma( price,-1) price,
+		dbo.getComma( ptotal,0) ptotal,e,a,
+		dbo.getComma( notva,0) notva,
+		dbo.getComma( notvb,0) notvb,
+		dbo.getComma( noptotal,0) noptotal,
+		row_number()over(partition by tggno,comp order by tggno,comp,noa,no2,odate,gno) idno,qhref
+		,rc2no rc2noa
+		,rc2noq
+		,rc2date
+		,dbo.getComma( rc2weight,0) rc2weight
+		,dbo.getComma( rc2mount,0) rc2mount
+		,rc2size
+	from @tmp order by tggno,comp,noa,no2,odate,gno;
+--****************************************************************************************************
+z_ordcst2b:--z_ordcst2b
+--鋼捲  重量差10%以內當結案
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(30)
+declare @t_etggno nvarchar(30)
+declare @t_bsalesno nvarchar(30)
+declare @t_esalesno nvarchar(30)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(1)
+declare @t_enda nvarchar(1)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
+	declare @tmp table(
+		gno nvarchar(1),
+		kind nvarchar(15),
+		noa nvarchar(30),
+		no2 nvarchar(10),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		tggno nvarchar(30),
+		comp nvarchar(90),
+		pno nvarchar(30),
+		pname nvarchar(40),
+		spec nvarchar(40),
+		csize nvarchar(max),
+		pmount float,
+		pweight float,
+		price float,
+		ptotal float,
+		e nvarchar(10),
+		a nvarchar(10),
+		notva float,
+		notvb float,
+		noptotal float,
+		qhref nvarchar(max),
+		
+		rc2accy nvarchar(20),
+		rc2no nvarchar(20),
+		rc2noq nvarchar(20),
+		rc2date nvarchar(20),
+		rc2productno nvarchar(20),
+		rc2product nvarchar(50),
+		rc2mount float,
+		rc2weight float,
+		rc2size nvarchar(max),
+		rc2memo nvarchar(max)
+	)	
+	insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,pmount,pweight
+		,price,ptotal,e,a,notva,notvb,noptotal,qhref)
+	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, left(a.tgg,4), b.productno pno,b.product pname,
+			b.spec,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+			b.mount pmount, b.weight pweight,
+			b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
+		    case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
+		    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
+			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
+				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
+			'ordcst'+b.accy
+	from view_ordcs b
+	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
+	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
+	outer apply(select sum(bccins.mount) mount,0 weight from bccins bccins where (bccins.ordcno=b.noa) and (b.no2=bccins.no2)) d
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	     -- (len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
+	order by pno,gno,a.tggno,a.noa,b.no2
+	
+	update @tmp set e = case when e='1' then '1' when kind='A1' and notvb<=pweight*0.1 then '1' else '0' end  
+	delete @tmp where not((len(@t_enda)=0 or @t_enda=e))
+	update @tmp set csize = replace(csize,'~#$','''')
+	update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+	update @tmp set notva=0 where (notva<=0)
+	update @tmp set notvb=0 where (notvb<=0)
+
+	if(len(@detail)>0)
+	begin
+		--進貨明細
+		insert into @tmp(pno,pname,gno,odate,noa,no2
+			,rc2accy,rc2no,rc2noq,rc2date,rc2productno,rc2product,rc2mount,rc2weight,rc2size,rc2memo)
+		select a.pno,a.pname,'1',a.odate,a.noa,a.no2
+			,b.accy,b.noa,b.noq,b.datea,b.productno,b.product,b.mount,b.[weight],b.size,b.memo
+		from @tmp a
+		left join view_rc2s b on a.noa = b.ordeno and a.no2 = b.no2 
+		where b.noa is not null
+	end
+	--小計
+	insert into @tmp(gno,pno,pname,pmount,pweight,ptotal,notva,notvb,noptotal)
+	select '2',pno,pname,sum(pmount),sum(pweight),sum(ptotal),sum(notva),sum(notvb),sum(noptotal) 
+	from @tmp 
+	where gno='0'
+	group by pno,pname
+	
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+	select
+		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,
+		dbo.getComma( pmount,0) pmount,
+		dbo.getComma( pweight,0) pweight,
+		dbo.getComma( price,-1) price,
+		dbo.getComma( ptotal,0) ptotal,e,a,
+		dbo.getComma( notva,0) notva,
+		dbo.getComma( notvb,0) notvb,
+		dbo.getComma( noptotal,0) noptotal,
+		row_number()over(partition by pno,pname order by pno,pname,odate,noa,no2,gno) idno,qhref
+		,rc2no rc2noa
+		,rc2noq
+		,rc2date
+		,dbo.getComma( rc2weight,0) rc2weight
+		,dbo.getComma( rc2mount,0) rc2mount
+		,rc2size
+	from @tmp order by pno,pname,odate,noa,no2,gno;
+--****************************************************************************************************
+z_ordcst2c:--z_ordcst2c
+--鋼捲  重量差10%以內當結案
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_btggno nvarchar(30)
+declare @t_etggno nvarchar(30)
+declare @t_bsalesno nvarchar(30)
+declare @t_esalesno nvarchar(30)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_kind nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_isproj nvarchar(1)
+declare @t_enda nvarchar(1)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdime = case when '#non'=[16] then 0.000 else cast([16] as float) end
+set @t_edime = case when '#non'=[17] then 999.990 else cast([17] as float) end
+set @t_bwidth = case when '#non'=[18] then 0.00 else cast([18] as float)end
+set @t_ewidth = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_blengthb = case when '#non'=[20] then 0.0 else cast([20] as float) end
+set @t_elengthb = case when '#non'=[21] then 99999.9 else cast([21] as float) end
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_btggno = case when '#non'=[6] then '' else [6] end
+set @t_etggno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_kind = case when '#non'=[12] then '' when '全部'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' when '全部'=[13] then '' else [13] end
+set @t_isproj = case when '#non'=[14] then '' when 'Y'=[14] then '1' when 'N'=[14] then '0' end
+set @t_enda = case when '#non'=[15] then '' when '全部'=[15] then '' else [15] end
+declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
+
+declare @tmp table(
+		gno nvarchar(1),
+		kind nvarchar(15),
+		noa nvarchar(15),
+		no2 nvarchar(3),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		tggno nvarchar(30),
+		comp nvarchar(90),
+		pno nvarchar(30),
+		pname nvarchar(90),
+		spec nvarchar(40),
+		csize nvarchar(max),
+		pmount float,
+		pweight float,
+		price float,
+		ptotal float,
+		e nvarchar(10),
+		a nvarchar(10),
+		notva float,
+		notvb float,
+		noptotal float,
+		qhref nvarchar(max),
+		
+		rc2accy nvarchar(20),
+		rc2no nvarchar(20),
+		rc2noq nvarchar(20),
+		rc2date nvarchar(20),
+		rc2productno nvarchar(20),
+		rc2product nvarchar(50),
+		rc2mount float,
+		rc2weight float,
+		rc2size nvarchar(max),
+		rc2memo nvarchar(max)
+	)	
+	insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,pmount,pweight
+		,price,ptotal,e,a,notva,notvb,noptotal,qhref)
+	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname,
+			b.spec,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
+			b.mount, b.weight,b.price,
+			b.total, a.enda, (case when a.isproj='1' then 'Y' else 'N' end), 
+	 	    case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) else (b.mount-isnull(c.mount,0)) end notva,
+	  	    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
+			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
+				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
+			'ordcst'+b.accy
+	from view_ordcs b
+	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
+	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
+	outer apply(select sum(bccins.mount) mount,0 weight from bccins bccins where (bccins.ordcno=b.noa) and (b.no2=bccins.no2)) d
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.tggno between @t_btggno and @t_etggno) and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_kind)=0 or @t_kind=a.kind) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_isproj)=0 or @t_isproj=a.isproj) and
+	      --(len(@t_enda)=0 or @t_enda=a.enda) and
+		  (b.width between @t_bwidth and @t_ewidth) and (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) 
+	order by a.noa,gno,b.no2
+	
+	update @tmp set e = case when e='1' then '1' when kind='A1' and notvb<=pweight*0.1 then '1' else '0' end  
+	delete @tmp where not((len(@t_enda)=0 or @t_enda=e))
+	update @tmp set e = (case when e='1' then 'Y' else 'N' end)
+	update @tmp set csize = replace(csize,'~#$','''')
+	update @tmp set notva=0 where (notva<=0)
+	update @tmp set notvb=0 where (notvb<=0)
+	if(len(@detail)>0)
+	begin
+		--進貨明細
+		insert into @tmp(noa,no2,datea,gno
+			,rc2accy,rc2no,rc2noq,rc2date,rc2productno,rc2product,rc2mount,rc2weight,rc2size,rc2memo)
+		select a.noa,a.no2,a.datea,'1'
+			,b.accy,b.noa,b.noq,b.datea,b.productno,b.product,b.mount,b.[weight],b.size,b.memo
+		from @tmp a
+		left join view_rc2s b on a.noa = b.ordeno and a.no2 = b.no2 
+		where b.noa is not null
+	end
+	--小計
+	insert into @tmp(gno,datea,noa,no2,pmount,pweight,notva,notvb,noptotal)
+		select '2',CHAR(255),noa,CHAR(255),sum(pmount),sum(pweight),sum(notva),sum(notvb),sum(noptotal) from @tmp where gno='0' group by noa
+	insert into @tmp(gno,datea,noa,no2,pmount,pweight,notva,notvb,noptotal)
+		select '3',CHAR(255),null,CHAR(255),sum(pmount),sum(pweight),sum(notva),sum(notvb),sum(noptotal) from @tmp where gno='0'
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	select
+		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,
+		dbo.getComma( pmount,0) pmount,
+		dbo.getComma( pweight,0) pweight,
+		dbo.getComma( price,-1) price,
+		dbo.getComma( ptotal,0) ptotal,e,a,
+		dbo.getComma( notva,0) notva,
+		dbo.getComma( notvb,0) notvb,
+		dbo.getComma( noptotal,0) noptotal,
+		row_number()over(partition by noa order by noa desc,no2,datea,gno) idno,qhref
+		,rc2no rc2noa
+		,rc2noq
+		,rc2date
+		,dbo.getComma( rc2weight,0) rc2weight
+		,dbo.getComma( rc2mount,0) rc2mount
+		,rc2size
+	from @tmp order by noa desc,no2,datea,gno;

@@ -1,0 +1,673 @@
+z_bccoutst1:--z_bccoutst1
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bbccno = case when '#non'=[6] then '' else [6] end
+	set @t_ebccno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsssno = case when '#non'=[8] then '' else [8] end
+	set @t_esssno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+	declare @result table( 
+			gno nvarchar(1), 
+			storeno nvarchar(20), 
+			store nvarchar(50), 
+			bccno nvarchar(20), 
+			bccname nvarchar(50), 
+			sno nvarchar(20), 
+			sname nvarchar(50), 
+			datea nvarchar(10), 
+			noa nvarchar(30), 
+			mount float, 
+			bkbcc float, 
+			orgbcc float, 
+			memo nvarchar (200),
+			moneys float 
+	) 
+	insert into @result 
+	SELECT '0' gno,b.storeno,c.store,b.bccno,b.bccname,a.sno,a.sname,a.datea,b.noa,b.mount,b.bkbcc
+			,b.mount-b.bkbcc orgbcc,b.memo,(d.total*b.mount)
+	from bccout a 
+	left join bccouts b on a.noa=b.noa 
+	left join store c on b.storeno=c.noa 
+	left join bcc d on d.noa = b.bccno
+	where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno) and
+ 		  (a.sno between @t_bsssno and @t_esssno) and (len(@t_storeno)=0 or b.storeno=@t_storeno) 
+	order by b.storeno,b.bccno 
+
+	insert into @result 
+	select '1' gno,storeno,'',bccno,'','','','','',sum(mount),sum(bkbcc),sum(orgbcc),'',SUM(moneys) from @result 
+			group by storeno,bccno 
+
+	select gno,storeno,store,bccno,bccname,sno,sname,datea,noa,mount,
+		   bkbcc,orgbcc,memo,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,moneys),1)),4,12)) moneys
+	from @result order by storeno,bccno,gno,datea desc,sno ;
+--*********************************************************************************************
+z_bccoutst2:--z_bccoutst2
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bbccno = case when '#non'=[6] then '' else [6] end
+	set @t_ebccno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsssno = case when '#non'=[8] then '' else [8] end
+	set @t_esssno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+	declare @result table( 
+			gno nvarchar(1), 
+			storeno nvarchar(20), 
+			store nvarchar(50), 
+			bccno nvarchar(20), 
+			bccname nvarchar(50), 
+			sno nvarchar(20), 
+			sname nvarchar(50), 
+			datea nvarchar(10), 
+			noa nvarchar(30), 
+			mount float, 
+			bkbcc float, 
+			orgbcc float, 
+			memo nvarchar (200),
+			moneys float 
+		) 
+	insert into @result 
+	SELECT '0' gno,b.storeno,c.store,b.bccno,b.bccname,a.sno,a.sname,a.datea,b.noa,b.mount,b.bkbcc,b.mount-b.bkbcc orgbcc,b.memo,(d.total*b.mount)
+	from bccout a left join bccouts b on a.noa=b.noa left join store c on b.storeno=c.noa left join bcc d on d.noa = b.bccno
+	where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno) and (a.sno between @t_bsssno and @t_esssno) and (len(@t_storeno)=0 or b.storeno=@t_storeno) 
+	order by b.storeno,a.sno 
+------------------------------------------------------------------------------------------------------	
+	insert into @result 
+	select '1' gno,'','','','',sno,'','','',sum(mount),sum(bkbcc),sum(orgbcc),'',SUM(moneys) from @result 
+	group by sno 
+
+	select gno,storeno,store,bccno,bccname,sno,sname,datea,noa,mount,
+	bkbcc,orgbcc,memo,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,moneys),1)),4,12)) moneys
+	from @result order by sno,gno,storeno,bccno;
+--**************************************************************************************
+z_bccoutst3:--z_bccoutst3
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bbccno = case when '#non'=[6] then '' else [6] end
+	set @t_ebccno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsssno = case when '#non'=[8] then '' else [8] end
+	set @t_esssno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+--*****************************************************************************************	
+declare @result table( 
+			gno nvarchar(1), 
+			pno nvarchar(20), 
+			part nvarchar(50), 
+			storeno nvarchar(20), 
+			store nvarchar(50), 
+			bccno nvarchar(20), 
+			bccname nvarchar(50), 
+			sno nvarchar(20), 
+			sname nvarchar(50), 
+			datea nvarchar(10), 
+			noa nvarchar(30), 
+			mount float, 
+			bkbcc float, 
+			orgbcc float, 
+			memo nvarchar (200),
+			moneys float 
+	) 
+	insert into @result 
+	SELECT '0' gno,a.partno,a.part,b.storeno,c.store,b.bccno,b.bccname,a.sno,a.sname,a.datea,b.noa,b.mount,b.bkbcc,b.mount-b.bkbcc orgbcc,b.memo,d.total*b.mount 
+	from bccout a 
+	left join bccouts b on a.noa=b.noa 
+	left join store c on b.storeno=c.noa
+	left join bcc d on d.noa = b.bccno 
+	where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno) and (a.sno between @t_bsssno and @t_esssno)and (len(@t_storeno)=0 or b.storeno=@t_storeno) 
+	order by a.partno 
+------------------------------------------------------------------------------------------------------	
+	insert into @result 
+	select '1' gno,pno,'','','','','','','','','',sum(mount),sum(bkbcc),sum(orgbcc),'',SUM(moneys) from @result 
+	group by pno 
+
+	select gno,pno,part,storeno,store,bccno,bccname,sno,sname,datea,noa,mount,bkbcc,orgbcc,memo,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,moneys),1)),4,12))moneys
+	from @result order by pno,gno,storeno,bccno;
+
+--*********************************************************************************************
+z_bccoutst4:--z_bccoutst4
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bbccno = case when '#non'=[6] then '' else [6] end
+	set @t_ebccno = case when '#non'=[7] then char(255) else [7] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+declare @t_result table(
+		gno nvarchar(1),
+		bccno nvarchar(20),
+		datea nvarchar(10),
+		bccname nvarchar(50),	
+		mount decimal (14,2),
+		bkbcc decimal (14,2),
+		store nvarchar(20)
+)
+insert into @t_result 
+select '0' gno ,b.bccno,a.datea,b.bccname,b.mount,b.mount-b.bkbcc ,c.store
+from bccout a left join bccouts b on a.noa=b.noa
+left join store c on b.storeno = c.noa
+left join bcc d on b.bccno=d.noa 
+where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno) and (len(@t_storeno)=0 or b.storeno = @t_storeno)
+order by b.bccno,a.datea
+
+insert into @t_result
+select '1' gno,bccno,'','',SUM(mount),SUM(bkbcc),''
+from @t_result
+group by bccno
+
+declare @result table(
+		gno nvarchar(1),
+		bccno nvarchar(20),
+		datea nvarchar(10),
+		bccname nvarchar(50),	
+		mount decimal (14,2),
+		bkbcc decimal (14,2),
+		store nvarchar(20)
+)
+
+insert into @result
+select * from @t_result order by bccno,gno
+
+declare @gno nvarchar(20)
+declare @bccno nvarchar(20)
+declare @t_bccno nvarchar(20)
+
+declare bcc_table cursor for
+select gno,bccno from @result
+open bcc_table
+fetch next from bcc_table
+into @gno,@bccno
+while(@@FETCH_STATUS <> -1)
+begin
+
+	if(@t_bccno=@bccno and @gno=0)
+	Begin
+		update @result 
+		set bccname='',bccno=''
+		where current of bcc_table
+	End
+	
+	SET @t_bccno=@bccno
+	fetch next from bcc_table
+	into @gno,@bccno
+
+end
+close bcc_table
+deallocate bcc_table
+
+select * from @result;
+
+--***************************************************************
+z_bccoutst5:--z_bccoutst5
+	declare @t_xyear nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_bsssno nvarchar(20)
+	declare @t_esssno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_xyear = case when '#non'=[3] then '' else [3] end
+	set @t_bbccno = case when '#non'=[6] then '' else [6] end
+	set @t_ebccno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsssno = case when '#non'=[8] then '' else [8] end
+	set @t_esssno = case when '#non'=[9] then char(255) else [9] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+declare @t_result table(
+		storeno nvarchar(20),
+		store nvarchar(20),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		sssno nvarchar(20),
+		sssname nvarchar(50),
+		mount decimal (10,2),
+		bkbcc decimal (10,2),
+		datea nvarchar(10)
+)
+insert into @t_result 
+select a.storeno,c.store,b.bccno,b.bccname,a.sno,a.sname,b.mount,b.bkbcc,left(a.datea,6) datea 
+from bccout a left join bccouts b on a.noa=b.noa
+left join store c on a.storeno=c.noa 
+where (left(a.datea,3)=@t_xyear) and (b.bccno between @t_bbccno and @t_ebccno) and (a.sno between @t_bsssno and @t_esssno)
+and (len(@t_storeno)=0 or a.storeno=@t_storeno) 
+order by a.storeno,b.bccno 
+
+declare @result table(
+		gno nvarchar(1),
+		storeno nvarchar(20),
+		store nvarchar(20),
+		bccno nvarchar(20),
+		bccname nvarchar(50),
+		sssno nvarchar(20),
+		sssname nvarchar(50),
+		Jan_mount decimal (10,2),
+		Jan_bkbcc decimal (10,2),
+		Feb_mount decimal (10,2),
+		Feb_bkbcc decimal (10,2),
+		Mar_mount decimal (10,2),
+		Mar_bkbcc decimal (10,2),
+		Apr_mount decimal (10,2),
+		Apr_bkbcc decimal (10,2),
+		May_mount decimal (10,2),
+		May_bkbcc decimal (10,2),
+		Jun_mount decimal (10,2),
+		Jun_bkbcc decimal (10,2),
+		Jul_mount decimal (10,2),
+		Jul_bkbcc decimal (10,2),
+		Aug_mount decimal (10,2),
+		Aug_bkbcc decimal (10,2),
+		Sep_mount decimal (10,2),
+		Sep_bkbcc decimal (10,2),
+		Oct_mount decimal (10,2),
+		Oct_bkbcc decimal (10,2),
+		Nov_mount decimal (10,2),
+		Nov_bkbcc decimal (10,2),
+		Dec_mount decimal (10,2),
+		Dec_bkbcc decimal (10,2),
+		total decimal (14,2)
+)
+declare	@gno nvarchar(1)
+declare	@storeno nvarchar(20)
+declare	@store nvarchar(20)
+declare	@bccno nvarchar(20)
+declare	@bccname nvarchar(50)
+declare	@sssno nvarchar(20)
+declare	@sssname nvarchar(50)
+declare	@mount decimal (10,2)
+declare	@bkbcc decimal (10,2)
+declare	@datea nvarchar(10)
+declare	@t_bccno nvarchar(20)
+declare	@t_sssno nvarchar(20)
+declare	@x_storeno nvarchar(20)
+set @t_bccno = '#xxxx#xxxx'
+set @t_sssno = '#xxxx#xxxx'
+set @x_storeno = '#xxxx#xxxx'
+
+declare bcc_table cursor for
+select storeno,store,bccno,bccname,sssno,sssname,mount,bkbcc,datea from @t_result
+open bcc_table
+fetch next from bcc_table
+into @storeno,@store,@bccno,@bccname,@sssno,@sssname,@mount,@bkbcc,@datea
+while(@@FETCH_STATUS <> -1)
+begin
+	if((select COUNT(*) from @result where bccno=@bccno and  sssno=@sssno and storeno=@storeno)=0)
+	begin
+		if(RIGHT(@datea,2)='01')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,@mount,@bkbcc,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='02')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,@mount,@bkbcc,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='03')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,@mount,@bkbcc,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='04')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,@mount,@bkbcc,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='05')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,@mount,@bkbcc,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='06')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,0,0,@mount,@bkbcc,0,0,0,0,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='07')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,0,0,0,0,@mount,@bkbcc,0,0,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='08')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,0,0,0,0,0,0,@mount,@bkbcc,0,0,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='09')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,@mount,@bkbcc,0,0,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='10')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,@mount,@bkbcc,0,0,0,0,0
+		end
+		else if(RIGHT(@datea,2)='11')
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,@mount,@bkbcc,0,0,0
+		end
+		else
+		begin
+			insert into @result
+			select '0',@storeno,@store,@bccno,@bccname,@sssno,@sssname,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,@mount,@bkbcc,0
+		end	
+	end
+	else
+	begin
+		if(RIGHT(@datea,2)='01')
+		begin
+			update @result 
+			set Jan_mount=isnull(Jan_mount,0)+@mount,Jan_bkbcc=isnull(Jan_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='02')
+		begin
+			update @result 
+			set Feb_mount=isnull(Feb_mount,0)+@mount,Feb_bkbcc=isnull(Feb_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='03')
+		begin
+			update @result 
+			set Mar_mount=isnull(Mar_mount,0)+@mount,Mar_bkbcc=isnull(Mar_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='04')
+		begin
+			update @result 
+			set Apr_mount=isnull(Apr_mount,0)+@mount,Apr_bkbcc=isnull(Apr_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='05')
+		begin
+			update @result 
+			set May_mount=isnull(May_mount,0)+@mount,May_bkbcc=isnull(May_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='06')
+		begin
+			update @result 
+			set Jun_mount=isnull(Jun_mount,0)+@mount,Jun_bkbcc=isnull(Jun_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='07')
+		begin
+			update @result 
+			set Jul_mount=isnull(Jul_mount,0)+@mount,Jul_bkbcc=isnull(Jul_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='08')
+		begin
+			update @result 
+			set Aug_mount=isnull(Aug_mount,0)+@mount,Aug_bkbcc=isnull(Aug_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='09')
+		begin
+			update @result 
+			set Sep_mount=isnull(Sep_mount,0)+@mount,Sep_bkbcc=isnull(Sep_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='10')
+		begin
+			update @result 
+			set Oct_mount=isnull(Oct_mount,0)+@mount,Oct_bkbcc=isnull(Oct_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else if(RIGHT(@datea,2)='11')
+		begin
+			update @result 
+			set Nov_mount=isnull(Nov_mount,0)+@mount,Nov_bkbcc=isnull(Nov_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+		else
+		begin
+			update @result 
+			set Dec_mount=isnull(Dec_mount,0)+@mount,Dec_bkbcc=isnull(Dec_bkbcc,0)+@bkbcc
+			where bccno=@bccno and @sssno=sssno and storeno=@storeno
+		end
+	
+	end
+	set @t_sssno = @sssno
+	set @t_bccno = @bccno
+	set @x_storeno = @storeno
+	fetch next from bcc_table
+	into @storeno,@store,@bccno,@bccname,@sssno,@sssname,@mount,@bkbcc,@datea
+end
+close bcc_table
+deallocate bcc_table
+
+--計算小計
+insert into @result
+select '1',storeno,'',bccno,'','','',SUM(Jan_mount),SUM(Jan_bkbcc),SUM(Feb_mount),SUM(Feb_bkbcc),SUM(Mar_mount),SUM(Mar_bkbcc)
+,SUM(Apr_mount),SUM(Apr_bkbcc),SUM(May_mount),SUM(May_bkbcc),SUM(Jun_mount),SUM(Jun_bkbcc)
+,SUM(Jul_mount),SUM(Jul_bkbcc),SUM(Aug_mount),SUM(Aug_bkbcc),SUM(Sep_mount),SUM(Sep_bkbcc)
+,SUM(Oct_mount),SUM(Oct_bkbcc),SUM(Nov_mount),SUM(Nov_bkbcc),SUM(Dec_mount),SUM(Dec_bkbcc),SUM(total)
+from @result group by storeno,bccno
+
+
+--計算合計
+	update @result 
+	set total=Jan_mount-Jan_bkbcc+Feb_mount-Feb_bkbcc+Mar_mount-Mar_bkbcc+Apr_mount-Apr_bkbcc
+			+May_mount-May_bkbcc+Jun_mount-Jun_bkbcc+Jul_mount-Jul_bkbcc+Aug_mount-Aug_bkbcc
+			+Sep_mount-Sep_bkbcc+Oct_mount-Oct_bkbcc+Nov_mount-Nov_bkbcc+Dec_mount-Dec_bkbcc
+
+
+select * from @result order by storeno,bccno,gno,sssno;
+
+--*********************************************************************************************
+z_bccoutst6:--z_bccoutst6
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bbccno nvarchar(20)
+	declare @t_ebccno nvarchar(20)
+	declare @t_storeno nvarchar(max)
+	set @t_bdate = case when '#non'=[4] then '' else [4] end
+	set @t_edate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bbccno = case when '#non'=[6] then '' else [6] end
+	set @t_ebccno = case when '#non'=[7] then char(255) else [7] end
+	set @t_storeno = case when '#non'=[10] then '' else [10] end
+	--*****************************************************************************************	
+--存放機台資料的表格，後面來判斷要增加幾個存放機台的欄位
+declare @liststore table(
+	n int,
+	[storeno] nvarchar(10),
+	[store] nvarchar(20)
+)
+--將機台資料存入
+insert into @liststore
+select ROW_NUMBER()over(order by noa) ,noa,store from store order by noa
+
+--判斷暫存使用的資料表是否存在，存在則刪除
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+       drop table #tmp
+END
+IF OBJECT_ID('tempdb..#result')is not null
+BEGIN
+       drop table #result
+END
+--建立暫存的表格(固定機台所使用的表格)
+create table #tmp(
+	gno nvarchar(1),
+	bccno nvarchar(20),
+	bccname nvarchar(50),
+	stkmount decimal (10,2),
+	price decimal (14,2),
+	datea nvarchar(10),
+	total decimal (14,2)
+)
+
+declare @cmd nvarchar(max)
+declare @n int
+declare @store nvarchar(20)
+
+--根據機台來增加固定機台表格的欄位
+declare cursor_table cursor for
+select n,store from  @liststore
+open cursor_table
+fetch next from cursor_table
+into @n,@store
+while(@@FETCH_STATUS <> -1)
+begin
+	set @cmd = 'alter table #tmp add mount'+CONVERT(nvarchar(3),@n)+' decimal (10,2)'
+	EXECUTE sp_executesql @cmd
+fetch next from cursor_table
+into @n,@store
+end
+close cursor_table
+deallocate cursor_table
+
+declare @gno nvarchar(1)
+declare @bccno nvarchar(20)
+declare @bccname nvarchar(50)
+declare @stkmount decimal (14,2)
+declare @price decimal (14,2)
+declare @datea nvarchar(10)
+declare @mount decimal (14,2)
+declare @t_bccno nvarchar(20)
+set @t_bccno='#zzzz#zzzz'
+declare @field_mount nvarchar(200)
+
+--插入領料的資料 
+declare cursor_table cursor for 
+select b.bccno,b.bccname,c.stkmount,c.price,a.datea,b.mount,b.storeno
+from bccout a left join bccouts b on a.noa=b.noa left join bcc c on b.bccno=c.noa 
+where (a.datea between @t_bdate and @t_edate) and (b.bccno between @t_bbccno and @t_ebccno) and (len(@t_storeno)=0 or b.storeno=@t_storeno )
+order by b.bccno 
+open cursor_table
+fetch next from cursor_table
+into @bccno,@bccname,@stkmount,@price,@datea,@mount,@store
+while(@@FETCH_STATUS <> -1)
+begin
+	--根據領料的倉庫判斷要寫入哪一個欄位(mount1,mount2,.....)資料
+	set @n = 0
+	select  @n=n from @liststore where [storeno]=@store
+	if not(@n=0)
+	begin
+		set @field_mount =  'mount'+CONVERT(nvarchar(3),@n)
+		
+		if not exists(select * from #tmp where bccno=@bccno and datea=@datea)
+		begin
+			--增加領料紀錄
+			insert into #tmp (gno,bccno,bccname,stkmount,price,datea)
+			values('0',@bccno,@bccname,@stkmount,@price,@datea)
+		end
+		if(@t_bccno!=@bccno)
+		begin 
+			--增加小計的欄位
+			insert into #tmp (gno,bccno,bccname,stkmount,price)
+			values('1',@bccno,@bccname,@stkmount,@price)
+		end
+		
+		set @t_bccno=@bccno
+		set @cmd = 'update #tmp set '+@field_mount+'=@mount where bccno=@bccno and datea=@datea'
+		EXECUTE sp_executesql @cmd,@params=N'@mount int,@bccno nvarchar(20),@datea nvarchar(10)',@mount=@mount,@bccno=@bccno,@datea=@datea
+	end
+fetch next from cursor_table
+into @bccno,@bccname,@stkmount,@price,@datea,@mount,@store
+end
+
+close cursor_table
+deallocate cursor_table
+
+declare @column nvarchar(max)
+declare @columns nvarchar(max)
+declare @columns2 nvarchar(max)
+
+--更新小計與合計內容
+set @columns = (select 'mount'+CONVERT(nvarchar(3),n)+'=(select sum(mount'+CONVERT(nvarchar(3),n)+') from #tmp where gno=0 and bccno=@bccno),' from @liststore FOR XML PATH(''))
+set @columns2 = (select 'isnull(mount'+CONVERT(nvarchar(3),n)+',0)+' from @liststore FOR XML PATH(''))
+declare bcc_table cursor for
+select gno,bccno from #tmp
+open bcc_table
+fetch next from bcc_table
+into @gno,@bccno
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@gno=1)
+	Begin
+		set @cmd = 'update #tmp set '+left(@columns,len(@columns)-1)+' where current of bcc_table'
+		EXECUTE sp_executesql @cmd,@params=N'@bccno nvarchar(20)',@bccno=@bccno
+	End
+	
+	set @cmd = 'update #tmp set total='+left(@columns2,len(@columns2)-1)+' where current of bcc_table'
+	EXECUTE sp_executesql @cmd
+	
+	fetch next from bcc_table
+	into @gno,@bccno
+
+end
+close bcc_table
+deallocate bcc_table
+
+
+--將全部的倉庫資料寫入到一個欄位(mount)中
+set @columns = (select 'CONVERT(nvarchar(20),isnull(mount'+CONVERT(nvarchar(3),n)+',0))+'+'''      '''+'+' from @liststore FOR XML PATH(''))
+set @columns2 = (select 'isnull(mount'+CONVERT(nvarchar(3),n)+',0)+' from @liststore FOR XML PATH(''))
+create table #result(
+	gno nvarchar(1),
+	bccno nvarchar(20),
+	bccname nvarchar(50),
+	stkmount decimal (10,2),
+	price decimal (14,2),
+	datea nvarchar(10),
+	mount nvarchar(max),
+	total decimal (14,2),
+	columns nvarchar(max)
+)
+set @column =(select store+' <span></span> ' from @liststore FOR XML PATH(''))
+set @cmd='insert into #result select gno,bccno,bccname,stkmount,price,datea,'+left(@columns,len(@columns)-1)+','+left(@columns2,len(@columns2)-1)+','''+@column+''''
+set @cmd=@cmd+' from #tmp order by bccno,gno,datea'
+
+EXECUTE sp_executesql @cmd
+
+
+--**************************************************************************************----
+
+--固定倉庫用這一個，每增加一個欄位會多一個mount(mount1,mount2,mount3,.......)
+--固定倉庫是指EXCEL是固定的
+select * from #tmp order by bccno,gno,datea
+
+--要變動倉庫使用這一個，倉庫欄位用mount即可
+--變動倉庫是指EXCEL是用一個欄位來放入所有變動倉庫的資料
+--select * from #result
+
+--刪除暫存使用的資料表
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+       drop table #tmp
+END
+IF OBJECT_ID('tempdb..#result')is not null
+BEGIN
+       drop table #result
+END;

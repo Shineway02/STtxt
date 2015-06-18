@@ -1,0 +1,59 @@
+z_bcchst:--z_bcchst
+declare @t_bbccno nvarchar(20)
+declare @t_ebccno nvarchar(20)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+
+set @t_bbccno = case when '#non' = [4] then '' else [4] end
+set @t_ebccno = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_btggno = case when '#non' = [6] then '' else [6] end
+set @t_etggno = case when '#non' = [7] then CHAR(255) else [7] end
+
+declare @tmp  table(
+		gno nvarchar(1),
+		tggno nvarchar(50),
+		comp nvarchar(100),
+		bccno nvarchar(50),
+		bccname nvarchar(100),
+		unit nvarchar(10),
+		memo nvarchar(MAX),
+		price float,
+		qdate nvarchar(30),
+		qday int,
+		adate nvarchar(30),
+		bdate nvarchar(30)
+)
+
+declare @bccno nvarchar(50)
+declare @tggno nvarchar(50)
+
+declare bccno_table cursor for
+select tggno,bccno from bcch group by tggno,bccno
+open bccno_table
+fetch next from bccno_table
+into @tggno,@bccno
+while(@@FETCH_STATUS <> -1)
+begin
+
+	insert @tmp
+	select top 1 '0', a.tggno,a.tgg,a.bccno,a.bccname,a.unit,a.memo,b.price,b.qdate,b.qday,b.qdate,b.qdate
+	from bcch a left join bcchs b on a.noa = b.noa 
+	where a.tggno=@tggno and a.bccno=@bccno
+	and qdate!='' order by qdate desc   
+
+	fetch next from bccno_table
+	into @tggno,@bccno
+end
+close bccno_table
+deallocate bccno_table
+
+update @tmp set bdate=cast(cast(left(bdate,3) as int )+1911 as nvarchar(10))+'/'+right(bdate,5)
+update @tmp set bdate=convert(varchar(10),dateadd(day,qday,bdate),120)
+update @tmp set bdate=cast(cast(left(bdate,4) as int)-1911 as nvarchar(10))+'/'+left(right(bdate,5),2)+'/'+right(bdate,2)
+
+insert @tmp (gno,tggno)
+select '1',tggno from @tmp group by tggno
+
+select dbo.getComma(price,[2])price
+,*
+from @tmp order by tggno,gno,bccno;

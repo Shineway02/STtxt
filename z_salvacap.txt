@@ -1,0 +1,73 @@
+z_salvacastp1:--z_salvacastp1
+declare @t_xyear nvarchar(20) 
+declare @t_bsssno nvarchar(50)
+declare @t_esssno nvarchar(50)
+declare @t_bpartno nvarchar(50)
+declare @t_epartno nvarchar(50)
+set @t_xyear = case when '#non' = [2] then '' else [2] end
+set @t_bsssno = case when '#non' = [3] then '' else [3] end
+set @t_esssno = case when '#non' = [4] then CHAR(255) else [4] end
+set @t_bpartno = case when '#non' = [5] then '' else [5] end
+set @t_epartno = case when '#non' = [6] then CHAR(255) else [6] end
+
+declare @year nvarchar(20) =cast (@t_xyear as int)
+--------------------------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(1),
+		partno nvarchar(50),
+		part nvarchar(50),
+		sssno nvarchar(50),
+		namea nvarchar(50),
+		jobno nvarchar(50),
+		job nvarchar(50),
+		indate nvarchar(20),
+		senior nvarchar(50),
+		inday float,
+		outday float,
+		boutday float,
+		total float,
+		prevyeartime float,
+		limitday float,
+		usedtime float,
+		ptotl float,
+		nextyeartime float,
+		memo nvarchar(MAX)
+)
+
+insert @tmp 
+select '0',c.partno,c.part,b.sssno,b.namea,c.jobno,c.job,c.indate,'',b.inday,b.outday,b.boutday,b.total
+,b.prevyeartime,b.limitday,isnull((select sum(hr_used) from salvacause where sssno=b.sssno and charindex('補特休',hname)>0),0),0,b.nextyeartime,b.memo 
+from salvaca a left join salvacas b on a.noa=b.noa left join sss c on b.sssno=c.noa 
+where a.noa=@t_xyear 
+and isnull(b.sssno,'') between @t_bsssno and @t_esssno 
+and isnull(c.partno,'') between @t_bpartno and @t_epartno
+
+update @tmp set  ptotl=prevyeartime-usedtime
+
+--年資 
+update a
+set senior = isnull((select seniority from dbo.seniority('','') where sssno=a.sssno),'')
+from @tmp a
+
+--插入部門小計
+insert into @tmp (gno,partno,part,inday,outday,boutday,total,prevyeartime,usedtime,ptotl,nextyeartime)
+select '1' gno,partno,part,sum(inday),sum(outday),sum(boutday),sum(total),sum(prevyeartime),sum(usedtime),sum(ptotl),sum(nextyeartime)
+from @tmp where gno='0' group by partno,part
+
+insert into @tmp (gno,partno,inday,outday,boutday,total,prevyeartime,usedtime,ptotl,nextyeartime)
+select '2' gno,char(255),sum(inday),sum(outday),sum(boutday),sum(total),sum(prevyeartime),sum(usedtime),sum(ptotl),sum(nextyeartime)
+from @tmp where gno='0' 
+
+select 
+dbo.getComma(inday,1) inday,
+dbo.getComma(outday,1) outday,
+dbo.getComma(boutday,1) boutday,
+dbo.getComma(total,1) total,
+dbo.getComma(prevyeartime,1) prevyeartime,
+dbo.getComma(limitday,0) limitday,
+dbo.getComma(usedtime,1) usedtime,
+dbo.getComma(ptotl,1) ptotl,
+dbo.getComma(nextyeartime,1) nextyeartime,
+* 
+from @tmp order by partno,gno,jobno,sssno
+;

@@ -1,0 +1,71 @@
+   z_vccstp_rk01:--z_vccstp_rk01
+    declare @t_mount_precision nvarchar(max)
+    declare @t_weight_precision nvarchar(max)
+	declare @t_price_precision nvarchar(max)
+	declare @t_bno nvarchar(20)
+	declare @t_eno nvarchar(20)
+	declare @t_bdate nvarchar(20)
+	declare @t_edate nvarchar(20)
+
+    set @t_mount_precision ='[1]'
+    set @t_weight_precision ='[2]'
+    set @t_price_precision ='[3]'
+	set @t_bno = case when '#non' = [4] then '' else [4] end
+	set @t_eno = case when '#non' = [5] then CHAR(255) else [5] end
+	set @t_bdate = case when '#non' = [6] then '' else [6] end
+	set @t_edate = case when '#non' = [7] then CHAR(255) else [7] end
+	
+	---------------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(10),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		cust nvarchar(20),
+		ordeno nvarchar(20),
+		datea  nvarchar(20),
+		vdate  nvarchar(20),
+		product nvarchar(40),
+		spec nvarchar(max),
+		mount float,
+		weight float,
+		memo nvarchar(max)
+	)
+	insert @tmp(gno,noa,noq,cust,ordeno,spec,datea,vdate,product,mount,weight,memo)
+	select '0',a.noa,b.noq,a.comp,a.ordeno,cast(dime as nvarchar(50))+'X'+cast(width as nvarchar(50))+'X'+cast(lengthb as nvarchar(50)),
+	a.datea,a.mon,b.product,c.gmount,b.weight,b.memo from view_vcc a left join view_vccs b on a.noa=b.noa left join uccy c on b.uno=c.uno
+	where (a.noa between @t_bno and @t_eno) and (a.datea between @t_bdate and @t_edate)
+	
+
+declare @counts int 
+declare @t_counts int 
+declare @t_line int =12
+
+set @counts=((select count(*) from @tmp)/@t_line)+1
+set @t_counts=@counts
+
+declare @noa nvarchar(MAX)
+declare cursor_table cursor for
+select noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@counts
+while(@@FETCH_STATUS <> -1)
+begin		
+	while ((@counts-@t_counts)%@t_line>0) 
+	begin
+		insert @tmp(gno,noa,noq)
+		select '0',@noa,CHAR(255)
+		
+		set @counts=@counts+1
+	end	
+	fetch next from cursor_table
+	into @noa,@counts
+end
+close cursor_table
+deallocate cursor_table
+
+	
+select * ,'<img width="270px" src="http://59.125.143.171/images/Lien_Chy03.png">' logo 
+from @tmp order by noa,gno,noq
+;
+	

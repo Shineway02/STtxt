@@ -1,0 +1,33 @@
+z_uccpp01:--z_uccp01	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bdate nvarchar(10) = case when '#non'=[1] then '' else [1] end
+	declare @t_edate nvarchar(10) = case when '#non'=[2] then char(255) else [2] end
+	declare @t_bproductno nvarchar(20) = case when '#non'=[3] then '' else [3] end
+	declare @t_eproductno nvarchar(20) = case when '#non'=[4] then char(255) else [4] end
+	---------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		recno int,
+		noa nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		datea nvarchar(10),
+		sprice float
+	)
+	insert into @tmp
+	select '1',ROW_NUMBER()over(order by b.productno,a.datea desc,b.sprice) recno  
+		,a.noa,b.productno,b.product,a.datea,b.sprice
+	from uccp a
+	left join uccps b on a.noa=b.noa
+	where a.datea between @t_bdate and @t_edate
+	and b.productno between @t_bproductno and @t_eproductno
+	order by b.productno,a.datea desc,b.sprice
+
+	select recno rr
+		,"uccp?noa=\'"+noa+"\' and "+cast(recno as nvarchar)+"=$rr?" ghref
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+productno+'</a>' a01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+product+'</a>' a02
+		,datea a03
+		,dbo.getComma(sprice,3) a04
+		,* 
+	from @tmp;

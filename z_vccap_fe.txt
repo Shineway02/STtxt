@@ -1,0 +1,85 @@
+z_vccap_fe01:--z_vccap_fe01	
+	declare @noa nvarchar(20)=case when '#non'=[1] then '' else [1] end
+	
+	declare @tmp table(
+		gno nvarchar(10),
+		pno int identity(1,1),
+		datea nvarchar(10),
+		comp nvarchar(20),
+		buyer nvarchar(20),
+		chkno nvarchar(10),
+		serial nvarchar(10),
+		noa nvarchar(20),
+		taxtype nvarchar(20),
+		chk1 nvarchar(10),--應稅    1
+		chk2 nvarchar(10),--零稅率  2
+		chk3 nvarchar(10),--免稅    4
+		[money] float,
+		tax float,
+		total float,
+		memo nvarchar(max),
+		c1 nvarchar(10),--個
+		c2 nvarchar(10),--拾
+		c3 nvarchar(10),--佰
+		c4 nvarchar(10),--仟
+		c5 nvarchar(10),--萬
+		c6 nvarchar(10),--拾萬
+		c7 nvarchar(10),--佰萬
+		c8 nvarchar(10),--仟萬
+		
+		d1 nvarchar(10),--年
+		d2 nvarchar(10),--月
+		d3 nvarchar(10),--日
+		
+		
+		product_s nvarchar(20),
+		mount_s float,
+		price_s float,
+		money_s float
+	)
+	insert into @tmp(gno,datea,comp,buyer,chkno,serial,noa,taxtype,[money],tax,total,memo
+		,product_s,mount_s,price_s,money_s)
+	select top 8 '1', a.datea,a.comp,a.buyer,a.chkno,a.serial,a.noa,a.taxtype,a.[money],a.tax,a.total,a.memo
+		,b.product,b.mount,b.price,b.[money]
+	from vcca a
+	left join vccas b on a.noa=b.noa 
+	where a.noa=@noa
+	order by b.noq
+	
+	update @tmp set chk1='V' where taxtype='1'
+	update @tmp set chk2='V' where taxtype='2'
+	update @tmp set chk3='V' where taxtype='4'
+	
+	update @tmp set d1=LEFT(datea,3),d2=SUBSTRING(datea,5,2),d3=SUBSTRING(datea,8,2)
+	
+	declare @string nvarchar(max) = '零壹貳參肆伍陸柒捌玖'
+	
+	update @tmp set c1=substring(@string,cast(substring(reverse(cast(total as nvarchar)),1,1) as int)+1,1) where total>0
+	update @tmp set c2=substring(@string,cast(substring(reverse(cast(total as nvarchar)),2,1) as int)+1,1) where total>0
+	update @tmp set c3=substring(@string,cast(substring(reverse(cast(total as nvarchar)),3,1) as int)+1,1) where total>0
+	update @tmp set c4=substring(@string,cast(substring(reverse(cast(total as nvarchar)),4,1) as int)+1,1) where total>0
+	update @tmp set c5=substring(@string,cast(substring(reverse(cast(total as nvarchar)),5,1) as int)+1,1) where total>0
+	update @tmp set c6=substring(@string,cast(substring(reverse(cast(total as nvarchar)),6,1) as int)+1,1) where total>0
+	update @tmp set c7=substring(@string,cast(substring(reverse(cast(total as nvarchar)),7,1) as int)+1,1) where total>0
+	update @tmp set c8=substring(@string,cast(substring(reverse(cast(total as nvarchar)),8,1) as int)+1,1) where total>0
+	-------------------------------------------------------------------------
+	--只能印8筆
+	declare @n int = 0
+	select @n = count(1) from @tmp
+	while @n<8
+	begin
+		insert into @tmp(gno)values('2')
+		set @n=@n+1
+	end
+	insert into @tmp(gno,[money])select top 1 '3',[money] from @tmp order by pno
+	insert into @tmp(gno,chk1,chk2,chk3,tax)select top 1 '4',chk1,chk2,chk3,tax from @tmp order by pno
+	insert into @tmp(gno,[total])select top 1 '5',[total] from @tmp order by pno
+	insert into @tmp(gno,c1,c2,c3,c4,c5,c6,c7,c8)select top 1 '6',c1,c2,c3,c4,c5,c6,c7,c8 from @tmp order by pno
+	
+	select noa vccano
+		,dbo.getComma(money_s,0) e1
+		,dbo.getComma([money],0) e2
+		,dbo.getComma(tax,0) e3
+		,dbo.getComma(total,0) e4
+		,* 
+	from @tmp order by pno;

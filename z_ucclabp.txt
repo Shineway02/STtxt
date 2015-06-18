@@ -1,0 +1,37 @@
+﻿z_ucclabp1:--z_ucclabp1
+declare @t_bproductno nvarchar(max)
+declare @t_eproductno nvarchar(max)
+declare @t_noa nvarchar(max)
+set @t_bproductno = case when '#non' = [1] then ' ' else [1] end
+set @t_eproductno = case when '#non' = [2] then CHAR(255) else [2] end
+set @t_noa = case when '#non' = [3] then ' ' else [3] end
+declare @tmp table(
+	gno nvarchar(10),
+	noa nvarchar(50),
+	noq nvarchar(10),
+	productno nvarchar(max),
+	products nvarchar(max),
+	mount float,
+	weight float,
+	uno nvarchar(max),
+	memo nvarchar(max),
+	barcode39_pno nvarchar(max),
+	barcode39_uno nvarchar(max)
+)
+insert into @tmp
+	select
+		'0' gno,b.noa,a.noq,a.productno,a.product,a.mount,a.weight,a.uno,a.memo,'',''
+	from ucclabs a
+	left join ucclab b on a.noa=b.noa
+	where (a.productno between @t_bproductno and @t_eproductno) and
+		  (len(@t_noa)=0 or b.noa=@t_noa)
+update @tmp set barcode39_pno = '<img width="100px" src="https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl='+upper(productno)+'&chld=L|4">' where len(productno) > 0
+update @tmp set barcode39_uno = '<img width="100px" src="https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl='+upper(uno)+'&chld=L|4">' where len(uno) > 0
+insert into @tmp(gno,noa,noq)
+	select '1',noa,noq from @tmp group by noa,noq
+select
+	a.gno,a.noq,a.noq,a.productno,a.products,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.mount),1)),4,12)) mount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.weight),1)),4,12)) weight,
+	a.uno,a.memo,a.barcode39_pno,a.barcode39_uno
+from @tmp a order by noa,noq,gno;

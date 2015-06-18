@@ -1,0 +1,153 @@
+vccfe_save:--vccfe_save
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_accy nvarchar(20) =[1]
+	declare @t_noa nvarchar(20) = [2]
+	declare @t_typea nvarchar(20) = [3]
+	declare @t_custno nvarchar(20) = [4]
+	declare @t_date nvarchar(20) = [5]
+	declare @t_mon nvarchar(20) = [6]
+	declare @t_worker nvarchar(20) = [7]
+	declare @t_total nvarchar(20) = case when len([8])=0 then 0 else cast([8] as float) end 
+	-----------------------------------------------------------------------------------------
+	-----------------------------------------------------------------------------------------
+	declare @checker nvarchar(max) = '' 
+	declare @memo nvarchar(max) = ''
+	if len(@t_noa)>0
+	begin
+		select top 1 @checker=checker,@memo=memo from sign where zno=@t_noa
+		if exists(select * from sign where zno=@t_noa and enda='Y')
+		begin
+			select top 1 '' msg,checker
+				,case when charindex('#',memo)>0 then left(memo,charindex('#',memo)-1) else @memo end memo 
+				,@t_noa noa
+				from sign where zno=@t_noa and enda='Y'
+			return
+		end
+		if exists(select * from sign where zno=@t_noa and enda!='Y')
+		begin
+			select '尚未核准。' msg,'' checker,'' memo,@t_noa noa
+			return
+		end
+	end
+	------------------------------------------------------------------------------------------
+	declare @string nvarchar(max) = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	declare @n int
+	declare @noq nvarchar(10)
+	select @t_noa = MAX(noa) from sign where LEFT(noa,7) = REPLACE(@t_date,'/','')
+	if LEN(ISNULL(@t_noa,''))=0
+	begin
+		set @t_noa = REPLACE(@t_date,'/','')+'001'
+	end
+	else
+	begin
+		set @n = (charindex(left(RIGHT(@t_noa,3),1),@string)-1)*100 + cast(RIGHT(@t_noa,2) as int)+1
+		set @noq = SUBSTRING(@string,FLOOR(@n/100)+1,1)+right('00'+cast(@n%100 as nvarchar),2)
+		set @t_noa = REPLACE(@t_date,'/','')+@noq
+	end
+	------------------------------------------------------------------------------------------
+	declare @isBack int = 0
+	declare @is35 int = 0
+	declare @isUnpay int = 0
+	
+	declare @nick nvarchar(20)=''
+	select @nick = nick from cust where noa=@t_custno
+	
+	--退貨
+	if(@t_typea != '1')
+	begin
+		set @isBack = 1
+	end
+	
+	--35天未收
+	declare @date date = convert(date, cast(cast(left(@t_date,3) as int)+1911 as nvarchar)+right(@t_date,6))
+	select @date = DATEADD(MM,-1,@date)
+	select @date = DATEADD(DD,-35,@date)
+	declare @bmon nvarchar(20)= right('000'+cast(year(@date)-1911 as nvarchar),3)
+		+'/'+right('00'+cast(month(@date) as nvarchar),2) 
+	declare @total float = 0
+	select @total = SUM(case when typea='1' then 1 else -1 end *isnull(total,0))
+	from view_vcc 
+	where not(accy=@t_accy and noa=@t_noa)
+	and custno=@t_custno
+	and mon=@t_mon
+	
+	declare @money float = 0
+	declare @tax float = 0
+	declare @pay float = 0
+	
+	select @money = SUM(isnull(total,0))
+	from view_vcc
+	where custno=@t_custno 
+	and mon=@bmon
+	and total!=0
+	
+	select @tax = SUM(ISNULL(tax,0))
+	from vcca
+	where custno=@t_custno
+	and left(datea,6)=@bmon
+	
+	select @tax = @tax + SUM(ISNULL(-b.tax,0))
+	from vccb a
+	left join vccbs b on a.noa=b.noa
+	where LEFT(a.datea,6)=@bmon
+	and b.custno = @t_custno
+	
+	select @pay=SUM(ISNULL(paysale,0))
+	from umms 
+	where mon=@bmon
+	and custno=@t_custno
+	
+	if(@money+@tax)>@pay
+	begin
+		set @is35 = 1
+	end
+	--呆帳  
+	set @date = convert(date, cast(cast(left(@t_mon,3) as int)+1911 as nvarchar)+right(@t_mon,3)+'/01')
+	select @date = DATEADD(MM,-3,@date)
+	
+	set @bmon = right('000'+cast(year(@date)-1911 as nvarchar),3)
+		+'/'+right('00'+cast(month(@date) as nvarchar),2)
+	
+	declare @unpay float = 0
+	select top 1 @unpay=sum(isnull(unpay,0)) from cust_2s
+	where noa=@t_custno
+	and mon<=@bmon and unpay!=0
+	
+	if (LEN(@unpay)>0)
+	begin
+		set @isUnpay = 1	                                                                                                                                                                   
+	end
+	-------------------------------------------------------------------------------------------
+	set @memo = case when @isBack=1 then '【退貨】' else '' end
+	if @is35=1
+		set @memo = @memo + case when LEN(@memo)>0 then ',' else '' end + '【35天未收】'
+	if @isUnpay=1
+		set @memo = @memo + case when LEN(@memo)>0 then ',' else '' end + '【呆帳】'
+	-------------------------------------------------------------------------------------------
+	set @checker = ''
+	select @checker = checker from signform where UPPER(noa)='VCC'
+	
+	if LEN(@memo)>0
+	begin
+		select @memo+'需核準，已發送簽核。' msg,'' checker,@memo memo,@t_noa noa
+		
+		set @memo = @memo +'#'+'【客戶】'+@nick+ '【出貨日期】'+@t_date+'【出貨金額】'+dbo.getComma(@t_total,0)
+		insert into sign (noa,datea,timea,enda,memo,form,partno,part
+			,checker,sender,zno,zno2,memochecker 
+			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
+		select @t_noa,@t_date,'TIME','N',@memo,'vcc','',''
+			,@checker,'sender',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
+			,'','','',''
+	end
+	else
+	begin
+		select '' msg,'電腦' checker,'' memo,@t_noa noa
+		print @t_noa
+		insert into sign (noa,datea,timea,enda,memo,form,partno,part
+			,checker,sender,zno,zno2,memochecker 
+			,memoapprovema,memoapprovefi,memoapprovegm,memoapprovebs)
+		select @t_noa,@t_date,'TIME','Y',@memo,'vcc','',''
+			,'電腦核准','',@t_noa,'vcc'+char(59)+'noa'+char(59)+@t_accy+char(59),''
+			,'','','',''
+	end
+	return; 

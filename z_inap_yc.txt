@@ -1,0 +1,167 @@
+﻿z_inap_yc1:--z_inap_yc1
+declare @pagecount int
+declare @t_accy nvarchar(20)
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+set @pagecount = 10
+set @t_accy = '[1]'
+set @t_bnoa = case when '#non' = [6] then '' else [6] end
+set @t_enoa = case when '#non' = [7] then CHAR(255) else [7] end
+declare @tmpa table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		datea nvarchar(10),
+		storeno nvarchar(50),
+		stores nvarchar(100),
+		stationno nvarchar(50),
+		stations nvarchar(100),
+		custno nvarchar(50),
+		tggno nvarchar(50),
+		comp nvarchar(100),
+		tel nvarchar(100),
+		fax nvarchar(100),
+		addr nvarchar(MAX),
+		trantype nvarchar(50),
+		it nvarchar(10),
+		a_memo nvarchar(MAX),
+		pno nvarchar(20),
+		product nvarchar(90),
+		unit nvarchar(10),
+		mount float,
+		atype nvarchar(20),
+		memo nvarchar(MAX),
+		totmount float	
+)
+
+insert into @tmpa 
+select '0' gno,a.noa,a.datea,a.storeno,a.store,a.stationno,a.station,a.custno,a.tggno,a.comp,c.tel,c.fax,c.addr_home 
+,a.trantype,a.itype,a.memo,b.productno,replace(b.product,'~#$',char(39)),b.unit, 
+b.mount,b.typea,b.memo,0 
+from view_ina a
+left join view_inas b on a.noa = b.noa
+left join tgg c on a.tggno=c.noa
+where a.noa between @t_bnoa and @t_enoa
+
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		datea nvarchar(10),
+		storeno nvarchar(50),
+		stores nvarchar(100),
+		stationno nvarchar(50),
+		stations nvarchar(100),
+		custno nvarchar(50),
+		tggno nvarchar(50),
+		comp nvarchar(100),
+		tel nvarchar(100),
+		fax nvarchar(100),
+		addr nvarchar(MAX),
+		trantype nvarchar(50),
+		it nvarchar(10),
+		a_memo nvarchar(MAX),
+		pno nvarchar(20),
+		product nvarchar(90),
+		unit nvarchar(10),
+		mount float,
+		atype nvarchar(20),
+		memo nvarchar(200),
+		totmount float,
+		recno int,
+		currecno int,
+		curpage int,
+		totpage int
+)
+insert into @tmp
+select a.*,ROW_NUMBER()over(order by gno) recno,0 currecno,0 curpage,0 totpage 
+				 from( 
+				select *
+				from @tmpa a
+				 )a
+	declare @noa nvarchar(30)
+	declare @count int
+	declare @t_count int
+	declare @recno int
+	declare @totmount float
+	declare @totweight float
+	declare @currecno int
+	declare @curpage int
+	declare @totpage int
+	declare @t_accc3 nvarchar(30)
+	declare @t_currecno float
+	set @t_currecno = 0
+	
+	declare cursor_table cursor for
+	select noa,min(recno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set currecno = recno - @recno +1 where noa = @noa
+		fetch next from cursor_table
+		into @noa,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	--------------------------------------------------
+	declare @count1 int
+	declare @count2 int
+	declare cursor_table cursor for
+	select noa,sum(mount),count(*) count1,(count(*)/@pageCount+1)*@pageCount count2 from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@totmount,@count1,@count2
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while(@count1<@count2) and not(@count1 % @pagecount = 0)
+		begin
+			insert into @tmp (gno,noa,totmount,currecno)VALUES(0,@noa,@totmount,@count1+1)
+			set @count1=@count1+1
+		end
+		fetch next from cursor_table
+		into @noa,@totmount,@count1,@count2
+		update @tmp set totmount = @totmount where noa = @noa
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	---------------------------------------------------
+	declare cursor_table cursor for
+	select noa,max(currecno) from @tmp group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set totpage = (@currecno-@currecno%@pagecount)/@pagecount where noa = @noa
+		fetch next from cursor_table
+		into @noa,@currecno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,recno,currecno from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @tmp set curpage = FLOOR((@currecno-1)/@pagecount)+1 where noa=@noa and recno=@recno
+		fetch next from cursor_table
+		into @noa,@recno,@currecno
+	end
+		close cursor_table
+	deallocate cursor_table
+				
+insert @tmp (gno,noa,mount)
+select '1',noa,SUM(mount) from @tmp group by noa
+
+select gno,noa,datea,storeno,stores,stationno,stations,tggno,comp,tel,fax,addr,trantype,pno,product,unit,atype,it,a_memo
+,case when custno!='' then '客戶名稱：'+isnull(custno,'') else '廠商名稱：'+isnull(tggno,'') end+' '+isnull(comp,'') tggcust
+,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),4,30)) mount
+,memo,totmount,recno,currecno,curpage,totpage,
+CONVERT(nvarchar(5),curpage)+'/'+CONVERT(nvarchar(5),totpage) page 
+from @tmp order by noa,gno,currecno;
+
+---------------------------------------------------------------------------------------------------------------

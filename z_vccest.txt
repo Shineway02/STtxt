@@ -1,0 +1,311 @@
+z_vccest1:--z_vccest1
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+set @t_bcustno = case when '#non' = [7] then '' else [7] end
+set @t_ecustno = case when '#non' = [8] then CHAR(255) else [8] end  
+declare @tmp table(
+		gno  nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		datea nvarchar(10),
+		comp nvarchar(90),
+		custno nvarchar(20),
+		uno nvarchar(20),
+		product nvarchar(90),
+		spec nvarchar(20),
+		size nvarchar(50),
+		class nvarchar(20),
+		hard nvarchar(20),
+		mount int,
+		weightb float,
+		memo nvarchar(200)
+) 
+insert into @tmp
+select '0' gno,a.noa,b.noq,a.datea,a.comp,a.custno,b.uno,b.product,b.spec,
+(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+c.class,c.hard,b.ecount,b.eweight,b.memo
+from view_vcce[3] a
+left join view_vcces[3] b on a.noa = b.noa
+left join uccc c on b.uno = c.noa
+where (a.custno between @t_bcustno and @t_ecustno) and
+(a.datea between @t_bdate and @t_edate)
+
+insert into @tmp
+select '1' gno,'','','','','','','','','','','',sum(mount),sum(weightb),''
+from @tmp
+update @tmp set size = replace(size,'~#$','''')
+select gno,noa,noq,datea,comp,custno,uno,product,spec,size,class,hard,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,memo 
+from @tmp ;
+--------------------------------------------------------------------------------------------------------------
+z_vccest2:--z_vccest2
+declare @t_xtypea nvarchar(20)
+declare @t_bproductno nvarchar(20)
+declare @t_eproductno nvarchar(20)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+set @t_bcustno = case when '#non' = [7] then '' else [7] end
+set @t_ecustno = case when '#non' = [8] then CHAR(255) else [8] end
+set @t_bproductno = case when '#non' = [9] then '' else [9] end
+set @t_eproductno = case when '#non' = [10] then CHAR(255) else [10] end
+set @t_xtypea = case when '#non'=[11] then '' when '全部'=[11] then '' else [11] end
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(20),
+		noq nvarchar(20),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		nick nvarchar(50),
+		uno nvarchar(20),
+		pno nvarchar(20),
+		product nvarchar(90),
+		size nvarchar(50),
+		weightb float,
+		gweight float,
+		eweight float,
+		emount int,
+		typea nvarchar(10)
+)
+insert into @tmp
+select '0' gno,a.noa,b.noq,a.datea,a.custno,case when LEN(c.nick)>0 then c.nick else LEFT(a.comp,4) end,
+b.uno,b.productno,b.product,
+(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+b.weight,d.gweight,b.eweight,b.ecount,d.itype
+from view_vcce[3] a
+left join  view_vcces[3] b on a.noa = b.noa
+left join cust c on a.custno = c.noa
+left join uccc d on b.uno = d.noa
+where (a.datea between @t_bdate and @t_edate) and
+(b.productno between @t_bproductno and @t_eproductno) and
+(a.custno between @t_bcustno and @t_ecustno) and
+(LEN(@t_xtypea) = 0 or @t_xtypea = d.itype)
+update @tmp set size = replace(size,'~#$','''')
+select gno,noa,noq,datea,custno,nick,uno,pno,product,size,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12))  weightb,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,gweight),1)),4,12)) gweight,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,eweight),1)),4,12)) eweight,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,emount),1)),4,12)) emount,
+ typea
+from @tmp;
+-------------------------------------------------------------------------------------------------------------------------------------------
+z_vccest3:--z_vccest3
+declare @t_noa nvarchar(20)
+set @t_noa = case when '#non' = [4] then '' else [4] end
+declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(20),
+		noq nvarchar(20),
+		ordeno nvarchar(20),
+		custno nvarchar(20),
+		comp nvarchar(90),
+		datea nvarchar(10),
+		indate nvarchar(10),
+		store nvarchar(20),
+		s nvarchar(10),
+		uno nvarchar(20),
+		spec nvarchar(20),
+		class nvarchar(20),
+		product nvarchar(50),
+		mount int,
+		weightb float,
+		tmount int,
+		tweightb float,
+		waste float,
+		twaste float,
+		memo nvarchar(200),
+		cardeal nvarchar(20),
+		carno nvarchar(20),
+		trantype nvarchar(20)
+)
+insert into @tmp
+select '0' gno,a.noa,b.noq,a.ordeno,a.custno,a.comp,a.datea,c.datea,c.storeno,c.source,b.uno,b.spec,c.class,
+b.product,b.mount,b.weight,0,0,c.weight,0,a.memo,a.cardeal,a.carno,a.trantype
+from view_vcce[3] a
+left join view_vcces[3] b on a.noa = b.noa
+left join view_uccc c on b.uno = c.uno
+where (LEN(@t_noa) = 0 or @t_noa = a.noa)
+
+select gno,noa,noq,ordeno,custno,comp,datea,indate,store,s,uno,spec,class,product,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weightb),1)),4,12)) weightb,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tmount),1)),4,12)) tmount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tweightb),1)),4,12)) tweightb,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,waste),1)),4,12)) waste,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,twaste),1)),4,12)) twaste,
+memo,cardeal,carno,trantype
+from @tmp;
+---------------------------------------------------------------------------------------------------------
+z_vccest4:--z_vccest4
+SET QUOTED_IDENTIFIER OFF
+declare @cmd nvarchar(max)
+declare @pagecount int
+declare @t_tel nvarchar(20)
+declare @t_addr nvarchar(50)
+declare @t_accy nvarchar(10)
+declare @t_xnoa nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+set @pageCount = 5
+set @t_tel ='[1]'
+set @t_addr ='[2]'
+set @t_accy ='[3]'
+set @t_xnoa = case when '#non' = [4] then '' else [4] end
+set @t_bdate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [6] then CHAR(255) else [6] end
+set @t_bcustno = case when '#non' = [7] then '' else [7] end
+set @t_ecustno = case when '#non' = [8] then CHAR(255) else [8] end
+declare @result table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		noq nvarchar(20),
+		custno nvarchar(20),
+		comp nvarchar(50),
+		datea nvarchar(10),
+		tel nvarchar(10),
+		addr_conn nvarchar(50),
+		addr nvarchar(50),
+		serial nvarchar(10),
+		product nvarchar(50),
+		spec nvarchar(10),
+		unit nvarchar(10),
+		mount int,
+		price int,
+		total int,
+		memo nvarchar(200),
+		pay nvarchar(10),
+		tax int,
+		mney int,
+		total2 int,
+		trantype nvarchar(10),
+		invono nvarchar(15),
+		enda nvarchar(max),
+		recno int,
+		currecno int,
+		curpage int,
+		totpage int
+)
+
+set @cmd =	"select a.*,ROW_NUMBER()over(order by gno),0,0,0"+
+				" from("+
+				" select '0' gno,a.noa,b.noq,a.custno,a.comp,a.datea,c.tel,c.addr_comp,a.addr,c.serial,"+
+				" b.product,b.spec,b.unit,b.mount,b.price,b.total total,b.memo,a.pay,a.tax,a.money,a.total total2,a.trantype,a.invono,"+
+				"(case when len(d.boatname)>0 then '船名：'+' '+'d.boatname' else '' end)+''+(case when len(d.ship)>0 then '航次：'+' '+'d.ship' else '' end)+' '+(case when len(d.casesize)>0 then '尺寸：'+' '+'d.casesize' else '' end)+' '+(case when len(d.caseno)>0 then '貨櫃號碼：'+' '+'d.caseno' else '' end) enda"+
+				" from view_vcc"+@t_accy+ " a "+
+				" left join view_vccs"+@t_accy+" b on a.noa = b.noa " + 
+				" left join cust c on c.noa = a.custno" + 
+				" left join vcct d on d.noa = a.noa" + 
+				" where "+
+				" (LEN(@t_xnoa) = 0 or @t_xnoa > a.noa) and "+
+				" (isnull(a.datea,'') between @t_bdate and @t_edate) and "+
+				" (isnull(a.custno,'') between @t_bcustno and @t_ecustno)"+
+				" ) a "
+
+	insert into @result
+	execute sp_executesql @cmd,N'@t_xnoa nvarchar(20),@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bcustno nvarchar(20),@t_ecustno nvarchar(20)',
+							@t_xnoa=@t_xnoa,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bcustno=@t_bcustno,@t_ecustno=@t_ecustno
+
+	
+	declare @noa nvarchar(30)
+	declare @count int
+	declare @t_count int
+	declare @recno int
+	declare @currecno int
+	declare @curpage int
+	declare @totpage int
+	
+	declare cursor_table cursor for
+	select noa,min(recno) from @result group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @result set currecno = recno - @recno +1 where noa=@noa
+		fetch next from cursor_table
+		into @noa,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,max(currecno) from @result group by noa
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @result set totpage = (@currecno-@currecno%@pagecount)/@pagecount+1 where noa=@noa
+		fetch next from cursor_table
+		into @noa,@currecno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select noa,recno,currecno from @result
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@recno,@currecno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		update @result set curpage = FLOOR((@currecno-1)/@pagecount)+1 where noa=@noa and recno=@recno
+		fetch next from cursor_table
+		into @noa,@recno,@currecno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare @pay float
+	declare @tax float
+	declare @mney float
+	declare @total2 float
+	declare @trantype nvarchar(20)
+	declare @invono float
+	declare @enda nvarchar(max)
+	declare cursor_table cursor for
+	select noa,pay,tax,mney,total2,trantype,invono,enda,curpage,@pagecount-[count]%@pagecount,([count]-[count]%@pagecount)/@pagecount+1
+	from(select noa,max(pay) pay,max(tax) tax,max(mney) mney,max(total2) total2,max(trantype) trantype,max(invono) invono,max(enda) enda,COUNT(1) [count], max(curpage) curpage from @result group by noa) a
+	where not[count]%@pagecount=0
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@pay,@tax,@mney,@total2,@trantype,@invono,@enda,@curpage,@count,@totpage
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @t_count = @count
+		while(@t_count>0)
+		begin
+			insert into @result(gno,noa,noq,pay,tax,mney,total2,trantype,invono,enda,curpage,totpage)
+			values('0',@noa,CHAR(255),@pay,@tax,@mney,@total2,@trantype,@invono,@enda,@curpage,@totpage)
+			set @t_count = @t_count - 1
+		end
+		fetch next from cursor_table
+		into @noa,@pay,@tax,@mney,@total2,@trantype,@invono,@enda,@curpage,@count,@totpage
+	end
+	close cursor_table
+	deallocate cursor_table
+
+
+	select gno,noa,noq,custno,comp,datea,tel,addr_conn connaddr,addr,serial,product,spec,unit,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mount),1)),4,12)) mount,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,12)) total,memo, 
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pay),1)),4,12)) pay,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,12)) tax,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,mney),1)),4,12)) mney,
+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2,trantype,invono,enda,CONVERT(nvarchar(5),curpage)+'/'+CONVERT(nvarchar(5),totpage) page from @result order by noa,noq;
+
+
+
+
+

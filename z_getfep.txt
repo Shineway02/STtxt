@@ -1,0 +1,165 @@
+﻿z_getfep1:--z_getfep1
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_kind nvarchar(max) = '[1]'
+	declare @mountprecision int = 0
+	declare @weightprecision int = 2
+	declare @priceprecision int = 2
+	
+	begin try
+		set @mountprecision = [2]
+		set @weightprecision = [3]
+		set @priceprecision = [4]
+	end try
+	begin catch
+		--nothing
+	end catch
+	
+	declare @t_bnoa nvarchar(30) = case when '#non' = [5] then '' else [5] end
+	declare @t_enoa nvarchar(30) = case when '#non' = [6] then char(255) else [6] end
+	
+	declare @t_pageline int = 14 -- 一頁幾行
+	-----------------------------------------------------------------------------
+	declare @noa nvarchar(30)
+	declare @datea nvarchar(10)
+	declare @typea nvarchar(30)
+	declare @kind nvarchar(30)
+	declare @ckind nvarchar(30)
+	declare @trantype nvarchar(30)
+	declare @custno nvarchar(30)
+	declare @comp nvarchar(50)
+	declare @tel nvarchar(max)
+	declare @fax nvarchar(max)
+	declare @addr nvarchar(max)
+	
+	declare @n int
+	declare @m int
+	declare @tt_noa nvarchar(max)
+	declare @tt_kind nvarchar(max)
+	--------------------------------------------------------------------------------
+	--解析要計算的種類
+	declare @tkind table(
+		noa nvarchar(30),
+		kind nvarchar(30)
+	)
+	while(1=1)
+	begin
+		set @n = charindex(',',@t_kind)
+		if @n=0
+		begin
+			set @tt_noa = LEFT(@t_kind,CHARINDEX('@',@t_kind)-1)
+			set @tt_kind = RIGHT(@t_kind,LEN(@t_kind)-LEN(@tt_noa)-1)
+			insert into @tkind select @tt_noa,@tt_kind
+			break
+		end
+		set @tt_noa = LEFT(LEFT(@t_kind,@n-1),CHARINDEX('@',LEFT(@t_kind,@n-1))-1)
+		set @tt_kind = RIGHT(LEFT(@t_kind,@n-1),LEN(LEFT(@t_kind,@n-1))-LEN(@tt_noa)-1)
+		insert into @tkind select @tt_noa,@tt_kind
+		set @t_kind = SUBSTRING(@t_kind,@n+1,LEN(@t_kind)-@n)
+	end
+	--------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(30),
+		noa nvarchar(30),
+		datea nvarchar(10),
+		typea nvarchar(30),
+		kind nvarchar(30),
+		ckind nvarchar(30),
+		trantype nvarchar(30),
+		custno nvarchar(30),
+		comp nvarchar(50),
+		tel nvarchar(max),
+		fax nvarchar(max),
+		addr nvarchar(max),
+		memo nvarchar(max),
+		
+		uno nvarchar(30),
+		productno nvarchar(30),
+		product nvarchar(90),
+		class nvarchar(30),
+		size nvarchar(max),
+		spec nvarchar(max),
+		mount float,
+		[weight] float,
+		lengthb float,
+		unit nvarchar(20),
+		price float,
+		memos nvarchar(max)
+	)
+	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo
+		,uno,productno,product,class,size,spec,mount,[weight],lengthb,unit,price,memos)
+	select '1','1',a.noa,isnull(a.datea,''),isnull(a.typea,''),isnull(a.kind,''),isnull(d.kind,''),isnull(a.trantype,'')
+		,isnull(a.custno,''),isnull(a.comp,''),isnull(c.tel,''),isnull(c.fax,''),isnull(c.addr_fact,'')
+		,replace(isnull(a.memo,''),'chr(10)','<BR>')
+		,b.uno,b.productno,b.product,b.class
+		,dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius)
+		,b.spec,b.mount,b.[weight],b.lengthb,b.unit,b.price,b.memo
+	from view_get a
+	left join view_gets b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on a.custno=c.noa
+	left join @tkind d on a.kind=d.noa
+	where a.noa between @t_bnoa and @t_enoa
+	-------------------------------------------------------------------------------
+	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo,mount,[weight])
+	select '2','3',noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo,SUM(isnull(mount,0)),SUM(isnull([weight],0)) 
+	from @tmp 
+	group by gno,pno,noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo
+	
+	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
+	select '3','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+	from @tmp 
+	group by noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo
+	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
+	select '4','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+	from @tmp 
+	group by noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo
+	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
+	select '5','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+	from @tmp 
+	group by noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo
+	insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo)
+	select '6','4',noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,memo
+	from @tmp 
+	group by noa,datea,typea,kind,ckind,trantype
+		,custno,comp,tel,fax,addr,memo
+	-------------------------------------------------------------------------------
+	declare cursor_table cursor for
+	select noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr,count(1) 
+	from @tmp group by noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr,@n
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		while @n%@t_pageline != 0
+		begin
+			insert into @tmp(gno,pno,noa,datea,typea,kind,ckind,trantype,custno,comp,tel,fax,addr)
+			values('7','2',@noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr)
+			set @n=@n+1
+		end
+		fetch next from cursor_table
+		into @noa,@datea,@typea,@kind,@ckind,@trantype,@custno,@comp,@tel,@fax,@addr,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select case when typea='寄庫' then '寄庫出貨' else typea end+'單' titlea
+	,(ROW_NUMBER()over(partition by a.noa order by pno)-1)/@t_pageline +1 pp
+	,(b.n-1)/@t_pageline +1 qq
+	, a.*
+	,a.uno a1
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(a.product,'~#$',char(39))+'</a>' a2
+	,a.lengthb a3
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.unit+'</a>' a4
+	,dbo.getComma(a.mount,@mountprecision) a5
+	,dbo.getComma(a.[weight],@weightprecision) a6
+	from @tmp a 
+	left join(select noa,COUNT(1) n from @tmp group by noa) b on a.noa=b.noa
+	order by a.noa,a.pno;

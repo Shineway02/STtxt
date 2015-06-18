@@ -1,0 +1,166 @@
+z_vccw_rs1:--z_vccw_rs1
+declare @t_bcustno nvarchar(50)
+declare @t_ecustno nvarchar(50)
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then CHAR(255) else [5] end
+set @t_bcustno = case when '#non' = [6] then '' else [6] end
+set @t_ecustno = case when '#non' = [7] then CHAR(255) else [7] end
+declare @t_pageline int
+set @t_pageline = 25
+------------------------------------------------------------------------------------------------------
+declare @tmp  table(
+		gno nvarchar(1),
+		idno int identity(0,1),
+		orderno int,
+		pageno int,
+		topage int,
+		custno nvarchar(50),
+		comp nvarchar(100),
+		addr nvarchar(MAX),
+		datea nvarchar(50),
+		noa nvarchar(50),
+		noq nvarchar(50),
+		bccno nvarchar(50),
+		bccname nvarchar(100),
+		mount float,
+		weight float,
+		unit nvarchar(50),
+		price float,
+		money float,
+		tax float,
+		total float,
+		memo nvarchar(MAX),
+		paydate1 nvarchar(20),
+		paydate2 nvarchar(20),
+		paydate3 nvarchar(20),
+		paydate4 nvarchar(20)
+)
+	
+	insert into @tmp
+	select '0',ROW_NUMBER()over(partition by a.custno order by a.custno,a.datea,a.noa,b.noq),1,1
+	,a.custno,a.comp,c.addr_invo,a.datea,a.noa
+	,b.noq,b.bccno,b.bccname,b.mount,b.weight,b.unit,b.price,b.total,a.tax,a.total,b.memo,'','','',''
+	from vccw a
+	left join vccws b on a.noa = b.noa
+	left join cust c on a.custno=c.noa
+	where (a.datea between @t_bdate and @t_edate) and
+	(a.custno between @t_bcustno and @t_ecustno)
+	
+	insert into @tmp (gno,datea,custno,orderno,pageno,topage)
+		select '1',char(255),custno,1,1,1
+		from @tmp group by custno
+	
+declare @custno nvarchar(30)
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+
+declare cursor_table cursor for
+select custno,count(*),max(orderno) from @tmp group by custno
+open cursor_table
+fetch next from cursor_table
+into @custno,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @custno,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare cursor_table cursor for
+select distinct custno,max(orderno),pageno,min(idno),count(*) from @tmp group by custno,pageno
+open cursor_table
+fetch next from cursor_table
+into @custno,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,custno)
+				select '2',(@orderno+1),@pageno,@custno from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	
+	insert into @tmp(gno,orderno,pageno,custno,comp,weight,money,tax,total,datea)
+	select '3',(@t_pageline+1),pageno,custno,MAX(comp),sum(weight),sum(money),MAX(tax),MAX(total) ,MAX(datea)
+	from @tmp where gno=0 and custno=@custno and pageno=@pageno group by custno,pageno
+	
+	fetch next from cursor_table
+	into @custno,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+
+update a
+set paydate1=(
+case when charindex('月結',b.paytype)>0 then
+	dbo.q_cdn(left(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end,6)
+	+'/'+dbo.q_lastday(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end)
+	,cast(b.[getdate] as int))
+when charindex('T/T',b.paytype)>0 or charindex('TT',b.paytype)>0 or charindex('貨到現金',b.paytype)>0 or charindex('現金',b.paytype)>0 then 
+	dbo.q_cdn(a.datea,cast(b.[getdate] as int))
+when charindex('LC',b.paytype)>0 or charindex('L/C',b.paytype)>0 then
+	dbo.q_cdn(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end,cast(b.[getdate] as int))
+when charindex('現出貨前預',b.paytype)>0 or charindex('"對扣貨款',b.paytype)>0 then 
+	dbo.q_cdn(a.datea,cast(b.[getdate] as int))
+when charindex('貨出即押匯',b.paytype)>0 then a.datea 
+else '' end)
+,paydate2=(
+case when charindex('月結',b.paytype)>0 and (charindex('T/T',b.paytype)>0 or charindex('TT',b.paytype)>0 or charindex('現金',b.paytype)>0) and cast(isnull(b.dueday,'')as int)>0 then
+	dbo.q_cdn(left(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end,6)
+	+'/'+dbo.q_lastday(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end)
+	,cast(b.dueday as int))
+when (charindex('T/T',b.paytype)>0 or charindex('TT',b.paytype)>0 or charindex('貨到現金',b.paytype)>0 or charindex('現金',b.paytype)>0) and cast(isnull(b.dueday,'')as int)>0 then 
+	dbo.q_cdn(a.datea,cast(b.dueday as int))
+when (charindex('現出貨前預',b.paytype)>0 or charindex('"對扣貨款',b.paytype)>0)and cast(isnull(b.dueday,'')as int)>0 then 
+	dbo.q_cdn(a.datea,cast(b.dueday as int))
+when charindex('貨出即押匯',b.paytype)>0 then a.datea 
+else '' end)
+,paydate3=(
+case when charindex('月結',b.paytype)>0 and (charindex('LC',b.paytype)>0 or charindex('L/C',b.paytype)>0 or charindex('票據',b.paytype)>0) and cast(isnull(b.dueday,'')as int)>0 then
+	dbo.q_cdn(left(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end,6)
+	+'/'+dbo.q_lastday(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end)
+	,cast(b.dueday as int)) 
+else '' end)
+,paydate4=(
+case when (charindex('LC',b.paytype)>0 or charindex('L/C',b.paytype)>0) and cast(isnull(b.dueday,'')as int)>0 then
+	dbo.q_cdn(case when cast(right(a.datea,2) as int)>=cast(isnull(b.startdate,0) as int) then left(dbo.q_cdn(a.datea,20),6)+'/01' else a.datea end,cast(b.dueday as int))
+else '' end)
+from @tmp a
+left join cust b on a.custno=b.noa
+where a.gno='3'
+	
+select 
+dbo.getComma(tax,0)  tax,
+dbo.getComma(money,0)  money,
+dbo.getComma(total,0)  total,
+dbo.getComma(mount,[1])  mount,
+dbo.getComma(weight,[2])  weight,
+dbo.getComma(price,[3])  price,
+*
+from @tmp  
+order by custno,gno,datea,noa,noq;
+-----------------------------------------------------------------------------------------------------------------

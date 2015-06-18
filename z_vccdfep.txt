@@ -1,0 +1,77 @@
+z_vccdfep1:--z_vccfep1	
+declare @t_noa nvarchar(50) = case when '#non'=[1] then '' else [1] end
+declare @t_space int =10 --空白行
+
+declare @tmp table(
+	gno nvarchar(1),
+	recno int IDENTITY(1,1),
+	noa nvarchar(35),
+	typea nvarchar(10),
+	datea nvarchar(10),
+	cno nvarchar(35),
+	acomp nvarchar(90),
+	mechno nvarchar(20),
+	mech nvarchar(30),
+	custno nvarchar(35),
+	comp nvarchar(35),
+	bkaddr nvarchar(50),
+	salesno nvarchar(35),
+	sales nvarchar(50),
+	vdate nvarchar(10),
+	udate nvarchar(10),
+	memo nvarchar(max),
+	car nvarchar(90),
+	carno nvarchar(30),
+	trana nvarchar(20),
+	addr nvarchar(255),
+	inno nvarchar(35),
+	weight float,
+	price float,
+	tranmoney float,
+	worker nvarchar(30),
+	driverno nvarchar(50),
+	driver nvarchar(50),
+	apv nvarchar(10),
+	sourceaddr nvarchar(50),
+	product nvarchar(100),
+	lead nvarchar(50),
+	leadtype nvarchar(50),
+	stooge nvarchar(50),
+	stoogetype nvarchar(50),
+	memo2 nvarchar(max),
+	matcha float,
+	earcha float,
+	total float,
+	carriage float,
+	vccno nvarchar(50)
+)
+
+insert @tmp
+select '0' gno,noa,typea,datea,cno,acomp,mechno,mech,custno,comp,bkaddr,salesno,sales,vdate,udate,memo
+,car,carno,trana,addr,inno,weight,price,tranmoney,worker,driverno,driver,apv,sourceaddr,product,lead,leadtype
+,stooge,stoogetype,memo2,matcha,earcha,total,carriage,vccno 
+from view_vccd where noa=@t_noa
+
+--插入空白行
+while(@t_space>0 and (select count(*) from @tmp)>0)
+begin
+	insert @tmp(gno,noa)
+	select '0' gno,@t_noa
+	
+	set @t_space=@t_space-1
+end
+
+insert @tmp
+select '1' gno,noa,typea,datea,cno,acomp,mechno,mech,custno,comp,bkaddr,salesno,sales,vdate,udate,memo
+,car,carno,trana,addr,inno,weight,price,tranmoney,worker,driverno,driver,apv,sourceaddr,product,lead,leadtype
+,stooge,stoogetype,memo2,matcha,earcha,total,carriage,vccno 
+from view_vccd where noa=@t_noa
+
+select 
+dbo.getComma(matcha,0)  matcha
+,dbo.getComma(earcha,0)  earcha
+,dbo.getComma(total,0)  total
+,dbo.getComma(carriage,0)  carriage
+,'' unit,0 mount 
+,* 
+from @tmp order by noa,gno,recno;

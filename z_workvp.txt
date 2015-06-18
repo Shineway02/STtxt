@@ -1,0 +1,775 @@
+z_workvp03:--z_workvp03
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bsssno nvarchar(20) = case when '#non'=[4] then '' else [4] end
+	declare @t_esssno nvarchar(20) = case when '#non'=[5] then char(255) else [5] end
+	------------------------------------------------------------------------------------------
+	declare @tmpa table(
+		datea nvarchar(10),
+		sssno nvarchar(20),
+		namea nvarchar(20),
+		price float,
+		weight float,
+		total float
+	)
+	insert into @tmpa(sssno,namea,datea,price,weight)
+	
+	select a.sssno,a.namea,a.datea,a.price,SUM(a.avgkg) 
+	from(
+		select isnull(a.sssno1,'') sssno,ISNULL(a.name1,'') namea,ISNULL(b.datea,'') datea
+			,ISNULL(b.price,0) price,ISNULL(b.avgkg,0) avgkg
+		from workv a
+		left join workvs b on a.noa=b.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno1,''))>0 and a.sssno1 between @t_bsssno and @t_esssno
+		union all 
+		select isnull(a.sssno2,''),ISNULL(a.name2,''),ISNULL(b.datea,''),ISNULL(b.price,0)
+			,ISNULL(b.avgkg,0)
+		from workv a
+		left join workvs b on a.noa=b.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno2,''))>0 and a.sssno2 between @t_bsssno and @t_esssno
+		union all 
+		select isnull(a.sssno3,''),ISNULL(a.name3,''),ISNULL(b.datea,''),ISNULL(b.price,0)
+			,ISNULL(b.avgkg,0)
+		from workv a
+		left join workvs b on a.noa=b.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno3,''))>0 and a.sssno3 between @t_bsssno and @t_esssno
+		union all 
+		select isnull(a.sssno4,''),ISNULL(a.name4,''),ISNULL(b.datea,''),ISNULL(b.price,0)
+			,ISNULL(b.avgkg,0)
+		from workv a
+		left join workvs b on a.noa=b.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno4,''))>0 and a.sssno4 between @t_bsssno and @t_esssno
+		union all 
+		select isnull(a.sssno5,''),ISNULL(a.name5,''),ISNULL(b.datea,''),ISNULL(b.price,0)
+			,ISNULL(b.avgkg,0)
+		from workv a
+		left join workvs b on a.noa=b.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno5,''))>0 and a.sssno5 between @t_bsssno and @t_esssno)a
+	group by sssno,namea,datea,price
+	update @tmpa set total = round(weight*price/1000,0)
+	
+	declare @tmpb table(
+		pno nvarchar(10),
+		gno nvarchar(10),
+		mon nvarchar(20),
+		sssno nvarchar(20),
+		namea nvarchar(20),
+		recno int,
+		
+		total float,
+		m01 float,
+		m02 float,
+		m03 float,
+		m04 float,
+		m05 float,
+		m06 float,
+		m07 float,
+		m08 float,
+		m09 float,
+		m10 float,
+		
+		m11 float,
+		m12 float,
+		m13 float,
+		m14 float,
+		m15 float,
+		m16 float,
+		m17 float,
+		m18 float,
+		m19 float,
+		m20 float,
+		
+		m21 float,
+		m22 float,
+		m23 float,
+		m24 float,
+		m25 float,
+		m26 float,
+		m27 float,
+		m28 float,
+		m29 float,
+		m30 float,
+		
+		m31 float
+	)
+	insert into @tmpb(pno,gno,sssno,namea,mon,recno)
+	select '1','1',isnull(a.sssno,''),ISNULL(a.namea,''),a.mon,ROW_NUMBER()over(partition by a.mon order by sssno)
+	from (select sssno,namea,LEFT(datea,6) mon from @tmpa group by sssno,namea,LEFT(datea,6)) a
+	
+	update @tmpb set m01 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='01' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m02 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='02' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m03 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='03' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m04 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='04' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m05 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='05' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m06 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='06' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m07 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='07' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m08 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='08' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m09 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='09' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m10 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='10' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m11 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='11' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m12 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='12' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m13 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='13' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m14 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='14' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m15 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='15' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m16 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='16' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m17 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='17' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m18 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='18' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m19 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='19' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m20 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='20' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m21 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='21' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m22 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='22' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m23 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='23' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m24 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='24' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m25 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='25' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m26 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='26' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m27 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='27' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m28 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='28' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m29 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='29' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m30 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='30' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+	
+	update @tmpb set m31 = isnull(b.total,0)
+	from @tmpb a
+	left join (select sssno,namea,datea,sum(total) total from @tmpa where RIGHT(datea,2)='31' group by sssno,namea,datea) b
+	on a.sssno=b.sssno and a.mon = LEFT(b.datea,6)
+
+	update @tmpb set total = m01+m02+m03+m04+m05+m06+m07+m08+m09+m10
+		+m11+m12+m13+m14+m15+m16+m17+m18+m19+m20
+		+m21+m22+m23+m24+m25+m26+m27+m28+m29+m30+m31
+	
+	insert into @tmpb(pno,gno,mon,total
+		,m01,m02,m03,m04,m05,m06,m07,m08,m09,m10
+		,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20
+		,m21,m22,m23,m24,m25,m26,m27,m28,m29,m30
+		,m31)
+	select '2','2',mon,SUM(total)
+		,SUM(m01),SUM(m02),SUM(m03),SUM(m04),SUM(m05),SUM(m06),SUM(m07),SUM(m08),SUM(m09),SUM(m10)
+		,SUM(m11),SUM(m12),SUM(m13),SUM(m14),SUM(m15),SUM(m16),SUM(m17),SUM(m18),SUM(m19),SUM(m20)
+		,SUM(m21),SUM(m22),SUM(m23),SUM(m24),SUM(m25),SUM(m26),SUM(m27),SUM(m28),SUM(m29),SUM(m30)
+		,SUM(m31)
+	from @tmpb
+	group by mon
+	
+	----------------------------------------------------------------------------------------------------
+	declare @t_page int = 30 -- 一頁幾行
+	declare @mon nvarchar(20)
+	declare @n int
+	
+	declare cursor_table cursor for
+	select mon,count(1) from @tmpb group by mon
+	open cursor_table
+	fetch next from cursor_table
+	into @mon,@n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while @n%@t_page!=0
+		begin
+			insert into @tmpb(gno,pno,mon)values('3','3',@mon)
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @mon,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
+	select recno rr
+		,total totm 
+		,* 
+	from @tmpb order by mon,gno,recno;
+	
+z_workvp02:--z_workvp02	
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bsssno nvarchar(20) = case when '#non'=[4] then '' else [4] end
+	declare @t_esssno nvarchar(20) = case when '#non'=[5] then char(255) else [5] end
+	------------------------------------------------------------------------------------------
+		------------------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		sssno nvarchar(20),
+		namea nvarchar(20),
+		datea nvarchar(10),
+		--火切 		
+		w01 float,
+		m01 float,
+		--剪台
+		w02 float,
+		m02 float, 		
+		--理貨 	
+		w03 float,
+		m03 float,	
+		--D19-2  
+		w04 float,
+		m04 float,		
+		--D19-5  
+		w05 float,
+		m05 float,		
+		--D25-4  
+		w06 float,
+		m06 float,		
+		--D25-5  
+		w07 float,
+		m07 float,		
+		--D32-2  
+		w08 float,
+		m08 float,		
+		--D10	
+		w09 float,
+		m09 float,	
+		--D13	
+		w10 float,
+		m10 float,	
+		--傳統曲
+		w11 float,
+		m11 float,		
+		--傳統口
+		w12 float,
+		m12 float,		
+		--傳統圓
+		w13 float,
+		m13 float,		
+		--砂輪機
+		w14 float,
+		m14 float,		
+		--鋸床	
+		w15 float,
+		m15 float,	
+		--虎頭剪
+		w16 float,
+		m16 float,	
+
+		total float,
+		memo nvarchar(max)
+	)
+	declare @sssno nvarchar(20)
+	declare @namea nvarchar(50)
+	declare @datea nvarchar(10)
+	declare @weight float
+	declare @price float
+	declare @mechno nvarchar(20)
+
+	declare cursor_table cursor for
+	select a.sssno,a.namea,a.datea,sum(a.avgkg),a.price,a.mechno
+	from(
+		select isnull(a.sssno1,'') sssno,isnull(a.name1,'') namea,isnull(b.datea,'') datea
+			,isnull(b.avgkg,0) avgkg,isnull(b.price,0) price,isnull(b.mechno,'') mechno
+		from workv a
+		left join workvs b on a.noa=b.noa
+		left join mech d on b.mechno=d.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno1,''))>0
+		and a.sssno1 between @t_bsssno and @t_esssno
+		union all
+		select isnull(a.sssno2,''),isnull(a.name2,''),isnull(b.datea,''),isnull(b.avgkg,0),isnull(b.price,0),isnull(b.mechno,'')
+		from workv a
+		left join workvs b on a.noa=b.noa
+		left join mech d on b.mechno=d.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno2,''))>0
+		and a.sssno2 between @t_bsssno and @t_esssno
+		union all
+		select isnull(a.sssno3,''),isnull(a.name3,''),isnull(b.datea,''),isnull(b.avgkg,0),isnull(b.price,0),isnull(b.mechno,'')
+		from workv a
+		left join workvs b on a.noa=b.noa
+		left join mech d on b.mechno=d.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno3,''))>0
+		and a.sssno3 between @t_bsssno and @t_esssno
+		union all
+		select isnull(a.sssno4,''),isnull(a.name4,''),isnull(b.datea,''),isnull(b.avgkg,0),isnull(b.price,0),isnull(b.mechno,'')
+		from workv a
+		left join workvs b on a.noa=b.noa
+		left join mech d on b.mechno=d.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno4,''))>0
+		and a.sssno4 between @t_bsssno and @t_esssno
+		union all
+		select isnull(a.sssno5,''),isnull(a.name5,''),isnull(b.datea,''),isnull(b.avgkg,0),isnull(b.price,0),isnull(b.mechno,'')
+		from workv a
+		left join workvs b on a.noa=b.noa
+		left join mech d on b.mechno=d.noa
+		where b.noa is not null 
+		and b.datea between @t_bdate and @t_edate
+		and len(ISNULL(a.sssno5,''))>0
+		and a.sssno5 between @t_bsssno and @t_esssno)a
+	group by sssno,namea,datea,price,mechno
+	open cursor_table
+	fetch next from cursor_table
+	into @sssno,@namea,@datea,@weight,@price,@mechno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if not exists(select * from @tmp where sssno=@sssno and datea=@datea)
+		begin
+			insert into @tmp(gno,pno,sssno,namea,datea)values('1','1',@sssno,@namea,@datea)
+		end
+		--火切 		
+		if @mechno = '02'
+		begin
+			update @tmp set w01 = ISNULL(w01,0)+ @weight
+				,m01 = round((ISNULL(w01,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end
+		----剪台
+		if @mechno = '01'
+		begin
+			update @tmp set w02 = ISNULL(w02,0)+ @weight
+				,m02 = round((ISNULL(w02,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end		
+		----理貨 	
+		if @mechno = '04' or @mechno = '05' or @mechno = '06'
+		begin
+			update @tmp set w03 = ISNULL(w03,0)+ @weight
+				,m03 = round((ISNULL(w03,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end	
+		----D19-2  
+		if @mechno = '11'
+		begin
+			update @tmp set w04 = ISNULL(w04,0)+ @weight
+				,m04 = round((ISNULL(w04,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end			
+		----D19-5  
+		if @mechno = '10'
+		begin
+			update @tmp set w05 = ISNULL(w05,0)+ @weight
+				,m05 = round((ISNULL(w05,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end			
+		----D25-4  
+		if @mechno = '09'
+		begin
+			update @tmp set w06 = ISNULL(w06,0)+ @weight
+				,m06 = round((ISNULL(w06,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end			
+		----D25-5  
+		if @mechno = '08'
+		begin
+			update @tmp set w07 = ISNULL(w07,0)+ @weight
+				,m07 = round((ISNULL(w07,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end			
+		----D32-2  
+		if @mechno = '07'
+		begin
+			update @tmp set w08 = ISNULL(w08,0)+ @weight
+				,m08 = round((ISNULL(w08,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end			
+		----D10	
+		if @mechno = '12'
+		begin
+			update @tmp set w09 = ISNULL(w09,0)+ @weight
+				,m09 = round((ISNULL(w09,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end		
+		----D13	
+		if @mechno = '13'
+		begin
+			update @tmp set w10 = ISNULL(w10,0)+ @weight
+				,m10 = round((ISNULL(w10,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end	
+		----傳統曲
+		if @mechno = '14'
+		begin
+			update @tmp set w11 = ISNULL(w11,0)+ @weight
+				,m11 = round((ISNULL(w11,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end			
+		----傳統口
+		if @mechno = '16'
+		begin
+			update @tmp set w12 = ISNULL(w12,0)+ @weight
+				,m12 = round((ISNULL(w12,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end		
+		----傳統圓
+		if @mechno = '15'
+		begin
+			update @tmp set w13 = ISNULL(w13,0)+ @weight
+				,m13 = round((ISNULL(w13,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end		
+		----砂輪機
+		if @mechno = '17'
+		begin
+			update @tmp set w14 = ISNULL(w14,0)+ @weight
+				,m14 = round((ISNULL(w14,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end			
+		----鋸床	
+		if @mechno = '18'
+		begin
+			update @tmp set w15 = ISNULL(w15,0)+ @weight
+				,m15 = round((ISNULL(w15,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end		
+		----虎頭剪
+		if @mechno = '03'
+		begin
+			update @tmp set w16 = ISNULL(w16,0)+ @weight
+				,m16 = round((ISNULL(w16,0)+ @weight)*@price/1000,0) 
+			where sssno=@sssno and datea=@datea
+		end	
+		fetch next from cursor_table
+		into @sssno,@namea,@datea,@weight,@price,@mechno
+	end
+	close cursor_table
+	deallocate cursor_table
+	----------------------------------------------------------------------------------------------------
+	update @tmp set recno=b.recno
+	from @tmp a
+	left join (select ROW_NUMBER()over(partition by datea order by sssno) recno,datea,sssno from @tmp) b
+		on a.datea=b.datea and a.sssno=b.sssno
+	
+	update @tmp set total = ISNULL(m01,0)+ISNULL(m02,0)+ISNULL(m03,0)+ISNULL(m04,0)+ISNULL(m05,0)+ISNULL(m06,0)
+		+ISNULL(m07,0)+ISNULL(m08,0)+ISNULL(m09,0)+ISNULL(m10,0)+ISNULL(m11,0)
+		+ISNULL(m12,0)+ISNULL(m13,0)+ISNULL(m14,0)+ISNULL(m15,0)+ISNULL(m16,0)
+	
+	insert into @tmp (gno,pno,datea,w01,m01,w02,m02,w03,m03,w04,m04,w05,m05,w06,m06
+		,w07,m07,w08,m08,w09,m09,w10,m10,w11,m11,w12,m12,w13,m13,w14,m14,w15,m15,w16,m16,total)
+	select '2','2',datea,SUM(ISNULL(w01,0)),SUM(ISNULL(m01,0)),SUM(ISNULL(w02,0)),SUM(ISNULL(m02,0))
+		,SUM(ISNULL(w03,0)),SUM(ISNULL(m03,0)),SUM(ISNULL(w04,0)),SUM(ISNULL(m04,0))
+		,SUM(ISNULL(w05,0)),SUM(ISNULL(m05,0)),SUM(ISNULL(w06,0)),SUM(ISNULL(m06,0))
+		,SUM(ISNULL(w07,0)),SUM(ISNULL(m07,0)),SUM(ISNULL(w08,0)),SUM(ISNULL(m08,0))
+		,SUM(ISNULL(w09,0)),SUM(ISNULL(m09,0)),SUM(ISNULL(w10,0)),SUM(ISNULL(m10,0))
+		,SUM(ISNULL(w11,0)),SUM(ISNULL(m11,0)),SUM(ISNULL(w12,0)),SUM(ISNULL(m12,0))
+		,SUM(ISNULL(w13,0)),SUM(ISNULL(m13,0)),SUM(ISNULL(w14,0)),SUM(ISNULL(m14,0))
+		,SUM(ISNULL(w15,0)),SUM(ISNULL(m15,0)),SUM(ISNULL(w16,0)),SUM(ISNULL(m16,0))
+		,SUM(ISNULL(total,0))
+	from @tmp
+	group by datea
+	----------------------------------------------------------------------------------------------------
+	declare @t_page int = 30 -- 一頁幾行
+	declare @n int
+	
+	declare cursor_table cursor for
+	select datea,count(1) from @tmp group by datea
+	open cursor_table
+	fetch next from cursor_table
+	into @datea,@n
+	while(@@FETCH_STATUS <> -1)
+	begin
+		while @n%@t_page!=0
+		begin
+			insert into @tmp(gno,pno,datea)values('3','3',@datea)
+			set @n = @n + 1
+		end
+		fetch next from cursor_table
+		into @datea,@n
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	select recno rr,total totm, * from @tmp order by datea,gno,sssno;
+
+z_workvp01:--z_workvp01	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bsssno nvarchar(20) = case when '#non'=[4] then '' else [4] end
+	declare @t_esssno nvarchar(20) = case when '#non'=[5] then char(255) else [5] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) =  case when '#non'=[7] then char(255) else [7] end
+	declare @t_bproductno nvarchar(20) = case when '#non'=[8] then '' else [8] end
+	declare @t_eproductno nvarchar(20) =  case when '#non'=[9] then char(255) else [9] end
+	declare @t_uno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+	
+	IF OBJECT_ID('tempdb..#z_workvp01')is not null
+	BEGIN
+		drop table #z_workvp01
+	END
+	
+	create table #z_workvp01(
+		gno nvarchar(10),
+		recno int,
+		noa nvarchar(20),
+		noq nvarchar(10),
+		uno nvarchar(30),
+		datea nvarchar(20),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		productno nvarchar(20),
+		product nvarchar(50),
+		lengthb float,
+		[weight] float,
+		mount float,
+		pmount float,
+		sss1 nvarchar(20),
+		sss2 nvarchar(20),
+		sss3 nvarchar(20),
+		sss4 nvarchar(20),
+		sss5 nvarchar(20),
+		mechno nvarchar(20),
+		mech nvarchar(40),
+		avgkg float,
+		memo nvarchar(max),
+		spec nvarchar(20),
+		num nvarchar(20)
+	)
+	create index noa on #z_workvp01(noa,noq)
+	
+	insert into #z_workvp01(gno,recno,noa,noq,uno,datea,custno,cust,productno,product
+		,lengthb,weight,mount,pmount,mechno,mech,avgkg,memo
+		,sss1,sss2,sss3,sss4,sss5)
+	select '1',ROW_NUMBER()over(order by a.noa,b.noq)
+		,a.noa,b.noq,b.uno,b.datea,b.custno,b.cust,b.productno,b.product
+		,b.lengthb,b.weight,b.mount
+		,case when len(isnull(a.sssno1,''))>0 then 1 else 0 end
+		+case when len(isnull(a.sssno2,''))>0 then 1 else 0 end
+		+case when len(isnull(a.sssno3,''))>0 then 1 else 0 end
+		+case when len(isnull(a.sssno4,''))>0 then 1 else 0 end
+		+case when len(isnull(a.sssno5,''))>0 then 1 else 0 end
+		,b.mechno,b.mech,b.avgkg,b.memo
+		,isnull(a.name1,''),isnull(a.name2,'')
+		,isnull(a.name3,''),isnull(a.name4,'')
+		,isnull(a.name5,'')
+	from workv a
+	left join workvs b on a.noa=b.noa
+	where (len(@t_noa)=0 or a.noa=@t_noa)
+	and b.datea between @t_bdate and @t_edate
+	and b.productno between @t_bproductno and @t_eproductno
+	and b.custno between @t_bcustno and @t_ecustno
+	--and exists(select * from workvt where noa=a.noa and noq=b.noq and sssno between @t_bsssno and @t_esssno)
+	and (len(@t_uno)=0 or b.uno=@t_uno)
+	order by a.noa,b.noq
+	
+	----------------------------------------------------------------------
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(20)
+	declare @product nvarchar(max)
+	declare @spec nvarchar(20)
+	declare @num nvarchar(20)
+	declare @n int
+	
+	declare cursor_table cursor for
+	select noa,noq,product from #z_workvp01
+    open cursor_table
+    fetch next from cursor_table
+    into @noa,@noq,@product
+    while(@@FETCH_STATUS <> -1)
+    begin
+		select @spec='',@num=''
+		set @n = CHARINDEX('SD',@product)
+		if @n>0
+		begin
+			set @product = rtrim(Ltrim(SUBSTRING(@product,@n+2,LEN(@product))))
+			set @n = CHARINDEX(SPACE(1),@product)
+			if @n>0
+			begin
+				set @spec = left(@product,@n-1)
+				set @num = rtrim(Ltrim(RIGHT(@product,LEN(@product)-len(@spec))))
+				if CHARINDEX('#',@num)>0
+					set @num = LEFT(@num,CHARINDEX('#',@num))
+			end
+		end
+		update #z_workvp01 set spec=@spec,num=@num where noa=@noa and noq=@noq
+        fetch next from cursor_table
+        into @noa,@noq,@product
+    end
+    close cursor_table
+    deallocate cursor_table
+	
+	/*update @tmp set sss1= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 1
+	
+	update @tmp set sss2= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 2
+	
+	update @tmp set sss3= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 3
+	
+	update @tmp set sss4= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 4
+	
+	update @tmp set sss5= b.namea
+	from @tmp a
+	outer apply( select ROW_NUMBER()over(order by no2) recno
+		,case when len(ISNULL(namea,''))>0 then namea else sssno end namea
+		from workvt where noa=a.noa and noq=a.noq ) b
+	where b.recno= 5*/
+	--------------------------------------------------------------------------------------------------
+	insert into #z_workvp01(gno,noa,noq,datea,weight,mount)
+	select '2',CHAR(255),CHAR(255),CHAR(255),SUM(ISNULL(weight,0)),SUM(ISNULL(mount,0))
+	from #z_workvp01
+	
+	select a.recno rr
+		,"workv?noa=\'"+a.noa+"\' and "+cast(a.recno as nvarchar)+"=$rr?" ghref
+		,a.uno a01
+		,a.datea a02
+		,case when len(ISNULL(b.nick,''))>0 then b.nick else a.cust end a03
+		,a.num a04
+		,a.lengthb a05
+		,a.weight a06
+		,a.mount a07
+		,a.pmount a08
+		,a.sss1 a09
+		,a.sss2 a10
+		,a.sss3 a11
+		,a.sss4 a12
+		,a.sss5 a13
+		,a.mech a14
+		,a.avgkg a15
+		,a.memo a16
+		,a.* 
+	from #z_workvp01 a
+	left join cust b on a.custno=b.noa
+	order by a.gno,a.noa,a.noq
+	
+	drop table #z_workvp01;

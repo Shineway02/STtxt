@@ -1,0 +1,137 @@
+﻿z_quatstp_rk01:--z_quatstp_rk01
+declare @t_accy nvarchar(max)
+declare @b_noa nvarchar(30)
+declare @e_noa nvarchar(30)
+
+declare @t_pageline int = 8   --------一頁幾行
+
+set @t_accy = '[1]'
+set @b_noa = case when '#non' = [2] then '' else [2] end
+set @e_noa = case when '#non' = [3] then '' else [3] end
+
+declare @tmp table(
+    gno nvarchar(10),
+	noa nvarchar(20),
+	noq nvarchar(20),
+	product nvarchar(30),
+	spec nvarchar(20),
+	dime nvarchar(20),
+	width nvarchar(20),
+	lengthb nvarchar(20),
+	ucolor nvarchar(20),
+	add2 nvarchar(30),
+	scolor nvarchar(30),
+	weight nvarchar(30),
+	price decimal(10,3),
+	bmemo nvarchar(50),
+	datea nvarchar(15),
+	paytype nvarchar(20),
+	contract nvarchar(20),
+	trantype nvarchar(20),
+	addr2 nvarchar(50),
+	addr nvarchar(50),
+	amemo nvarchar(50)
+	)
+insert into @tmp(gno,noa,noq,product,spec,dime,width,lengthb,ucolor,add2,scolor,weight,price,bmemo,datea,paytype,contract,trantype,addr2,addr,amemo)
+select '0',a.noa,b.no3,b.product,b.spec,b.dime,b.width,b.lengthb,a.fax,a.tel,a.odate,b.weight,b.price,b.memo,a.datea,a.paytype,a.contract,a.trantype,a.addr,a.addr2,a.memo
+from view_quat a left join view_quats b on a.noa=b.noa
+where (a.noa between @b_noa and @e_noa)
+
+declare @noa nvarchar(MAX)
+declare @counts int 
+
+declare cursor_table cursor for
+select noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@counts
+while(@@FETCH_STATUS <> -1)
+begin		
+	while (@counts<@t_pageline)
+	begin
+		insert @tmp(gno,noa,noq)
+		select '0',@noa,CHAR(255)
+		
+		set @counts=@counts+1
+	end	
+	fetch next from cursor_table
+	into @noa,@counts
+end
+close cursor_table
+deallocate cursor_table
+
+insert into @tmp(gno,noa,noq,datea,paytype,contract,trantype,addr2,addr,amemo)
+select '1',MAX(noa),MAX(noq),MAX(datea),MAX(paytype),MAX(contract),MAX(trantype),MAX(addr2),MAX(addr),MAX(amemo) from @tmp group by noa
+
+select * , '<img width="500px" src="http://59.125.143.171/images/Lien_Chy01.png">' logo 
+from @tmp order by noa,gno,noq
+;
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+z_quatstp_rk02:--z_quatstp_rk02
+declare @t_accy nvarchar(max)
+declare @b_noa nvarchar(30)
+declare @e_noa nvarchar(30)
+
+declare @t_pageline int = 8   --------一頁幾行
+
+set @t_accy = '[1]'
+set @b_noa = case when '#non' = [2] then '' else [2] end
+set @e_noa = case when '#non' = [3] then '' else [3] end
+
+declare @tmp table(
+    gno nvarchar(10),
+	noa nvarchar(20),
+	noq nvarchar(20),
+	product nvarchar(30),
+	spec nvarchar(20),
+	dime nvarchar(20),
+	width nvarchar(20),
+	lengthb nvarchar(20),
+	ucolor nvarchar(20),
+	add2 nvarchar(30),
+	scolor nvarchar(30),
+	weight nvarchar(30),
+	price decimal(10,3),
+	bmemo nvarchar(50),
+	datea nvarchar(15),
+	paytype nvarchar(20),
+	contract nvarchar(20),
+	trantype nvarchar(20),
+	addr2 nvarchar(50),
+	addr nvarchar(50),
+	amemo nvarchar(50)
+	)
+insert into @tmp(gno,noa,noq,product,spec,dime,width,lengthb,ucolor,add2,scolor,weight,price,bmemo,datea,paytype,contract,trantype,addr2,addr,amemo)
+select '0',a.noa,b.no3,b.product,b.spec,b.dime,b.width,b.lengthb,a.fax,a.tel,a.odate,b.weight,b.price,b.memo,a.datea,a.paytype,a.contract,a.trantype,a.addr,a.addr2,a.memo
+from view_quat a left join view_quats b on a.noa=b.noa
+where (a.noa between @b_noa and @e_noa)
+
+declare @noa nvarchar(MAX)
+declare @counts int 
+
+declare cursor_table cursor for
+select noa,count(*) from @tmp group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@counts
+while(@@FETCH_STATUS <> -1)
+begin		
+	while (@counts<@t_pageline)
+	begin
+		insert @tmp(gno,noa,noq)
+		select '0',@noa,CHAR(255)
+		
+		set @counts=@counts+1
+	end	
+	fetch next from cursor_table
+	into @noa,@counts
+end
+close cursor_table
+deallocate cursor_table
+
+insert into @tmp(gno,noa,noq,datea,paytype,contract,trantype,addr2,addr,amemo)
+select '1',MAX(noa),MAX(noq),MAX(datea),MAX(paytype),MAX(contract),MAX(trantype),MAX(addr2),MAX(addr),MAX(amemo) from @tmp group by noa
+
+select * , '<img width="500px" src="http://59.125.143.171/images/Lien_Chy02.png">' logo 
+from @tmp order by noa,gno,noq
+;
