@@ -1,0 +1,102 @@
+z_ucc_pk01:--z_ucc_pk01
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	
+	declare @t_bdate nvarchar(10) = ''
+	declare @t_edate nvarchar(10) = char(255)
+	declare @t_bdime float = 0
+	declare @t_edime float = 99999
+	declare @t_bwidth float = 0
+	declare @t_ewidth float = 9999999
+	declare @t_blengthb float = 0
+	declare @t_elengthb float = 99999999
+	declare @t_bradius float = 0
+	declare @t_eradius float = 9999999
+	declare @t_bproductno nvarchar(20) = ''
+ 	declare @t_eproductno nvarchar(20) = char(255)
+	declare @t_bstoreno nvarchar(20) = ''
+	declare @t_estoreno nvarchar(20) = char(255)
+	
+	declare @t_orderstatus nvarchar(max) = ''
+	declare @t_kind nvarchar(max) = ''
+	declare @t_itype nvarchar(max) = ''
+	declare @t_style nvarchar(max) = ''
+	declare @t_sort nvarchar(max) = 'datea'
+	------------------------------------------------------------------------------------------------
+	IF OBJECT_ID('tempdb..#z_ucc_pk01')is not null
+	BEGIN
+		drop table #z_ucc_pk01
+	END
+	
+	create table #z_ucc_pk01(
+		sel int identity(1,1),
+		recno int,
+		datea nvarchar(10),
+		tablea nvarchar(20),
+		[action] nvarchar(20),
+		accy nvarchar(10),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		uno nvarchar(30),
+		productno nvarchar(50),
+		product nvarchar(50),
+		dime float,
+		width float,
+		lengthb float,
+		radius float,
+		spec nvarchar(50),
+		style nvarchar(50),
+
+		class nvarchar(50),
+		typea nvarchar(20),
+		[source] nvarchar(50),
+		hard float,
+		waste nvarchar(50),
+		mount float,
+		[weight] float,
+		mweight float,
+		size nvarchar(max),
+		memo nvarchar(max),
+		zinc nvarchar(20),
+		scolor nvarchar(20),
+		ucolor nvarchar(20),
+		unit nvarchar(20),
+		kind nvarchar(20),
+		itype nvarchar(20),
+		custno nvarchar(20),
+		ordeno nvarchar(20),
+		no2 nvarchar(10),
+		eweight float,
+		emount float,
+		laststoreno nvarchar(20)
+		
+	)
+	
+	insert into #z_ucc_pk01(uno,datea,tablea,[action],accy,noa,noq
+		,productno,product,dime,width,lengthb,radius,spec,style
+		,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
+		,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno)
+	select uno,datea,tablea,[action],accy,noa,noq
+		,productno,product,dime,width,lengthb,radius,spec,style
+		,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
+		,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
+	from view_uccc a
+	where ISNULL(a.datea,'') between @t_bdate and @t_edate
+	and ISNULL(a.dime,0) between @t_bdime and @t_edime
+	and ISNULL(a.width,0) between @t_bwidth and @t_ewidth
+	and ISNULL(a.lengthb,0) between @t_blengthb and @t_elengthb
+	and ISNULL(a.radius,0) between @t_bradius and @t_eradius
+	and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno
+	and ISNULL(a.laststoreno,'') between @t_bstoreno and @t_estoreno
+	and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
+	and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
+	and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
+	---------------------------------------------------------------------------
+	set @cmd = "update #z_ucc_pk01 set recno=b.recno
+		from #z_ucc_pk01 a
+		left join(select sel,ROW_NUMBER()over(order by "+@t_sort+") recno from #z_ucc_pk01) b on a.sel=b.sel"
+	execute sp_executesql @cmd
+
+	select * from #z_ucc_pk01 order by recno
+	
+	drop table #z_ucc_pk01;
