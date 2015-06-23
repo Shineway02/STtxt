@@ -79,7 +79,8 @@ z_ucc_pk01:--z_ucc_pk01
 		emount float,
 		laststoreno nvarchar(20),
 		sprice float,
-		sprice2 float	
+		sprice2 float,
+		price float
 	)
 	set @t_waste = UPPER(@t_waste)
 	
@@ -116,12 +117,28 @@ z_ucc_pk01:--z_ucc_pk01
 		from #z_ucc_pk01 a
 		left join(select sel,ROW_NUMBER()over(order by "+@t_sort+") recno from #z_ucc_pk01) b on a.sel=b.sel"
 	execute sp_executesql @cmd
+	
+	update #z_ucc_pk01 set price=round(b.price,3)
+	from #z_ucc_pk01 a
+	left join view_rc2s b on a.accy=b.accy and a.noa=b.noa and a.uno=b.uno
+	where a.tablea='rc2s'
+	and b.noa is not null
+	
+	update #z_ucc_pk01 set price=round(b.price,3)
+	from #z_ucc_pk01 a
+	left join view_inas b on a.accy=b.accy and a.noa=b.noa and a.uno=b.uno
+	where a.tablea='inas'
+	and b.noa is not null
 	---------------------------------------------------------------------------
 	insert into #z_ucc_pk01(gno,eweight,emount)
 	select '2',SUM(ISNULL(eweight,0)),SUM(ISNULL(emount,0)) from #z_ucc_pk01
 	
 	select a.gno
 		,ROW_NUMBER()over(order by a.gno,a.recno) rr
+		,case a.tablea when 'rc2s' then 'rc2st'  
+			when 'inas' then 'inast'
+			when 'cuts' then 'cut' else '' end
+			+"?noa=\'"+a.noa+"\' and "+cast(ROW_NUMBER()over(order by a.gno,a.recno) as nvarchar)+"=$rr?"+a.accy ghref
 		,a.datea
 		,case when b.store is null then a.laststoreno else b.store end store
 		,a.[source]
@@ -132,7 +149,7 @@ z_ucc_pk01:--z_ucc_pk01
 		,a.size
 		,dbo.getComma(a.emount,-1) emount
 		,dbo.getComma(a.eweight,-1) eweight
-		,dbo.getComma(a.sprice,-1) sprice
+		,dbo.getComma(a.price,3) price
 		,a.memo
 		,case when c.nick is not null then c.nick when c.comp is not null then LEFT(c.comp,4) else a.custno end cust
 		,a.ordeno
