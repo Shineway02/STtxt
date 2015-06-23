@@ -288,7 +288,7 @@ and a.custno between @t_bcustno and @t_ecustno
 insert #tmp
 select '0',a.cno,(select acomp from acomp where a.cno=noa)
 ,a.custno,(select case when isnull(nick,'')='' then left(comp,6) else nick end from cust where a.custno=noa),a.noa
-,b.datea,c.productno,c.product,c.price,c.mount,c.total,round(c.total*0.05,0),c.noa,c.noq
+,b.datea,c.productno,replace(c.product,'~#$',char(39)),c.price,c.mount,c.total,round(c.total*0.05,0),c.noa,c.noq
 from umma a left join view_vcc b on a.noa=b.ummano left join view_vccs c on b.noa=c.noa
 where a.datea between @t_bdate and @t_edate
 and a.cno between @t_bcno and @t_ecno 
