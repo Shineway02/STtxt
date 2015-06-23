@@ -1,0 +1,145 @@
+z_ucc_pk01:--z_ucc_pk01
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	
+	declare @t_bdate nvarchar(10) = case when '#non'=[1] then '' else [1] end
+	declare @t_edate nvarchar(10) = case when '#non'=[2] then char(255) else [2] end
+	declare @t_kind nvarchar(max) = case when '#non'=[3] then '' else [3] end
+	declare @t_itype nvarchar(max) = case when '#non'=[4] then '' else [4] end
+	declare @t_bproductno nvarchar(20) = case when '#non'=[5] then '' else [5] end
+ 	declare @t_eproductno nvarchar(20) = case when '#non'=[6] then char(255) else [6] end
+	declare @t_style nvarchar(max) = case when '#non'=[7] then '' else [7] end
+	declare @t_waste nvarchar(max) = case when '#non'=[8] then '' else [8] end
+	
+	declare @t_bradius float = case when '#non'=[9] then 0 else cast([9] as float) end
+	declare @t_eradius float = case when '#non'=[10] then 9999999 else cast([10] as float) end
+	declare @t_bdime float = case when '#non'=[11] then 0 else cast([11] as float) end
+	declare @t_edime float = case when '#non'=[12] then 9999999 else cast([12] as float) end
+	declare @t_bwidth float = case when '#non'=[13] then 0 else cast([13] as float) end
+	declare @t_ewidth float = case when '#non'=[14] then 9999999 else cast([14] as float) end
+	declare @t_blengthb float = case when '#non'=[15] then 0 else cast([15] as float) end
+	declare @t_elengthb float = case when '#non'=[16] then 9999999 else cast([16] as float) end
+	
+	declare @t_bstoreno nvarchar(20) = case when '#non'=[17] then '' else [17] end
+	declare @t_estoreno nvarchar(20) = case when '#non'=[18] then char(255) else [18] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[19] then '' else [19] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[20] then char(255) else [20] end
+	
+	declare @t_orderstatus nvarchar(max) = case when '#non'=[21] then '' else [21] end
+	declare @t_isordermemo nvarchar(max) = case when '#non'=[22] then '' else [22] end
+	
+	declare @t_sort nvarchar(max) = case when '#non'=[23] then '' else [23] end
+	--declare @t_showprice nvarchar(max) = case when '#non'=[24] then '' else [24] end
+	------------------------------------------------------------------------------------------------
+	IF OBJECT_ID('tempdb..#z_ucc_pk01')is not null
+	BEGIN
+		drop table #z_ucc_pk01
+	END
+	
+	create table #z_ucc_pk01(
+		sel int identity(1,1),
+		gno nvarchar(10),
+		recno int,
+		datea nvarchar(10),
+		tablea nvarchar(20),
+		[action] nvarchar(20),
+		accy nvarchar(10),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		uno nvarchar(30),
+		productno nvarchar(50),
+		product nvarchar(50),
+		dime float,
+		width float,
+		lengthb float,
+		radius float,
+		spec nvarchar(50),
+		style nvarchar(50),
+
+		class nvarchar(50),
+		typea nvarchar(20),
+		[source] nvarchar(50),
+		hard float,
+		waste nvarchar(50),
+		mount float,
+		[weight] float,
+		mweight float,
+		size nvarchar(max),
+		memo nvarchar(max),
+		zinc nvarchar(20),
+		scolor nvarchar(20),
+		ucolor nvarchar(20),
+		unit nvarchar(20),
+		kind nvarchar(20),
+		itype nvarchar(20),
+		custno nvarchar(20),
+		ordeno nvarchar(20),
+		no2 nvarchar(10),
+		eweight float,
+		emount float,
+		laststoreno nvarchar(20),
+		sprice float,
+		sprice2 float	
+	)
+	set @t_waste = UPPER(@t_waste)
+	
+	insert into #z_ucc_pk01(gno,uno,datea,tablea,[action],accy,noa,noq
+		,productno,product,dime,width,lengthb,radius,spec,style
+		,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
+		,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
+		,sprice,sprice2)
+	select '1',uno,datea,tablea,[action],accy,noa,noq
+		,productno,product,dime,width,lengthb,radius,spec,style
+		,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
+		,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
+		,sprice,sprice2
+	from (select b.*, ISNULL( y.eweight, b.weight) eweight ,ISNULL( y.emount ,b.mount) emount,
+			case when ltrim(rtrim(isnull(y.cngstoreno,''))) = '' then b.storeno else y.cngstoreno end laststoreno
+		from uccy y
+		left join view_uccb b on y.uno=b.uno
+		where ISNULL( y.eweight, isnull(b.weight,0))>0 
+			and ISNULL( y.emount ,isnull(b.mount,0))>0) a
+	where ISNULL(a.datea,'') between @t_bdate and @t_edate
+	and ISNULL(a.dime,0) between @t_bdime and @t_edime
+	and ISNULL(a.width,0) between @t_bwidth and @t_ewidth
+	and ISNULL(a.lengthb,0) between @t_blengthb and @t_elengthb
+	and ISNULL(a.radius,0) between @t_bradius and @t_eradius
+	and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno
+	and ISNULL(a.laststoreno,'') between @t_bstoreno and @t_estoreno
+	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
+	and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
+	and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
+	and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
+	and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
+	---------------------------------------------------------------------------
+	set @cmd = "update #z_ucc_pk01 set recno=b.recno
+		from #z_ucc_pk01 a
+		left join(select sel,ROW_NUMBER()over(order by "+@t_sort+") recno from #z_ucc_pk01) b on a.sel=b.sel"
+	execute sp_executesql @cmd
+	---------------------------------------------------------------------------
+	insert into #z_ucc_pk01(gno,eweight,emount)
+	select '2',SUM(ISNULL(eweight,0)),SUM(ISNULL(emount,0)) from #z_ucc_pk01
+	
+	select a.gno
+		,ROW_NUMBER()over(order by a.gno,a.recno) rr
+		,a.datea
+		,case when b.store is null then a.laststoreno else b.store end store
+		,a.[source]
+		,a.uno
+		,a.product
+		,a.class
+		,a.spec
+		,a.size
+		,dbo.getComma(a.emount,-1) emount
+		,dbo.getComma(a.eweight,-1) eweight
+		,dbo.getComma(a.sprice,-1) sprice
+		,a.memo
+		,case when c.nick is not null then c.nick when c.comp is not null then LEFT(c.comp,4) else a.custno end cust
+		,a.ordeno
+		,a.no2
+	from #z_ucc_pk01 a
+	left join store b on a.laststoreno=b.noa
+	left join cust c on a.custno=c.noa
+	order by a.gno,a.recno
+	
+	drop table #z_ucc_pk01;
