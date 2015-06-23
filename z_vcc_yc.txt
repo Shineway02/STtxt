@@ -471,12 +471,14 @@ declare @t_edate nvarchar(10)
 declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
 declare @t_groupano nvarchar(30)
+declare @t_custno nvarchar(MAX)
 
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
 set @t_bproductno = case when '#non'=[12] then '' else [12] end
 set @t_eproductno = case when '#non'=[13] then char(255) else [13] end
 set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+set @t_custno = case when '#non'=[39] then '' else [39] end
 
 declare @tmp table(
 	gno nvarchar(1),
@@ -510,6 +512,7 @@ left join view_ucaucc d on b.productno = d.noa
 where isnull(b.productno,'') != '' and (a.datea between @t_bdate and @t_edate) and
 		  (len(@t_groupano)=0 or d.groupano = @t_groupano)
 		  and (isnull(b.productno,'') between @t_bproductno and @t_eproductno)
+		  and (len(@t_custno)=0 or a.custno=@t_custno)
 group by b.productno,b.product
 order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) desc,sum((case when a.typea='1' then 1 else -1 end)*b.mount) desc
 
