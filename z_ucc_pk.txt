@@ -137,11 +137,11 @@ z_ucc_pk01:--z_ucc_pk01
 	
 	select a.gno
 		,ROW_NUMBER()over(order by a.gno,a.recno) rr
-		,case a.tablea when 'rc2s' then 'rc2st'  
-			when 'inas' then 'inast'
-			when 'cuts' then 'cut' else '' end
-			+"?noa=\'"+a.noa+"\' and "+cast(ROW_NUMBER()over(order by a.gno,a.recno) as nvarchar)+"=$rr?"+a.accy ghref
-		
+		--,case a.tablea when 'rc2s' then 'rc2st'  
+		--	when 'inas' then 'inast'
+		--	when 'cuts' then 'cut' else '' end
+		--	+"?noa=\'"+a.noa+"\' and "+cast(ROW_NUMBER()over(order by a.gno,a.recno) as nvarchar)+"=$rr?"+a.accy ghref
+		,'z_unobd?$uno?' ghref
 		,a.datea
 		,case when b.store is null then a.laststoreno else b.store end store
 		,a.[source]
