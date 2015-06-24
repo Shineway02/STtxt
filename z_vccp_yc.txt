@@ -118,4 +118,113 @@ z_vccp_yc01:--z_vccp_yc01
 	,*
 	from @tmp order by noa,recno,gno,noq
  ;	
+------------------------------------------------------------------------------------------------------------------------------------------
+z_vccp_yc02:--z_vccp_yc02	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(20) = case when '#non'=[1] then '' else [1] end
+	--------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		recno int,
+		cno nvarchar(30),
+		acomp nvarchar(50),
+		noa nvarchar(30),
+		noq nvarchar(10),
+		datea nvarchar(10),
+		custno nvarchar(30),
+		comp nvarchar(50),
+		addr nvarchar(100),
+		tel nvarchar(50),
+		serial nvarchar(100),
+		
+		productno nvarchar(30),
+		product nvarchar(50),
+		unit nvarchar(20),
+		m1 float,
+		m2 float,
+		price float,
+		total float,
+		
+		t1 float,
+		t2 float,
+		t3 float,
+		t4 float,
+		p1 int,
+		p2 int,
+		worker nvarchar(50)
+	)
+		
+	insert into @tmp
+	select '1' gno,ROW_NUMBER()over(partition by a.noa order by b.noq) recno
+	,a.cno,a.acomp,a.noa,b.noq,a.datea,a.custno,a.comp
+	,case when isnull(a.addr2,'')!='' then a.addr2 else a.addr end,a.tel,c.serial
 	
+	,b.productno,replace(b.product,'~#$',char(39)),b.unit
+	,case when UPPER(b.unit)='KG' then b.mount else b.lengthc end
+	,case when UPPER(b.unit)='KG' then b.weight else b.mount end
+	,b.price,b.total
+	
+	,a.money+a.discount,a.discount,a.tax,a.total,0,0,a.worker
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa 
+	left join cust c on a.custno=c.noa
+	where @t_noa=a.noa
+
+------------------------------------------------------------------------
+	declare @counts int 
+	declare @t_counts int 
+	declare @t_line int =6
+    
+	declare @noa nvarchar(MAX) 
+
+	declare cursor_table cursor for 
+	select noa,count(*) from @tmp group by noa 
+	open cursor_table 
+	fetch next from cursor_table 
+	into @noa,@counts 
+	while(@@FETCH_STATUS <> -1) 
+	begin		
+		--插入空白行
+		while (@counts%@t_line>0) 
+		begin 
+
+			insert @tmp(gno,noa,noq,recno,t1,t2,t3,t4,worker) 
+			select top 1 '0',@noa,CHAR(255),@counts+1
+			,MAX(t1),MAX(t2),MAX(t3),MAX(t4),MAX(worker)
+			from @tmp where noa=@noa
+			
+			set @counts=@counts+1 
+		end	
+		
+		fetch next from cursor_table 
+		into @noa,@counts 
+		
+	end 
+	close cursor_table 
+	deallocate cursor_table 
+	
+	update @tmp
+	set p1=recno/(@t_line+1)
+	
+	update a
+	set p2=(select MAX(P1) from @tmp where noa=a.noa)
+	from @tmp a
+	
+	insert @tmp (gno,noa,recno,p1,p2,t1,t2,t3,t4,worker)
+	select '2',noa,MAX(recno),p1,MAX(p2)
+	,MAX(t1),MAX(t2),MAX(t3),MAX(t4),MAX(worker)
+	from @tmp group by noa,p1
+
+	select 
+	replace(tel,'~#$',char(39)) tel
+	,dbo.getComma(m1,2) m1
+	,dbo.getComma(m2,2) m2
+	,dbo.getComma(price,2) price
+	,dbo.getComma(total,0) total
+	,dbo.getComma(t1,0) t1
+	,dbo.getComma(t2,0) t2
+	,dbo.getComma(t3,0) t3
+	,dbo.getComma(t4,0) t4
+	,*
+	from @tmp order by noa,recno,gno,noq
+ ;
