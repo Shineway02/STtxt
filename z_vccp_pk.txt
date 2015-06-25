@@ -101,8 +101,8 @@ z_vccp_pk01:--z_vccp_pk01
 	---------------------------------------------------------------------------------
 	update @tmp set product = ltrim(rtrim(isnull(product,'')))
 		,class = ltrim(rtrim(isnull(class,'')))
-		,size = ltrim(rtrim(isnull(size,'')))
-	
+		,size = replace(ltrim(rtrim(isnull(size,''))),'~#$',"'")
+		
 	select *
 	,CAST(curpage as nvarchar)+' / '+CAST(totpage as nvarchar) ppp
 	--,product b01
@@ -112,7 +112,7 @@ z_vccp_pk01:--z_vccp_pk01
 	+ case when len(isnull([size],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end + isnull([size],'')	 b01
 	,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
 	,case when [mount]!=0 then item  else '' end b04
-	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],-1) else '' end b05
+	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],3) else '' end b05
 	,case when len(@t_isweight)>0 and [weight]!=0 then unit  else '' end b06
 	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma([price],-1) else '' end b07
 	,case when len(@t_isprice)>0 and [moneys]!=0 then dbo.getComma([moneys],0) else '' end b08
