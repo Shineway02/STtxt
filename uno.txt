@@ -12,7 +12,7 @@ getuno_bydate:--getuno_bydate
 	
 	declare @uno nvarchar(max) = ''
 	declare @maxuno nvarchar(max) = ''
-	
+	set @buno = ltrim(rtrim(@buno))
 	if len(@buno) = 0
 	begin
 		set @uno = replace(@datea,'/','')
@@ -65,7 +65,9 @@ getuno_bydate:--getuno_bydate
 	begin
 		insert into unolist(uno)values(@uno)
 	end
-	select @uno;
+	declare @tmp table(uno nvarchar(30))
+	insert into @tmp(uno)values(@uno)
+	select * from @tmp;
 
 
 getuno_norm:--getuno_norm
