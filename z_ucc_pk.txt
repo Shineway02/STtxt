@@ -99,8 +99,8 @@ z_ucc_pk01:--z_ucc_pk01
 			case when ltrim(rtrim(isnull(y.cngstoreno,''))) = '' then b.storeno else y.cngstoreno end laststoreno
 		from uccy y
 		left join view_uccb b on y.uno=b.uno
-		where ISNULL( y.eweight, isnull(b.weight,0))>0 
-			and ISNULL( y.emount ,isnull(b.mount,0))>0) a
+		where (len(isnull(b.waste,''))!=0 and b.tablea!='rc2s')
+			or (ISNULL( y.eweight, isnull(b.weight,0))>0 and ISNULL( y.emount ,isnull(b.mount,0))>0)) a
 	where ISNULL(a.datea,'') between @t_bdate and @t_edate
 	and ISNULL(a.dime,0) between @t_bdime and @t_edime
 	and ISNULL(a.width,0) between @t_bwidth and @t_ewidth
@@ -114,11 +114,22 @@ z_ucc_pk01:--z_ucc_pk01
 	and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
 	and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
 	and (len(@t_spec)=0 or isnull(a.spec,'') = @t_spec)
+
 	---------------------------------------------------------------------------
-	set @cmd = "update #z_ucc_pk01 set recno=b.recno
+	if LEN(@t_sort)=0
+	begin
+		update #z_ucc_pk01 set recno=b.recno
 		from #z_ucc_pk01 a
-		left join(select sel,ROW_NUMBER()over(order by "+@t_sort+") recno from #z_ucc_pk01) b on a.sel=b.sel"
-	execute sp_executesql @cmd
+		left join(select sel,ROW_NUMBER()over(order by style,dime,width,lengthb) recno 
+		from #z_ucc_pk01) b on a.sel=b.sel
+	end
+	else
+	begin
+		set @cmd = "update #z_ucc_pk01 set recno=b.recno
+			from #z_ucc_pk01 a
+			left join(select sel,ROW_NUMBER()over(order by "+@t_sort+") recno from #z_ucc_pk01) b on a.sel=b.sel"
+		execute sp_executesql @cmd
+	end
 	
 	update #z_ucc_pk01 set price=round(b.price,3)
 	from #z_ucc_pk01 a
