@@ -1,3 +1,75 @@
+getuno_bydate:--getuno_bydate
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @buno nvarchar(max) = [1]
+	declare @datea nvarchar(max) = [2]
+	declare @style nvarchar(max) = [3]
+	declare @comp nvarchar(max) = [4]
+	
+	declare @string nvarchar(max)='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	declare @key nvarchar(max)
+	declare @n int
+	
+	declare @uno nvarchar(max) = ''
+	declare @maxuno nvarchar(max) = ''
+	set @buno = ltrim(rtrim(@buno))
+	if len(@buno) = 0
+	begin
+		set @uno = replace(@datea,'/','')
+		
+		select top 1 @maxuno=uno from unolist where uno like @uno+'[0-9,A-Z][0-9][0-9]' order by uno desc
+		if len(@maxuno)=0
+		begin
+			set @uno = @uno + '001'
+		end
+		else
+		begin
+			set @key = RIGHT(@maxuno,3)
+			set @n = (CHARINDEX(LEFT(@key,1),@string)-1)*100 + CAST(RIGHT(@key,2) as int) + 1
+			if @n >= LEN(@string)*100
+			begin
+				set @uno = ''
+			end
+			else
+			begin
+				set @key = substring(@string,floor(@n/100)+1,1) + RIGHT('00'+cast(@n%100 as nvarchar),2)
+				set @uno = @uno + @key
+			end
+		end
+	end
+	else 
+	begin
+		set @uno = LTRIM(RTRIM(@buno))
+		select top 1 @maxuno=uno from unolist where uno like @uno+'-[0-9,A-Z][0-9]' order by uno desc
+		if len(@maxuno)=0
+		begin
+			set @uno = @uno + '-01'
+		end
+		else
+		begin
+			
+			set @key = RIGHT(@maxuno,2)
+			set @n = (CHARINDEX(LEFT(@key,1),@string)-1)*100 + CAST(RIGHT(@key,1) as int) + 1
+			if @n >= LEN(@string)*10
+			begin
+				set @uno = ''
+			end
+			else
+			begin
+				set @key = substring(@string,floor(@n/10)+1,1) + RIGHT('0'+cast(@n%10 as nvarchar),1)
+				set @uno = @uno +'-'+ @key
+			end
+		end
+	end
+	if len(@uno)>0
+	begin
+		insert into unolist(uno)values(@uno)
+	end
+	declare @tmp table(uno nvarchar(30))
+	insert into @tmp(uno)values(@uno)
+	select * from @tmp;
+
+
 getuno_norm:--getuno_norm
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
