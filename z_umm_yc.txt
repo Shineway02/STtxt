@@ -220,6 +220,13 @@ where gno='1'
 
 delete @result where custno in (select custno from @result where gno='1' and total2=0)
 
+--104/06/29 用報表紙印
+insert @result (gno,noa,noq,datea,mon,custno,comp,serial,tel,salesno,saless,total1,pay,unpay,typea) 
+select '2' gno,'','','','',a.custno,comp,serial,tel,'','',total,pay,unpay,''
+from @result a 
+outer apply (select custno,count(*)-1 counts from @result where custno=a.custno and typea!='稅' group by custno) b
+where b.counts % 34 >26 and gno='1'
+
 select
 	gno,typea,noa,noq,datea,mon,custno,comp,serial,addr,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
 	,(select top 1 saless from @result where custno=a.custno and saless!='' order by datea desc)saless
@@ -239,5 +246,6 @@ select
 	,(select top 1 tel  from acomp where (noa=@t_cno or len(@t_cno)=0) order by noa) atel
 	,(select top 1 fax  from acomp where (noa=@t_cno or len(@t_cno)=0) order by noa) afax
 	,(case when @t_bdate!='' then '帳款日期：'+@t_bdate+'~'+@t_edate	else '帳款月份：'+@t_bmon+'~'+@t_emon	end) mondate
-from @result a where typea!='稅' order by custno,case when gno='2' then '0' else gno end,mon,datea,noa,noq;
+from @result a where typea!='稅' 
+order by custno,case when gno='2' then '1' when gno='1' then '2' else gno end,mon,datea,noa,noq;
 --**************************************************************************************************
