@@ -36,15 +36,22 @@ z_vccp_pk01:--z_vccp_pk01
 		[weight] float,
 		unit nvarchar(20),
 		price float,
-		moneys float
+		moneys float,
+		[class] nvarchar(max)
 	)
-
+	insert into @tmp(gno,pno,accy,noa,noq,product)
+	select '1','0',a.accy,a.noa,'',b.custorde
+	from view_vcc a
+	left join view_orde b on a.ordeno=b.noa
+	where a.noa = @t_noa 
+	and len(isnull(b.custorde,''))!=0
+	
 	insert into @tmp(gno,pno,accy,noa,noq,productno,product
 		,dime,width,lengthb,radius,size
-		,mount,item,[weight],unit,price,moneys)
+		,mount,item,[weight],unit,price,moneys,[class])
 	select '1','1',b.accy,b.noa,b.noq,b.productno,b.product
 		,b.dime,b.width,b.lengthb,b.radius,b.size
-		,b.mount,b.item,b.[weight],b.unit,b.price,b.total 
+		,b.mount,b.item,b.[weight],b.unit,b.price,b.total,b.[class]
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
 	where a.noa = @t_noa
@@ -98,16 +105,22 @@ z_vccp_pk01:--z_vccp_pk01
 	end
 	update @tmp set [money]=null,tax=null,total=null where curpage!=@totpage	
 	---------------------------------------------------------------------------------
+	update @tmp set product = ltrim(rtrim(isnull(product,'')))
+		,class = ltrim(rtrim(isnull(class,'')))
+		,size = replace(ltrim(rtrim(isnull(size,''))),'~#$',"'")
+		
 	select *
 	,CAST(curpage as nvarchar)+' / '+CAST(totpage as nvarchar) ppp
 	--,product b01
 	--,size b02
-	,product +'&nbsp'+char(59)+'&nbsp'+char(59)+size b01
-	,case when [mount]!=0 then dbo.getComma([mount],0) else '' end b03
+	,isnull(product,'') 
+	+ case when len(isnull([class],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end + isnull([class],'')
+	+ case when len(isnull([size],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end + isnull([size],'')	 b01
+	,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
 	,case when [mount]!=0 then item  else '' end b04
-	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],0) else '' end b05
+	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],3) else '' end b05
 	,case when len(@t_isweight)>0 and [weight]!=0 then unit  else '' end b06
-	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma([price],0) else '' end b07
+	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma([price],-1) else '' end b07
 	,case when len(@t_isprice)>0 and [moneys]!=0 then dbo.getComma([moneys],0) else '' end b08
 	,case when len(@t_isprice)>0 and [money]!=0 then dbo.getComma([money],0) else '' end c01
 	,case when len(@t_isprice)>0 and [tax]!=0 then dbo.getComma([tax],0) else '' end c02

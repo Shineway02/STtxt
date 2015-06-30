@@ -15,6 +15,7 @@ declare @tmp table(
 	mount float,
 	weight float,
 	total float,
+	vperscnt float,
 	maori float,
 	perscnt float
 )
@@ -23,7 +24,7 @@ select
 	'0',a.salesno,a.sales
 	,sum((case when a.typea='1' then 1 else -1 end)*b.mount)
 	,sum((case when a.typea='1' then 1 else -1 end)*b.weight)
-	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0))
+	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)),0
 	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)
 	-((case when a.typea='1' then 1 else -1 end)*(case when UPPER(b.unit)='KG' or charindex('斤',b.unit)>0 then b.weight else b.mount end)*isnull(c.price,0))),0
 from view_vcc a
@@ -38,17 +39,26 @@ group by a.salesno,a.sales
 order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) desc,sum((case when a.typea='1' then 1 else -1 end)*b.mount)
 
 insert into @tmp
-	select '1','','',sum(mount),sum(weight),sum(total),sum(maori),0 from @tmp
-declare @totMoney float
-select @totMoney = (select maori from @tmp where gno = '1')
-update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+	select '1','','',sum(mount),sum(weight),sum(total),0,sum(maori),0 from @tmp
+	
+declare @totTotal float
+--declare @totMoney float
+select @totTotal = (select total from @tmp where gno = '1')
+--select @totMoney = (select maori from @tmp where gno = '1')
+
+--update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
+
+update @tmp set perscnt =case when total=0 then 0 else round(maori/total*100,2) end 
+,vperscnt = case when isnull(@totTotal,0) = 0 then 0 else round((total/@totTotal)*100,2) end
+
 select
 	gno,ROW_NUMBER()over(order by gno,total desc,maori desc) rankno,salesno,salesname,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),4,30)) mount,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,maori),1)),4,30)) maori,
-	cast(perscnt as nvarchar) + '%' perscnt
+	cast(perscnt as nvarchar) + '%' perscnt,
+	cast(vperscnt as nvarchar) + '%' vperscnt
 from @tmp order by rankno;
 ---************************************************************************************
 z_anavccfe2:--z_anavccfe2
@@ -74,6 +84,7 @@ declare @tmp table(
 	mount float,
 	weight float,
 	total float,
+	vperscnt float,
 	maori float,
 	perscnt float
 )
@@ -82,7 +93,7 @@ select
 	'0',a.custno,d.comp
 	,sum((case when a.typea='1' then 1 else -1 end)*b.mount)
 	,sum((case when a.typea='1' then 1 else -1 end)*b.weight)
-	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0))
+	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)),0
 	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)
 	-((case when a.typea='1' then 1 else -1 end)*(case when UPPER(b.unit)='KG' or charindex('斤',b.unit)>0 then b.weight else b.mount end)*isnull(c.price,0))),0
 from view_vcc a
@@ -99,13 +110,17 @@ order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when
 ,sum((case when a.typea='1' then 1 else -1 end)*b.mount) desc
 
 insert into @tmp
-	select '1','','',sum(mount),sum(weight),sum(total),sum(maori),0 from @tmp
+	select '1','','',sum(mount),sum(weight),sum(total),0,sum(maori),0 from @tmp
 	
 --declare @totMoney float
 --select @totMoney = (select maori from @tmp where gno = '1')
 --update @tmp set perscnt = case when isnull(@totMoney,0) = 0 then 0 else round((maori/@totMoney)*100,2) end
 
+declare @totTotal float
+select @totTotal = (select total from @tmp where gno = '1')
+
 update @tmp set perscnt =case when total=0 then 0 else round(maori/total*100,2) end 
+,vperscnt=case when isnull(@totTotal,0) = 0 then 0 else round((total/@totTotal)*100,2) end
 
 select
 	gno,rankno,custno,custs,
@@ -113,7 +128,8 @@ select
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,maori),1)),4,30)) maori,
-	cast(perscnt as nvarchar) + '%' perscnt
+	cast(perscnt as nvarchar) + '%' perscnt,
+	cast(vperscnt as nvarchar) + '%' vperscnt
 from @tmp order by rankno;
 ---************************************************************************************
 z_anavccfe3:--z_anavccfe3
