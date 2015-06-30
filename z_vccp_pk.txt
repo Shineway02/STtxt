@@ -39,7 +39,13 @@ z_vccp_pk01:--z_vccp_pk01
 		moneys float,
 		[class] nvarchar(max)
 	)
-
+	insert into @tmp(gno,pno,accy,noa,noq,product)
+	select '1','0',a.accy,a.noa,'',b.custorde
+	from view_vcc a
+	left join view_orde b on a.ordeno=b.noa
+	where a.noa = @t_noa 
+	and len(isnull(b.custorde,''))!=0
+	
 	insert into @tmp(gno,pno,accy,noa,noq,productno,product
 		,dime,width,lengthb,radius,size
 		,mount,item,[weight],unit,price,moneys,[class])
