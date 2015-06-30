@@ -56,6 +56,7 @@ z_ucc_pk01:--z_ucc_pk01
 		radius float,
 		spec nvarchar(50),
 		style nvarchar(50),
+		cstyle nvarchar(20),
 
 		class nvarchar(50),
 		typea nvarchar(20),
@@ -115,6 +116,9 @@ z_ucc_pk01:--z_ucc_pk01
 	and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
 	and (len(@t_spec)=0 or isnull(a.spec,'') = @t_spec)
 
+	update #z_ucc_pk01 set cstyle=b.product
+	from #z_ucc_pk01 a
+	left join style b on a.style=b.noa
 	---------------------------------------------------------------------------
 	if LEN(@t_sort)=0
 	begin
@@ -158,6 +162,8 @@ z_ucc_pk01:--z_ucc_pk01
 		,a.[source]
 		,a.uno
 		,a.product
+		,a.productno prono
+		,a.cstyle
 		,a.class
 		,a.spec
 		,dbo.getComma(a.dime,2) dime
