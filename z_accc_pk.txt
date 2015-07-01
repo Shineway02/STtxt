@@ -1,0 +1,55 @@
+﻿z_accc_pk01:--z_accc_pk01
+
+declare @cmd nvarchar(max)
+declare @t_accy nvarchar(10) = '[1]'
+declare @t_baccc nvarchar(20)
+declare @t_eaccc nvarchar(20)
+
+set @t_baccc = case when '#non'=[3] then '' else [3] end
+set @t_eaccc = case when '#non'=[4] then '' else [4] end
+
+---------------------------------------------------------------------------------
+
+declare @tmp table (
+	gno nvarchar(1),
+	accc2 nvarchar(50),
+	accc3 nvarchar(50),
+	accc6 nvarchar(50),
+	accc7 nvarchar(50),
+	dmoney float,
+	cmoney float
+)
+
+set @cmd = 'select a.accc2,a.accc3,b.accc6,b.accc7,b.dmoney,b.cmoney'+
+	       ' from accc'+@t_accy+'_1'+' a '+
+	       'left join acccs'+@t_accy+'_1'+' b on a.accc3 = b.accc3'+
+	       ' where (a.accc3 between '''+ @t_baccc + ''' and ''' + @t_eaccc + ''')'
+
+insert into @tmp(accc2,accc3,accc6,accc7,dmoney,cmoney)
+exec sp_executesql @cmd
+
+insert into @tmp(gno,accc2,accc3,accc6,accc7,dmoney,cmoney) 
+select '0',accc2,accc3,accc6,accc7,dmoney,cmoney
+from @tmp
+
+delete from @tmp where gno is null
+
+update @tmp set accc2 = SUBSTRING(accc2,1,2)+REPLICATE('　',3)+SUBSTRING(accc2,4,5) where gno = '0'
+
+declare @i int
+set @i = (select count(*) from @tmp where gno = '0')
+while( @i < 7)
+	begin
+		insert into @tmp(gno,accc2,accc3,accc6,accc7,dmoney,cmoney) 
+		values('1',null,null,null,null,null,null)
+		set @i = @i + 1
+	end
+
+insert into @tmp(gno,accc3,dmoney,cmoney)
+select '2',accc3,SUM(dmoney),SUM(cmoney)
+from @tmp
+where gno = '0'
+group by accc3
+
+select * from @tmp order by gno;
+
