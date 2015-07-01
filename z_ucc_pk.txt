@@ -75,6 +75,7 @@ z_ucc_pk01:--z_ucc_pk01
 		kind nvarchar(20),
 		itype nvarchar(20),
 		custno nvarchar(20),
+		cust nvarchar(20),
 		ordeno nvarchar(20),
 		no2 nvarchar(10),
 		eweight float,
@@ -119,6 +120,20 @@ z_ucc_pk01:--z_ucc_pk01
 	update #z_ucc_pk01 set cstyle=b.product
 	from #z_ucc_pk01 a
 	left join style b on a.style=b.noa
+	
+	--寄庫
+	update #z_ucc_pk01 set custno=c.custno
+	from #z_ucc_pk01 a
+	left join view_inas b on a.uno=b.uno
+	left join view_ina c on b.accy=c.accy and b.noa=c.noa
+	where c.itype='3'
+	
+	--訂單
+	update #z_ucc_pk01 set ordeno=b.noa,no2=b.no2,custno=c.custno
+	from #z_ucc_pk01 a
+	left join view_ordet b on a.uno=b.uno
+	left join view_orde c on b.accy=c.accy and b.noa=c.noa
+	where c.noa is not null
 	---------------------------------------------------------------------------
 	if LEN(@t_sort)=0
 	begin
