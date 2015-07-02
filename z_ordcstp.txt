@@ -340,7 +340,9 @@ z_ordcstp1:--z_ordcstp1
 	left join (select * from @tmp where gno='1') b on a.noa=b.noa 
 	left join (select noa,SUM(isnull(mounts,0)) mount,SUM(isnull(weights,0)) [weight] from @tmp group by noa ) c on a.noa=c.noa
 	
-	select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+	select a.*
+		,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
+		,'表單編號：4-702-1' reportno
 	from(
 		select gno,noa,no2
 		,ceiling((ROW_NUMBER()over(partition by noa order by no2)-1)/@t_pageline)+1 rrno
@@ -422,7 +424,11 @@ begin
 		from bccin a
 		left join bccins b on a.noa = b.noa
 		left join store c on a.storeno = c.noa
-		where (@t_xnoa='' and @t_xno2='') or (b.ordcno=@t_xnoa and b.no2=@t_xno2) or (b.ordcno=@t_xnoa and @t_xno2='')
+		left join view_ordc d on b.ordcno=d.noa
+		where ((@t_xnoa='' and @t_xno2='') 
+		or (b.ordcno=@t_xnoa and b.no2=@t_xno2) 
+		or (b.ordcno=@t_xnoa and @t_xno2=''))
+		and (len(@t_kind)='' or d.kind=@t_kind)
 end
 else
 begin
@@ -434,7 +440,11 @@ begin
 		from view_rc2 a
 		left join view_rc2s b on a.noa = b.noa
 		left join store c on b.storeno = c.noa
-		where (@t_xnoa='' and @t_xno2='') or (b.ordeno=@t_xnoa and b.no2=@t_xno2) or (b.ordeno=@t_xnoa and @t_xno2='')
+		left join view_ordc d on b.ordeno=d.noa
+		where ((@t_xnoa='' and @t_xno2='') 
+		or (b.ordeno=@t_xnoa and b.no2=@t_xno2) 
+		or (b.ordeno=@t_xnoa and @t_xno2=''))
+		and (len(@t_kind)='' or d.kind=@t_kind)
 end
 insert into @tmp(gno,ordcnoa,mount,weight)
 	select '1',ordcnoa,sum(mount),sum(weight) from @tmp where gno='0' group by ordcnoa
