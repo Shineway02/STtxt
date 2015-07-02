@@ -1,3 +1,111 @@
+z_vcc_rkp02:--z_vcc_rkp02 
+	SET QUOTED_IDENTIFIER OFF 
+	declare @t_path nvarchar(max) = '[1]'
+	declare @t_db nvarchar(max) = '[2]'
+	declare @t_noa nvarchar(max) = case when '#non' = [3] then '' else [3] end
+	declare @t_showprice nvarchar(20) = case when '#non' = [4] then '0' else [4] end
+	------------------------------------------------------------------------------------------------	
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		page nvarchar(20),
+		
+		accy nvarchar(10),
+		noa nvarchar(20),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		addr nvarchar(50),
+		cno nvarchar(20),
+		acomp nvarchar(50),
+		
+		productno nvarchar(20),
+		product nvarchar(50),
+		unit nvarchar(20),
+		price float,
+		lengthb float,
+		mount float,
+		[weight] float,
+		[money] float,
+		memo nvarchar(max)
+	)
+	
+	insert into @tmp(gno,pno,recno,accy,noa,datea,custno,cust,addr
+		,cno,acomp
+		,productno,product,unit,price,lengthb,mount,[weight],[money],memo)
+	select '1','1',ROW_NUMBER()over(partition by a.noa order by b.noq)
+		,a.accy,a.noa,a.datea,a.custno,a.custno,a.addr2
+		,a.cno,a.acomp
+		,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.price,b.lengthb,b.mount,b.[weight],b.total,b.memo
+	from view_vcc a
+	left join view_vccs b on a.noa=b.noa
+	where (len(@t_noa)=0 or @t_noa=a.noa)
+	
+------------------------------------------------------
+	insert into @tmp (gno,pno,noa,datea,custno,cust,addr,cno,acomp,mount,[weight],[money])
+	select '3','3',noa,datea,custno,cust,addr,cno,acomp,sum(isnull(mount,'')),sum(isnull([weight],'')),sum(isnull([money],''))
+	from @tmp
+	group by noa,datea,custno,cust,addr,cno,acomp
+	---------------------------------------------------------------
+	declare @t_pageline int = 15 --一頁幾行
+	declare @noa nvarchar(20)
+	declare @datea nvarchar(20)
+	declare @custno nvarchar(20)
+	declare @cust nvarchar(50)
+	declare @addr nvarchar(100)
+	declare @cno nvarchar(20)
+	declare @acomp nvarchar(50)
+	declare @n int
+	declare @recno int
+	
+	declare cursor_table cursor for
+	select noa,datea,custno,cust,addr,cno,acomp
+		,count(1),max(recno) from @tmp group by noa,datea,custno,cust,addr,cno,acomp
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		while @n%@t_pageline !=0
+		begin
+			set @recno = @recno + 1
+			insert into @tmp(gno,pno,noa,datea,custno,cust,addr,cno,acomp,recno)
+			values('2','2',@noa,@datea,@custno,@cust,@addr,@cno,@acomp,@recno)
+			set @n=@n+1
+		end
+		
+		fetch next from cursor_table
+		into @noa,@datea,@custno,@cust,@addr,@cno,@acomp,@n,@recno
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	------------------------------------------------------------------
+	update @tmp set page = CAST(ceiling(cast(a.recno as float)/cast(@t_pageline as float)) as nvarchar)+'/'+CAST(ceiling(cast(b.recno as float)/cast(@t_pageline as float)) as nvarchar)
+	from @tmp a
+	left join (select noa,MAX(recno) recno from @tmp group by noa) b on a.noa=b.noa
+	
+	if(@t_showprice!='1')
+	begin
+		update @tmp set price=null,money=null
+	end
+	select a.recno rr
+		,a.productno a01
+		,a.product a02
+		,a.unit a03
+		,a.mount a04
+		,a.[weight] a05
+		,a.price a06
+		,a.[money] a07
+		,a.noa b01
+		,a.cust b02
+		,a.addr b03
+		,a.* 
+		,a.acomp xxxx
+	from @tmp a
+	order by a.noa,a.pno,a.recno;
+	
 z_vcc_rkp01:--z_vcc_rkp01 
 	SET QUOTED_IDENTIFIER OFF 
 	declare @t_path nvarchar(max) = '[1]'
@@ -48,7 +156,7 @@ z_vcc_rkp01:--z_vcc_rkp01
 		,case when len(isnull(b.addr2,''))>0 then b.addr2 else b.addr end addr,e.conn
 		,a.ordeno,a.no2,a.productno,a.product,a.spec,a.class
 		,a.dime,a.radius,a.width,a.lengthb
-		,CAST(a.dime as nvarchar)+case when a.radius=0 then '' else '+'+CAST(a.radius as nvarchar)end + '*'+CAST(a.width as nvarchar)+ '*'+CAST(a.lengthb as nvarchar) size
+		,CAST(a.dime as nvarchar)+case when a.radius=0 then '' else '+'+CAST(a.radius as nvarchar)end + '*'+CAST(a.width as nvarchar)+ '*'+case when ISNULL(a.lengthb,0)=0 then 'C' else CAST(a.lengthb as nvarchar) end size
 		,a.checker,a.lengthc,a.mount,a.[weight],a.memo
 	from view_vccs a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa 
@@ -119,7 +227,7 @@ z_vcc_rkp01:--z_vcc_rkp01
 	declare @c5 nvarchar(max) = N'3.出貨前確認事項：'+@sign2+N'煙燻章'+@sign2+N'外觀包裝 <a style="font-weight:bolder">確認者：</a>'
 
 	select gno
-		,'<img src="'+@t_path+'getlogo.aspx?noa=lienchy'+CHAR(38)+'db='+@t_db+'"/>' logo
+		,'<img src="'+@t_path+'getlogo.aspx?noa=LC01'+CHAR(38)+'db='+@t_db+'"/>' logo
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@reportno +'</a>' reportno
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">No&nbsp'+char(59)+'&nbsp'+char(59)+noa +'</a>' b00
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+custno +'</a>' b01
