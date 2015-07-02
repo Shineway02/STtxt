@@ -48,7 +48,7 @@ z_vcc_rkp01:--z_vcc_rkp01
 		,case when len(isnull(b.addr2,''))>0 then b.addr2 else b.addr end addr,e.conn
 		,a.ordeno,a.no2,a.productno,a.product,a.spec,a.class
 		,a.dime,a.radius,a.width,a.lengthb
-		,CAST(a.dime as nvarchar)+case when a.radius=0 then '' else '+'+CAST(a.radius as nvarchar)end + '*'+CAST(a.width as nvarchar)+ '*'+CAST(a.lengthb as nvarchar) size
+		,CAST(a.dime as nvarchar)+case when a.radius=0 then '' else '+'+CAST(a.radius as nvarchar)end + '*'+CAST(a.width as nvarchar)+ '*'+case when ISNULL(a.lengthb,0)=0 then 'C' else CAST(a.lengthb as nvarchar) end size
 		,a.checker,a.lengthc,a.mount,a.[weight],a.memo
 	from view_vccs a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa 
@@ -119,7 +119,7 @@ z_vcc_rkp01:--z_vcc_rkp01
 	declare @c5 nvarchar(max) = N'3.出貨前確認事項：'+@sign2+N'煙燻章'+@sign2+N'外觀包裝 <a style="font-weight:bolder">確認者：</a>'
 
 	select gno
-		,'<img src="'+@t_path+'getlogo.aspx?noa=lienchy'+CHAR(38)+'db='+@t_db+'"/>' logo
+		,'<img src="'+@t_path+'getlogo.aspx?noa=LC01'+CHAR(38)+'db='+@t_db+'"/>' logo
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@reportno +'</a>' reportno
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">No&nbsp'+char(59)+'&nbsp'+char(59)+noa +'</a>' b00
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+custno +'</a>' b01
