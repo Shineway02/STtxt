@@ -1,0 +1,94 @@
+﻿z_accc_pk01:--z_accc_pk01
+
+declare @cmd nvarchar(max)
+declare @t_accy nvarchar(10) = '[1]'
+declare @t_baccc nvarchar(20)
+declare @t_eaccc nvarchar(20)
+
+set @t_baccc = case when '#non'=[3] then '' else [3] end
+set @t_eaccc = case when '#non'=[4] then '' else [4] end
+
+---------------------------------------------------------------------------------
+
+declare @tmp table (
+	gno nvarchar(1),
+	recno int,
+	accc2 nvarchar(50),
+	accc3 nvarchar(50),
+	accc6 nvarchar(50),
+	accc7 nvarchar(50),
+	dmoney float,
+	cmoney float
+)
+--select accc3 ,count(*) as count from acccs103_1 group by accc3 HAVING (COUNT(*) =16)
+
+set @cmd = 'select a.accc2,a.accc3,b.accc6,b.accc7,b.dmoney,b.cmoney'+
+	       ' from accc'+@t_accy+'_1'+' a '+
+	       'left join acccs'+@t_accy+'_1'+' b on a.accc3 = b.accc3'+
+	       ' where (a.accc3 between '''+ @t_baccc + ''' and ''' + @t_eaccc + ''')'
+
+insert into @tmp(accc2,accc3,accc6,accc7,dmoney,cmoney)
+exec sp_executesql @cmd
+
+insert into @tmp(gno,recno,accc2,accc3,accc6,accc7,dmoney,cmoney) 
+select '0',row_number() over(order by accc3) as recno,accc2,accc3,accc6,accc7,dmoney,cmoney
+from @tmp
+
+delete from @tmp where gno is null
+
+update @tmp set accc2 = SUBSTRING(accc2,1,2)+REPLICATE('　',3)+SUBSTRING(accc2,4,5) where gno = '0'
+
+declare @tmp2 table (
+	gno nvarchar(1),
+	recno int,
+	accc2 nvarchar(50),
+	accc3 nvarchar(50),
+	accc6 nvarchar(50),
+	accc7 nvarchar(50),
+	dmoney float,
+	cmoney float
+)
+
+declare @t int
+declare @l int
+
+if ((select count(*) from @tmp where gno = '0')%7 = 0)
+	set @t = (select count(*) from @tmp where gno = '0') / 7
+else
+	set @t = (select count(*) from @tmp where gno = '0') / 7 + 1
+	
+set @l = 1
+
+while( @l <= @t)
+begin
+	insert into @tmp2(gno,recno,accc2,accc3,accc6,accc7,dmoney,cmoney)
+	select * from @tmp
+	where recno >= 1+7*(@l-1) and recno <= 7+7*(@l-1)
+	
+	if((select count(*) from @tmp where gno = '0') > 7) 
+	begin
+		insert into @tmp2(gno,accc2,accc3,accc6,accc7,dmoney,cmoney)
+		values('2',null,null,null,null,null,null)
+		delete @tmp where recno >= 1+7*(@l-1) and recno <= 7+7*(@l-1)
+	end
+	else if((select count(*) from @tmp where gno = '0') <= 7) 
+	begin
+		declare @i int
+		set @i = (select count(*) from @tmp where gno = '0')
+		while(@i < 7)
+		begin
+			insert into @tmp2(gno,accc2,accc3,accc6,accc7,dmoney,cmoney) 
+			values('1',null,null,null,null,null,null)
+			set @i = @i + 1
+		end
+		insert into @tmp2(gno,accc3,dmoney,cmoney)
+		select '2',accc3,SUM(dmoney),SUM(cmoney)
+		from @tmp2
+		where gno = '0' and accc3 is not null
+		group by accc3
+	end	
+	set @l = @l + 1
+end
+
+select * from @tmp2;
+
