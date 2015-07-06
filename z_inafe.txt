@@ -6,12 +6,17 @@ declare @t_edate nvarchar(20)
 declare @t_groupano nvarchar(30)
 declare @t_xproject nvarchar(MAX)='[8]'
 declare @qhref_acomp nvarchar(10) ='fe'
+declare @showlengthb nvarchar(20)
+declare @showprice nvarchar(20)
 
 set @t_accy = '[1]'
 set @t_itype = case when '#non' = [5] then '' when '全部'=[5] then '' else [5] end
 set @t_bdate = case when '#non' = [6] then '' else [6] end
 set @t_edate = case when '#non' = [7] then CHAR(255) else [7] end
 set @t_groupano = case when '#non'=[9] then '' else (case when [9] = ' ' then '' else [9] end) end
+set @showlengthb = case when '#non' = [10] then '0' else [10] end
+set @showprice = case when '#non' = [11] then '0' else [11] end
+
 
 if(@t_xproject='yc')
 	set @qhref_acomp='_yc'
@@ -40,7 +45,7 @@ declare @tmp table(
 
 insert into @tmp
 select '0' gno,a.noa,b.noq,a.storeno,a.store,a.datea,a.itype,(case when c.nick!='' then c.nick else left(a.comp,4) end)
-,b.uno,b.productno,b.product,b.unit,b.lengthb,b.mount,b.weight
+,b.uno,b.productno,replace(b.product,'~#$',char(39)),b.unit,b.lengthb,b.mount,b.weight
 ,isnull((select top 1 sprice from uccps pa left join uccp pb on pa.noa=pb.noa where pa.productno=b.productno and pb.datea<=a.datea order by pb.datea desc),0)
 ,0,b.memo,'ina'+@qhref_acomp+a.accy
 from view_ina a
@@ -67,10 +72,16 @@ end
 
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
+if(@showprice='0')
+begin
+	update @tmp set price=null,money=null
+end
+
 select
-	dbo.getComma(lengthb,2)  lengthb
-	,dbo.getComma(mount,[2])  mount
-	,dbo.getComma(weight,[3])  weight
+	case when @showlengthb='0' then '入庫數量' else '入庫箱數' end t1
+	,case when @showlengthb='0' then '入庫重量' else '入庫數量' end t2
+	,case when @showlengthb='0' then dbo.getComma(mount,[2]) else dbo.getComma(lengthb,0) end m1
+	,case when @showlengthb='0' then dbo.getComma(weight,[3]) else dbo.getComma(mount,[2]) end m2
 	,dbo.getComma(price,[4])  price
 	,dbo.getComma(money,0)  money
 	,*
