@@ -122,7 +122,7 @@ batchvcca_rb:--batchvcca_rb
 		
 		end
 		
-		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,tax,total,trdno,worker,vccno,[type])
+		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,tax,total,trdno,worker,vccno,[type],chkno)
 		select a.vccano,b.custno,b.comp,b.nick--,@t_serial,@t_buyerno,@t_buyer
 		,dbo.split(@t_serial,'^^',recno-1)
 		,dbo.split(@t_buyerno,'^^',recno-1)
@@ -141,6 +141,12 @@ batchvcca_rb:--batchvcca_rb
 		,b.tax/@t_vccacount
 		,b.total/@t_vccacount
 		,@t_ordeno,@t_woker,@t_vccno,'A'
+		,right('000000'+cast(cast(cast(
+			cast(LOG((ascii(SUBSTRING(a.vccano,1,1))*100)+
+			(ascii(SUBSTRING(a.vccano,2,1))*25)+
+			cast(SUBSTRING(a.vccano,3,3) as int))*100 as int)
+		*144 as int)
+		+(SIN(cast(SUBSTRING(a.vccano,6,2) as int))*cast(SUBSTRING(a.vccano,8,3) as int)*100) as int)as nvarchar(10)),6)
 		from @vcca a outer apply (select * from view_orde where noa=@t_ordeno) b
 		
 		insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea)
