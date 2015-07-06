@@ -160,6 +160,7 @@ vcc2cng_rb:--vcc2cng_rb
 	
 	declare @cmd nvarchar(max)
 	declare @t_err nvarchar(30) 
+	declare @accy nvarchar(30) 
 
 	IF OBJECT_ID('tempdb..#tmp')is not null
 	BEGIN
@@ -223,7 +224,7 @@ vcc2cng_rb:--vcc2cng_rb
 			select top 1 @t_sino=storeno,@t_siname=store from #tmp where isnull(cngno,'')!='' and isnull(storeno,'')!=''
 		end
 		
-		declare @accy nvarchar(20)=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
+		set @accy=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
 		
 		exec("insert cng"+@accy+"(noa,datea,storeno,store,storeinno,storein,memo
 		,typea,custno,comp,addr,tel,transtartno,transtart,worker)
@@ -241,7 +242,7 @@ vcc2cng_rb:--vcc2cng_rb
 	end
 	else
 	begin
-		declare @accy nvarchar(20)=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
+		set @accy=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
 		set @new_cngno=''
 		exec("update vcc"+@accy+" set transtyle='"+@new_cngno+"' where noa='"+@t_noa+"'")
 	end
