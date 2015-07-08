@@ -320,8 +320,7 @@ from @tmp
 order by part,accc3,gno;
 --********************************************************************************
 z_umm7:--z_umm7
-declare @t_bscno nvarchar(20)
-declare @t_escno nvarchar(20)
+declare @t_cno nvarchar(20) 
 declare @t_bcustno nvarchar(50)
 declare @t_ecustno nvarchar(50)
 declare @t_bsmon nvarchar(10)
@@ -330,9 +329,8 @@ declare @t_xaccy nvarchar(20)
 declare @t_xpart nvarchar(20)
 declare @t_xcoin nvarchar(20)
 
+set @t_cno = case when '#non' = [1] then '' else [1] end
 set @t_xaccy = '[10]'
-set @t_bscno = case when '#non' = [11] then '' else [11] end
-set @t_escno = case when '#non' = [12] then CHAR(255) else [12] end
 set @t_bcustno = case when '#non' = [5] then '' else [5] end
 set @t_ecustno = case when '#non' = [6] then CHAR(255) else [6] end
 set @t_bsmon = case when '#non' = [13] then '' else [13] end
@@ -344,18 +342,19 @@ declare @coin nvarchar(20)
 
 declare @tmpa table(
 	coin nvarchar(20),
+	cno nvarchar(50),
 	custno nvarchar(50),
 	money float,
 	mon nvarchar(200)
-	PRIMARY KEY (coin,custno,mon)
+	PRIMARY KEY (cno,coin,custno,mon)
 )
 
-insert into @tmpa (coin,custno,money,mon)
-select @t_xcoin,noa,sum(unpay*coin.floata),mon from cust_2s a 
+insert into @tmpa (coin,cno,custno,money,mon)
+select @t_xcoin,cno,noa,sum(unpay*coin.floata),mon from cust_2s a 
 outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
 where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
-and cno between @t_bscno and @t_escno 
-group by noa,mon
+and (len(@t_cno)=0 or a.cno=@t_cno)
+group by cno,noa,mon
 
 
 if(@t_xcoin='ALL')
@@ -368,11 +367,10 @@ begin
 	while(@@FETCH_STATUS <> -1)
 	begin
 	
-		insert into @tmpa (coin,custno,money,mon)
-		select @coin,noa,unpay*coin.floata,mon from cust_2s a 
+		insert into @tmpa (coin,cno,custno,money,mon)
+		select @coin,cno,noa,unpay*coin.floata,mon from cust_2s a 
 		outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin 
-		where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
-		and cno between @t_bscno and @t_escno 
+		where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno and (len(@t_cno)=0 or a.cno=@t_cno)
 				
 		fetch next from cursor_table
 		into @coin
@@ -388,6 +386,7 @@ delete @tmpa where money=0
 declare @tmp table(
 	coin nvarchar(20),
 	gno nvarchar(1),
+	cno nvarchar(50),
 	custno nvarchar(50),
 	comp nvarchar(MAX),
 	namea nvarchar(30),
@@ -395,24 +394,24 @@ declare @tmp table(
 	total float,
 	payed float,
 	memo nvarchar(200)
-	PRIMARY KEY (coin,gno,custno,memo)
+	PRIMARY KEY (coin,gno,cno,custno,memo)
 )
 
-insert into @tmp (coin,gno,custno,money,total,payed,memo)
-select coin,gno,custno,SUM(money),SUM(total),SUM(payed),'' from (
+insert into @tmp (coin,gno,cno,custno,money,total,payed,memo)
+select coin,gno,cno,custno,SUM(money),SUM(total),SUM(payed),'' from (
 	--前期
-	select @t_xcoin coin,'9' gno,noa custno,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
+	select @t_xcoin coin,'9' gno,cno,noa custno,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
 	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
 	where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
-	and cno between @t_bscno and @t_escno 
-	group by noa
+	and (len(@t_cno)=0 or a.cno=@t_cno)
+	group by cno,noa
 	union all
 	--本期
-	select @t_xcoin,'9',noa,0,totsale*coin.floata,pay from cust_2s a 
+	select @t_xcoin,'9',cno,noa,0,totsale*coin.floata,pay from cust_2s a 
 	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
 	where mon between @t_bsmon and @t_esmon and noa between @t_bcustno and @t_ecustno
-	and cno between @t_bscno and @t_escno 
-)tmp group by coin,gno,custno
+	and (len(@t_cno)=0 or a.cno=@t_cno)
+)tmp group by coin,gno,cno,custno
 
 
 if(@t_xcoin='ALL')
@@ -425,21 +424,21 @@ begin
 	while(@@FETCH_STATUS <> -1)
 	begin
 		
-		insert into @tmp (coin,gno,custno,money,total,payed,memo)
-		select coin,gno,custno,SUM(money),SUM(total),SUM(payed),'' from (
+		insert into @tmp (coin,gno,cno,custno,money,total,payed,memo)
+		select coin,gno,cno,custno,SUM(money),SUM(total),SUM(payed),'' from (
 			--前期
-			select @coin coin,'9' gno,noa custno,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
+			select @coin coin,'9' gno,cno,noa custno,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
 			outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin
 			where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
-			and cno between @t_bscno and @t_escno 
-			group by noa
+			and (len(@t_cno)=0 or a.cno=@t_cno)
+			group by cno,noa
 			union all
 			--本期
-			select @coin,'9',noa,0,totsale*coin.floata,pay from cust_2s a 
+			select @coin,'9',cno,noa,0,totsale*coin.floata,pay from cust_2s a 
 			outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin
 			where mon between @t_bsmon and @t_esmon and noa between @t_bcustno and @t_ecustno
-			and cno between @t_bscno and @t_escno 
-		)tmp group by coin,gno,custno
+			and (len(@t_cno)=0 or a.cno=@t_cno)
+		)tmp group by coin,gno,cno,custno
 		
 		fetch next from cursor_table
 		into @coin
@@ -455,23 +454,23 @@ begin
 end
 
 --結果
-insert into @tmp (coin,gno,custno,money,total,payed,memo)
-select coin,'0',custno,SUM(money),SUM(total),SUM(payed),'' from @tmp 
-group by coin,custno order by coin,custno
+insert into @tmp (coin,gno,cno,custno,money,total,payed,memo)
+select coin,'0',cno,custno,SUM(money),SUM(total),SUM(payed),'' from @tmp 
+group by coin,cno,custno order by coin,cno,custno
 
 --總計
-insert into @tmp (coin,gno,custno,comp,namea,money,total,payed,memo)
-select coin,'3'gno,char(255),'','',sum(money),sum(total),sum(payed),'' from @tmp where gno='0'
-group by coin
+insert into @tmp (coin,gno,cno,custno,comp,namea,money,total,payed,memo)
+select coin,'3'gno,cno,char(255),'','',sum(money),sum(total),sum(payed),'' from @tmp where gno='0'
+group by coin,cno
 
 delete @tmp where gno='0'
 
 --換成月份分割
-insert into @tmp (coin,gno,custno,money,total,payed,memo)
-select a.coin,'1',a.custno,SUM(a.money),SUM(a.total),SUM(a.payed)
+insert into @tmp (coin,gno,cno,custno,money,total,payed,memo)
+select a.coin,'1',a.cno,a.custno,SUM(a.money),SUM(a.total),SUM(a.payed)
 ,isnull(b.mon+'：'+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b.money),1)),4,12)),'')
-from @tmp a left join @tmpa b on a.custno=b.custno and a.coin=b.coin where gno='9'
-group by a.coin,a.custno,b.mon,b.money order by a.coin,a.custno
+from @tmp a left join @tmpa b on a.custno=b.custno and a.coin=b.coin and a.cno=a.cno where gno='9'
+group by a.coin,a.cno,a.custno,b.mon,b.money order by a.coin,a.cno,a.custno
 
 delete @tmp where gno='9'
 
@@ -482,9 +481,9 @@ delete @tmp where gno='9'
 
 update a 
 set gno='2' 
-from @tmp a where custno+'_'+ left(isnull(memo,''),6) != 
-(select top 1 custno+'_'+ left(isnull(memo,''),6) from @tmp where gno='1' and a.custno=custno and a.coin=coin order by left(isnull(memo,''),6)) 
-and gno!='3' 
+from @tmp a where cno+'_'+custno+'_'+ left(isnull(memo,''),6) != 
+(select top 1 cno+'_'+custno+'_'+ left(isnull(memo,''),6) from @tmp 
+where gno='1' and a.custno=custno and a.coin=coin and cno=a.cno order by left(isnull(memo,''),6)) and gno!='3' 
 
 delete @tmp where money=0 and total=0 and payed=0
 
@@ -496,13 +495,13 @@ update a
 set comp=(select top 1 namea from (select namea from carOwner where noa=a.custno union select namea from sss where noa=a.custno)tmp) 
 from @tmp a where isnull(comp,'')=''
 
-select gno,custno,comp,memo
+select gno,cno,(select top 1 acomp from acomp where a.cno=noa) acomp,custno,comp,memo
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),(case when coin!='' then 0 else 4 end),30)) money
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),(case when coin!='' then 0 else 4 end),30)) total
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),(case when coin!='' then 0 else 4 end),30)) payed
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money+total-payed),1)),(case when coin!='' then 0 else 4 end),30)) unpay
 	,case when coin!='' then '_'+coin else '' end coin
-from @tmp a order by coin,custno,gno,memo;
+from @tmp a order by coin,cno,custno,gno,memo;
 --********************************************************************************
 z_umm6:--z_umm6
 declare @t_bscno nvarchar(20)

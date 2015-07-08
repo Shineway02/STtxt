@@ -20,7 +20,7 @@ z_umm_pk01:--z_umm_pk01  ref.z_ummst03
 	select custno,mon 
 	,SUM(case when typea='1' then ISNULL([money],0) else 0 end) 
 	,SUM(case when typea!='1' then ISNULL([money],0) else 0 end) 
-	,SUM(case when typea='1' then ISNULL([tax2],0) else -ISNULL([tax2],0) end) 
+	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end) 
 	from view_vcc 
 	where custno between @t_bcustno and @t_ecustno 
 	and mon between @t_bmon and @t_emon
@@ -83,7 +83,7 @@ z_umm_pk01:--z_umm_pk01  ref.z_ummst03
 	
 	declare @linecount int --每頁行數
 	declare @endcount int --總計行數
-	set @linecount = 36
+	set @linecount = 15
 	set @endcount = 7
 	
 	declare @custno nvarchar(20)
@@ -153,7 +153,7 @@ z_umm_pk01:--z_umm_pk01  ref.z_ummst03
 			insert into @result(gno,pno,custno
 				,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
 			select '2','2',@custno
-			,'稅',datea,noa,'','稅額','',null,null,null,tax2
+			,'稅',datea,noa,'','稅額','',null,null,null,tax
 			from view_vcc 
 			where custno=@custno 
 			and mon between @t_bmon and @t_emon
@@ -259,7 +259,7 @@ z_umm_pk02:--z_umm_pk02
 	select custno,mon 
 	,SUM(case when typea='1' then ISNULL([money],0) else 0 end) 
 	,SUM(case when typea!='1' then ISNULL([money],0) else 0 end) 
-	,SUM(case when typea='1' then ISNULL([tax2],0) else -ISNULL([tax2],0) end) 
+	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end) 
 	from view_vcc 
 	where custno between @t_bcustno and @t_ecustno 
 	and mon between @t_bmon and @t_emon
@@ -322,7 +322,7 @@ z_umm_pk02:--z_umm_pk02
 	
 	declare @linecount int --每頁行數
 	declare @endcount int --總計行數
-	set @linecount = 36
+	set @linecount = 15
 	set @endcount = 7
 	
 	declare @custno nvarchar(20)
@@ -379,7 +379,7 @@ z_umm_pk02:--z_umm_pk02
 				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
 			select '1','1',@custno
 			,case when a.typea='1' then '出' else '退' end
-			,a.datea,a.noa,'','','',a.money,'',a.tax2,null,a.total2
+			,a.datea,a.noa,'','','',a.money,'',a.tax,null,a.total
 			from view_vcc a
 			where a.custno=@custno 
 			and a.mon between @t_bmon and @t_emon

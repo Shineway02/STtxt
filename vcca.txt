@@ -19,7 +19,7 @@ batchvcca_rb:--batchvcca_rb
 	declare @t_vccacount int,@vccacount int
 	set @t_vccacount= cast(@t_total as int)/cast(@t_money as int)
 	set @vccacount= cast(@t_total as int)/cast(@t_money as int)
-	set @t_vccno=isnull((select MAX(noa) from view_vccs where ordeno=@t_ordeno),'')
+	set @t_vccno=isnull((select vccno from view_orde where noa=@t_ordeno ),'')
 	set @t_vccaccy=isnull((select accy from view_vcc where noa=@t_vccno),'')
 	
 	--現在日期
@@ -122,7 +122,7 @@ batchvcca_rb:--batchvcca_rb
 		
 		end
 		
-		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,tax,total,trdno,worker,vccno)
+		insert vcca(noa,custno,comp,nick,serial,buyerno,buyer,datea,mon,cno,acomp,zip,address,taxtype,money,tax,total,trdno,worker,vccno,[type],chkno)
 		select a.vccano,b.custno,b.comp,b.nick--,@t_serial,@t_buyerno,@t_buyer
 		,dbo.split(@t_serial,'^^',recno-1)
 		,dbo.split(@t_buyerno,'^^',recno-1)
@@ -140,7 +140,13 @@ batchvcca_rb:--batchvcca_rb
 		,b.money/@t_vccacount
 		,b.tax/@t_vccacount
 		,b.total/@t_vccacount
-		,@t_ordeno,@t_woker,@t_vccno
+		,@t_ordeno,@t_woker,@t_vccno,'A'
+		,right('000000'+cast(cast(cast(
+			cast(LOG((ascii(SUBSTRING(a.vccano,1,1))*100)+
+			(ascii(SUBSTRING(a.vccano,2,1))*25)+
+			cast(SUBSTRING(a.vccano,3,3) as int))*100 as int)
+		*144 as int)
+		+(SIN(cast(SUBSTRING(a.vccano,6,2) as int))*cast(SUBSTRING(a.vccano,8,3) as int)*100) as int)as nvarchar(10)),6)
 		from @vcca a outer apply (select * from view_orde where noa=@t_ordeno) b
 		
 		insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea)
@@ -150,7 +156,11 @@ batchvcca_rb:--batchvcca_rb
 		
 		set @x_vccano=stuff((select ','+vccano from @vcca for xml path('')),1,1,'') 
 		
-		exec("update vcc"+@t_vccaccy+" set invono='"+@x_vccano+"' where noa='"+@t_vccno+"'") 
+		exec("update vcc"+@t_vccaccy+" set invono='"+@x_vccano+"' where noa='"+@t_vccno+"'")
+		
+		--寫入到orde
+		set @t_vccaccy=isnull((select accy from view_orde where noa=@t_ordeno),'')
+		exec("update orde"+@t_vccaccy+" set ordbno='"+@x_vccano+"' where noa='"+@t_ordeno+"'")  
 		
 	end
 	
