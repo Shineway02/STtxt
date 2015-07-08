@@ -1,0 +1,78 @@
+z_vccap_sh01:--z_vccap_sh01
+
+declare @t_noa nvarchar(20)
+
+set @t_noa = case when '#non'=[3] then '' else [3] end
+
+---------------------------------------------------------------------------------
+
+declare @bignum nvarchar(10)
+set @bignum = '壹貳參肆伍陸柒捌玖'
+
+declare @tmp1 table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	yy nvarchar(10),
+	mm nvarchar(10),
+	dd nvarchar(10),
+	noa nvarchar(20),
+	buyer nvarchar(100),
+	serial nvarchar(20),
+	chkno nvarchar(6),
+	address nvarchar(max),
+	product nvarchar(50),
+	pmount float,
+	pprice float,
+	pmoney float,
+	money decimal(9,0),
+	tax decimal(9,0),
+	total decimal(9,0),
+	memo nvarchar(300),
+	tt1 nvarchar(10),
+	tt2 nvarchar(10),
+	tt3 nvarchar(10),
+	tm1 nvarchar(10),
+	tm2 nvarchar(10),
+	tm3 nvarchar(10),
+	tm4 nvarchar(10),
+	tm5 nvarchar(10),
+	tm6 nvarchar(10),
+	tm7 nvarchar(10),
+	tm8 nvarchar(10)
+)
+
+insert into @tmp1
+select 
+	  '0',
+	  substring(a.datea,1,3), --年
+	  substring(a.datea,5,2), --月
+	  substring(a.datea,8,2), --日
+	  a.noa,a.buyer,a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,b.memo,
+	  case when a.taxtype = '1' then 'v' end,
+	  case when a.taxtype = '2' then 'v' end,
+	  case when a.taxtype = '4' then 'v' end,
+--total大寫數字處理
+--REPLICATE('0',8-LEN(CAST(total as varchar(8))))+CAST(total as varchar(8) 將total金額不滿8位數的前面補0
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),1,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),2,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),3,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),4,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),5,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),6,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),7,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),8,1) as int) ,1)
+from vcca a
+left join vccas b on a.noa = b.noa
+left join acomp c on a.buyer = c.noa
+where (a.noa = @t_noa)
+
+update @tmp1 set tm1 = '零' where len(tm1) = 0
+update @tmp1 set tm2 = '零' where len(tm2) = 0
+update @tmp1 set tm3 = '零' where len(tm3) = 0
+update @tmp1 set tm4 = '零' where len(tm4) = 0
+update @tmp1 set tm5 = '零' where len(tm5) = 0
+update @tmp1 set tm6 = '零' where len(tm6) = 0
+update @tmp1 set tm7 = '零' where len(tm7) = 0
+update @tmp1 set tm8 = '零' where len(tm8) = 0
+
+select * from @tmp1;
