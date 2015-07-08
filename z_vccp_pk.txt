@@ -23,6 +23,7 @@ z_vccp_pk01:--z_vccp_pk01
 		[money] float,
 		tax float,
 		total float,
+		floata decimal(20,4),
 		
 		productno nvarchar(20),
 		product nvarchar(50),
@@ -35,7 +36,7 @@ z_vccp_pk01:--z_vccp_pk01
 		item nvarchar(20),
 		[weight] float,
 		unit nvarchar(20),
-		price decimal(30,15),
+		price decimal(20,4),
 		moneys float,
 		[class] nvarchar(max)
 	)
@@ -88,6 +89,7 @@ z_vccp_pk01:--z_vccp_pk01
 		,tel=b.tel,addr=case when len(isnull(b.addr2,0))>0 then b.addr2 else c.addr_fact end
 		,serial=c.serial
 		,[money]=b.[money],tax=b.tax,total=b.total
+		,floata=isnull(b.floata,0)
 	from @tmp a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
 	left join cust c on b.custno=c.noa
@@ -118,9 +120,9 @@ z_vccp_pk01:--z_vccp_pk01
 	+ case when len(isnull([size],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end + isnull([size],'')	 b01
 	,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
 	,case when [mount]!=0 then item  else '' end b04
-	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],3) else '' end b05
+	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],-1) else '' end b05
 	,case when len(@t_isweight)>0 and [weight]!=0 then unit  else '' end b06
-	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma([price],-1) else '' end b07
+	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma(case when floata=0 then [price] else ROUND(floata*price,4) end,-1) else '' end b07
 	,case when len(@t_isprice)>0 and [moneys]!=0 then dbo.getComma([moneys],0) else '' end b08
 	,case when len(@t_isprice)>0 and [money]!=0 then dbo.getComma([money],0) else '' end c01
 	,case when len(@t_isprice)>0 and [tax]!=0 then dbo.getComma([tax],0) else '' end c02
