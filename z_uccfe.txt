@@ -368,7 +368,8 @@ if(@t_project='yc')
 	
 	--*****************************************************************************************	
 	
-	select gno,recno,storeno,case when ISNULL(stores,'')='' then storeno else left(stores,7) end stores,productno,xproduct,datea,typea,typec,noa,left(comp,11) comp,unit,ucctype,qhref
+	select gno,recno,storeno,case when ISNULL(stores,'')='' then storeno else left(stores,7) end stores,productno
+	,replace(xproduct,'~#$',char(39)) xproduct,datea,typea,typec,noa,left(comp,11) comp,unit,ucctype,qhref
 	,dbo.getComma((case when typea='A0' or typea='B0' or typea='C0' then -1 else 1 end)*round(mount,0),[11])	mount
 	,dbo.getComma((case when typea='A0' or typea='B0' or typea='C0' then -1 else 1 end)*weight,[12]) weight
 	,dbo.getComma(totmount,[11])	totmount
