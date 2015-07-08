@@ -423,7 +423,10 @@ z_ucc_pk01:--z_ucc_pk01
 		laststoreno nvarchar(20),
 		sprice float,
 		sprice2 float,
-		price float
+		price float,
+		tdime float,
+		twidth float,
+		tlength float
 	)
 	set @t_waste = UPPER(@t_waste)
 	
@@ -505,6 +508,16 @@ z_ucc_pk01:--z_ucc_pk01
 	insert into #z_ucc_pk01(gno,eweight,emount)
 	select '2',SUM(ISNULL(eweight,0)),SUM(ISNULL(emount,0)) from #z_ucc_pk01
 	
+	update #z_ucc_pk01 set tdime=c.dime2,twidth=c.lengthc,tlength=c.lengthd
+	from #z_ucc_pk01 a
+	left join view_rc2s c on a.accy=c.accy and a.noa=c.noa and a.noq=c.noq
+	where a.tablea='rc2s' and c.noa is not null
+	
+	update #z_ucc_pk01 set tdime=c.dime2,twidth=c.lengthc,tlength=c.lengthd
+	from #z_ucc_pk01 a
+	left join view_inas c on a.accy=c.accy and a.noa=c.noa and a.noq=c.noq
+	where a.tablea='inas' and c.noa is not null
+	
 	select a.gno
 		,ROW_NUMBER()over(order by a.gno,a.recno) rr
 		--,case a.tablea when 'rc2s' then 'rc2st'  
@@ -524,7 +537,7 @@ z_ucc_pk01:--z_ucc_pk01
 		,dbo.getComma(a.dime,2) dime
 		,dbo.getComma(a.width,-1) width
 		,dbo.getComma(a.lengthb,-1) lengthb
-		,a.size
+		,replace(a.size,'~#$',"'") size
 		,dbo.getComma(a.emount,-1) emount
 		,dbo.getComma(a.eweight,-1) eweight
 		,dbo.getComma(a.price,3) price
@@ -532,6 +545,9 @@ z_ucc_pk01:--z_ucc_pk01
 		,case when c.nick is not null then c.nick when c.comp is not null then LEFT(c.comp,4) else a.custno end cust
 		,a.ordeno
 		,a.no2
+		,a.tdime
+		,a.twidth
+		,a.tlength
 	from #z_ucc_pk01 a
 	left join store b on a.laststoreno=b.noa
 	left join cust c on a.custno=c.noa
