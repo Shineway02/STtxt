@@ -63,7 +63,7 @@ select
 	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),8,1) as int) ,1)
 from vcca a
 left join vccas b on a.noa = b.noa
-where (a.noa = @t_noa)
+where (len(@t_noa) = 0 or a.noa = @t_noa)
 
 update @tmp1 set tm1 = '零' where len(tm1) = 0
 update @tmp1 set tm2 = '零' where len(tm2) = 0
@@ -85,7 +85,8 @@ declare @tmp2 table(
 	serial nvarchar(20),
 	chkno nvarchar(6),
 	address nvarchar(max),
-	product1 nvarchar(50),product2 nvarchar(50),product3 nvarchar(50),product4 nvarchar(50),product5 nvarchar(50),product6 nvarchar(50),
+	product1 nvarchar(50),
+	product2 nvarchar(50),product3 nvarchar(50),product4 nvarchar(50),product5 nvarchar(50),product6 nvarchar(50),
 	pmount1 float,pmount2 float,pmount3 float,pmount4 float,pmount5 float,pmount6 float,
 	pprice1 float,pprice2 float,pprice3 float,pprice4 float,pprice5 float,pprice6 float,
 	pmoney1 float,pmoney2 float,pmoney3 float,pmoney4 float,pmoney5 float,pmoney6 float,
