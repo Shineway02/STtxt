@@ -1,0 +1,46 @@
+z_rc2a_sh01:--z_rc2a_sh01
+
+declare @t_bmon nvarchar(10)
+declare @t_emon nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_btggno nvarchar(20)
+declare @t_etggno nvarchar(20)
+
+
+set @t_bmon = case when '#non'=[3] then '' else [3] end
+set @t_emon = case when '#non'=[4] then char(255) else [4] end
+set @t_bdate = case when '#non'=[5] then '' else [5] end
+set @t_edate = case when '#non'=[6] then char(255) else [6] end
+set @t_btggno = case when '#non'=[7] then '' else [7] end
+set @t_etggno = case when '#non'=[8] then CHAR(255) else [8] end
+
+---------------------------------------------------------------------------------
+
+declare @tmp table(
+	gno nvarchar(1),
+	acc1 nvarchar(50),
+	acc2 nvarchar(50), 
+	mount decimal(13,3),
+	price decimal(13,3),
+	money decimal(13,3)
+)
+
+insert into @tmp
+select '0',a.acc1,a.acc2,a.mount,a.price,a.money
+from rc2as a
+left join rc2a b on a.noa = b. noa
+where (b.mon between @t_bmon and @t_emon) and (b.datea between @t_bdate and @t_edate) and (LEN(b.tggno)>0 or b.tggno between @t_btggno and @t_etggno)
+
+insert into @tmp(gno,acc1,mount,money)
+select '1',acc1,SUM(mount),SUM(money)
+from @tmp where gno ='0' group by acc1
+
+insert into @tmp(gno,mount,money)
+select '2',SUM(mount),SUM(money)
+from @tmp where gno ='0' 
+
+update @tmp set acc1 = 'ZZZZZZ' where gno = '2'
+
+select * from @tmp order by acc1,gno
+;
