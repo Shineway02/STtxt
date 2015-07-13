@@ -43,7 +43,7 @@ declare @tmp1 table(
 
 insert into @tmp1
 select 
-	  '0',
+	  '1',
 	  substring(a.datea,1,3), --年
 	  substring(a.datea,5,2), --月
 	  substring(a.datea,8,2), --日
@@ -77,6 +77,7 @@ update @tmp1 set tm8 = '零' where len(tm8) = 0
 declare @tmp2 table(
 	gno nvarchar(1),
 	idno int identity(0,1),
+	rno int,
 	yy nvarchar(10),
 	mm nvarchar(10),
 	dd nvarchar(10),
@@ -112,9 +113,11 @@ declare @noa2 nvarchar(20)
 declare @idno1 int
 declare @idno2 int
 declare @recno int
+declare @rno int
 
 set @noa2 = 'zzzzzzzzzz'
 set @idno2 = -1
+set @rno = 1
 
 declare cursor_table cursor for
 select noa,idno from @tmp1 order by noa,idno
@@ -126,15 +129,16 @@ begin
 	if(@noa2 != @noa1 or @recno%6 = 1)
 	begin
 		set @recno = 1
-		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,pprice1,pmoney1,money,tax,
+		insert into @tmp2(gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,pprice1,pmoney1,money,tax,
 			        total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8)
-		select gno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,pprice,pmoney,money,tax,
+		select gno,@rno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,pprice,pmoney,money,tax,
 			   total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8		
 		from @tmp1 where idno = @idno1
 		
 		set @noa2 = @noa1
 		set @recno = @recno + 1
 		set @idno2 = @idno2 + 1
+		set @rno = @rno + 1
 	end
 	else if(@recno = 2)
 	begin
@@ -221,8 +225,14 @@ end
 close cursor_table
 deallocate cursor_table 
 
+insert into @tmp2(gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,product2,product3,product4,product5,product6
+                 ,pmount1,pmount2,pmount3,pmount4,pmount5,pmount6,pprice1,pprice2,pprice3,pprice4,pprice5,pprice6
+                 ,pmoney1,pmoney2,pmoney3,pmoney4,pmoney5,pmoney6,money,tax,total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8)
+select '2',ROW_NUMBER() OVER(ORDER BY gno),yy,mm,dd,noa,buyer,serial,chkno,address,product1,product2,product3,product4,product5,product6,
+           pmount1,pmount2,pmount3,pmount4,pmount5,pmount6,pprice1,pprice2,pprice3,pprice4,pprice5,pprice6,
+           pmoney1,pmoney2,pmoney3,pmoney4,pmoney5,pmoney6,money,tax,total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2
 
-select gno,yy,mm,dd,noa,buyer,serial,chkno,address,
+select gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,
 	   product1,product2,product3,product4,product5,product6,
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount1),1)),4,15)) pmount1, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount2),1)),4,15)) pmount2, 
@@ -245,7 +255,7 @@ select gno,yy,mm,dd,noa,buyer,serial,chkno,address,
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,15)) money, 	
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,15)) tax, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,15)) total, 	
-	   memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2;
+	   memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2 order by rno,gno ;
 	   
 
 --*******************************************************************************
