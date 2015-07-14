@@ -49,7 +49,9 @@ select
 	substring(a.datea,1,3), --年 
 	substring(a.datea,5,2), --月 
 	substring(a.datea,8,2), --日 
-	a.noa,a.buyer,a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,b.memo, 
+	a.noa,
+	case when LEN(a.buyer) = 0 then a.comp else a.comp end,	
+	a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo, 
 	case when a.taxtype = '1' then 'v' end, 
 	case when a.taxtype = '2' then 'v' end, 
 	case when a.taxtype = '4' then 'v' end, 
@@ -322,7 +324,9 @@ select
 	  substring(a.datea,1,3), --年
 	  substring(a.datea,5,2), --月
 	  substring(a.datea,8,2), --日
-	  a.noa,a.buyer,a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,b.memo,
+	  a.noa,
+	  case when LEN(a.buyer) = 0 then a.comp else a.comp end,
+	  a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo,
 	  case when a.taxtype = '1' then 'v' end,
 	  case when a.taxtype = '2' then 'v' end,
 	  case when a.taxtype = '4' then 'v' end,
@@ -521,3 +525,14 @@ select gno,yy,mm,dd,noa,buyer,serial,chkno,address,
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,15)) tax, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,15)) total, 	
 	   memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2;
+
+
+
+--*******************************************************************************
+z_vccap_sh04:--z_vccap_sh04
+declare @tmp table (
+	gno nvarchar(1)
+)
+
+insert into @tmp values('0')
+select * from @tmp;
