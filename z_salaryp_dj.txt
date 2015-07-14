@@ -1,0 +1,315 @@
+﻿z_salaryp_dj01:--z_salaryp_dj01
+SET QUOTED_IDENTIFIER OFF
+declare @t_xmon nvarchar(20)
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+set @t_xmon = case when '#non' = [1] then '' else [1] end
+set @t_bsssno = case when '#non' = [2] then '' else [2] end
+set @t_esssno = case when '#non' = [3] then CHAR(255) else [3] end
+---------------------------------------------------------------------------------------------------------------------------------
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+   drop table #tmpa
+END
+
+IF OBJECT_ID('tempdb..#tmpb')is not null
+BEGIN
+   drop table #tmpb
+END
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+
+create table #tmpa(
+		recno int,
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		jobno nvarchar(50),
+		job nvarchar(50),
+		levels nvarchar(50),
+		partno nvarchar(20),
+		part nvarchar(50),
+
+		money float, --底薪 日/時薪 給薪金額
+		bo_admin float, --特別責任加給
+		bo_special float, --技術加給
+		bo_full float,	--全勤獎金
+		meals float,--伙食津貼
+		bo_traffic float,--交通津貼
+		bo_oth float,--其他津貼
+		total1 float,--小計
+		
+		mi_total float, --扣薪金額
+		mi_sick float,--病假金額
+		mi_person float,--事假金額
+		mi_nosalary float,--無薪金額
+		mi_leave float,--曠工金額
+		
+		bo_born float, --生產獎金
+		bo_night float, --夜班津貼
+		bo_duty float, --值班津貼
+		tax_other float,--應稅其他
+		total2 float,--給付總額
+		
+		addmoney float,--加班費
+		money1 float,--周六加班費(全天)
+		money2 float,--周六加班費(半天)
+		tax_other2 float,--免稅其他
+		money3 float,--敬業獎金
+		money4 float,--久任獎金
+		money5 float,--考績獎金
+		money6 float,--業務達成獎金
+		plus float,--其他加項
+		total3 float,--應領總額
+		
+		borrow float, --借支
+		ch_health float, --健保費
+		ch_labor float, --勞保費
+		ch_retire float, --個人勞退提繳
+		hplus2 float, --二代健保補價
+		tax float, --所得稅
+		tax5 float, --所得稅5%
+		welfare float, --福利金
+		minus float, --其他扣款
+		
+		chgcash float,--代扣費用
+		tax6 float,--所得稅6%
+		stay_tax float,--暫留稅10%
+		tax12 float,--所得稅12%
+		tax18 float,--所得稅18%
+		lodging float,--住宿電費
+		stay_money float,--暫留款
+		total4 float, --應扣總額
+		
+		total5 float, --實發金額
+		money7 float,--申報實領總薪資
+		
+		ch_health2 float, --公司負擔健保
+		ch_labor2 float, --公司負擔勞保
+		ch_retire2 float, --公司負擔勞退
+		sa_health float, --健保薪資
+		sa_labor float, --勞保薪資
+		sa_retire float --勞退薪資
+)
+
+insert #tmpa
+select ROW_NUMBER()over (order by b.sno),b.sno,b.namea,c.jobno,isnull(c.level1+'職等','')+isnull(c.job,''),c.level2,b.partno,b.part
+,b.money+b.mtotal,b.bo_admin,b.bo_special,b.bo_full,b.meals,b.bo_traffic,b.bo_oth,b.total1
+,b.mi_total,b.mi_sick,b.mi_person,b.mi_nosalary,b.mi_leave,b.bo_born,b.bo_night,b.bo_duty,b.tax_other,b.total2
+,b.addmoney,b.money1,b.money2,b.tax_other2,b.money3,b.money4,b.money5,b.money6,b.plus,b.total3
+,b.borrow,b.ch_health,b.ch_labor,b.ch_retire,b.hplus2,b.tax,b.tax5,b.welfare,b.minus,b.chgcash,b.tax6,b.stay_tax,b.tax12,b.tax18,b.lodging_power_fee,b.stay_money,b.total4
+,b.total5,b.money7,b.ch_health2,b.ch_labor2,b.ch_retire2,b.sa_health,b.sa_labor,b.sa_retire
+from salary a left join salarys b on a.noa=b.noa
+outer apply(select top 1 * from saladjust where noa=b.sno and datea<=a.datea order by datea desc)c
+--where a.mon=@t_xmon and b.sno between @t_bsssno and @t_esssno
+order by b.sno,a.mon
+
+create table #tmpb(
+	recno int,
+	sssno nvarchar(50),
+	item nvarchar(100),
+	money float,
+	typea nvarchar(10)
+)
+
+insert #tmpb
+select ROW_NUMBER() over (partition by a.sssno order by a.datea),a.sssno,b.item,plus,'1'
+from salchg a left join salchgitem b on a.plusitem=b.noa where plus>0 and a.mon=@t_xmon
+
+insert #tmpb
+select ROW_NUMBER() over (partition by a.sssno order by a.datea),a.sssno,b.item,minus,'2'
+from salchg a left join salchgitem b on a.minusitem=b.noa where minus>0 and a.mon=@t_xmon
+and charindex('上月短扣勞健保',b.item)=0
+
+create table #tmp(
+	recno int IDENTITY(1,1),
+	gno nvarchar(10),
+	sno1 nvarchar(50), sno2 nvarchar(50), sno3 nvarchar(50),
+	name1 nvarchar(50), name2 nvarchar(50), name3 nvarchar(50),
+	job1 nvarchar(50), job2 nvarchar(50), job3 nvarchar(50),
+	lev1 nvarchar(50), lev2 nvarchar(50), lev3 nvarchar(50),
+	money1 float, money2 float, money3 float,
+	admin1 float, admin2 float, admin3 float,
+	special1 float, special2 float, special3 float,
+	full1 float, full2 float, full3 float,
+	meals1 float, meals2 float, meals3 float,
+	traffic1 float, traffic2 float, traffic3 float,
+	addmoney1 float, addmoney2 float, addmoney3 float,
+	m11 float, m12 float, m13 float,
+	m21 float, m22 float, m23 float,
+	m31 float, m32 float, m33 float,
+	m41 float, m42 float, m43 float,
+	m51 float, m52 float, m53 float,
+	m61 float, m62 float, m63 float,
+	l21 float, l22 float, l23 float,
+	h21 float, h22 float, h23 float,
+	r21 float, r22 float, r23 float,
+	t21 float, t22 float, t23 float,
+	l11 float, l12 float, l13 float,
+	h11 float, h12 float, h13 float,
+	pm1 float, pm2 float, pm3 float,
+	ps1 float, ps2 float, ps3 float,
+	nl1 float, nl2 float, nl3 float,
+	h31 float, h32 float, h33 float,
+	l31 float, l32 float, l33 float,
+	r31 float, r32 float, r33 float,
+	hp21 float, hp22 float, hp23 float,
+	t31 float, t32 float, t33 float,
+	t41 float, t42 float, t43 float,
+	hs1 float, hs2 float, hs3 float,
+	m71 float, m72 float, m73 float,
+	psi11 nvarchar(50),psm11 float,psi12 nvarchar(50),psm12 float,psi13 nvarchar(50),psm13 float,
+	psi21 nvarchar(50),psm21 float,psi22 nvarchar(50),psm22 float,psi23 nvarchar(50),psm23 float,
+	psi31 nvarchar(50),psm31 float,psi32 nvarchar(50),psm32 float,psi33 nvarchar(50),psm33 float,
+	psi41 nvarchar(50),psm41 float,psi42 nvarchar(50),psm42 float,psi43 nvarchar(50),psm43 float,
+	msi11 nvarchar(50),msm11 float,msi12 nvarchar(50),msm12 float,msi13 nvarchar(50),msm13 float,
+	msi21 nvarchar(50),msm21 float,msi22 nvarchar(50),msm22 float,msi23 nvarchar(50),msm23 float,
+	msi31 nvarchar(50),msm31 float,msi32 nvarchar(50),msm32 float,msi33 nvarchar(50),msm33 float,
+	msi41 nvarchar(50),msm41 float,msi42 nvarchar(50),msm42 float,msi43 nvarchar(50),msm43 float
+) 
+
+	insert #tmp(gno,sno1,name1,job1,lev1,money1,admin1,special1,full1,meals1,traffic1,addmoney1,m11,m21,m31,m41,m51,m61
+	,l21,h21,r21,t21,l11,h11,pm1,ps1,nl1,h31,l31,r31,hp21,t31,t41,hs1,m71
+	,psi11,psm11,psi21,psm21,psi31,psm31,psi41,psm41,msi11,msm11,msi21,msm21,msi31,msm31,msi41,msm41)
+	select '0',a.sssno,a.namea,a.job,a.levels,a.money,a.bo_admin,a.bo_special,a.bo_full,a.meals,a.bo_traffic
+	,a.addmoney,a.money1,a.money2,a.money3,a.money4,a.money5,a.money6
+	,a.ch_labor2,a.ch_health2,a.ch_retire2
+	,isnull(a.money,0)+isnull(a.bo_admin,0)+isnull(a.bo_special,0)+isnull(a.bo_full,0)+isnull(a.meals,0)+isnull(a.bo_traffic,0)+isnull(a.bo_oth,0)
+	+isnull(a.addmoney,0)+isnull(a.money1,0)+isnull(a.money2,0)+isnull(a.money3,0)+isnull(a.money4,0)+isnull(a.money5,0)+isnull(a.money6,0)
+	+isnull(a.plus,0)+isnull(a.bo_born,0)+isnull(a.bo_night,0)+isnull(a.bo_duty,0)+isnull(a.tax_other,0)
+	,-1*a.ch_labor,-1*a.ch_health
+	,-1*(select sum(sa.minus) from salchg sa left join salchgitem sb on sa.minusitem=sb.noa where sa.minus>0 and charindex('上月短扣勞健保',sb.item)>0 and sa.mon=@t_xmon and sa.sssno=a.sssno)
+	,-1*(isnull(a.mi_sick,0)+isnull(a.mi_person,0)),-1*(isnull(a.mi_nosalary,0)+isnull(a.mi_leave,0)),-1*a.ch_health2,-1*a.ch_labor2,-1*a.ch_retire2,-1*a.hplus2
+	,-1*(isnull(a.mi_total,0)+isnull(a.borrow,0)+isnull(a.ch_health,0)+isnull(a.ch_labor,0)+isnull(a.ch_retire,0)+isnull(a.hplus2,0)
+	+isnull(a.tax,0)+isnull(a.tax5,0)+isnull(a.welfare,0)+isnull(a.minus,0)+isnull(a.chgcash,0)+isnull(a.tax6,0)+isnull(a.stay_tax,0)
+	+isnull(a.tax12,0)+isnull(a.tax18,0)+isnull(a.lodging,0)+isnull(a.stay_money,0))
+	,a.total5,a.sa_health,a.money7
+	,pa.item,pa.money,pb.item,pb.money,pc.item,pc.money,pd.item,pd.money
+	,ma.item,-1*ma.money,mb.item,-1*mb.money,mc.item,-1*mc.money,md.item,-1*md.money
+	from #tmpa a 
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='1' and recno=1)pa
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='1' and recno=2)pb
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='1' and recno=3)pc
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='1' and recno=4)pd
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='2' and recno=1)ma
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='2' and recno=2)mb
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='2' and recno=3)mc
+	outer apply (select item,money from #tmpb where sssno=a.sssno and typea='2' and recno=4)md
+	where recno%3=1
+		
+	update a
+	set sno2=b.sssno,name2=b.namea,job2=b.job,lev2=b.levels,money2=b.money
+	,admin2=b.bo_admin,special2=b.bo_special,full2=b.bo_full,meals2=b.meals,traffic2=b.bo_traffic
+	,addmoney2=b.addmoney,m12=b.money1,m22=b.money2,m32=b.money3,m42=b.money4,m52=b.money5,m62=b.money6
+	,l22=b.ch_labor2,h22=b.ch_health2,r22=b.ch_retire2
+	,t22=isnull(b.money,0)+isnull(b.bo_admin,0)+isnull(b.bo_special,0)+isnull(b.bo_full,0)+isnull(b.meals,0)+isnull(b.bo_traffic,0)+isnull(b.bo_oth,0)
+	+isnull(b.addmoney,0)+isnull(b.money1,0)+isnull(b.money2,0)+isnull(b.money3,0)+isnull(b.money4,0)+isnull(b.money5,0)+isnull(b.money6,0)
+	+isnull(b.plus,0)+isnull(b.bo_born,0)+isnull(b.bo_night,0)+isnull(b.bo_duty,0)+isnull(b.tax_other,0)
+	,l12=-1*b.ch_labor,h12=-1*b.ch_health
+	,pm2=-1*(select sum(sa.minus) from salchg sa left join salchgitem sb on sa.minusitem=sb.noa where sa.minus>0 and charindex('上月短扣勞健保',sb.item)>0 and sa.mon=@t_xmon and sa.sssno=b.sssno)
+	,ps2=-1*(b.mi_sick+b.mi_person),nl2=-1*(b.mi_nosalary+b.mi_leave)
+	,h32=-1*b.ch_health2,l32=-1*b.ch_labor2,r32=-1*b.ch_retire2,hp22=-1*b.hplus2
+	,t32=(isnull(b.mi_total,0)+isnull(b.borrow,0)+isnull(b.ch_health,0)+isnull(b.ch_labor,0)+isnull(b.ch_retire,0)+isnull(b.hplus2,0)
+	+isnull(b.tax,0)+isnull(b.tax5,0)+isnull(b.welfare,0)+isnull(b.minus,0)+isnull(b.chgcash,0)+isnull(b.tax6,0)+isnull(b.stay_tax,0)
+	+isnull(b.tax12,0)+isnull(b.tax18,0)+isnull(b.lodging,0)+isnull(b.stay_money,0))
+	,t42=b.total5,hs2=b.sa_health,m71=b.money7
+	,psi12=pa.item,psm12=pa.money,psi22=pb.item,psm22=pb.money,psi32=pc.item,psm32=pc.money,psi42=pd.item,psm42=pd.money
+	,msi12=ma.item,msm12=-1*ma.money,msi22=mb.item,msm22=-1*mb.money,msi32=mc.item,msm32=-1*mc.money,msi42=md.item,msm42=-1*md.money
+	from #tmp a left join #tmpa b on ((a.recno-1)*3)+2=b.recno
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=1)pa
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=2)pb
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=3)pc
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=4)pd
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=1)ma
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=2)mb
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=3)mc
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=4)md
+	
+	update a
+	set sno3=b.sssno,name3=b.namea,job3=b.job,lev3=b.levels,money3=b.money
+	,admin3=b.bo_admin,special3=b.bo_special,full3=b.bo_full,meals3=b.meals,traffic3=b.bo_traffic
+	,addmoney3=b.addmoney,m13=b.money1,m23=b.money2,m33=b.money3,m43=b.money4,m53=b.money5,m63=b.money6
+	,l23=b.ch_labor2,h23=b.ch_health2,r23=b.ch_retire2
+	,t23=isnull(b.money,0)+isnull(b.bo_admin,0)+isnull(b.bo_special,0)+isnull(b.bo_full,0)+isnull(b.meals,0)+isnull(b.bo_traffic,0)+isnull(b.bo_oth,0)
+	+isnull(b.addmoney,0)+isnull(b.money1,0)+isnull(b.money2,0)+isnull(b.money3,0)+isnull(b.money4,0)+isnull(b.money5,0)+isnull(b.money6,0)
+	+isnull(b.plus,0)+isnull(b.bo_born,0)+isnull(b.bo_night,0)+isnull(b.bo_duty,0)+isnull(b.tax_other,0)
+	,l13=-1*b.ch_labor,h13=-1*b.ch_health
+	,pm3=-1*(select sum(sa.minus) from salchg sa left join salchgitem sb on sa.minusitem=sb.noa where sa.minus>0 and charindex('上月短扣勞健保',sb.item)>0 and sa.mon=@t_xmon and sa.sssno=b.sssno)
+	,ps3=-1*(b.mi_sick+b.mi_person),nl3=-1*(b.mi_nosalary+b.mi_leave)
+	,h33=-1*b.ch_health2,l33=-1*b.ch_labor2,r33=-1*b.ch_retire2,hp23=-1*b.hplus2
+	,t33=(isnull(b.mi_total,0)+isnull(b.borrow,0)+isnull(b.ch_health,0)+isnull(b.ch_labor,0)+isnull(b.ch_retire,0)+isnull(b.hplus2,0)
+	+isnull(b.tax,0)+isnull(b.tax5,0)+isnull(b.welfare,0)+isnull(b.minus,0)+isnull(b.chgcash,0)+isnull(b.tax6,0)+isnull(b.stay_tax,0)
+	+isnull(b.tax12,0)+isnull(b.tax18,0)+isnull(b.lodging,0)+isnull(b.stay_money,0))
+	,t43=b.total5,hs3=b.sa_health,m71=b.money7
+	,psi13=pa.item,psm13=pa.money,psi23=pb.item,psm23=pb.money,psi33=pc.item,psm33=pc.money,psi43=pd.item,psm43=pd.money
+	,msi13=ma.item,msm13=-1*ma.money,msi23=mb.item,msm23=-1*mb.money,msi33=mc.item,msm33=-1*mc.money,msi43=md.item,msm43=-1*md.money
+	from #tmp a left join #tmpa b on ((a.recno-1)*3)+3=b.recno
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=1)pa
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=2)pb
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=3)pc
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='1' and recno=4)pd
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=1)ma
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=2)mb
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=3)mc
+	outer apply (select item,money from #tmpb where sssno=b.sssno and typea='2' and recno=4)md
+		
+select 
+dbo.getComma(money1,0)money1,dbo.getComma(money2,0)money2,dbo.getComma(money3,0)money3,
+dbo.getComma(admin1,0)admin1,dbo.getComma(admin2,0)admin2,dbo.getComma(admin3,0)admin3,
+dbo.getComma(special1,0)special1,dbo.getComma(special2,0)special2,dbo.getComma(special3,0)special3,
+dbo.getComma(full1,0)full1,dbo.getComma(full2,0)full2,dbo.getComma(full3,0)full3,
+dbo.getComma(meals1,0)meals1,dbo.getComma(meals2,0)meals2,dbo.getComma(meals3,0)meals3,
+dbo.getComma(traffic1,0)traffic1,dbo.getComma(traffic2,0)traffic2,dbo.getComma(traffic3,0)traffic3,
+dbo.getComma(addmoney1,0)addmoney1,dbo.getComma(addmoney2,0)addmoney2,dbo.getComma(addmoney3,0)addmoney3,
+dbo.getComma(m11,0)m11,dbo.getComma(m12,0)m12,dbo.getComma(m13,0)m13,
+dbo.getComma(m21,0)m21,dbo.getComma(m22,0)m22,dbo.getComma(m23,0)m23,
+dbo.getComma(m31,0)m31,dbo.getComma(m32,0)m32,dbo.getComma(m33,0)m33,
+dbo.getComma(m41,0)m41,dbo.getComma(m42,0)m42,dbo.getComma(m43,0)m43,
+dbo.getComma(m51,0)m51,dbo.getComma(m52,0)m52,dbo.getComma(m53,0)m53,
+dbo.getComma(m61,0)m61,dbo.getComma(m62,0)m62,dbo.getComma(m63,0)m63,
+dbo.getComma(l21,0)l21,dbo.getComma(l22,0)l22,dbo.getComma(l23,0)l23,
+dbo.getComma(h21,0)h21,dbo.getComma(h22,0)h22,dbo.getComma(h23,0)h23,
+dbo.getComma(r21,0)r21,dbo.getComma(r22,0)r22,dbo.getComma(r23,0)r23,
+dbo.getComma(t21,0)t21,dbo.getComma(t22,0)t22,dbo.getComma(t23,0)t23,
+dbo.getComma(l11,0)l11,dbo.getComma(l12,0)l12,dbo.getComma(l13,0)l13,
+dbo.getComma(h11,0)h11,dbo.getComma(h12,0)h12,dbo.getComma(h13,0)h13,
+dbo.getComma(pm1,0)pm1,dbo.getComma(pm2,0)pm2,dbo.getComma(pm3,0)pm3,
+dbo.getComma(ps1,0)ps1,dbo.getComma(ps2,0)ps2,dbo.getComma(ps3,0)ps3,
+dbo.getComma(nl1,0)nl1,dbo.getComma(nl2,0)nl2,dbo.getComma(nl3,0)nl3,
+dbo.getComma(h31,0)h31,dbo.getComma(h32,0)h32,dbo.getComma(h33,0)h33,
+dbo.getComma(l31,0)l31,dbo.getComma(l32,0)l32,dbo.getComma(l33,0)l33,
+dbo.getComma(r31,0)r31,dbo.getComma(r32,0)r32,dbo.getComma(r33,0)r33,
+dbo.getComma(hp21,0)hp21,dbo.getComma(hp22,0)hp22,dbo.getComma(hp23,0)hp23,
+dbo.getComma(t31,0)t31,dbo.getComma(t32,0)t32,dbo.getComma(t33,0)t33,
+dbo.getComma(t41,0)t41,dbo.getComma(t42,0)t42,dbo.getComma(t43,0)t43,
+dbo.getComma(hs1,0)hs1,dbo.getComma(hs2,0)hs2,dbo.getComma(hs3,0)hs3,
+dbo.getComma(m71,0)m71,dbo.getComma(m72,0)m72,dbo.getComma(m73,0)m73,
+dbo.getComma(psm11,0)psm11,dbo.getComma(psm12,0)psm12,dbo.getComma(psm13,0)psm13,
+dbo.getComma(psm21,0)psm21,dbo.getComma(psm22,0)psm22,dbo.getComma(psm23,0)psm23,
+dbo.getComma(psm31,0)psm31,dbo.getComma(psm32,0)psm32,dbo.getComma(psm33,0)psm33,
+dbo.getComma(psm41,0)psm41,dbo.getComma(psm42,0)psm42,dbo.getComma(psm43,0)psm43,
+dbo.getComma(msm11,0)msm11,dbo.getComma(msm12,0)msm12,dbo.getComma(msm13,0)msm13,
+dbo.getComma(msm21,0)msm21,dbo.getComma(msm22,0)msm22,dbo.getComma(msm23,0)msm23,
+dbo.getComma(msm31,0)msm31,dbo.getComma(msm32,0)msm32,dbo.getComma(msm33,0)msm33,
+dbo.getComma(msm41,0)msm41,dbo.getComma(msm42,0)msm42,dbo.getComma(msm43,0)msm43,
+*,LEFT(@t_xmon,3) years,RIGHT(@t_xmon,2)mons from #tmp order by recno
+
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+   drop table #tmpa
+END
+
+IF OBJECT_ID('tempdb..#tmpb')is not null
+BEGIN
+   drop table #tmpb
+END
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+;
+;
+------------------------------------------------------------------------------------------------------------------------------
