@@ -6,9 +6,9 @@
 	+right('000'+cast(cast(right(isnull((select MAX(noa) from salvacause where noa like replace(dbo.AD2ChineseEraName(n),'/','')+'%'),'000'),3) as int)
 	+ROW_NUMBER() over (partition by n order by n,noa) as nvarchar(10)),3)noa
 	,right('0000'+a,4) sssno,b namea
-	,isnull((select noa from part where charindex(a.d,part)>0),'') partno,d part
-	,isnull((select noa from salm where charindex(a.e,job)>0),'') jobno,e job
-	,isnull((select noa from salhtype where charindex(a.f,namea)>0),'')htype,f hname
+	,isnull((select top 1 noa from part where charindex(a.d,part)>0),'') partno,d part
+	,isnull((select top 1 noa from salm where charindex(a.e,job)>0),'') jobno,e job
+	,isnull((select top 1 noa from salhtype where charindex(a.f,namea)>0),'')htype,f hname
 	,h memo,i hr_used
 	,dbo.AD2ChineseEraName(j) bdate,left(k,5) btime
 	,dbo.AD2ChineseEraName(l) edate,left(m,5) etime
