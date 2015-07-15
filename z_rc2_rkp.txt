@@ -1,0 +1,67 @@
+z_rc2_rkp01:--z_rc2_rkp01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_path nvarchar(max) = '[1]'
+	declare @t_db nvarchar(max) = '[2]'
+	declare @t_noa nvarchar(max) = case when '#non' = [3] then '' else [3] end
+-----------------------------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1),
+		gno nvarchar(10),
+		pno nvarchar(10),
+		datea nvarchar(20),
+		rc2no nvarchar(20),
+		ordcno nvarchar(20),
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		nick nvarchar(20),
+		
+		a01 nvarchar(20),--物料類別
+		a02 nvarchar(20),--品名
+		a03 nvarchar(20),--產品序號
+		a04 nvarchar(50),--規格
+		a05 float,--數量
+		a06 nvarchar(20),--單位
+		a07 nvarchar(max) --備註
+	)
+	
+	insert into @tmp(gno,pno,datea,rc2no,ordcno,tggno,tgg,nick
+		,a01,a02,a03,a04,a05,a06,a07)
+	select '1','1',a.datea,a.noa,a.ordcno,a.tggno,a.tgg,a.nick
+		,d.product,c.product,b.uno,b.size,b.[weight],b.unit,b.memo
+	from view_rc2 a
+	left join view_rc2s b on a.accy=b.accy and a.noa=b.noa
+	left join ucc c on b.productno=c.noa
+	left join style d on b.style = d.noa
+	where a.noa=@t_noa
+	
+	insert into @tmp(gno,pno,datea,rc2no,ordcno,tggno,tgg,nick
+		,a05,a06)
+	select '2','2',a.datea,a.noa,a.ordcno,a.tggno,a.tgg,a.nick
+		,sum(isnull(b.[weight],0)),b.unit
+	from view_rc2 a
+	left join view_rc2s b on a.accy=b.accy and a.noa=b.noa
+	where a.noa=@t_noa	
+	group by a.datea,a.noa,a.ordcno,a.tggno,a.tgg,a.nick,b.unit
+	
+	--insert into @tmp(gno,pno,datea,rc2no,ordcno,tggno,tgg,nick)
+	--select '4','4',a.datea,a.noa,a.ordcno,a.tggno,a.tgg,a.nick
+	--from view_rc2 a
+	--where a.noa=@t_noa	
+------------------------------------------------------------------------------------
+	declare @t_pagecount int = 16 -- 一頁幾行
+	declare @n int = 0
+	select @n=count(1) from @tmp
+	while @n%@t_pagecount!=0
+	begin
+		insert into @tmp(gno,pno,datea,rc2no,ordcno,tggno,tgg,nick)
+		select '3','3',a.datea,a.noa,a.ordcno,a.tggno,a.tgg,a.nick
+		from view_rc2 a
+		where a.noa=@t_noa	
+		
+		set @n = @n + 1
+	end
+		
+	select '<img src="'+@t_path+'getlogo.aspx?noa=LC01'+CHAR(38)+'db='+@t_db+'"/>' logo 
+		,* 
+	from @tmp  
+	order by pno,sel;
