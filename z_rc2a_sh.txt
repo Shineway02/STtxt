@@ -30,7 +30,7 @@ insert into @tmp
 select '0',a.acc1,a.acc2,a.mount,a.price,a.money
 from rc2as a
 left join rc2a b on a.noa = b. noa
-where (b.mon between @t_bmon and @t_emon) and (b.datea between @t_bdate and @t_edate) and (LEN(b.tggno)>0 or b.tggno between @t_btggno and @t_etggno)
+where (b.mon between @t_bmon and @t_emon) and (b.datea between @t_bdate and @t_edate) and (LEN(b.tggno) = 0 or b.tggno between @t_btggno and @t_etggno)
 
 insert into @tmp(gno,acc1,mount,money)
 select '1',acc1,SUM(mount),SUM(money)
