@@ -241,9 +241,11 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 					select '12','10',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
 				end
 				--應收總計：
-				insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
-				select '13','11',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-
+				if LEN(@t_ispayed)>0 or LEN(@t_isunpay)>0
+				begin
+					insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+					select '13','11',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+				end
 				select @nn = count(1) from (select vccno from @result where custno=@custno and gno='1' group by vccno)a
 				select @totpage = COUNT(1) from @result where custno=@custno
 				update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where custno=@custno
