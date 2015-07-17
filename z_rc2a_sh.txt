@@ -24,13 +24,14 @@ declare @tmp table(
 	gno nvarchar(1),
 	acc1 nvarchar(50),
 	acc2 nvarchar(50), 
+	product nvarchar(50), 
 	mount decimal(13,3),
 	price decimal(13,3),
 	money decimal(13,3)
 )
 
 insert into @tmp
-select '0',a.acc1,a.acc2,a.mount,a.price,a.money
+select '0',a.acc1,a.acc2,a.product,a.mount,a.price,a.money
 from rc2as a
 left join rc2a b on a.noa = b. noa
 where (a.acc1 is not null) and (a.acc2 is not null) and (a.acc1 between @t_bacc and @t_eacc) and
@@ -49,7 +50,7 @@ update @tmp set acc1 = 'ZZZZZZ' where gno = '2'
 select case when @t_bmon = '' or @t_emon = '' then '' else ('帳款月份：'+@t_bmon+'~'+@t_emon) end mm,
 	   case when @t_bdate ='' or @t_edate = '' then '' else ('日期：'+@t_bdate+'~'+@t_edate) end dd,
        case when @t_btggno = '' or @t_etggno = ''  then '' else ('廠商：'+@t_btggno+'~'+@t_etggno) end tgg,
-       gno,acc1,acc2,mount,
+       gno,acc1,acc2,product,mount,
        reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,price),1)),4,15)) price,
        reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,15)) money
 from @tmp order by acc1,gno  ;
