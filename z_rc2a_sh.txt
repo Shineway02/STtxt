@@ -34,7 +34,7 @@ insert into @tmp
 select '0',a.acc1,a.acc2,a.product,a.mount,a.price,a.money
 from rc2as a
 left join rc2a b on a.noa = b. noa
-where (a.acc1 is not null) and (a.acc2 is not null) and (a.acc1 between @t_bacc and @t_eacc) and
+where (LEN(a.acc1) > 0) and (LEN(a.acc2) > 0) and (a.acc1 between @t_bacc and @t_eacc) and
 	  (b.mon between @t_bmon and @t_emon) and (b.datea between @t_bdate and @t_edate) and (LEN(b.tggno) = 0 or b.tggno between @t_btggno and @t_etggno)
 	  
 insert into @tmp(gno,acc1,mount,money)
@@ -94,7 +94,7 @@ insert into @tmp
 select '9',a.acc1,a.acc2,a.mount,a.price,a.money
 from rc2as a
 left join rc2a b on a.noa = b. noa
-where (a.acc1 is not null) and (a.acc2 is not null) and (a.acc1 between @t_bacc and @t_eacc) and
+where (LEN(a.acc1) > 0) and (LEN(a.acc2) > 0) and (a.acc1 between @t_bacc and @t_eacc) and
 	  (b.mon between @t_bmon and @t_emon) and (b.datea between @t_bdate and @t_edate) and (LEN(b.tggno) = 0 or b.tggno between @t_btggno and @t_etggno)
 	  
 insert into @tmp(gno,acc1,acc2,mount,money)
