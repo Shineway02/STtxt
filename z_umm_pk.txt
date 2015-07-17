@@ -106,6 +106,8 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	declare @ordeno nvarchar(max)
 	declare @custorde nvarchar(max)
 	declare @moneys float
+	declare @typea nvarchar(20)
+	declare @datea nvarchar(20)
 	
 	declare @result table(
 		sel int identity(1,1),
@@ -120,6 +122,10 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 		payed float,
 		unpay float,
 		tot float,
+		
+		ttype nvarchar(20),
+		tdate nvarchar(20),
+		tvccno nvarchar(20),
 		
 		nn int,--出貨單張數
 		
@@ -147,13 +153,13 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 		if exists(select top 1 * from @tmpa where custno=@custno and mon between @t_bmon and @t_emon)
 		begin
 			declare cursor_table2 cursor for
-			select noa,ordeno from view_vcc
+			select noa,ordeno,typea,datea from view_vcc
 			where custno=@custno 
 			and mon between @t_bmon and @t_emon
 			order by datea,noa
 			open cursor_table2
 			fetch next from cursor_table2
-			into @noa,@ordeno
+			into @noa,@ordeno,@typea,@datea
 			while(@@FETCH_STATUS <> -1)
 			begin
 				--客單編號
@@ -162,8 +168,8 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				
 				if LEN(ISNULL(@custorde,''))>0
 				begin
-					insert into @result(gno,pno,custno,vccno,memo)
-					select '1','1',@custno,@noa,@custorde
+					insert into @result(gno,pno,custno,vccno,typea,datea,memo)
+					select '1','1',@custno,@noa,case when @typea='1' then '出' else '退' end,@datea,@custorde
 				end
 				--出貨明細
 				insert into @result(gno,pno,custno
@@ -195,7 +201,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				select '4','1',@custno,@noa,'合計：',@moneys
 				
 				fetch next from cursor_table2
-				into @noa,@ordeno
+				into @noa,@ordeno,@typea,@datea
 			end
 			close cursor_table2
 			deallocate cursor_table2
@@ -241,9 +247,11 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 					select '12','10',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
 				end
 				--應收總計：
-				insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
-				select '13','11',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
-
+				if LEN(@t_ispayed)>0 or LEN(@t_isunpay)>0
+				begin
+					insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
+					select '13','11',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+				end
 				select @nn = count(1) from (select vccno from @result where custno=@custno and gno='1' group by vccno)a
 				select @totpage = COUNT(1) from @result where custno=@custno
 				update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where custno=@custno
@@ -254,20 +262,27 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	end
 	close cursor_table
 	deallocate cursor_table
-	
+--------------------------------------------------------------------------------------------------------	
+	update @result set ttype=b.typea,tdate=b.datea,tvccno=b.vccno
+	from @result a
+	left join (select ROW_NUMBER()over(PARTITION by vccno order by sel) recno, * from @result) b on a.sel=b.sel
+	where b.recno=1
+--------------------------------------------------------------------------------------------------------	
 	select a.* 
 	,(ROW_NUMBER()over(partition by a.custno order by pno)-1)/@linecount+1 pp
 	,a.totpage qq
-	,a.datea dd
-	,a.typea tt
+	,a.tdate dd
+	,a.ttype tt
 	,a.unit uu
-	,cast(a.mount as nvarchar(50))+a.item a1
-	,cast(a.[weight] as nvarchar(50))+a.unit a2
-	,a.price a3
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.[moneys]),1)),4,12)) a4
+	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+a.item end a1
+	,case when a.[weight]=0 then '' else cast(a.[weight] as nvarchar(50))+a.unit end a2
+	,case when a.price=0 then '' else cast(a.price as nvarchar(50)) end a3
+	,case when a.[moneys]=0 then '' else cast(dbo.getComma(a.[moneys],0) as nvarchar(50)) end a4
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp +'</a>'comp
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.nick+'</a>' nick
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.addr_comp+'</a>' addr
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.tel+'</a>' tel
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.fax+'</a>' fax
 	,dbo.getComma(a.[money],0) b1
 	,dbo.getComma(a.[bkmoney],0) b2
 	,dbo.getComma(a.[tax],0) b3
@@ -279,7 +294,6 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	from @result a
 	left join cust b on a.custno=b.noa
 	order by a.custno,a.sel;
-
 
 z_umm_pk01:--z_umm_pk01  ref.z_ummst03
 	SET QUOTED_IDENTIFIER OFF 

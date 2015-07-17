@@ -41,7 +41,7 @@ z_vccp_pk01:--z_vccp_pk01
 		[class] nvarchar(max)
 	)
 	insert into @tmp(gno,pno,accy,noa,noq,product)
-	select '1','0',a.accy,a.noa,'',b.custorde
+	select '1','0',a.accy,a.noa,'','訂單編號：'+ b.custorde
 	from view_vcc a
 	left join view_orde b on a.ordeno=b.noa
 	where a.noa = @t_noa 
@@ -116,8 +116,10 @@ z_vccp_pk01:--z_vccp_pk01
 	--,product b01
 	--,size b02
 	,isnull(product,'') 
-	+ case when len(isnull([class],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end + isnull([class],'')
-	+ case when len(isnull([size],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end + isnull([size],'')	 b01
+	+ case when len(isnull([product],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end 
+	+ isnull([class],'')
+	+ case when +len(isnull([product],''))+len(isnull([class],''))>0 then '&nbsp'+char(59)+'&nbsp'+char(59) else '' end 
+	+ isnull([size],'') b01
 	,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
 	,case when [mount]!=0 then item  else '' end b04
 	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],-1) else '' end b05
