@@ -205,8 +205,8 @@ z_vccp_yc02:--z_vccp_yc02
 	close cursor_table 
 	deallocate cursor_table 
 	
-	update @tmp
-	set p1=recno/(@t_line+1)
+	update @tmp 
+	set p1=((recno-1)/@t_line) +1
 	
 	update a
 	set p2=(select MAX(P1) from @tmp where noa=a.noa)
