@@ -138,6 +138,7 @@ z_vccp_yc02:--z_vccp_yc02
 		addr nvarchar(100),
 		tel nvarchar(50),
 		serial nvarchar(100),
+		sales nvarchar(100),
 		
 		productno nvarchar(30),
 		product nvarchar(50),
@@ -159,7 +160,7 @@ z_vccp_yc02:--z_vccp_yc02
 	insert into @tmp
 	select '1' gno,ROW_NUMBER()over(partition by a.noa order by b.noq) recno
 	,a.cno,a.acomp,a.noa,b.noq,a.datea,a.custno,a.comp
-	,case when isnull(a.addr2,'')!='' then a.addr2 else a.addr end,a.tel,c.serial
+	,case when isnull(a.addr2,'')!='' then a.addr2 else a.addr end,a.tel,c.serial,a.sales
 	
 	,b.productno,replace(b.product,'~#$',char(39)),b.unit
 	,case when @t_showweight='1' then b.mount else b.lengthc end
@@ -190,9 +191,9 @@ z_vccp_yc02:--z_vccp_yc02
 		while (@counts%@t_line>0) 
 		begin 
 
-			insert @tmp(gno,noa,noq,recno,t1,t2,t3,t4,worker) 
+			insert @tmp(gno,noa,noq,recno,t1,t2,t3,t4,worker,sales) 
 			select top 1 '0',@noa,CHAR(255),@counts+1
-			,MAX(t1),MAX(t2),MAX(t3),MAX(t4),MAX(worker)
+			,MAX(t1),MAX(t2),MAX(t3),MAX(t4),MAX(worker),MAX(sales)
 			from @tmp where noa=@noa
 			
 			set @counts=@counts+1 
@@ -212,9 +213,9 @@ z_vccp_yc02:--z_vccp_yc02
 	set p2=(select MAX(P1) from @tmp where noa=a.noa)
 	from @tmp a
 	
-	insert @tmp (gno,noa,recno,p1,p2,t1,t2,t3,t4,worker)
+	insert @tmp (gno,noa,recno,p1,p2,t1,t2,t3,t4,worker,sales)
 	select '2',noa,MAX(recno),p1,MAX(p2)
-	,MAX(t1),MAX(t2),MAX(t3),MAX(t4),MAX(worker)
+	,MAX(t1),MAX(t2),MAX(t3),MAX(t4),MAX(worker),MAX(sales)
 	from @tmp group by noa,p1
 	
 	if (@t_showprice !='1')
