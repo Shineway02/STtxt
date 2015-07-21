@@ -1,4 +1,4 @@
-z_rc2stp1:--z_rc2stp1 
+z_rc2_pkp01:--z_rc2_pkp01 
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
 	declare @t_accy nvarchar(max)
@@ -79,9 +79,10 @@ z_rc2stp1:--z_rc2stp1
 		no2 nvarchar(10),
 		productno nvarchar(20),
 		product nvarchar(max),
-		unit nvarchar(20),
 		mounts float,
+		unit2 nvarchar(20),
 		weights float,
+		unit nvarchar(20),
 		price decimal(10,3),
 		totals float,
 		size nvarchar(max),
@@ -96,7 +97,7 @@ z_rc2stp1:--z_rc2stp1
 	" ,a.noa,a.noq,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0),b.cardeal,b.carno,b.ordcno,isnull(b.[price],0),isnull(b.[tranmoney],0)"+
-	" ,a.no2,a.productno,a.product,a.unit,a.mount,a.[weight],a.price,a.total"+
+	" ,a.no2,a.productno,a.product,a.unit,a.unit2,a.mount,a.[weight],a.price,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.spec,a.memo"+
 	" ,a.uno2"+
 	" from view_rc2s"+@t_accy+" a"+
@@ -109,7 +110,7 @@ z_rc2stp1:--z_rc2stp1
 	" order by a.noa,a.noq,a.no2 "
 
 	insert into @tmp(recno,gno,noa,noq,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total],cardeal,carno,ordcno,tranprice,trancost
-		,no2,productno,product,unit,mounts,weights,price,totals,size,spec,memos,uno2)
+		,no2,productno,product,unit,unit2,mounts,weights,price,totals,size,spec,memos,uno2)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bno nvarchar(20),@t_eno nvarchar(20),@t_btggno nvarchar(20),@t_etggno nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bno=@t_bno,@t_eno=@t_eno,@t_btggno=@t_btggno,@t_etggno=@t_etggno
 
@@ -257,6 +258,7 @@ z_rc2stp1:--z_rc2stp1
 		b09 nvarchar(max),
 		ba1 nvarchar(max),
 		ba2 nvarchar(max),--uno2
+		unit2 nvarchar(20),
 		pno nvarchar(max)
 	)
 
@@ -302,6 +304,7 @@ z_rc2stp1:--z_rc2stp1
 			--,case when len(spec)>8 then '<span style="font-size:8px'+char(59)+'">'+spec+'</span>' else spec end ba1
 			,spec ba1
 			,uno2 ba2
+			,unit2
 			from @tmp a
 			outer apply(select top 1 ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 rrno
 				from @tmp where a.noa=noa order by ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 desc)b
@@ -316,6 +319,8 @@ z_rc2stp1:--z_rc2stp1
 		case when len(isnull(cca,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a0a7),1)),4,12)) end a0a7,
 		case when len(isnull(ccb,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a08),1)),4,12)) end a08,
 		case when len(isnull(ccc,''))=0 then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a09),1)),4,12)) end a09,
-		a10,b01,b02,b03,b04,b05,b06,b07,
+		a10,b01,b02,b03,b04
+		,cast(b05 as nvarchar)+ISNULL(unit2,'') b05
+		,b06,b07,
 		reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b08),1)),4,12)) b08,b09,ba1,ba2,pno
 	from @tmpa order by noa,ISNULL(noq,CHAR(255)),no2;
