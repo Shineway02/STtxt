@@ -32,6 +32,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	from view_vcc 
 	where custno between @t_bcustno and @t_ecustno 
 	and mon between @t_bmon and @t_emon
+	and left(noa,3)!='00Z'
 	group by custno,mon 
 --------------------------------------------------------------------------------------------------------
 	declare @tmpb table( 
@@ -156,6 +157,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 			select noa,ordeno,typea,datea from view_vcc
 			where custno=@custno 
 			and mon between @t_bmon and @t_emon
+			and left(noa,3)!='00Z'
 			order by datea,noa
 			open cursor_table2
 			fetch next from cursor_table2
