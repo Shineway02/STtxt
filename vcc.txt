@@ -277,6 +277,13 @@ EXEC("
 	where a.noa='"+@t_quatno1+"'
 ")
 
+EXEC("
+	update a
+	set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+	from quats"+@accy+" a left join quat"+@accy+" b on a.noa=b.noa
+	where a.noa='"+@t_quatno1+"'
+")
+
 set @accy=isnull((select top 1 accy from view_quat where noa=@t_quatno2),@t_accy)
 
 EXEC("
@@ -286,6 +293,13 @@ EXEC("
 	outer apply((select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
 	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
 	from view_vcc where charindex(a.noa,apvmemo)>0))b
+	where a.noa='"+@t_quatno2+"'
+")
+
+EXEC("
+	update a
+	set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+	from quats"+@accy+" a left join quat"+@accy+" b on a.noa=b.noa
 	where a.noa='"+@t_quatno2+"'
 ")
 
