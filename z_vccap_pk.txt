@@ -1,0 +1,242 @@
+z_vccap_pk01:--z_vccap_pk01
+
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+
+set @t_bnoa = case when '#non'=[3] then '' else [3] end
+set @t_enoa = case when '#non'=[4] then char(255) else [4] end
+
+---------------------------------------------------------------------------------
+
+declare @bignum nvarchar(10)
+set @bignum = '壹貳參肆伍陸柒捌玖'
+
+declare @tmp1 table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	yy nvarchar(10),
+	mm nvarchar(10),
+	dd nvarchar(10),
+	noa nvarchar(20),
+	buyer nvarchar(100),
+	serial nvarchar(20),
+	chkno nvarchar(6),
+	address nvarchar(max),
+	product nvarchar(50),
+	pmount float,
+	pprice float,
+	pmoney float,
+	money decimal(9,0),
+	tax decimal(9,0),
+	total decimal(9,0),
+	memo nvarchar(300),
+	tt1 nvarchar(10),
+	tt2 nvarchar(10),
+	tt3 nvarchar(10),
+	tm1 nvarchar(10),
+	tm2 nvarchar(10),
+	tm3 nvarchar(10),
+	tm4 nvarchar(10),
+	tm5 nvarchar(10),
+	tm6 nvarchar(10),
+	tm7 nvarchar(10),
+	tm8 nvarchar(10)
+)
+
+insert into @tmp1
+select 
+	  '0',
+	  substring(a.datea,1,3), --年
+	  substring(a.datea,5,2), --月
+	  substring(a.datea,8,2), --日
+	  a.noa,
+	  case when LEN(a.buyer) = 0 then a.comp else a.comp end,
+	  a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo,
+	  case when a.taxtype = '1' then 'v' end,
+	  case when a.taxtype = '2' then 'v' end,
+	  case when a.taxtype = '4' then 'v' end,
+--total大寫數字處理
+--REPLICATE('0',8-LEN(CAST(total as varchar(8))))+CAST(total as varchar(8) 將total金額不滿8位數的前面補0
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),1,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),2,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),3,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),4,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),5,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),6,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),7,1) as int) ,1),
+	  SUBSTRING(@bignum,CAST(SUBSTRING(REPLICATE('0',8-LEN(CAST(a.total as varchar(8))))+CAST(a.total as varchar(8)),8,1) as int) ,1)
+from vcca a
+left join vccas b on a.noa = b.noa
+where (a.noa between @t_bnoa and @t_enoa) 
+
+update @tmp1 set tm1 = '零' where len(tm1) = 0
+update @tmp1 set tm2 = '零' where len(tm2) = 0
+update @tmp1 set tm3 = '零' where len(tm3) = 0
+update @tmp1 set tm4 = '零' where len(tm4) = 0
+update @tmp1 set tm5 = '零' where len(tm5) = 0
+update @tmp1 set tm6 = '零' where len(tm6) = 0
+update @tmp1 set tm7 = '零' where len(tm7) = 0
+update @tmp1 set tm8 = '零' where len(tm8) = 0
+
+declare @tmp2 table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	yy nvarchar(10),
+	mm nvarchar(10),
+	dd nvarchar(10),
+	noa nvarchar(20),
+	buyer nvarchar(100),
+	serial nvarchar(20),
+	chkno nvarchar(6),
+	address nvarchar(max),
+	product1 nvarchar(50),
+	product2 nvarchar(50),product3 nvarchar(50),product4 nvarchar(50),product5 nvarchar(50),product6 nvarchar(50),
+	pmount1 decimal(9,3),pmount2 decimal(9,3),pmount3 decimal(9,3),pmount4 decimal(9,3),pmount5 decimal(9,3),pmount6 decimal(9,3),
+	pprice1 decimal(9,3),pprice2 decimal(9,3),pprice3 decimal(9,3),pprice4 decimal(9,3),pprice5 decimal(9,3),pprice6 decimal(9,3),
+	pmoney1 float,pmoney2 float,pmoney3 float,pmoney4 float,pmoney5 float,pmoney6 float,
+	money decimal(9,0),
+	tax decimal(9,0),
+	total decimal(9,0),
+	memo nvarchar(300),
+	tt1 nvarchar(10),
+	tt2 nvarchar(10),
+	tt3 nvarchar(10),
+	tm1 nvarchar(10),
+	tm2 nvarchar(10),
+	tm3 nvarchar(10),
+	tm4 nvarchar(10),
+	tm5 nvarchar(10),
+	tm6 nvarchar(10),
+	tm7 nvarchar(10),
+	tm8 nvarchar(10)
+)
+
+declare @noa1 nvarchar(20)
+declare @noa2 nvarchar(20)
+declare @idno1 int
+declare @idno2 int
+declare @recno int
+
+set @noa2 = 'zzzzzzzzzz'
+set @idno2 = -1
+
+declare cursor_table cursor for
+select noa,idno from @tmp1 order by noa,idno
+open cursor_table
+fetch next from cursor_table
+into @noa1,@idno1
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@noa2 != @noa1 or @recno%6 = 1)
+	begin
+		set @recno = 1
+		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,pprice1,pmoney1,money,tax,
+			        total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8)
+		select gno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,pprice,pmoney,money,tax,
+			   total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8		
+		from @tmp1 where idno = @idno1
+		
+		set @noa2 = @noa1
+		set @recno = @recno + 1
+		set @idno2 = @idno2 + 1
+	end
+	else if(@recno = 2)
+	begin
+		update @tmp2 set product2 = (select product from @tmp1 where idno = @idno1),
+				         pmount2 = (select pmount from @tmp1 where idno = @idno1),
+					     pprice2 = (select pprice from @tmp1 where idno = @idno1),
+						 pmoney2 = (select pmoney from @tmp1 where idno = @idno1)
+		where idno = @idno2
+		
+		set @noa2 = @noa1
+		set @recno = @recno + 1
+	end
+	else if(@recno = 3)
+	begin
+		update @tmp2 set product3 = (select product from @tmp1 where idno = @idno1),
+				         pmount3 = (select pmount from @tmp1 where idno = @idno1),
+					     pprice3 = (select pprice from @tmp1 where idno = @idno1),
+						 pmoney3 = (select pmoney from @tmp1 where idno = @idno1)
+		where idno = @idno2
+		
+		set @noa2 = @noa1
+		set @recno = @recno + 1
+	end
+	else if(@recno = 4)
+	begin
+		update @tmp2 set product4 = (select product from @tmp1 where idno = @idno1),
+				         pmount4 = (select pmount from @tmp1 where idno = @idno1),
+					     pprice4 = (select pprice from @tmp1 where idno = @idno1),
+						 pmoney4 = (select pmoney from @tmp1 where idno = @idno1)
+		where idno = @idno2
+		
+		set @noa2 = @noa1
+		set @recno = @recno + 1
+	end
+	else if(@recno = 5)
+	begin
+		update @tmp2 set product5 = (select product from @tmp1 where idno = @idno1),
+				         pmount5 = (select pmount from @tmp1 where idno = @idno1),
+					     pprice5 = (select pprice from @tmp1 where idno = @idno1),
+						 pmoney5 = (select pmoney from @tmp1 where idno = @idno1)
+		where idno = @idno2
+		
+		set @noa2 = @noa1
+		set @recno = @recno + 1
+	end
+	else if(@recno = 6)
+	begin
+		update @tmp2 set product6 = (select product from @tmp1 where idno = @idno1),
+				         pmount6 = (select pmount from @tmp1 where idno = @idno1),
+					     pprice6 = (select pprice from @tmp1 where idno = @idno1),
+						 pmoney6 = (select pmoney from @tmp1 where idno = @idno1)
+		where idno = @idno2
+		
+		set @noa2 = @noa1
+		set @recno = @recno + 1
+	end
+	
+	fetch next from cursor_table
+	into @noa1,@idno1	
+end
+close cursor_table
+deallocate cursor_table
+
+
+declare @maxidno int
+
+declare cursor_table cursor for
+select noa,idno from @tmp2 order by noa,idno
+open cursor_table
+fetch next from cursor_table
+into @noa2,@idno2
+while(@@FETCH_STATUS <> -1)
+begin
+	
+	set @maxidno = (select MAX(idno) from @tmp2 where noa = @noa2)
+	update @tmp2 set money = null,tax = null,total = null,
+					 tm1 = REPLICATE(' ',1),tm2 = REPLICATE('　',1),tm3 = REPLICATE('　',1),tm4 = REPLICATE('　',1),
+				     tm5 = REPLICATE('　',1),tm6 = REPLICATE('　',1),tm7 = REPLICATE('　',1),tm8 = REPLICATE('　',1)
+	where noa = @noa2 and idno < @maxidno
+	
+	fetch next from cursor_table
+	into @noa2,@idno2	
+end
+close cursor_table
+deallocate cursor_table 
+
+
+select gno,yy,mm,dd,noa,buyer,serial,chkno,address,
+	   product1,product2,product3,product4,product5,product6,
+	   pmount1,pmount2,pmount3,pmount4, pmount5,pmount6, 
+	   pprice1,pprice2, pprice3, pprice4, pprice5,pprice6,
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney1),1)),4,15)) pmoney1, 
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney2),1)),4,15)) pmoney2, 
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney3),1)),4,15)) pmoney3, 
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney4),1)),4,15)) pmoney4, 
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney5),1)),4,15)) pmoney5, 
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney6),1)),4,15)) pmoney6, 
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,15)) money, 	
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,15)) tax, 
+	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,15)) total, 	
+	   memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2;
