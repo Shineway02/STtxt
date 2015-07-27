@@ -178,7 +178,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
 				select '2','1',@custno
 				,case when a.typea='1' then '出' else '退' end
-				,a.datea,a.noa,b.productno,b.product+' '+b.size,b.unit,b.weight
+				,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 				,b.item,b.mount
 				,b.price
 				,b.total
@@ -276,8 +276,8 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	,a.tdate dd
 	,a.ttype tt
 	,a.unit uu
-	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+a.item end a1
-	,case when a.[weight]=0 then '' else cast(a.[weight] as nvarchar(50))+a.unit end a2
+	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
+	,case when a.[weight]=0 then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
 	,case when a.price=0 then '' else cast(a.price as nvarchar(50)) end a3
 	,case when a.[moneys]=0 then '' else cast(dbo.getComma(a.[moneys],0) as nvarchar(50)) end a4
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp +'</a>'comp
@@ -292,7 +292,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	,dbo.getComma(a.[payed],0) b5
 	,dbo.getComma(a.[unpay],0) b6
 	,dbo.getComma(a.[tot],0) b7
-	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(product,'~#$',char(39)) +'</a>' ppt
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+ replace(product,'~#$',char(39)) +'</a>' ppt
 	from @result a
 	left join cust b on a.custno=b.noa
 	order by a.custno,a.sel;
