@@ -21,10 +21,9 @@ declare @tmp1 table(
 	buyer nvarchar(100),
 	serial nvarchar(20),
 	chkno nvarchar(6),
-	address nvarchar(max),
 	product nvarchar(50),
-	pmount float,
-	pprice float,
+	pmount decimal(9,2),
+	pprice decimal(9,2),
 	pmoney float,
 	money decimal(9,0),
 	tax decimal(9,0),
@@ -51,7 +50,7 @@ select
 	  substring(a.datea,8,2), --日
 	  a.noa,
 	  case when LEN(a.buyer) = 0 then a.comp else a.comp end,
-	  a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo,
+	  a.serial,a.chkno,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo,
 	  case when a.taxtype = '1' then 'v' end,
 	  case when a.taxtype = '2' then 'v' end,
 	  case when a.taxtype = '4' then 'v' end,
@@ -88,12 +87,11 @@ declare @tmp2 table(
 	buyer nvarchar(100),
 	serial nvarchar(20),
 	chkno nvarchar(6),
-	address nvarchar(max),
 	product1 nvarchar(50),
 	product2 nvarchar(50),product3 nvarchar(50),product4 nvarchar(50),product5 nvarchar(50),product6 nvarchar(50),
-	pmount1 decimal(9,3),pmount2 decimal(9,3),pmount3 decimal(9,3),pmount4 decimal(9,3),pmount5 decimal(9,3),pmount6 decimal(9,3),
-	pprice1 decimal(9,3),pprice2 decimal(9,3),pprice3 decimal(9,3),pprice4 decimal(9,3),pprice5 decimal(9,3),pprice6 decimal(9,3),
-	pmoney1 float,pmoney2 float,pmoney3 float,pmoney4 float,pmoney5 float,pmoney6 float,
+	pmount1 decimal(9,2),pmount2 decimal(9,2),pmount3 decimal(9,2),pmount4 decimal(9,2),pmount5 decimal(9,2),pmount6 decimal(9,2),
+	pprice1 decimal(9,2),pprice2 decimal(9,2),pprice3 decimal(9,2),pprice4 decimal(9,2),pprice5 decimal(9,2),pprice6 decimal(9,2),
+	pmoney1 decimal(9,2),pmoney2 decimal(9,2),pmoney3 decimal(9,2),pmoney4 decimal(9,2),pmoney5 decimal(9,2),pmoney6 decimal(9,2),
 	money decimal(9,0),
 	tax decimal(9,0),
 	total decimal(9,0),
@@ -130,9 +128,9 @@ begin
 	if(@noa2 != @noa1 or @recno%6 = 1)
 	begin
 		set @recno = 1
-		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,pprice1,pmoney1,money,tax,
+		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,product1,pmount1,pprice1,pmoney1,money,tax,
 			        total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8)
-		select gno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,pprice,pmoney,money,tax,
+		select gno,yy,mm,dd,noa,buyer,serial,chkno,product,pmount,pprice,pmoney,money,tax,
 			   total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8		
 		from @tmp1 where idno = @idno1
 		
@@ -225,18 +223,27 @@ end
 close cursor_table
 deallocate cursor_table 
 
-
-select gno,yy,mm,dd,noa,buyer,serial,chkno,address,
+select gno,yy,mm,dd,noa,buyer,serial,chkno,
 	   product1,product2,product3,product4,product5,product6,
-	   pmount1,pmount2,pmount3,pmount4, pmount5,pmount6, 
-	   pprice1,pprice2, pprice3, pprice4, pprice5,pprice6,
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney1),1)),4,15)) pmoney1, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney2),1)),4,15)) pmoney2, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney3),1)),4,15)) pmoney3, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney4),1)),4,15)) pmoney4, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney5),1)),4,15)) pmoney5, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney6),1)),4,15)) pmoney6, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,15)) money, 	
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,15)) tax, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,15)) total, 	
+	   case when dbo.split(pmount1,'.',1) = 0 then dbo.getComma(pmount1,0) else dbo.getComma(pmount1,2) end pmount1,
+	   case when dbo.split(pmount2,'.',1) = 0 then dbo.getComma(pmount2,0) else dbo.getComma(pmount2,2) end pmount2,
+	   case when dbo.split(pmount3,'.',1) = 0 then dbo.getComma(pmount3,0) else dbo.getComma(pmount3,2) end pmount3,
+	   case when dbo.split(pmount4,'.',1) = 0 then dbo.getComma(pmount4,0) else dbo.getComma(pmount4,2) end pmount4,
+	   case when dbo.split(pmount5,'.',1) = 0 then dbo.getComma(pmount5,0) else dbo.getComma(pmount5,2) end pmount5,
+	   case when dbo.split(pmount6,'.',1) = 0 then dbo.getComma(pmount6,0) else dbo.getComma(pmount6,2) end pmount6,
+	   case when dbo.split(pprice1,'.',1) = 0 then dbo.getComma(pprice1,0) else dbo.getComma(pprice1,2) end pprice1,
+	   case when dbo.split(pprice2,'.',1) = 0 then dbo.getComma(pprice2,0) else dbo.getComma(pprice2,2) end pprice2,
+	   case when dbo.split(pprice3,'.',1) = 0 then dbo.getComma(pprice3,0) else dbo.getComma(pprice3,2) end pprice3,
+	   case when dbo.split(pprice4,'.',1) = 0 then dbo.getComma(pprice4,0) else dbo.getComma(pprice4,2) end pprice4,
+	   case when dbo.split(pprice5,'.',1) = 0 then dbo.getComma(pprice5,0) else dbo.getComma(pprice5,2) end pprice5,
+	   case when dbo.split(pprice6,'.',1) = 0 then dbo.getComma(pprice6,0) else dbo.getComma(pprice6,2) end pprice6,
+	   case when dbo.split(pmoney1,'.',1) = 0 then dbo.getComma(pmoney1,0) else dbo.getComma(pmoney1,4) end pmoney1,
+	   case when dbo.split(pmoney2,'.',1) = 0 then dbo.getComma(pmoney2,0) else dbo.getComma(pmoney2,4) end pmoney2,
+	   case when dbo.split(pmoney3,'.',1) = 0 then dbo.getComma(pmoney3,0) else dbo.getComma(pmoney3,4) end pmoney3,
+	   case when dbo.split(pmoney4,'.',1) = 0 then dbo.getComma(pmoney4,0) else dbo.getComma(pmoney4,4) end pmoney4,
+	   case when dbo.split(pmoney5,'.',1) = 0 then dbo.getComma(pmoney5,0) else dbo.getComma(pmoney5,4) end pmoney5,
+	   case when dbo.split(pmoney6,'.',1) = 0 then dbo.getComma(pmoney6,0) else dbo.getComma(pmoney6,4) end pmoney6,
+	   dbo.getComma(money,0) money,
+	   dbo.getComma(tax,0) tax, 
+	   dbo.getComma(total,0) total,
 	   memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2;
