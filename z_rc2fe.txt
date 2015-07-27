@@ -3,11 +3,15 @@ declare @t_accy nvarchar(10)
 declare @t_cno nvarchar(max) = case when '#non'=[5] then '' else [5] end
 declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
-
+declare @t_project nvarchar(20)
+declare @qhcno nvarchar(10) ='fe'
 --*********************************************************************
 set @t_accy = '[1]'
 set @t_bdate = case when '#non'=[12] then '' else [12] end
 set @t_edate = case when '#non'=[13] then char(255) else [13] end
+set @t_project='[16]'
+if(@t_project='YC')
+	set @qhcno='_yc'
 ---------------------------------------------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -50,7 +54,7 @@ select '1',sum(mount),sum(total),sum(ttotal),sum(btotal),(select sum(tax) from (
 from @tmp
 	
 update @tmp 
-set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+set qhref = substring(qhref,0,len(qhref)-2)+@qhcno+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 select gno, noa, noq,typea, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4) comp, productno, product,unit,memo
 ,dbo.getComma(lengthb,2)  lengthb
@@ -71,12 +75,17 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bproductno nvarchar(50)
 declare @t_eproductno nvarchar(50)
+declare @t_project nvarchar(20)
+declare @qhcno nvarchar(10) ='fe'
 
 set @t_accy = '[1]'
 set @t_bdate = case when '#non'=[12] then '' else [12] end
 set @t_edate = case when '#non'=[13] then char(255) else [13] end
 set @t_bproductno = case when '#non'=[8] then '' else [8] end
 set @t_eproductno = case when '#non'=[9] then char(255) else [9] end
+set @t_project='[16]'
+if(@t_project='YC')
+	set @qhcno='_yc'
 --------------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -109,10 +118,17 @@ insert into @result
 		  (b.productno between @t_bproductno and @t_eproductno)
 		  and (len(@t_cno)=0 or a.cno=@t_cno)
 	order by b.productno,gno,a.datea,a.noa
-	
-insert into @result(gno,productno,xproduct,mount,total)
-	select '1',productno,xproduct,sum(mount),sum(total) from @result group by productno,xproduct
-update @result set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+if( (select count(*) from @result) >0)
+begin
+	insert into @result(gno,productno,xproduct,mount,total)
+		select '1',productno,xproduct,sum(mount),sum(total) from @result group by productno,xproduct
+		
+	insert into @result(gno,productno,xproduct,mount,total)
+		select '2',char(255),char(255),sum(mount),sum(total) from @result where gno='0'
+end
+
+update @result set qhref = substring(qhref,0,len(qhref)-2)+@qhcno+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 update @result
 set mount=abs(mount),weight=abs(weight),total=abs(total)
@@ -138,6 +154,8 @@ declare @t_btggno nvarchar(20)
 declare @t_etggno nvarchar(20)
 declare @t_bproductno nvarchar(50)
 declare @t_eproductno nvarchar(50)
+declare @t_project nvarchar(20)
+declare @qhcno nvarchar(10) ='fe'
 
 set @t_accy = '[1]'
 set @t_bdate = case when '#non'=[10] then '' else [10] end
@@ -148,6 +166,9 @@ set @t_btggno = case when '#non'=[6] then '' else [6] end
 set @t_etggno = case when '#non'=[7] then char(255) else [7] end
 set @t_bproductno = case when '#non'=[8] then '' else [8] end
 set @t_eproductno = case when '#non'=[9] then char(255) else [9] end
+set @t_project='[16]'
+if(@t_project='YC')
+	set @qhcno='_yc'
 ---------------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -191,7 +212,7 @@ insert into @result
 insert into @result(gno,tggno,comp,pcount,mount,weight,total)
 select '1',tggno,comp,count(pcount),sum(mount),sum(weight),sum(total) from @result group by tggno,comp
 	
-update @result  set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+update @result  set qhref = substring(qhref,0,len(qhref)-2)+@qhcno+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 select  
 	gno,type,noa,invono,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit
@@ -215,6 +236,8 @@ declare @t_btggno nvarchar(20)
 declare @t_etggno nvarchar(20)
 declare @t_bproductno nvarchar(50)
 declare @t_eproductno nvarchar(50)
+declare @t_project nvarchar(20)
+declare @qhcno nvarchar(10) ='fe'
 
 set @t_accy = '[1]'
 set @t_bdate = case when '#non'=[10] then '' else [10] end
@@ -225,6 +248,9 @@ set @t_btggno = case when '#non'=[6] then '' else [6] end
 set @t_etggno = case when '#non'=[7] then char(255) else [7] end
 set @t_bproductno = case when '#non'=[8] then '' else [8] end
 set @t_eproductno = case when '#non'=[9] then char(255) else [9] end
+set @t_project='[16]'
+if(@t_project='YC')
+	set @qhcno='_yc'
 --------------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -269,7 +295,7 @@ insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
 insert into @result(gno,tggno,comp,productno,mount,weight,total)
 	select '2',tggno,comp,char(255),sum(mount),sum(weight),sum(total) from @result where gno='1' group by tggno,comp
 	
-update @result set qhref = substring(qhref,0,len(qhref)-2)+'fe?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+update @result set qhref = substring(qhref,0,len(qhref)-2)+@qhcno+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 select gno, type, noa, datea, tggno, comp,productno, xproduct, unit,invono,memo
 		,dbo.getComma(lengthb,2)  lengthb
