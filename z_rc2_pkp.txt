@@ -88,7 +88,8 @@ z_rc2_pkp01:--z_rc2_pkp01
 		size nvarchar(max),
 		spec nvarchar(max),
 		memos nvarchar(max) ,
-		uno2 nvarchar(max)
+		uno2 nvarchar(max),
+		class nvarchar(20)
 	)
 
 	set @cmd =
@@ -97,9 +98,11 @@ z_rc2_pkp01:--z_rc2_pkp01
 	" ,a.noa,a.noq,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0),b.cardeal,b.carno,b.ordcno,isnull(b.[price],0),isnull(b.[tranmoney],0)"+
-	" ,a.no2,a.productno,a.product,a.unit,a.unit2,a.mount,a.[weight],a.price,a.total"+
+	" ,a.no2,a.productno,a.product,a.unit,a.unit2,a.mount,a.[weight]
+	,case when isnull(b.floata,0)=0 then a.price else round(a.price*b.floata,4) end
+	,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.spec,a.memo"+
-	" ,a.uno2"+
+	" ,a.uno2,a.class"+
 	" from view_rc2s"+@t_accy+" a"+
 	" left join view_rc2"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
@@ -110,7 +113,7 @@ z_rc2_pkp01:--z_rc2_pkp01
 	" order by a.noa,a.noq,a.no2 "
 
 	insert into @tmp(recno,gno,noa,noq,tggno,tgg,tel,addr,datea,kind,paytype,trantype,memo,[money],[tax],[total],cardeal,carno,ordcno,tranprice,trancost
-		,no2,productno,product,unit,unit2,mounts,weights,price,totals,size,spec,memos,uno2)
+		,no2,productno,product,unit,unit2,mounts,weights,price,totals,size,spec,memos,uno2,class)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_bno nvarchar(20),@t_eno nvarchar(20),@t_btggno nvarchar(20),@t_etggno nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_bno=@t_bno,@t_eno=@t_eno,@t_btggno=@t_btggno,@t_etggno=@t_etggno
 
@@ -293,7 +296,7 @@ z_rc2_pkp01:--z_rc2_pkp01
 
 			,datea
 			,productno b01
-			,product b02
+			,isnull(product,'')+case when len(ISNULL(product,''))>0 then ' ' else '' end + isnull(class,'') b02
 			,replace(size,'~#$',"'") b03
 			,unit b04
 			,mounts b05
