@@ -1,0 +1,37 @@
+changecont_vu:--changecont_vu
+SET QUOTED_IDENTIFIER OFF 
+declare @t_accy nvarchar(50) = [1]
+declare @t_noa nvarchar(50) = [2]
+
+declare @accy nvarchar(50)
+declare @t_contno1 nvarchar(50)=(select dbo.split(dbo.split(transtart,'##',0),'@',0) from view_rc2 where noa=@t_noa)
+declare @t_contno2 nvarchar(50)=(select dbo.split(dbo.split(transtart,'##',1),'@',0) from view_rc2 where noa=@t_noa)
+
+update a
+set gweight=isnull(b.gweight,0),eweight=isnull(ordeweight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+from cont a
+outer apply((select case when dbo.split(dbo.split(transtart,'##',0),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',0),'@',1) else 0 end
++case when dbo.split(dbo.split(transtart,'##',1),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',1),'@',1) else 0 end gweight
+from view_rc2 where charindex(a.noa,transtart)>0))b
+where a.noa=@t_contno1
+
+update a
+set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+from conts a left join cont b on a.noa=b.noa
+where a.noa=@t_contno1
+
+update a
+set gweight=isnull(b.gweight,0),eweight=isnull(ordeweight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+from cont a
+outer apply((select case when dbo.split(dbo.split(transtart,'##',0),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',0),'@',1) else 0 end
++case when dbo.split(dbo.split(transtart,'##',1),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',1),'@',1) else 0 end gweight
+from view_rc2 where charindex(a.noa,transtart)>0))b
+where a.noa=@t_contno2
+
+update a
+set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+from conts a left join cont b on a.noa=b.noa
+where a.noa=@t_contno2
+
+;
+-----------------------------------------------------------------------------------------------------------------------------------

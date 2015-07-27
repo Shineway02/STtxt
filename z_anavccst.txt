@@ -185,7 +185,7 @@ z_anavccst03:--z_anavccst03
 		set @t_bdime = cast([12] as float)
 		set @t_edime = cast([13] as float)
 		set @t_bwidth = cast([14] as float)
-		set @t_bwidth = cast([15] as float)
+		set @t_ewidth = cast([15] as float)
 	end try
 	begin catch
 		--nothing
@@ -211,13 +211,12 @@ z_anavccst03:--z_anavccst03
 	from view_orde a
 	left join view_ordes b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null
-	and LEFT(a.kind,1)='A'
+--	and LEFT(a.kind,1)='A'
 	and isnull(a.enda,0)=0 and isnull(a.cancel,0)=0  
 	and ISNULL(b.enda,0)=0 and isnull(b.cancel,0)=0
 	and b.productno between @t_bproductno and @t_eproductno
 	and b.dime between @t_bdime and @t_edime
 	and b.width between @t_bwidth and @t_ewidth
-	--group by b.productno,b.dime,b.width
 	
 	update @tmpa set gmount=ISNULL(b.mount,0),gweight=ISNULL(b.[weight],0)
 	from @tmpa a
@@ -250,7 +249,7 @@ z_anavccst03:--z_anavccst03
 	from uccy a
 	left join view_uccb b on a.uno=b.uno
 	where b.uno is not null
-	and LEFT(b.kind,1)='A'
+	--and LEFT(b.kind,1)='A'
 	and b.productno between @t_bproductno and @t_eproductno
 	and b.dime between @t_bdime and @t_edime
 	and b.width between @t_bwidth and @t_ewidth

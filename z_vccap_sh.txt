@@ -24,6 +24,7 @@ declare @tmp1 table(
 	address nvarchar(max), 
 	product nvarchar(50), 
 	pmount float, 
+	punit nvarchar(20),
 	pprice float, 
 	pmoney float, 
 	money decimal(9,0), 
@@ -51,7 +52,7 @@ select
 	substring(a.datea,8,2), --日 
 	a.noa,
 	case when LEN(a.buyer) = 0 then a.comp else a.comp end,	
-	a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo, 
+	a.serial,a.chkno,a.address,b.product,b.mount,b.unit,b.price,b.money,a.money,a.tax,a.total,a.memo, 
 	case when a.taxtype = '1' then 'v' end, 
 	case when a.taxtype = '2' then 'v' end, 
 	case when a.taxtype = '4' then 'v' end, 
@@ -92,8 +93,9 @@ declare @tmp2 table(
 	address nvarchar(max), 
 	product1 nvarchar(50), 
 	product2 nvarchar(50),product3 nvarchar(50),product4 nvarchar(50),product5 nvarchar(50),product6 nvarchar(50), 
-	pmount1 float,pmount2 float,pmount3 float,pmount4 float,pmount5 float,pmount6 float, 
-	pprice1 float,pprice2 float,pprice3 float,pprice4 float,pprice5 float,pprice6 float, 
+	pmount1 decimal(9,2),pmount2 decimal(9,2),pmount3 decimal(9,2),pmount4 decimal(9,2),pmount5 decimal(9,2),pmount6 decimal(9,2), 
+	punit1 nvarchar(20),punit2 nvarchar(20),punit3 nvarchar(20),punit4 nvarchar(20),punit5 nvarchar(20),punit6 nvarchar(20),
+	pprice1 decimal(9,2),pprice2 decimal(9,2),pprice3 decimal(9,2),pprice4 decimal(9,2),pprice5 decimal(9,2),pprice6 decimal(9,2), 
 	pmoney1 float,pmoney2 float,pmoney3 float,pmoney4 float,pmoney5 float,pmoney6 float, 
 	money decimal(9,0), 
 	tax decimal(9,0), 
@@ -133,9 +135,9 @@ begin
 	if(@noa2 != @noa1 or @recno%6 = 1) 
 	begin 
 		set @recno = 1 
-		insert into @tmp2(gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,pprice1,pmoney1,money,tax, 
+		insert into @tmp2(gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,punit1,pprice1,pmoney1,money,tax, 
 		total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8) 
-		select gno,@rno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,pprice,pmoney,money,tax, 
+		select gno,@rno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,punit,pprice,pmoney,money,tax, 
 		total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8	
 		from @tmp1 where idno = @idno1 
 		
@@ -148,6 +150,7 @@ begin
 	begin 
 		update @tmp2 set product2 = (select product from @tmp1 where idno = @idno1), 
 						 pmount2 = (select pmount from @tmp1 where idno = @idno1), 
+						 punit2 = (select punit from @tmp1 where idno = @idno1), 
 						 pprice2 = (select pprice from @tmp1 where idno = @idno1), 
 						 pmoney2 = (select pmoney from @tmp1 where idno = @idno1) 
 		where idno = @idno2 
@@ -159,6 +162,7 @@ begin
 	begin 
 		update @tmp2 set product3 = (select product from @tmp1 where idno = @idno1), 
 						 pmount3 = (select pmount from @tmp1 where idno = @idno1), 
+						 punit3 = (select punit from @tmp1 where idno = @idno1), 
 						 pprice3 = (select pprice from @tmp1 where idno = @idno1), 
 						 pmoney3 = (select pmoney from @tmp1 where idno = @idno1) 
 		where idno = @idno2 
@@ -170,6 +174,7 @@ begin
 	begin 
 		update @tmp2 set product4 = (select product from @tmp1 where idno = @idno1), 
 					 	 pmount4 = (select pmount from @tmp1 where idno = @idno1), 
+					 	 punit4 = (select punit from @tmp1 where idno = @idno1), 
 						 pprice4 = (select pprice from @tmp1 where idno = @idno1), 
 						 pmoney4 = (select pmoney from @tmp1 where idno = @idno1) 
 		where idno = @idno2 
@@ -181,6 +186,7 @@ begin
 	begin 
 		update @tmp2 set product5 = (select product from @tmp1 where idno = @idno1), 
 						 pmount5 = (select pmount from @tmp1 where idno = @idno1), 
+						 punit5 = (select punit from @tmp1 where idno = @idno1), 
 						 pprice5 = (select pprice from @tmp1 where idno = @idno1), 
 						 pmoney5 = (select pmoney from @tmp1 where idno = @idno1) 
 		where idno = @idno2 
@@ -192,6 +198,7 @@ begin
 	begin 
 		update @tmp2 set product6 = (select product from @tmp1 where idno = @idno1), 
 						 pmount6 = (select pmount from @tmp1 where idno = @idno1), 
+						 punit6 = (select punit from @tmp1 where idno = @idno1), 
 						 pprice6 = (select pprice from @tmp1 where idno = @idno1), 
 						 pmoney6 = (select pmoney from @tmp1 where idno = @idno1) 
 		where idno = @idno2 
@@ -229,27 +236,20 @@ end
 close cursor_table 
 deallocate cursor_table 
 
-insert into @tmp2(gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,product2,product3,product4,product5,product6 
-				 ,pmount1,pmount2,pmount3,pmount4,pmount5,pmount6,pprice1,pprice2,pprice3,pprice4,pprice5,pprice6 
-				 ,pmoney1,pmoney2,pmoney3,pmoney4,pmoney5,pmoney6,money,tax,total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8) 
+insert into @tmp2(gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,product2,product3,product4,product5,product6,
+				  pmount1,pmount2,pmount3,pmount4,pmount5,pmount6,punit1,punit2,punit3,punit4,punit5,punit6,
+				  pprice1,pprice2,pprice3,pprice4,pprice5,pprice6,pmoney1,pmoney2,pmoney3,pmoney4,pmoney5,pmoney6,
+				  money,tax,total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8) 
 select '2',ROW_NUMBER() OVER(ORDER BY gno),yy,mm,dd,noa,buyer,serial,chkno,address,product1,product2,product3,product4,product5,product6, 
-	   pmount1,pmount2,pmount3,pmount4,pmount5,pmount6,pprice1,pprice2,pprice3,pprice4,pprice5,pprice6, 
-	   pmoney1,pmoney2,pmoney3,pmoney4,pmoney5,pmoney6,money,tax,total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2 
+	   pmount1,pmount2,pmount3,pmount4,pmount5,pmount6,punit1,punit2,punit3,punit4,punit5,punit6,
+	   pprice1,pprice2,pprice3,pprice4,pprice5,pprice6,pmoney1,pmoney2,pmoney3,pmoney4,pmoney5,pmoney6,
+	   money,tax,total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2 
 
 select gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address, 
 	   product1,product2,product3,product4,product5,product6, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount1),1)),4,15)) pmount1, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount2),1)),4,15)) pmount2, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount3),1)),4,15)) pmount3, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount4),1)),4,15)) pmount4, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount5),1)),4,15)) pmount5, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount6),1)),4,15)) pmount6, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice1),1)),4,15)) pprice1, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice2),1)),4,15)) pprice2, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice3),1)),4,15)) pprice3, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice4),1)),4,15)) pprice4, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice5),1)),4,15)) pprice5, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice6),1)),4,15)) pprice6, 
+	   pmount1,pmount2,pmount3,pmount4,pmount5,pmount6,
+	   punit1,punit2,punit3,punit4,punit5,punit6,
+	   pprice1,pprice2,pprice3,pprice4,pprice5,pprice6,
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney1),1)),4,15)) pmoney1, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney2),1)),4,15)) pmoney2, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney3),1)),4,15)) pmoney3, 
@@ -260,6 +260,7 @@ select gno,rno,yy,mm,dd,noa,buyer,serial,chkno,address,
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,15)) tax, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,15)) total, 
        memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2 order by rno,gno ;
+	   
 	   
 
 --*******************************************************************************
@@ -273,6 +274,7 @@ select * from @tmp;
 
 
 --*******************************************************************************
+
 z_vccap_sh03:--z_vccap_sh03
 
 declare @t_bnoa nvarchar(20)
@@ -299,6 +301,7 @@ declare @tmp1 table(
 	address nvarchar(max),
 	product nvarchar(50),
 	pmount float,
+	punit nvarchar(20),
 	pprice float,
 	pmoney float,
 	money decimal(9,0),
@@ -326,7 +329,7 @@ select
 	  substring(a.datea,8,2), --日
 	  a.noa,
 	  case when LEN(a.buyer) = 0 then a.comp else a.comp end,
-	  a.serial,a.chkno,a.address,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo,
+	  a.serial,a.chkno,a.address,b.product,b.mount,b.unit,b.price,b.money,a.money,a.tax,a.total,a.memo,
 	  case when a.taxtype = '1' then 'v' end,
 	  case when a.taxtype = '2' then 'v' end,
 	  case when a.taxtype = '4' then 'v' end,
@@ -366,8 +369,9 @@ declare @tmp2 table(
 	address nvarchar(max),
 	product1 nvarchar(50),
 	product2 nvarchar(50),product3 nvarchar(50),product4 nvarchar(50),product5 nvarchar(50),product6 nvarchar(50),
-	pmount1 float,pmount2 float,pmount3 float,pmount4 float,pmount5 float,pmount6 float,
-	pprice1 float,pprice2 float,pprice3 float,pprice4 float,pprice5 float,pprice6 float,
+	pmount1 decimal(9,2),pmount2 decimal(9,2),pmount3 decimal(9,2),pmount4 decimal(9,2),pmount5 decimal(9,2),pmount6 decimal(9,2),
+	punit1 nvarchar(20),punit2 nvarchar(20),punit3 nvarchar(20),punit4 nvarchar(20),punit5 nvarchar(20),punit6 nvarchar(20),
+	pprice1 decimal(9,2),pprice2 decimal(9,2),pprice3 decimal(9,2),pprice4 decimal(9,2),pprice5 decimal(9,2),pprice6 decimal(9,2),
 	pmoney1 float,pmoney2 float,pmoney3 float,pmoney4 float,pmoney5 float,pmoney6 float,
 	money decimal(9,0),
 	tax decimal(9,0),
@@ -405,9 +409,9 @@ begin
 	if(@noa2 != @noa1 or @recno%6 = 1)
 	begin
 		set @recno = 1
-		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,pprice1,pmoney1,money,tax,
+		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,address,product1,pmount1,punit1,pprice1,pmoney1,money,tax,
 			        total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8)
-		select gno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,pprice,pmoney,money,tax,
+		select gno,yy,mm,dd,noa,buyer,serial,chkno,address,product,pmount,punit,pprice,pmoney,money,tax,
 			   total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8		
 		from @tmp1 where idno = @idno1
 		
@@ -419,6 +423,7 @@ begin
 	begin
 		update @tmp2 set product2 = (select product from @tmp1 where idno = @idno1),
 				         pmount2 = (select pmount from @tmp1 where idno = @idno1),
+				         punit2 = (select punit from @tmp1 where idno = @idno1),
 					     pprice2 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney2 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -430,6 +435,7 @@ begin
 	begin
 		update @tmp2 set product3 = (select product from @tmp1 where idno = @idno1),
 				         pmount3 = (select pmount from @tmp1 where idno = @idno1),
+				         punit3 = (select punit from @tmp1 where idno = @idno1),
 					     pprice3 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney3 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -441,6 +447,7 @@ begin
 	begin
 		update @tmp2 set product4 = (select product from @tmp1 where idno = @idno1),
 				         pmount4 = (select pmount from @tmp1 where idno = @idno1),
+				         punit4 = (select punit from @tmp1 where idno = @idno1),
 					     pprice4 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney4 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -452,6 +459,7 @@ begin
 	begin
 		update @tmp2 set product5 = (select product from @tmp1 where idno = @idno1),
 				         pmount5 = (select pmount from @tmp1 where idno = @idno1),
+				         punit5 = (select punit from @tmp1 where idno = @idno1),
 					     pprice5 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney5 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -463,6 +471,7 @@ begin
 	begin
 		update @tmp2 set product6 = (select product from @tmp1 where idno = @idno1),
 				         pmount6 = (select pmount from @tmp1 where idno = @idno1),
+				         punit6 = (select punit from @tmp1 where idno = @idno1),
 					     pprice6 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney6 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -503,18 +512,9 @@ deallocate cursor_table
 
 select gno,yy,mm,dd,noa,buyer,serial,chkno,address,
 	   product1,product2,product3,product4,product5,product6,
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount1),1)),4,15)) pmount1, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount2),1)),4,15)) pmount2, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount3),1)),4,15)) pmount3, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount4),1)),4,15)) pmount4, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount5),1)),4,15)) pmount5, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmount6),1)),4,15)) pmount6, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice1),1)),4,15)) pprice1, 	
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice2),1)),4,15)) pprice2, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice3),1)),4,15)) pprice3, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice4),1)),4,15)) pprice4, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice5),1)),4,15)) pprice5, 
-	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pprice6),1)),4,15)) pprice6,
+	   pmount1,pmount2,pmount3,pmount4, pmount5,pmount6, 
+	   punit1,punit2,punit3,punit4,punit5,punit6,
+	   pprice1,pprice2, pprice3, pprice4, pprice5,pprice6,
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney1),1)),4,15)) pmoney1, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney2),1)),4,15)) pmoney2, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,pmoney3),1)),4,15)) pmoney3, 
@@ -525,9 +525,6 @@ select gno,yy,mm,dd,noa,buyer,serial,chkno,address,
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax),1)),4,15)) tax, 
 	   reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total),1)),4,15)) total, 	
 	   memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8 from @tmp2;
-
-
-
 --*******************************************************************************
 z_vccap_sh04:--z_vccap_sh04
 declare @tmp table (

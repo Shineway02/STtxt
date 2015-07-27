@@ -133,8 +133,16 @@ getuno_norm:--getuno_norm
 				set @key = SUBSTRING(@string,@n/10+1,1)+CAST(@n%10 as nvarchar)
 				set @maxuno = @buno+'-'+@key
 			end
-			insert into @tmp(uno)values(@maxuno)
-			insert into unolist(uno)values(@maxuno)
+			
+			if(LEN(@buno)=0)
+			begin
+				insert into @tmp(uno)values('')
+			end
+			else
+			begin
+				insert into @tmp(uno)values(@maxuno)
+				insert into unolist(uno)values(@maxuno)
+			end
 		end
 		
 		fetch next from cursor_table

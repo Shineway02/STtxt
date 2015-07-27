@@ -255,3 +255,84 @@ vcc2cng_rb:--vcc2cng_rb
 		EXECUTE sp_executesql @cmd
 	END
 ;
+-----------------------------------------------------------------------------------------------------------------------------------
+changequat_vu:--changequat_vu
+SET QUOTED_IDENTIFIER OFF 
+declare @t_accy nvarchar(50) = [1]
+declare @t_noa nvarchar(50) = [2]
+
+declare @accy nvarchar(50)
+declare @t_quatno1 nvarchar(50)=(select dbo.split(dbo.split(apvmemo,'##',0),'@',0) from view_vcc where noa=@t_noa)
+declare @t_quatno2 nvarchar(50)=(select dbo.split(dbo.split(apvmemo,'##',1),'@',0) from view_vcc where noa=@t_noa)
+
+set @accy=isnull((select top 1 accy from view_quat where noa=@t_quatno1),@t_accy)
+
+EXEC("
+	update a
+	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+	from quat"+@accy+" a
+	outer apply((select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
+	from view_vcc where charindex(a.noa,apvmemo)>0))b
+	where a.noa='"+@t_quatno1+"'
+")
+
+EXEC("
+	update a
+	set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+	from quats"+@accy+" a left join quat"+@accy+" b on a.noa=b.noa
+	where a.noa='"+@t_quatno1+"'
+")
+
+set @accy=isnull((select top 1 accy from view_quat where noa=@t_quatno2),@t_accy)
+
+EXEC("
+	update a
+	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+	from quat"+@accy+" a
+	outer apply((select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
+	from view_vcc where charindex(a.noa,apvmemo)>0))b
+	where a.noa='"+@t_quatno2+"'
+")
+
+EXEC("
+	update a
+	set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+	from quats"+@accy+" a left join quat"+@accy+" b on a.noa=b.noa
+	where a.noa='"+@t_quatno2+"'
+")
+
+;
+-----------------------------------------------------------------------------------------------------------------------------------
+changepacking_vu:--changepacking_vu
+SET QUOTED_IDENTIFIER OFF 
+declare @t_accy nvarchar(50) = [1]
+declare @t_noa nvarchar(50) = [2]
+declare @t_worker nvarchar(30) = [3]
+declare @accy nvarchar(50)=@t_accy
+
+--已產生領料單
+if((select count(*) from view_get where noa=@t_noa)>0 )
+begin
+	set @accy=isnull((select accy from view_get where noa=@t_noa),@t_accy)
+	
+	EXEC(" delete get"+@accy+" where noa='"+@t_noa+"'")
+	EXEC(" delete gets"+@accy+" where noa='"+@t_noa+"'")
+end
+
+--產生領料單
+if((select count(*) from packing where noa=@t_noa)>0 )
+begin
+	EXEC("
+		insert get"+@accy+" (noa,datea,worker,typea,memo)
+		select noa,datea,'"+@t_worker+"','領料','由Packing轉來' from view_vcc where noa='"+@t_noa+"'
+	")
+	EXEC("
+		insert gets"+@accy+" (noa,noq,datea,uno,mount,weight,typea,memo)
+		select a.noa,b.noq,a.datea,b.uno,b.mount,b.weight,'領料',b.memo
+		from view_vcc a left join packing b on a.noa=b.noa where a.noa='"+@t_noa+"'
+	")
+end
+
+;
