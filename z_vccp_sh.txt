@@ -26,7 +26,6 @@ declare @tmp table (
 		serial nvarchar(30),
 		phone nvarchar(30),
 		product nvarchar(max),
-		mount float,
 		width float,
 		unit nvarchar(20),
 		price float,
@@ -37,7 +36,7 @@ declare @tmp table (
 		sums float
 	)
 insert @tmp
-select '0',a.noa,b.noq,c.comp,a.datea,c.serial,a.tel,b.product,b.mount,isnull(b.width,0)as width,b.unit,b.price,b.total,a.carno,0,isnull(d.tax,0)as tax,0 
+select '0',a.noa,b.noq,c.comp,a.datea,c.serial,a.tel,b.product,isnull(b.width,0)as width,b.unit,b.price,b.total,a.carno,0,isnull(d.tax,0)as tax,0 
 from view_vcc a left join view_vccs  b on a.noa=b.noa left join cust c on a.custno=c.noa left join vcca d on a.invono = d.noa where (a.noa between @t_bno and @t_eno)
 
 declare @noa nvarchar(MAX)
@@ -65,7 +64,7 @@ close cursor_table
 deallocate cursor_table
 
 
-insert @tmp(gno,noa,carno,money,tax,sums)
-select '2',noa,MAX(carno),SUM(total),SUM(tax),SUM(total)+SUM(tax) from @tmp  group by noa
+insert @tmp(gno,noa,carno,width,money,tax,sums)
+select '2',noa,MAX(carno),SUM(width),SUM(total),SUM(tax),SUM(total)+SUM(tax) from @tmp  group by noa
 select dbo.getComma(total,0) total,dbo.getComma(money,0) money,dbo.getComma(tax,0) tax,dbo.getComma(sums,0) sums,* ,@t_addr2 addr2,@t_addr addr,@t_tel tel,SUBSTRING(@t_fax,0,CHARINDEX('Fax',@t_fax)) facsimile from @tmp order by noa,gno,noq 
 ;
