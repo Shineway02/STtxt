@@ -23,6 +23,7 @@ declare @tmp1 table(
 	chkno nvarchar(6),
 	product nvarchar(50),
 	pmount decimal(9,2),
+	punit nvarchar(15),
 	pprice decimal(9,2),
 	pmoney float,
 	money decimal(9,0),
@@ -50,7 +51,7 @@ select
 	  substring(a.datea,8,2), --日
 	  a.noa,
 	  case when LEN(a.buyer) = 0 then a.comp else a.comp end,
-	  a.serial,a.chkno,b.product,b.mount,b.price,b.money,a.money,a.tax,a.total,a.memo,
+	  a.serial,a.chkno,b.product,b.mount,b.unit,b.price,b.money,a.money,a.tax,a.total,a.memo,
 	  case when a.taxtype = '1' then 'v' end,
 	  case when a.taxtype = '2' then 'v' end,
 	  case when a.taxtype = '4' then 'v' end,
@@ -90,6 +91,7 @@ declare @tmp2 table(
 	product1 nvarchar(50),
 	product2 nvarchar(50),product3 nvarchar(50),product4 nvarchar(50),product5 nvarchar(50),product6 nvarchar(50),
 	pmount1 decimal(9,2),pmount2 decimal(9,2),pmount3 decimal(9,2),pmount4 decimal(9,2),pmount5 decimal(9,2),pmount6 decimal(9,2),
+	punit1 nvarchar(15),punit2 nvarchar(15),punit3 nvarchar(15),punit4 nvarchar(15),punit5 nvarchar(15),punit6 nvarchar(15),
 	pprice1 decimal(9,2),pprice2 decimal(9,2),pprice3 decimal(9,2),pprice4 decimal(9,2),pprice5 decimal(9,2),pprice6 decimal(9,2),
 	pmoney1 decimal(9,2),pmoney2 decimal(9,2),pmoney3 decimal(9,2),pmoney4 decimal(9,2),pmoney5 decimal(9,2),pmoney6 decimal(9,2),
 	money decimal(9,0),
@@ -128,9 +130,9 @@ begin
 	if(@noa2 != @noa1 or @recno%6 = 1)
 	begin
 		set @recno = 1
-		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,product1,pmount1,pprice1,pmoney1,money,tax,
+		insert into @tmp2(gno,yy,mm,dd,noa,buyer,serial,chkno,product1,pmount1,punit1,pprice1,pmoney1,money,tax,
 			        total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8)
-		select gno,yy,mm,dd,noa,buyer,serial,chkno,product,pmount,pprice,pmoney,money,tax,
+		select gno,yy,mm,dd,noa,buyer,serial,chkno,product,pmount,punit,pprice,pmoney,money,tax,
 			   total,memo,tt1,tt2,tt3,tm1,tm2,tm3,tm4,tm5,tm6,tm7,tm8		
 		from @tmp1 where idno = @idno1
 		
@@ -142,6 +144,7 @@ begin
 	begin
 		update @tmp2 set product2 = (select product from @tmp1 where idno = @idno1),
 				         pmount2 = (select pmount from @tmp1 where idno = @idno1),
+				         punit2 = (select punit from @tmp1 where idno = @idno1),
 					     pprice2 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney2 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -153,6 +156,7 @@ begin
 	begin
 		update @tmp2 set product3 = (select product from @tmp1 where idno = @idno1),
 				         pmount3 = (select pmount from @tmp1 where idno = @idno1),
+				         punit3 = (select punit from @tmp1 where idno = @idno1),
 					     pprice3 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney3 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -164,6 +168,7 @@ begin
 	begin
 		update @tmp2 set product4 = (select product from @tmp1 where idno = @idno1),
 				         pmount4 = (select pmount from @tmp1 where idno = @idno1),
+				         punit4 = (select punit from @tmp1 where idno = @idno1),
 					     pprice4 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney4 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -175,6 +180,7 @@ begin
 	begin
 		update @tmp2 set product5 = (select product from @tmp1 where idno = @idno1),
 				         pmount5 = (select pmount from @tmp1 where idno = @idno1),
+				         punit5 = (select punit from @tmp1 where idno = @idno1),
 					     pprice5 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney5 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -186,6 +192,7 @@ begin
 	begin
 		update @tmp2 set product6 = (select product from @tmp1 where idno = @idno1),
 				         pmount6 = (select pmount from @tmp1 where idno = @idno1),
+				         punit6 = (select punit from @tmp1 where idno = @idno1),
 					     pprice6 = (select pprice from @tmp1 where idno = @idno1),
 						 pmoney6 = (select pmoney from @tmp1 where idno = @idno1)
 		where idno = @idno2
@@ -225,12 +232,12 @@ deallocate cursor_table
 
 select gno,yy,mm,dd,noa,buyer,serial,chkno,
 	   product1,product2,product3,product4,product5,product6,
-	   case when dbo.split(pmount1,'.',1) = 0 then dbo.getComma(pmount1,0) else dbo.getComma(pmount1,2) end pmount1,
-	   case when dbo.split(pmount2,'.',1) = 0 then dbo.getComma(pmount2,0) else dbo.getComma(pmount2,2) end pmount2,
-	   case when dbo.split(pmount3,'.',1) = 0 then dbo.getComma(pmount3,0) else dbo.getComma(pmount3,2) end pmount3,
-	   case when dbo.split(pmount4,'.',1) = 0 then dbo.getComma(pmount4,0) else dbo.getComma(pmount4,2) end pmount4,
-	   case when dbo.split(pmount5,'.',1) = 0 then dbo.getComma(pmount5,0) else dbo.getComma(pmount5,2) end pmount5,
-	   case when dbo.split(pmount6,'.',1) = 0 then dbo.getComma(pmount6,0) else dbo.getComma(pmount6,2) end pmount6,
+	   case when dbo.split(pmount1,'.',1) = 0 then dbo.getComma(pmount1,0)+' '+punit1 else dbo.getComma(pmount1,2)+' '+punit1 end pmount1,
+	   case when dbo.split(pmount2,'.',1) = 0 then dbo.getComma(pmount2,0)+' '+punit2 else dbo.getComma(pmount2,2)+' '+punit2 end pmount2,
+	   case when dbo.split(pmount3,'.',1) = 0 then dbo.getComma(pmount3,0)+' '+punit3 else dbo.getComma(pmount3,2)+' '+punit3 end pmount3,
+	   case when dbo.split(pmount4,'.',1) = 0 then dbo.getComma(pmount4,0)+' '+punit4 else dbo.getComma(pmount4,2)+' '+punit4 end pmount4,
+	   case when dbo.split(pmount5,'.',1) = 0 then dbo.getComma(pmount5,0)+' '+punit5 else dbo.getComma(pmount5,2)+' '+punit5 end pmount5,
+	   case when dbo.split(pmount6,'.',1) = 0 then dbo.getComma(pmount6,0)+' '+punit6 else dbo.getComma(pmount6,2)+' '+punit6 end pmount6,
 	   case when dbo.split(pprice1,'.',1) = 0 then dbo.getComma(pprice1,0) else dbo.getComma(pprice1,2) end pprice1,
 	   case when dbo.split(pprice2,'.',1) = 0 then dbo.getComma(pprice2,0) else dbo.getComma(pprice2,2) end pprice2,
 	   case when dbo.split(pprice3,'.',1) = 0 then dbo.getComma(pprice3,0) else dbo.getComma(pprice3,2) end pprice3,
