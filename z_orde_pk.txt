@@ -1,0 +1,123 @@
+z_orde_pk01:--z_orde_pk01
+
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+
+set @t_bnoa = case when '#non'=[3] then '' else [3] end
+set @t_enoa = case when '#non'=[4] then char(255) else [4] end
+
+---------------------------------------------------------------------------------
+
+declare @tmp1 table(
+	gno nvarchar(1),
+	id int,
+	odate nvarchar(10),
+	datea nvarchar(10),
+	nick nvarchar(50),
+	noa nvarchar(30),
+	comptel nvarchar(100),
+	addr nvarchar(max),
+--  簽單號碼
+
+	s_ucolor nvarchar(30),
+	s_scolor nvarchar(30),
+	s_productno nvarchar(90),
+	s_size nvarchar(30),
+	s_mount float,
+	s_weight float,
+	s_price float,
+	s_memo nvarchar(max),
+	
+--  倉庫別
+	t_uno nvarchar(30),
+--	t_ucolor nvarchar(30),規範
+	t_productno nvarchar(30),
+	t_size nvarchar(max),
+	t_mount float	
+)
+
+insert into @tmp1
+select '0',ROW_NUMBER() over (order by a.noa),a.odate,b.datea,a.nick,a.noa,a.comp+'/'+a.tel,a.addr2,--簽單號碼
+	   b.ucolor,b.scolor,b.productno,b.size,b.mount,b.weight,b.price,b.memo,
+	   /*,倉庫別*/c.uno/*,c.ucolor*/,c.productno,d.size,c.mount
+from view_orde a
+left join view_ordes b on a.noa = b.noa
+left join view_ordet c on b.noa = c.noa and b.no2 = c.no3 
+left join view_uccb d on c.uno = d.uno
+where a.noa = '1040563' or a.noa = '1041293' or a.noa ='1041461'--(a.noa between @t_bnoa and @t_enoa)
+
+
+declare @id int
+declare @noa nvarchar(30)
+declare @xnoa nvarchar(30)
+declare @uno nvarchar(30)
+declare @cnt int
+declare @max int
+declare @i int
+
+set @xnoa = 'zzzzzzz'
+
+declare cursor_table cursor for 
+select id,noa,t_uno from @tmp1 order by noa
+open cursor_table 
+fetch next from cursor_table 
+into @id,@noa,@uno
+while(@@FETCH_STATUS <> -1) 
+begin
+	if(@uno is not null)
+	begin
+		set @max = (select MAX(id) from @tmp1 where noa = @noa)
+		insert into @tmp1(gno,noa,id,t_uno,t_productno,t_size,t_mount)
+		select '2',@noa,@max,t_uno,t_productno,t_size,t_mount
+		from @tmp1 where id = @id
+	end
+	if(@noa != @xnoa)
+	begin
+		set @cnt = 10 - (select count(*) from @tmp1 where gno = '0' and noa = @noa) % 10
+		set @max = (select MAX(id) from @tmp1 where noa = @noa)
+		set @i  = 0
+		while (@i < @cnt)
+		begin
+			insert into @tmp1 
+			values('0',@max,null,null,null,@noa,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
+			set @i = @i + 1
+		end		
+	end
+	set @xnoa = @noa
+	
+	fetch next from cursor_table 
+	into @id,@noa,@uno	
+end 
+close cursor_table 
+deallocate cursor_table 
+
+declare cursor_table cursor for 
+select id,noa from @tmp1 where gno = '0' order by noa,id
+open cursor_table 
+fetch next from cursor_table 
+into @id,@noa
+while(@@FETCH_STATUS <> -1) 
+begin
+	if(@xnoa != @noa)
+	begin
+		set @cnt = 0		
+	end		
+			
+	set @cnt = @cnt + 1
+	set	@xnoa = @noa	
+	print @cnt
+	print @id				
+	
+	if(@cnt % 10 = 0)
+	begin
+		insert into @tmp1 (gno,id,noa)
+		values('1',@id,@noa)
+	end					
+	
+	fetch next from cursor_table 
+	into @id,@noa
+end 
+close cursor_table 
+deallocate cursor_table 
+
+select * from @tmp1 order by noa,id,gno  ;

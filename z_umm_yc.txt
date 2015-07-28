@@ -181,7 +181,7 @@ select '1',custno,salesno,SUM(money) from (
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))
 	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money 
 	from view_vcc aa left join cust bb on aa.custno=bb.noa 
-	where ((case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon and aa.datea <@t_bdate) and (left(isnull(kind,''),4)!='健勞勞退')
+	where ((case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon or aa.datea <@t_bdate) and (left(isnull(kind,''),4)!='健勞勞退')
 	and (len(@t_cno)=0 or aa.cno=@t_cno)
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
 	having SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)!=0
@@ -190,7 +190,7 @@ select '1',custno,salesno,SUM(money) from (
 	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
 	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0) 
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-	where ((case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bmon and ca.datea <@t_bdate) and ([2]!=3)
+	where ((case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bmon or ca.datea <@t_bdate) and ([2]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5') and (len(@t_cno)=0 or ca.cno=@t_cno)
 	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end),ca.noa
 	having SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0) !=0
