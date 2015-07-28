@@ -91,6 +91,7 @@ z_rc2_pkp01:--z_rc2_pkp01
 		uno2 nvarchar(max),
 		class nvarchar(20)
 	)
+--,case when isnull(b.floata,0)=0 then a.price else round(a.price*b.floata,4) end
 
 	set @cmd =
 	" select row_number()over(partition by a.noa order by a.noq,a.no2)"+
@@ -98,8 +99,8 @@ z_rc2_pkp01:--z_rc2_pkp01
 	" ,a.noa,a.noq,b.tggno,case when len(isnull(b.tgg,''))=0 then c.comp else b.tgg end"+
 	" ,b.tel,b.addr,b.datea,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,isnull(b.[money],0),isnull(b.[tax],0),isnull(b.[total],0),b.cardeal,b.carno,b.ordcno,isnull(b.[price],0),isnull(b.[tranmoney],0)"+
-	" ,a.no2,a.productno,a.product,a.unit,a.unit2,a.mount,a.[weight]
-	,case when isnull(b.floata,0)=0 then a.price else round(a.price*b.floata,4) end
+	" ,a.no2,a.productno,a.product,a.unit,a.unit2,a.mount,a.[weight],a.price
+	
 	,a.total"+
 	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.spec,a.memo"+
 	" ,a.uno2,a.class"+
