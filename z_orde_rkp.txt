@@ -48,6 +48,7 @@ z_orde_rkp01:--z_orde_rkp01
 	declare @ucolor nvarchar(20)
 	declare @source nvarchar(20)
 	declare @mount float
+	declare @weight float
 	declare @unit nvarchar(20)
 	declare @price float
 	declare @po nvarchar(50)
@@ -76,6 +77,7 @@ z_orde_rkp01:--z_orde_rkp01
 		ucolor nvarchar(20),
 		[source] nvarchar(20),
 		mount float,
+		weight float,
 		unit nvarchar(20),
 		price float,
 		po nvarchar(50),
@@ -110,13 +112,13 @@ z_orde_rkp01:--z_orde_rkp01
 		set @n = 1
 		declare cursor_table2 cursor for
 		select productno,product,dime,radius,width,lengthb,spec,class
-			,ucolor,[source],mount,unit,price,memo
+			,ucolor,[source],mount,weight,unit,price,memo
 		from view_ordes 
 		where noa=@t_noa	
 		open cursor_table2
 		fetch next from cursor_table2
 		into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
-			,@ucolor,@source,@mount,@unit,@price,@memos
+			,@ucolor,@source,@mount,@weight,@unit,@price,@memos
 		while(@@FETCH_STATUS <> -1)
 		begin	
 			select @po='',@pn=''
@@ -129,16 +131,20 @@ z_orde_rkp01:--z_orde_rkp01
 			insert into @tmp(gno,recno,noa,productno,product,dime,radius,width,lengthb,spec,class
 				,ucolor,[source],mount,unit,price,po,pn)
 			values('2',@n,@noa,@productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
-				,@ucolor,@source,@mount,@unit,@price,@po,@pn)
+				,@ucolor,@source
+				,case when len(isnull(@unit,''))=0 or upper(@unit)='KG' then @weight else  @mount end
+				,@unit,@price,@po,@pn)
 			insert into @tmp(gno,recno,noa,productno,product,dime,radius,width,lengthb,spec,class
 				,ucolor,[source],mount,unit,price,po,pn)
 			values('3',@n,@noa,@productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
-				,@ucolor,@source,@mount,@unit,@price,@po,@pn)
+				,@ucolor,@source
+				,case when len(isnull(@unit,''))=0 or upper(@unit)='KG' then @weight else  @mount end
+				,@unit,@price,@po,@pn)
 			
 			set @n = @n + 1
 			fetch next from cursor_table2
 			into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@class
-			,@ucolor,@source,@mount,@unit,@price,@memos
+			,@ucolor,@source,@mount,@weight,@unit,@price,@memos
 		end
 		close cursor_table2
 		deallocate cursor_table2
