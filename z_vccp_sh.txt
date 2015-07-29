@@ -64,7 +64,7 @@ close cursor_table
 deallocate cursor_table
 
 
-insert @tmp(gno,noa,carno,width,money,tax,sums)
-select '2',noa,MAX(carno),SUM(width),SUM(total),SUM(tax),SUM(total)+SUM(tax) from @tmp  group by noa
+insert @tmp(gno,noa,carno,width,unit,money,tax,sums)
+select '2',noa,MAX(carno),SUM(width),MAX(unit),SUM(total),SUM(tax),SUM(total)+SUM(tax) from @tmp  group by noa
 select dbo.getComma(total,0) total,dbo.getComma(money,0) money,dbo.getComma(tax,0) tax,dbo.getComma(sums,0) sums,* ,@t_addr2 addr2,@t_addr addr,@t_tel tel,SUBSTRING(@t_fax,0,CHARINDEX('Fax',@t_fax)) facsimile from @tmp order by noa,gno,noq 
 ;
