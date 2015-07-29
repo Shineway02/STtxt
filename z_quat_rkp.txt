@@ -46,6 +46,7 @@ z_quat_rkp02:--z_quat_rkp02
 	declare @style nvarchar(20)
 	declare @source nvarchar(20)
 	declare @mount float
+	declare @weight float
 	declare @unit nvarchar(20)
 	declare @price float
 	declare @po nvarchar(50)
@@ -105,24 +106,26 @@ z_quat_rkp02:--z_quat_rkp02
 		set @n = 1
 		declare cursor_table2 cursor for
 		select productno,product,dime,radius,width,lengthb,spec,class
-			,style,[source],mount,unit,price,po,pn
+			,style,[source],mount,[weight],unit,price,po,pn
 		from view_quats
 		where noa=@t_noa	
 		open cursor_table2
 		fetch next from cursor_table2
 		into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@classa
-			,@style,@source,@mount,@unit,@price,@po,@pn
+			,@style,@source,@mount,@weight,@unit,@price,@po,@pn
 		while(@@FETCH_STATUS <> -1)
 		begin
 			insert into @tmp(gno,recno,noa,productno,product,dime,radius,width,lengthb,spec,classa
 				,style,[source],mount,unit,price,po,pn)
 			values('2',@n,@noa,@productno,@product,@dime,@radius,@width,@lengthb,@spec,@classa
-				,@style,@source,@mount,@unit,@price,@po,@pn)
+				,@style,@source
+				,case when len(isnull(@unit,''))=0 or upper(@unit)='KG' then @weight else  @mount end
+				,@unit,@price,@po,@pn)
 			
 			set @n = @n + 1
 			fetch next from cursor_table2
 			into @productno,@product,@dime,@radius,@width,@lengthb,@spec,@classa
-			,@style,@source,@mount,@unit,@price,@po,@pn
+			,@style,@source,@mount,@weight,@unit,@price,@po,@pn
 		end
 		close cursor_table2
 		deallocate cursor_table2

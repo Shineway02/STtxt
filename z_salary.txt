@@ -1606,7 +1606,6 @@ set @t_expartno = case when '#non' = [10] then CHAR(255) else [10] end
 set @t_bsssno = case when '#non' = [4] then '' else [4] end
 set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
 
-
 declare @tmp table(
 		gno  nvarchar(1),
 		partno nvarchar(20),
@@ -1632,8 +1631,9 @@ select '0'gno, b.partno,b.part,a.noa,b.namea,b.jobno,
 a.money,a.bo_traffic,a.bo_special,a.bo_admin,a.bo_oth,a.bo_full,
 (a.money+a.bo_traffic+a.bo_special+a.bo_admin+a.bo_oth+a.bo_full)total,0,0,0,''
 from saladjust a right join sss b on a.noa=b.noa
-where a.datea<=@t_xyear+'/05/31'
-and a.noa!='Z001' and b.outdate='' and b.partno!='0910' and b.partno!='0911'
+outer apply (select MAX(datea)datea from saladjust where noa=a.noa and left(a.datea,3)<=@t_xyear)c
+where left(a.datea,3)<@t_xyear and a.datea=c.datea
+and a.noa!='Z001' and b.outdate='' 
 
 --插入今年薪資與備註
 declare @sssno nvarchar(20) 
@@ -1646,7 +1646,7 @@ declare cursor_table cursor for
 	begin
 		update @tmp
 		set afsalary=isnull((select (money+bo_traffic+bo_special+bo_admin+bo_oth+bo_full) from saladjust where noa=@sssno and datea>@t_xyear+'/05/31'),0),
-		memo=(select memo from saladjust where noa=@sssno and datea>@t_xyear+'/05/31')
+		memo=(select memo from saladjust where noa=@sssno and left(datea,3)>@t_xyear)
 		where sssno=@sssno
 		fetch next from cursor_table
 		into @sssno
@@ -1660,7 +1660,7 @@ update @tmp
 set payrise=(case when (afsalary-total)=(-1*total) then 0 else (afsalary-total) end) 
 
 update @tmp
-set rate=ROUND((payrise/total),3)*100.0
+set rate=case when total=0 then 0 else ROUND((payrise/total),3)*100.0 end
 
 --插入合計
 insert into @tmp 
