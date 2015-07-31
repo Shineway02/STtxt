@@ -174,6 +174,8 @@ declare @tmp table(
 	money float,
 	tax float,
 	total float,
+	cno nvarchar(50),
+	ycomp nvarchar(50),
 	qhref nvarchar(max)
 )
 --明細
@@ -186,6 +188,7 @@ select '0' gno,a.noa,b.noq ,a.datea,a.custno,case when isnull(c.nick,'')='' then
 ,b.price
 ,(case when a.typea='2' then -1 else 1 end)*b.total
 ,(case when a.typea='2' then -1 else 1 end)*a.tax,0
+,a.cno,(select top 1 acomp from acomp where noa=a.cno)
 ,'vcc_yc'+'?noa=$noa?'+a.accy
 from view_vcc a
 left join view_vccs b on a.noa = b.noa
@@ -198,6 +201,7 @@ select '0' gno,a.noa,'999',a.datea,a.custno,case when isnull(c.nick,'')='' then 
 ,char(255),(case when charindex('現金價',a.paytype)>0 then '現金價' when charindex('月結現金',a.paytype)>0 then '月結現金' else '' end)+'扣'+cast(a.price as nvarchar(20))+'%'
 ,null,(case when a.typea='2' then 1 else -1 end)
 ,null,a.discount,(case when a.typea='2' then 1 else -1 end)*a.discount,a.tax,0
+,a.cno,(select top 1 acomp from acomp where noa=a.cno)
 ,'vcc_yc'+'?noa=$noa?'+a.accy
 from view_vcc a
 left join cust c on a.custno=c.noa
@@ -207,14 +211,14 @@ and (a.discount>0 or a.price>0)
 --單據小計
 insert into @tmp
 select '1',noa,char(255),MAX(datea),MAX(custno),MAX(comp),'',''
-,sum(lengthc),sum(mount),sum(weight),0,sum(money),MAX(tax),0,''
+,sum(lengthc),sum(mount),sum(weight),0,sum(money),MAX(tax),0,MAX(cno),MAX(ycomp),''
 from @tmp where gno='0' group by noa
 
 --總計
 insert into @tmp
 select '2',char(255),char(255),MAX(datea),MAX(custno),MAX(comp),'',''
-,sum(lengthc),sum(mount),sum(weight),0,sum(money),sum(tax),sum(money)+sum(tax),''
-from @tmp where gno='1' 
+,sum(lengthc),sum(mount),sum(weight),0,sum(money),sum(tax),sum(money)+sum(tax),cno,MAX(ycomp),''
+from @tmp where gno='1' group by cno
 
 select 
 replace(product,'~#$',char(39)) product
@@ -225,7 +229,7 @@ replace(product,'~#$',char(39)) product
 ,dbo.getComma(money,0)  money
 ,dbo.getComma(tax,0)  tax
 ,dbo.getComma(total,0)  total
-,* from @tmp order by noa,gno,noq
+,* from @tmp order by cno,noa,gno,noq
 ;
 --******************************************************************************************
 z_vcc_yc3:--z_vcc_yc2 ref. z_anavccfe5
