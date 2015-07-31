@@ -254,10 +254,11 @@ z_ucc_pk02:--z_ucc_pk02
 		" where b.noa is not null"+
 		" and len(isnull(a.uno,''))>0"+
 		" and (upper(left(a.uno,1))='X' or upper(left(a.uno,1))='Y' or upper(left(a.uno,1))='Z')"+
-		" and b.datea<=@t_edate"
+		" and b.datea<=@t_edate"+
+		" and isnull(b.storeno,'') between @t_bstoreno and @t_estoreno"
 		insert into @tmp(typea,n,datea,tablea,noa,noq,uno,storeno,[weight])
-		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20)'
-		,@t_edate=@t_edate,@tableas=@tableas
+		execute sp_executesql @cmd,N'@t_edate nvarchar(10),@tableas nvarchar(20),@t_bstoreno nvarchar(20),@t_estoreno nvarchar(20)'
+		,@t_edate=@t_edate,@tableas=@tableas,@t_bstoreno=@t_bstoreno,@t_estoreno=@t_estoreno
 		
 		fetch next from cursor_table
 		into @tablea,@tableas
