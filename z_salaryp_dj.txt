@@ -103,7 +103,7 @@ select ROW_NUMBER()over (order by b.sno),b.sno,b.namea,c.jobno,isnull(c.level1+'
 ,b.total5,b.money7,b.ch_health2,b.ch_labor2,b.ch_retire2,b.sa_health,b.sa_labor,b.sa_retire
 from salary a left join salarys b on a.noa=b.noa
 outer apply(select top 1 * from saladjust where noa=b.sno and datea<=a.datea order by datea desc)c
---where a.mon=@t_xmon and b.sno between @t_bsssno and @t_esssno
+where a.mon=@t_xmon and b.sno between @t_bsssno and @t_esssno
 order by b.sno,a.mon
 
 create table #tmpb(

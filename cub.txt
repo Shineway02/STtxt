@@ -1,0 +1,16 @@
+﻿cubstocubt:--cubstocubt
+SET QUOTED_IDENTIFIER OFF
+declare @accy nvarchar(MAX) = [1]
+declare @noa nvarchar(MAX) = [2]
+
+set @accy=isnull((select accy from view_cub where noa=@noa),@accy)
+
+--刪除
+EXEC("delete cubu"+@accy+" where noa='"+@noa+"'")
+
+--重新寫入 (有交期date2才寫入cubu)
+EXEC("
+	insert cubu"+@accy+" (noa,noq,uno,productno,product,spec,size,dime,width,lengthb,radius,class,ucolor,unit,mount,weight,prt,memo,storeno,store,custno,comp,ordeno,no2,datea)
+	select noa,noq,uno,productno,product,spec,size,dime,width,lengthb,radius,class,ucolor,unit,mount,weight,prt,memo,storeno,store,custno,comp,ordeno,no2,date2 from cubs"+@accy+" where noa='"+@noa+"' and isnull(date2,'')!='' 
+")
+;
