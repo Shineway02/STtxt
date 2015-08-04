@@ -427,7 +427,7 @@ update @tmp set csize = replace(csize,'~#$','''')
 select
 	gno,noa,datea,source,pno,product,spec,ROW_NUMBER()over(order by gno,datea desc) idno,csize,
 	mount,weight,
-	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(price)*1000)) as nvarchar) price,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 	cust,qhref
 from @tmp order by idno;
 ----------********************************************************************----------
