@@ -748,12 +748,14 @@ insert into @tmp
 			and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.custno,c.nick,c.comp,case when isnull(a.mon,'')!='' then a.mon else left(a.datea,6) end
 	
-insert into @tmp(gno,custno,custs,mon,mount,weight,total,tax) 
-select '1',custno,custs,'999/99',sum(mount),sum(weight),sum(total),sum(tax) from @tmp group by custno,custs
-
-insert into @tmp(gno,custno,mount,weight,total,tax) 
-select '2','ZZZZ_ZZZ',sum(mount),sum(weight),sum(total), sum(tax) from @tmp where gno='1'
-
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,custno,custs,mon,mount,weight,total,tax) 
+	select '1',custno,custs,'999/99',sum(mount),sum(weight),sum(total),sum(tax) from @tmp group by custno,custs
+	
+	insert into @tmp(gno,custno,mount,weight,total,tax) 
+	select '2','ZZZZ_ZZZ',sum(mount),sum(weight),sum(total), sum(tax) from @tmp where gno='1'
+end
 
 select gno,custno cno,left(custs,10) custs,mon
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
@@ -1019,6 +1021,8 @@ insert into @tmp
 			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by b.productno,b.product,case when isnull(a.mon,'')!='' then a.mon else left(a.datea,6) end
 	
+if((select count(*) from @tmp)>0)
+begin
 	insert into @tmp(gno,productno,products,mon,mount,weight,total)
 	select '1',productno,products,'999/99',sum(mount),sum(weight),sum(total)
 	from @tmp group by productno,products
@@ -1026,7 +1030,7 @@ insert into @tmp
 	insert into @tmp(gno,productno,mount,weight,total)
 	select '2','ZZZZZZZZZZZZ',sum(mount),sum(weight),sum(total)
 	from @tmp where gno='1'
-
+end
 
 select gno,productno
 ,replace((case when gno='0' then dbo.charbr(products,24) else products end ),'~#$',char(39)) products,mon
@@ -1208,7 +1212,9 @@ insert into @tmp
 			and (len(@t_partno)=0 or s.partno=@t_partno)
 			and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.salesno,a.sales,case when isnull(a.mon,'')!='' then a.mon else left(a.datea,6) end
-	
+
+if((select count(*) from @tmp)>0)
+begin	
 	insert into @tmp(gno,salesno,salesname,mon,mount,weight,total)
 	select '1',salesno,salesname,'999/99',sum(mount),sum(weight),sum(total)
 	from @tmp group by salesno,salesname
@@ -1216,7 +1222,7 @@ insert into @tmp
 	insert into @tmp(gno,salesno,mount,weight,total)
 	select '2','ZZZZZZ',sum(mount),sum(weight),sum(total)
 	from @tmp where gno='1'
-	
+end
 
 select gno,salesno sno,salesname,mon
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
@@ -1400,11 +1406,13 @@ insert into @tmp
 			 and(len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.salesno,a.sales,b.productno,b.product
 	order by a.salesno,b.productno
-	
+
+if((select count(*) from @tmp)>0)
+begin
 	insert into @tmp(gno,mount,weight,total)
 	select '1',sum(mount),sum(weight),sum(total)
 	from @tmp
-	
+end
 
 select gno,salesno sno ,salesname,productno,replace(products,'~#$',char(39)) products
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
@@ -1595,10 +1603,13 @@ insert into @tmp
 			and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by a.salesno,a.sales,a.custno,c.nick,c.comp,b.productno,b.product
 	order by a.salesno,a.custno,b.productno
-	
+
+if((select count(*) from @tmp)>0)
+begin
 	insert into @tmp(gno,mount,weight,total)
 	select '1',	sum(mount),sum(weight),	sum(total)
 	from @tmp
+end
 
 select gno,custno,left(custnick,7) custnick,salesno sno ,salesname,productno,replace(products,'~#$',char(39)) products
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
@@ -1787,10 +1798,13 @@ insert into @tmp
 			 and (len(@t_cno)=0 or a.cno=@t_cno)
 	group by b.productno,b.product,a.salesno,a.sales,a.custno,c.nick,c.comp
 	order by b.productno,b.product,a.salesno,a.sales,a.custno,c.nick,c.comp
-	
-insert into @tmp(gno,productno,products,mount,weight,total)
+
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,productno,products,mount,weight,total)
 	select '1',productno,products,sum(mount),sum(weight),sum(total)
 	from @tmp group by productno,products
+end
 	
 select gno,productno,replace(products,'~#$',char(39)) products,sno,salesname,cno,left(custnick,10) custnick 
 ,(case @t_stype when '1' then '內銷' when '2' then '代工' when '3' then '外銷' when '4' then '樣品' else '' end) stype
