@@ -34,7 +34,8 @@ declare @tmp table(
 	moneys float,
 	tax float,
 	ttotal float,
-	memo nvarchar(200)
+	memo nvarchar(200),
+	coin nvarchar(50)
 )
 insert into @tmp
 	select '0' gno,ROW_NUMBER()over(partition by b.noa order by b.noa),1,a.noa,b.no3,a.odate,a.tggno,a.tgg,a.tel,
@@ -42,7 +43,7 @@ insert into @tmp
 	case a.kind when 'A1' then '鋼捲鋼板' when 'B2' then '鋼管' when 'C3' then '鋼筋' when 'A4' then '鋼胚' end,a.trantype,
 	a.paytype,a.datea,b.uno,b.productno,b.product,b.spec,
 	(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-	b.mount,b.weight,b.price,b.total,b.ordeno,a.money,a.tax,a.total,a.memo
+	b.mount,b.weight,b.price,b.total,b.ordeno,a.money,a.tax,a.total,a.memo,a.coin
 	from view_ordb[1] a
 	left join view_ordbs[1] b on a.noa = b.noa
 	where a.noa between @t_bnoa and @t_enoa
@@ -108,7 +109,7 @@ update @tmp set csize = replace(csize,'~#$','''')
 select gno,noa,noq,odate,tno,tgg,tel,fax,addr,kind,trantype,paytype,datea,uno,pno,product,spec,csize,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,mount),1)),4,30)) mount,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,weight),1)),4,30)) weight,
-reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,total),1)),4,30)) total,ordeno,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,moneys),1)),4,30)) moneys,
 reverse(substring(reverse(convert(nvarchar(max),CONVERT(money,tax),1)),4,30)) tax,

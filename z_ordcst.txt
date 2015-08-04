@@ -71,15 +71,16 @@ declare @tmp table(
 		rc2mount float,
 		rc2weight float,
 		rc2size nvarchar(max),
-		rc2memo nvarchar(max)
+		rc2memo nvarchar(max),
+		coin nvarchar(50)
 	)
 	insert into @tmp(gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,pmount,pweight
-		,price,ptotal,e,a,qhref)
+		,price,ptotal,e,a,qhref,coin)
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg,
 		   b.productno pno,b.product pname,b.spec,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
-		   'ordcst'+b.accy
+		   'ordcst'+b.accy,a.coin
 	from view_ordcs b
 	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
 	where 
@@ -96,9 +97,9 @@ declare @tmp table(
 	begin
 		--進貨明細
 		insert into @tmp(gno,noa,no2,odate
-			,rc2accy,rc2no,rc2noq,rc2date,rc2productno,rc2product,rc2mount,rc2weight,rc2size,rc2memo)
+			,rc2accy,rc2no,rc2noq,rc2date,rc2productno,rc2product,rc2mount,rc2weight,rc2size,rc2memo,coin)
 		select '1',a.noa,a.no2,a.odate
-			,b.accy,b.noa,b.noq,b.datea,b.productno,b.product,b.mount,b.[weight],b.size,b.memo
+			,b.accy,b.noa,b.noq,b.datea,b.productno,b.product,b.mount,b.[weight],b.size,b.memo,a.coin
 		from @tmp a
 		left join view_rc2s b on a.noa = b.ordeno and a.no2 = b.no2 
 		where b.noa is not null
@@ -111,7 +112,9 @@ declare @tmp table(
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 	
 	select
-		gno,noa,no2,datea,odate,tggno,left(comp,4) comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,pmount,pweight,price,ptotal,e,a,
+		gno,noa,no2,datea,odate,tggno,left(comp,4) comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,pmount,pweight
+		,isnull(coin+' ','')+dbo.getComma(price,-1) price
+		,ptotal,e,a,
 		row_number()over(partition by left(odate,6) order by left(odate,6),noa,no2,gno) idno,qhref
 		,rc2no rc2noa
 		,rc2noq
@@ -198,10 +201,11 @@ declare @tmp table(
 	rc2mount float,
 	rc2weight float,
 	rc2size nvarchar(max),
-	rc2memo nvarchar(max)
+	rc2memo nvarchar(max),
+	coin nvarchar(50)
 )	
 insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,pmount,pweight
-	,price,ptotal,e,a,notva,notvb,noptotal,qhref)
+	,price,ptotal,e,a,notva,notvb,noptotal,qhref,coin)
 	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname, 
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
@@ -210,7 +214,7 @@ insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,pmo
 			case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
 			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
 				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
-			'ordcst'+b.accy
+			'ordcst'+b.accy,a.coin
 	from view_ordcs b
 	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
 	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
@@ -251,7 +255,7 @@ insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,size,pmo
 		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,size,
 		dbo.getComma( pmount,0) pmount,
 		dbo.getComma( pweight,0) pweight,
-		dbo.getComma( price,-1) price,
+		isnull(coin+' ','')+dbo.getComma( price,-1) price,
 		dbo.getComma( ptotal,0) ptotal,e,a,
 		dbo.getComma( notva,0) notva,
 		dbo.getComma( notvb,0) notvb,
@@ -341,10 +345,11 @@ declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
 		rc2mount float,
 		rc2weight float,
 		rc2size nvarchar(max),
-		rc2memo nvarchar(max)
+		rc2memo nvarchar(max),
+		coin nvarchar(50)
 	)	
 	insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,pmount,pweight
-		,price,ptotal,e,a,notva,notvb,noptotal,qhref)
+		,price,ptotal,e,a,notva,notvb,noptotal,qhref,coin)
 	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, left(a.tgg,4), b.productno pno,b.product pname,
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
@@ -354,7 +359,7 @@ declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
 		    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
 			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
 				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
-			'ordcst'+b.accy
+			'ordcst'+b.accy,a.coin
 	from view_ordcs b
 	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
 	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
@@ -398,7 +403,7 @@ declare @detail nvarchar(max) = case when '#non'=[22] then '' else [22] end
 		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,
 		dbo.getComma( pmount,0) pmount,
 		dbo.getComma( pweight,0) pweight,
-		dbo.getComma( price,-1) price,
+		isnull(coin+' ','')+dbo.getComma( price,-1) price,
 		dbo.getComma( ptotal,0) ptotal,e,a,
 		dbo.getComma( notva,0) notva,
 		dbo.getComma( notvb,0) notvb,
@@ -489,10 +494,11 @@ declare @tmp table(
 		rc2mount float,
 		rc2weight float,
 		rc2size nvarchar(max),
-		rc2memo nvarchar(max)
+		rc2memo nvarchar(max),
+		coin nvarchar(50)
 	)	
 	insert into @tmp(gno,kind,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,pmount,pweight
-		,price,ptotal,e,a,notva,notvb,noptotal,qhref)
+		,price,ptotal,e,a,notva,notvb,noptotal,qhref,coin)
 	select '0' gno,a.kind, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg, b.productno pno,b.product pname,
 			b.spec,
 			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
@@ -502,7 +508,7 @@ declare @tmp table(
 	  	    case when left(a.kind,1)='1' then (b.weight-isnull(d.weight,0)) else (b.weight-isnull(c.weight,0)) end notvb,
 			(case when left(a.kind,1)='1' then (b.mount-isnull(d.mount,0)) 
 				else (case left(a.kind,1) when 'B' then (b.mount-isnull(c.mount,0)) else (b.weight-isnull(c.weight,0)) end) end)*b.price noptotal,
-			'ordcst'+b.accy
+			'ordcst'+b.accy,a.coin
 	from view_ordcs b
 	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
 	outer apply(select sum(rc2s.mount) mount,sum(rc2s.weight) weight from view_rc2s rc2s where (rc2s.ordeno=b.noa) and (b.no2=rc2s.no2)) c
@@ -542,7 +548,7 @@ declare @tmp table(
 		gno,noa,no2,datea,odate,tggno,comp,pno,replace(pname,'~#$',char(39)) pname,spec,csize,
 		dbo.getComma( pmount,0) pmount,
 		dbo.getComma( pweight,0) pweight,
-		dbo.getComma( price,-1) price,
+		isnull(coin+' ','')+dbo.getComma( price,-1) price,
 		dbo.getComma( ptotal,0) ptotal,e,a,
 		dbo.getComma( notva,0) notva,
 		dbo.getComma( notvb,0) notvb,

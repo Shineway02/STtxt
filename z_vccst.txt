@@ -46,7 +46,8 @@ declare @tmp table(
 	car nvarchar(90),
 	tranmoney float,
 	memo nvarchar(50),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	coin nvarchar(50)
 )
 insert into @tmp
 	select
@@ -54,6 +55,7 @@ insert into @tmp
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
 		a.spec,a.mount,a.weight,a.price,a.total,f.nick,b.tranmoney,
 		case when b.trantype = '自取' and b.carno != '' then (case when b.carno = '' then e.nick else b.carno end) else b.carno end,'vccst'+a.accy
+		,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -78,7 +80,7 @@ select
 	product,productno pno,csize,spec,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,car,tranmoney,memo,qhref
 from @tmp order by gno,idno;
 ----------********************************************************************----------
@@ -128,13 +130,14 @@ declare @tmp table(
 	atotal float,
 	comp nvarchar(90),
 	carno2 nvarchar(20),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	coin nvarchar(50)
 )
 insert into @tmp
 	select
 		'0',b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy
+		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -158,7 +161,7 @@ select
 	product,pno,csize,spec,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,comp,carno2,qhref
 from @tmp order by gno,idno;
 ----------********************************************************************----------
@@ -206,13 +209,14 @@ declare @tmp table(
 	aprice float,
 	amount float,
 	aweight float,
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	coin nvarchar(50)
 )
 insert into @tmp
 	select
 		'0',b.noa,b.kind,b.datea,c.nick,a.product,a.productno,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.price,a.mount,a.weight,'vccst'+a.accy
+		a.spec,a.price,a.mount,a.weight,'vccst'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -233,7 +237,9 @@ update @tmp set csize = replace(csize,'~#$','''')
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 
 select
-	gno,noa,datea,cust,aprice,amount,aweight,row_number()over(partition by datea order by datea desc,gno) idno,
+	gno,noa,datea,cust,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	amount,aweight,row_number()over(partition by datea order by datea desc,gno) idno,
 	pno,product,csize,spec,qhref
 from @tmp order by datea desc,idno;
 ----------********************************************************************----------
@@ -277,13 +283,14 @@ declare @tmp table(
 	amount float,
 	aweight float,
 	datea nvarchar(10),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	coin nvarchar(50)
 )
 insert into @tmp
 	select
 		'0',b.noa,b.kind,c.nick,a.product,a.productno,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.price,a.mount,a.weight,b.datea,'vccst'+a.accy
+		a.spec,a.price,a.mount,a.weight,b.datea,'vccst'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -304,7 +311,8 @@ update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(no
 
 select
 	gno,noa,cust,amount,aweight,datea,row_number()over(partition by datea order by datea desc,gno) idno,
-	product,pno,csize,spec,aprice,qhref
+	product,pno,csize,spec,qhref,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice
 from @tmp order by datea desc,idno;
 ----------********************************************************************----------
 z_vccst5:--z_vccst5
@@ -393,13 +401,14 @@ declare @tmp table(
 	weight float,
 	price float,
 	cust nvarchar(50),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	coin nvarchar(50)
 )
 insert into @tmp
 	select
 		'0',b.noa,b.datea,b.kind,c.source,a.productno,a.product,a.spec,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.mount,a.weight,a.price,isnull(d.nick,b.comp),'vccst'+a.accy
+		a.mount,a.weight,a.price,isnull(d.nick,b.comp),'vccst'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join uccb c on a.uno = c.noa
@@ -417,7 +426,9 @@ update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(no
 update @tmp set csize = replace(csize,'~#$','''')
 select
 	gno,noa,datea,source,pno,product,spec,ROW_NUMBER()over(order by gno,datea desc) idno,csize,
-	mount,weight,price,cust,qhref
+	mount,weight,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(price)*1000)) as nvarchar) price,
+	cust,qhref
 from @tmp order by idno;
 ----------********************************************************************----------
 z_vccst7:--z_vccst7
@@ -472,13 +483,14 @@ declare @tmp table(
 	atotal float,
 	comp nvarchar(90),
 	carno2 nvarchar(20),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	coin nvarchar(50)
 )
 insert into @tmp
 	select
 		'0',b.salesno,b.sales,b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy
+		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -494,6 +506,7 @@ insert into @tmp
 		(a.dime between @t_bdime and @t_edime) and
 		(a.lengthb between @t_blengthb and @t_elengthb) and
 		(b.salesno between @t_bsalesno and @t_esalesno)
+		
 insert into @tmp(gno,salesno,sales,amount,aweight)
 	select '1',salesno,sales,sum(amount),sum(aweight) from @tmp group by salesno,sales
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
@@ -503,7 +516,7 @@ select
 	product,pno,csize,spec,salesno,sales salesname,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,comp,carno2,qhref
 from @tmp order by salesno,sales,gno,datea desc,noa;
 ----------********************************************************************----------
@@ -635,13 +648,14 @@ declare @tmp table(
 	comp nvarchar(max),
 	qhref nvarchar(max),
 	aprice float,
-	tranprice float
+	tranprice float,
+	coin nvarchar(50)
 )
 insert into @tmp
 	select
 		'0',a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.weight,a.mount,b.custno,c.nick,'vccst',a.price,b.price
+		a.spec,a.weight,a.mount,b.custno,c.nick,'vccst',a.price,b.price,b.coin
 	from view_vccs a
 	left join view_vcc b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -661,7 +675,9 @@ insert into @tmp(gno,custno,comp,amount,aweight)
 update @tmp set csize = replace(csize,'~#$','''')
 select
 	gno,uno,ROW_NUMBER()over(partition by custno,comp order by custno,comp,gno) idno,
-	product,pno,csize,spec,custno,aprice,tranprice,
+	product,pno,csize,spec,custno,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	tranprice,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
 	comp
@@ -707,7 +723,8 @@ declare @tmp table(
 	t_total6 float,
 	t_total7 float,
 	t_total8 float,
-	t_total9 float
+	t_total9 float,
+	coin nvarchar(50)
 )
 
 insert into @tmp
@@ -716,13 +733,14 @@ insert into @tmp
 		 (case a.typea when '1' then '出' when '2' then '退' end),a.custno,a.comp,c.zip_home,c.addr_home,a.tel,right(a.datea,5),a.noa,
 		 b.productno,b.product,
 		 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		 b.mount,b.price,b.total,a.tax,0,a.total,0,0,0,isnull((isnull(d.total,0)+isnull(d.tax,0)),0),0,0,0,0,0
+		 b.mount,b.price,b.total,a.tax,0,a.total,0,0,0,isnull((isnull(d.total,0)+isnull(d.tax,0)),0),0,0,0,0,0,a.coin
 	from view_vcc[1] a
 	left join view_vccs[1] b on (a.noa = b.noa)
 	left join cust c on a.custno = c.noa
 	left join vccbs d on a.invono = d.invono
 	left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
 	where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
+	
 update @tmp set datea = isnull(typea,'') + isnull(datea,'')
 
 declare @a_count int
@@ -819,7 +837,7 @@ update @tmp set csize = replace(csize,'~#$','''')
 select
 	gno,idno,orderno,pageno,typea,custno,custs,zipcode,addr,tel,datea a1,left(noa,7) noa,pno,products a2,csize,
 	b_mount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
 	b_money,
 	(case when b_tax = 0 then null else b_tax end) b_tax,
 	(case when b_total = 0 then null else b_total end) b_total, 

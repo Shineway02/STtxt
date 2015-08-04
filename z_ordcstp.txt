@@ -76,7 +76,8 @@
 		price decimal(10,3),
 		totals float,
 		size nvarchar(max),
-		memos nvarchar(max) 
+		memos nvarchar(max),
+		coin nvarchar(50)
 	)
 	
 	set @cmd =
@@ -85,7 +86,7 @@
 	" ,b.addr,b.tel,b.fax,b.addr2,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.[money],b.tax,b.total"+
 	" ,a.no2,a.productno,a.product,a.class,a.spec,a.unit,a.mount,a.[weight],a.price,a.total"+
-	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
+	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo,b.coin"+
 	" from view_ordcs"+@t_accy+" a"+
 	" left join view_ordc"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
@@ -96,7 +97,7 @@
 	" order by a.noa,a.no2 "
 	
 	insert into @tmp(gno,noa,cno,acomp,ctel,cfax,tggno,tgg,taddr,tel,fax,addr,sales,odate,kind,paytype,trantype,memo,[money],tax,total
-		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos)
+		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos,coin)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_noa nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_noa=@t_noa
 	
@@ -181,7 +182,7 @@
 		,unit b06
 		,mounts b07
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,weights),1)),4,12)) b08
-		,price b09
+		,isnull(coin+' ','')+dbo.getComma(price,-1) b09
 		,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) b10
 		,memos b11
 		from @tmp a
@@ -268,7 +269,8 @@ z_ordcstp1:--z_ordcstp1
 		price decimal(10,3),
 		totals float,
 		size nvarchar(max),
-		memos nvarchar(max) 
+		memos nvarchar(max),
+		coin nvarchar(50)
 	)
 	
 	set @cmd =
@@ -277,7 +279,7 @@ z_ordcstp1:--z_ordcstp1
 	" ,b.addr,b.tel,b.fax,b.addr2,b.sales,b.odate,b.kind,b.paytype,b.trantype,ISNULL(b.memo,'')"+
 	" ,b.[money],b.tax,b.total"+
 	" ,a.no2,a.productno,a.product,a.class,a.spec,a.unit,a.mount,a.[weight],a.price,a.total"+
-	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo"+
+	" ,case when len(isnull(a.size,''))=0 then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,a.memo,b.coin"+
 	" from view_ordcs"+@t_accy+" a"+
 	" left join view_ordc"+@t_accy+" b on a.noa = b.noa"+
 	" left join tgg c on b.tggno = c.noa"+
@@ -288,7 +290,7 @@ z_ordcstp1:--z_ordcstp1
 	" order by a.noa,a.no2 "
 	
 	insert into @tmp(gno,noa,cno,acomp,ctel,cfax,tggno,tgg,taddr,tel,fax,addr,sales,odate,kind,paytype,trantype,memo,[money],tax,total
-		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos)
+		,no2,productno,product,class,spec,unit,mounts,weights,price,totals,size,memos,coin)
 	execute sp_executesql @cmd,N'@t_bdate nvarchar(20),@t_edate nvarchar(20),@t_noa nvarchar(20)'
 	,@t_bdate=@t_bdate,@t_edate=@t_edate,@t_noa=@t_noa
 	
@@ -375,7 +377,7 @@ z_ordcstp1:--z_ordcstp1
 		,unit b06
 		,mounts b07
 		,dbo.getComma(weights,0) b08
-		,dbo.getComma(price,-1) b09
+		,isnull(coin+' ','')+dbo.getComma(price,-1) b09
 		,dbo.getComma(totals,0) b10
 		,memos b11
 		from @tmp a
@@ -413,14 +415,15 @@ declare @tmp table(
 	price float,
 	weight float,
 	uno nvarchar(max),
-	memo nvarchar(max)
+	memo nvarchar(max),
+	coin nvarchar(50)
 )
 if(@t_kind = '1')
 begin
 	insert into @tmp
 		select
 			'0','bccin','資材入庫',b.noa,b.noq,b.ordcno,b.no2,a.datea,a.storeno,c.store,b.bccno,b.bccname,
-			'' csize,b.mount,b.price,0,b.uno,b.memo
+			'' csize,b.mount,b.price,0,b.uno,b.memo,d.coin
 		from bccin a
 		left join bccins b on a.noa = b.noa
 		left join store c on a.storeno = c.noa
@@ -436,7 +439,7 @@ begin
 		select
 			'0','rc2','進貨單',b.noa,b.noq,b.ordeno,b.no2,a.datea,b.storeno,c.store,b.productno,b.product,
 			case when ltrim(rtrim(isnull(b.size,''))) = '' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else ltrim(rtrim(isnull(b.size,''))) end,
-			b.mount,b.price,b.weight,b.uno,b.memo
+			b.mount,b.price,b.weight,b.uno,b.memo,a.coin
 		from view_rc2 a
 		left join view_rc2s b on a.noa = b.noa
 		left join store c on b.storeno = c.noa
@@ -451,5 +454,7 @@ insert into @tmp(gno,ordcnoa,mount,weight)
 select
 	gno,tablename,
 	destnoa+'-'+destno2 destnoa,ordcnoa,ordcno2,	datea,storeno,stores,
-	productno pno,products,csize,mount,price,weight,uno,memo
+	productno pno,products,csize,mount
+	,isnull(coin+' ','')+dbo.getComma(price,-1) price
+	,weight,uno,memo
 from @tmp order by ordcnoa,gno,datea desc,ordcno2,destnoa,destno2;
