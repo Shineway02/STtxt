@@ -70,7 +70,7 @@ select gno, noa, noq,typea, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4
 ,dbo.getComma(tax,0)  tax
 ,dbo.getComma(ttotal,0)  ttotal
 ,dbo.getComma(btotal,0)  btotal
-,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno,qhref
+,qhref,row_number()over(order by gno,datea,noa,noq) idno --partition by datea,left(datea,6)
 from @tmp order by gno,datea,noa,noq;
 --***********************************************************************************
 z_rc2fe2:--z_rc2fe2
@@ -283,7 +283,8 @@ declare @result table(
 	price float,
 	total float,
 	memo nvarchar(max),
-	qhref nvarchar(max)
+	qhref nvarchar(max),
+	idno int
 )
 insert into @result
 	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.invono,a.datea,a.tggno,
@@ -293,6 +294,7 @@ insert into @result
 			 ,(case when a.typea='2' then -1 else 1 end)*b.weight
 			 , b.price
 			 ,(case when a.typea='2' then -1 else 1 end)*b.total,b.memo,'rc2'+b.accy
+			 ,row_number()over(partition by a.tggno order by a.tggno,b.productno,a.datea)
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
@@ -306,7 +308,8 @@ insert into @result
 if( (select count(*) from @result) >0)
 begin
 	insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
-	select '1',tggno,comp,productno,xproduct,sum(mount),sum(weight),sum(total) from @result group by tggno,comp,productno,xproduct
+	select '1',tggno,comp,productno,MAX(xproduct),sum(mount),sum(weight),sum(total) from @result 
+	group by tggno,comp,productno
 	
 	insert into @result(gno,tggno,comp,productno,mount,weight,total)
 	select '2',tggno,comp,char(255),sum(mount),sum(weight),sum(total) from @result where gno='1' group by tggno,comp
@@ -320,6 +323,7 @@ select gno, type, noa, datea, tggno, comp,productno, xproduct, unit,invono,memo
 		,dbo.getComma(weight,[3])  weight
 		,dbo.getComma(price,[4])  price
 		,dbo.getComma(total,0)  total
-		,qhref,row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno
+		,qhref
+		,idno
 from @result order by tggno,productno,gno,datea;
 --***********************************************************************************
