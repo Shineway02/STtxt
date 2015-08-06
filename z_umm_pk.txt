@@ -16,6 +16,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	
 	declare @t_ispayed nvarchar(max) = case when '#non' = [12] then '' else [12] end
 	declare @t_isunpay nvarchar(max) = case when '#non' = [13] then '' else [13] end
+	declare @t_isweight nvarchar(max) = case when '#non' = [14] then '' else [14] end
 --------------------------------------------------------------------------------------------------------
 	declare @tmpa table(
 		custno nvarchar(20), 
@@ -88,8 +89,11 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	 ------------------------------------------------------------------------------------------ 	
 	declare @linecount int --每頁行數
 	declare @endcount int --總計行數
-	set @linecount = 15
-	set @endcount = 7
+	set @linecount = 36
+	set @endcount = 4 
+		+ case when LEN(@t_ispayed)>0 then 1 else 0 end
+		+ case when LEN(@t_isunpay)>0 then 1 else 0 end
+		+ case when LEN(@t_ispayed)>0 or LEN(@t_isunpay)>0 then 1 else 0 end
 	
 	declare @custno nvarchar(20)
 	declare @money float
@@ -277,7 +281,9 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	,a.ttype tt
 	,a.unit uu
 	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
-	,case when a.[weight]=0 then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
+	--計價單位 PC 都改為 KG
+	,case when a.[weight]=0 or len(@t_isweight)=0 then '' else cast(a.[weight] as nvarchar(50))+isnull(replace(a.unit,'PC','KG'),'') end a2
+	,case when len(@t_isweight)=0 then '' else '重量' end ww
 	,case when a.price=0 then '' else cast(a.price as nvarchar(50)) end a3
 	,case when a.[moneys]=0 then '' else cast(dbo.getComma(a.[moneys],0) as nvarchar(50)) end a4
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp +'</a>'comp
@@ -293,6 +299,9 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	,dbo.getComma(a.[unpay],0) b6
 	,dbo.getComma(a.[tot],0) b7
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+ replace(product,'~#$',char(39)) +'</a>' ppt
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when @t_bmon=@t_emon then @t_bmon else @t_bmon+'～'+@t_emon end+'</a>' e01
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.AD2ChineseEraName(getdate())+'</a>' e02
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.serial+'</a>' e03
 	from @result a
 	left join cust b on a.custno=b.noa
 	order by a.custno,a.sel;
