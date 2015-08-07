@@ -118,8 +118,8 @@ begin
 	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_comp,a_tax,a_money,a_total,a_ordeno)
 		select '1',(@t_pageline+1),pageno,a_noa,a_typea,a_comp,MAX(a_tax),MAX(a_money),MAX(a_total),MAX(a_ordeno) from @tmp 
 		where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_comp
-	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_memo) 
-		select '2',(@t_pageline+2),pageno,a_noa,a_typea,a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_memo
+	insert into @tmp(gno,orderno,pageno,a_noa,a_typea,a_memo,a_ordeno) 
+		select '2',(@t_pageline+2),pageno,a_noa,a_typea,a_memo,MAX(a_ordeno) from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_typea,a_memo
 	fetch next from cursor_table
 	into @a_noa,@orderno,@pageno,@idno,@a_count
 end
@@ -152,7 +152,9 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total
 	,b_uno+(case when len(b_uno)>0 and len(b_memo)>0 then '<BR> &nbsp' else '' end)+b_memo  b_memo
 	,topage,pageno,a_cno,a_acomp,a_ctel,a_cfax,a_caddr
-from @tmp order by a_noa desc,pageno,gno,orderno;
+	,(select top 1 worker from view_orde where noa=a.a_ordeno) oworker
+	,(select top 1 worker from view_vcc where noa=a.a_noa) vworker
+from @tmp a order by a_noa desc,pageno,gno,orderno;
 --*******************************************************************************
 z_vccp_rb02:--z_vccp_rb02
 declare @t_binvo nvarchar(max)
