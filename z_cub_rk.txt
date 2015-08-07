@@ -3,7 +3,8 @@ z_cub_rk:--z_cub_rk
 	declare @cmd nvarchar(max)
 	declare @t_path nvarchar(max) = '[1]'
 	declare @t_db nvarchar(max) = '[2]'
-	declare @t_mm nvarchar = case when '#non' = [3] then '' else [3] end
+	declare @t_mm nvarchar(50) = case when '#non' = [4] then '' else [4] end
+	declare @t_dmm nvarchar(50) = case when '#non' = [5] then '' else [5] end
 	declare @bspec nvarchar(50)
 	declare @bmount nvarchar(50)
 	declare @bsp1 nvarchar(50)
@@ -23,70 +24,70 @@ z_cub_rk:--z_cub_rk
 	declare @bsp15 nvarchar(50)
 	
 	------------------------------------------------------------------------------------------------
-	IF OBJECT_ID('tempdb..#z_cub_rk')is not null
-	BEGIN
-		drop table #z_cub_rk
-	END
-	
-	create table #z_cub_rk (
-		nob nvarchar(20),typea nvarchar(20),datea nvarchar(20),vcceno nvarchar(20),comp nvarchar(50),
-		ordeno nvarchar(20),dime float,radius float,wi float,lengthc float,spec nvarchar(20),hard float,
-		source float
-	)
-	
-	declare @result table( 
-		gno nvarchar(1),nob nvarchar(20),datea nvarchar(20),comp nvarchar(50), 
-		ordeno nvarchar(20),dime float,radius float,wi float 
-		,lengthc float,spec nvarchar(20),hard float,source nvarchar(20) 
-		,lengthb float,lengthb2 float,weight float,bdime float,intotal float 
-		,hweight float,deweight float,hmount float,derate nvarchar(50),bspec nvarchar(50) 
-		,mm nvarchar(4),yyyy nvarchar(4),dd nvarchar(8)
-		,product2 nvarchar(50),bsp1  float ,bsp2  float ,bsp3  float ,bsp4  float ,bsp5  float ,bsp6  float ,bsp7 float ,
-		bsp8  float ,bsp9  float ,bsp10  float ,bsp11  float , bsp12  float ,bsp13  float ,bsp14  float ,
-		bsp15  float )
-
-		insert into @result 
-		select '0'gno,a.noa,a.datea,b.comp,b.ordeno, 
-		b.dime,b.radius,b.width,b.lengthc,b.spec,b.hard,b.source 
-		,b.lengthb,b.lengthb2,b.weight,b.bdime,b.weight+b.lengthb+b.lengthc-b.bdime 
-		,b.hweight,(b.weight+b.lengthb+b.lengthc-b.bdime)-b.hweight,b.hmount 
-		,(Convert(nvarchar(20),round(((b.weight+b.lengthb+b.lengthc-b.bdime)/((b.weight-b.hweight)+0.0000000001))/100,2))+'%') 
-		,b.bspec,right(LEFt(a.datea,6),2),LEFt(a.datea,3),right(a.datea,2),b.productno2
-		,case when b.bspec='TF-202' or b.bspec='WD101' or b.bspec='WD102' or b.bspec='UD-001' or b.bspec='UD002' then hmount else 0 end
-		,case when b.bspec='N653'  then hmount else 0 end
-		,case when b.bspec='N450' then hmount else 0 end
-		,case when b.bspec='STA-008' or b.bspec='STA-007' or b.bspec='STA-011' or b.bspec='TA-053'or b.bspec='TA-052'  then hmount else 0 end
-		,case when b.bspec='TA028' or b.bspec='TA035' or b.bspec='TA005' or b.bspec='TA043' or b.bspec='TA045'
-		 or b.bspec='TA046' or b.bspec='TA047' or b.bspec='TA055' or b.bspec='TA056' or b.bspec='TA057' 
- 		 or b.bspec='TA058' or b.bspec='TA059' or b.bspec='TA060' or b.bspec='TA061' or b.bspec='TA062'
-		 or b.bspec='TA066' then hmount else 0 end
-		,case when b.bspec='TA-026' or b.bspec='TA048' then hmount else 0 end
-		,case when b.bspec='TB001' or b.bspec='TB012' then hmount else 0 end
-		,case when b.bspec='WD201' then hmount else 0 end
-		,case when b.bspec='N-440' OR b.bspec='TD001' or b.bspec='TD007' then hmount else 0 end
-		,case when b.bspec='TA014' OR b.bspec='TA027' or b.bspec='TA042' then hmount else 0 end
-		,case when b.bspec='TA24' then hmount else 0 end
-		,case when b.bspec='TC001' then hmount else 0 end
-		,case when b.bspec='UPI-3054' then hmount else 0 end
-		,case when b.bspec='TD-008' OR b.bspec='TD-009' or b.bspec='TD-010' or b.bspec='TD-010' or b.bspec='TD-011' 
-		 or b.bspec='TD-012' or b.bspec='TD-013' or b.bspec='TD-014' or b.bspec='TF-106' OR b.bspec='TD-107'
-		 OR b.bspec='TA-049' OR b.bspec='TD-050' OR b.bspec='UF-001' OR b.bspec='TF-207' OR b.bspec='TF-208'
-		then hmount else 0 end
-		,case when b.bspec='HDB800' then hmount else 0 end
 
 
-		from view_cubs b left join view_cub a on a.noa=b.noa 	
-		where a.noa =b.noa 
-	---------------------------------------------------------------------------------------
-	declare @reportno nvarchar(max) = '表單編號：LC-11-00-02-05'
 
-	select gno ,nob ,datea ,comp ,
-		ordeno ,dime ,radius ,wi
-		,lengthc ,spec ,hard ,source 
-		,lengthb ,lengthb2 ,weight ,bdime ,intotal,hweight,deweight,hmount 
-		,derate,dd,mm,yyyy,bsp1,bsp2,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10
-		,bsp11,bsp12,bsp13,bsp14,bsp15
-	from @result
-	where right(LEFt(datea,6),2)='04'
-	
-	drop table #z_cub_rk ;
+
+declare @result table( 
+gno nvarchar(1),nob nvarchar(20),datea nvarchar(20),comp nvarchar(50), 
+ordeno nvarchar(20),dime float,radius float,wi float 
+,lengthc float,spec nvarchar(20),hard float,source nvarchar(20) 
+,lengthb float,lengthb2 float,weight float,bdime float,intotal float 
+,hweight float,deweight float,hmount float,derate nvarchar(50),bspec nvarchar(50) 
+,mm nvarchar(4),yyyy nvarchar(4),dd nvarchar(8) 
+,product2 nvarchar(50),bsp1 float ,bsp2 float ,bsp3 float ,bsp4 float ,bsp5 float ,bsp6 float ,bsp7 float , 
+bsp8 float ,bsp9 float ,bsp10 float ,bsp11 float , bsp12 float ,bsp13 float ,bsp14 float , 
+bsp15 float , gw float(50)) 
+
+insert into @result 
+select '0'gno,a.noa,a.datea,b.comp,b.ordeno, 
+b.dime,b.radius,b.width,b.lengthc,b.spec,b.hard,b.source 
+,b.lengthb,b.lengthb2,b.weight,b.bdime,b.weight+b.lengthb+b.lengthc-b.bdime 
+,b.hweight,(b.weight+b.lengthb+b.lengthc-b.bdime)-b.hweight,b.hmount 
+,(Convert(nvarchar(20),round(((b.weight+b.lengthb+b.lengthc-b.bdime)/((b.weight-b.hweight)+0.0000000001))/100,2))+'%') 
+,b.bspec,right(LEFt(@t_mm,6),2),LEFt(@t_mm,3),right(@t_mm,2),b.productno2 
+,case when b.bspec='TF-202' or b.bspec='WD101' or b.bspec='WD102' or b.bspec='UD-001' or b.bspec='UD002' then hmount else 0 end 
+,case when b.bspec='N653' then hmount else 0 end 
+,case when b.bspec='N450' then hmount else 0 end 
+,case when b.bspec='STA-008' or b.bspec='STA-007' or b.bspec='STA-011' or b.bspec='TA-053'or b.bspec='TA-052' then hmount else 0 end 
+,case when b.bspec='TA028' or b.bspec='TA035' or b.bspec='TA005' or b.bspec='TA043' or b.bspec='TA045' 
+or b.bspec='TA046' or b.bspec='TA047' or b.bspec='TA055' or b.bspec='TA056' or b.bspec='TA057' 
+or b.bspec='TA058' or b.bspec='TA059' or b.bspec='TA060' or b.bspec='TA061' or b.bspec='TA062' 
+or b.bspec='TA066' then hmount else 0 end 
+,case when b.bspec='TA-026' or b.bspec='TA048' then hmount else 0 end 
+,case when b.bspec='TB001' or b.bspec='TB012' then hmount else 0 end 
+,case when b.bspec='WD201' then hmount else 0 end 
+,case when b.bspec='N-440' OR b.bspec='TD001' or b.bspec='TD007' then hmount else 0 end 
+,case when b.bspec='TA014' OR b.bspec='TA027' or b.bspec='TA042' then hmount else 0 end 
+,case when b.bspec='TA24' then hmount else 0 end 
+,case when b.bspec='TC001' then hmount else 0 end 
+,case when b.bspec='UPI-3054' then hmount else 0 end 
+,case when b.bspec='TD-008' OR b.bspec='TD-009' or b.bspec='TD-010' or b.bspec='TD-010' or b.bspec='TD-011' 
+or b.bspec='TD-012' or b.bspec='TD-013' or b.bspec='TD-014' or b.bspec='TF-106' OR b.bspec='TD-107' 
+OR b.bspec='TA-049' OR b.bspec='TD-050' OR b.bspec='UF-001' OR b.bspec='TF-207' OR b.bspec='TF-208' 
+then hmount else 0 end 
+,case when b.bspec='HDB800' then hmount else 0 end 
+,b.gweight
+from view_cubs b left join view_cub a on a.noa=b.noa 
+where a.noa =b.noa  AND a.datea between @t_mm and @t_dmm 
+
+insert into @result (gno,dime,radius,wi,lengthc,hard,lengthb,lengthb2,weight,bdime,intotal,hweight,hmount,bsp1,bsp2
+,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10,bsp11,bsp12,bsp13,bsp14,bsp15,gw)
+select '1',sum(dime),SUM(radius),sum(wi),SUM(lengthc),SUM(hard),SUM(lengthb),SUM(lengthb2),SUM(weight),SUM(bdime)
+,SUM(intotal),SUM(hweight),SUM(hmount),sum(bsp1),SUM(bsp2),SUM(bsp3),
+SUM(bsp4),SUM(bsp5),SUM(bsp6),SUM(bsp7),SUM(bsp8),SUM(bsp9),SUM(bsp10),SUM(bsp11),SUM(bsp12)
+,SUM(bsp13),SUM(bsp14),SUM(bsp15),sum(gw)
+from @result
+where datea between @t_mm and @t_dmm 
+
+--------------------------------------------------------------------------------------- 
+
+--group by gno
+
+select gno ,nob ,datea ,comp , 
+ordeno ,dime ,radius ,wi 
+,lengthc ,spec ,hard ,source 
+,lengthb ,lengthb2 ,weight ,bdime ,intotal,hweight,deweight,hmount 
+,derate,dd,mm,yyyy,bsp1,bsp2,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10 
+,bsp11,bsp12,bsp13,bsp14,bsp15 ,gw
+from @result  ;
