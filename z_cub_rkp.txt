@@ -60,6 +60,37 @@ z_cub_rkp01:--z_cub_rkp01
 	declare @n int = 0
 	declare @key nvarchar(max)
 	
+	/*
+	bdime 前處理液總用量(KG)  g
+	Productno2 接著劑型號     h
+	Product2 接著劑規格             i
+	need 接著劑總用量 (kg)    z 
+	edime 稀釋液用量/清洗(KG) j
+	bspec 背漆型號規格        k
+	hmount 背漆重量               l
+	wmount 背漆稀釋液總用量(KG) m
+	*/
+	declare @t_bdime float
+	declare @t_productno2 nvarchar(max)
+	declare @t_product2 nvarchar(max)
+	declare @t_need float
+	declare @t_edime float
+	declare @t_bspec nvarchar(max)
+	declare @t_hmount float
+	declare @t_wmount float
+	/*
+	Spec  PVC皮型號
+	Radius PVC皮規格
+	Lengthb PVC皮規格
+	Hard PE膜型號
+	Lengthb2 PE膜用量M
+	*/
+	declare @t_spec nvarchar(max)
+	declare @t_radius float
+	declare @t_lengthb float
+	declare @t_hard nvarchar(max)
+	declare @t_lengthb2 float
+	
 	declare cursor_table cursor for
 	select top 6 a.noa,a.noq,a.ordeno,a.no2,a.custno,a.comp
 		,a.size,a.dime,a.radius,a.width,a.lengthb,a.[weight],a.bdime
@@ -80,12 +111,68 @@ z_cub_rkp01:--z_cub_rkp01
 		,@uno,@oth,@price,@mount,@btime,@etime,@need
 	while(@@FETCH_STATUS <> -1)
 	begin		
+		select @t_bdime=0,@t_productno2='',@t_product2=''
+			,@t_need=0,@t_edime=0,@t_bspec='',@t_hmount=0,@t_wmount=0
+		--bdime 前處理液總用量
+		select @t_bdime=isnull(a.mount,0)
+		from view_cubt a
+		left join bcc b on a.productno=b.noa
+		left join bcctype c on b.typea=c.noa
+		where a.noa=@noa and a.nor=@noq and CHARINDEX('前處理',a.product)>0
+		--Productno2 接著劑型號
+		--Product2 接著劑規格
+		--need 接著劑總用量 (kg)
+		select @t_productno2=a.productno,@t_product2=a.product,@t_need=isnull(a.mount,0)
+		from view_cubt a
+		left join bcc b on a.productno=b.noa
+		left join bcctype c on b.typea=c.noa
+		where a.noa=@noa and a.nor=@noq and CHARINDEX('接著劑',c.namea)>0
+		--edime 稀釋液用量/清洗(KG)
+		select @t_edime=isnull(a.mount,0)
+		from view_cubt a
+		left join bcc b on a.productno=b.noa
+		left join bcctype c on b.typea=c.noa
+		where a.noa=@noa and a.nor=@noq and CHARINDEX('稀釋液',a.product)>0 and CHARINDEX('背漆稀釋液',a.product)=0
+		--bspec 背漆型號規格
+		--hmount 背漆重量 
+		select @t_bspec=a.product,@t_hmount=isnull(a.mount,0)
+		from view_cubt a
+		left join bcc b on a.productno=b.noa
+		left join bcctype c on b.typea=c.noa
+		where a.noa=@noa and a.nor=@noq and CHARINDEX('背漆',c.namea)>0 and CHARINDEX('背漆稀釋液',a.product)=0
+		--wmount 背漆稀釋液總用量(KG)
+		select @t_wmount=isnull(a.mount,0)
+		from view_cubt a
+		left join bcc b on a.productno=b.noa
+		left join bcctype c on b.typea=c.noa
+		where a.noa=@noa and a.nor=@noq and CHARINDEX('背漆稀釋液',a.product)>0
+	
+		--面漆 or PVC
+		select @t_spec='',@t_radius=0,@t_lengthb=0,@t_hard='',@t_lengthb2=0
+		if exists(select *
+			from view_cubt a
+			left join bcc b on a.productno=b.noa
+			left join bcctype c on b.typea=c.noa
+			where a.noa=@noa and a.nor=@noq and CHARINDEX('面漆',c.namea)>0)
+		begin
+			select @t_spec=a.product,@t_hard=isnull(a.mount,0)
+			from view_cubt a
+			left join bcc b on a.productno=b.noa
+			left join bcctype c on b.typea=c.noa
+			where a.noa=@noa and a.nor=@noq and CHARINDEX('面漆',c.namea)>0
+		end
+		else
+		begin
+			select @t_spec=@spec,@t_radius=@radius,@t_lengthb=@lengthb,@t_hard=@hard,@t_lengthb2=@lengthb2
+		end
+	
 		set @n = @n + 1
 		set @key = RIGHT('00'+CAST(@n as nvarchar),2)
 		set @cmd = "update #z_cub_rkp01 set a"+@key+"=@ordeno+'-'+@no2,b"+@key+"=@comp
 			,c"+@key+"=substring('一二三四五六',@n,1),d"+@key+"=@size
 			,e"+@key+"=cast(@dime as nvarchar)+'X'+cast(@width as nvarchar)
-			,f"+@key+"=dbo.getComma(@weight,0),g"+@key+"=dbo.getComma(@bdime,0)
+			,f"+@key+"=dbo.getComma(@weight,0)
+			,g"+@key+"=dbo.getComma(@bdime,0)
 			,h"+@key+"=@productno2,i"+@key+"=@product2
 			,j"+@key+"=dbo.getComma(@edime,0)
 			,k"+@key+"=@bspec,l"+@key+"=dbo.getComma(@hmount,0)
@@ -96,7 +183,7 @@ z_cub_rkp01:--z_cub_rkp01
 			,t"+@key+"=dbo.getComma(@hweight,0),u"+@key+"=@uno,v"+@key+"=@oth
 			,w"+@key+"=dbo.getComma(@price,0),x"+@key+"=dbo.getComma(@mount,0)
 			,y"+@key+"=@btime
-			,z"+@key+"=@need"
+			,z"+@key+"=@need" 
 		execute sp_executesql @cmd,N'@ordeno nvarchar(max),@no2 nvarchar(max)
 			,@comp nvarchar(max),@n int,@size nvarchar(max),@dime float,@width float
 			,@weight float,@bdime float,@productno2 nvarchar(max),@product2 nvarchar(max)
@@ -106,12 +193,12 @@ z_cub_rkp01:--z_cub_rkp01
 			,@oth nvarchar(max),@price float,@mount float,@btime nvarchar(max),@etime nvarchar(max)
 			,@need nvarchar(max)'
 			,@ordeno=@ordeno,@no2=@no2,@comp=@comp
-			,@n=@n,@size=@size,@dime=@dime,@width=@width,@weight=@weight,@bdime=@bdime
-			,@productno2=@productno2,@product2=@product2,@edime=@edime
-			,@bspec=@bspec,@hmount=@hmount,@wmount=@wmount,@spec=@spec
-			,@radius=@radius,@lengthb=@lengthb,@hard=@hard,@lengthb2=@lengthb2
+			,@n=@n,@size=@size,@dime=@dime,@width=@width,@weight=@weight,@bdime=@t_bdime
+			,@productno2=@t_productno2,@product2=@t_product2,@edime=@t_edime
+			,@bspec=@t_bspec,@hmount=@t_hmount,@wmount=@t_wmount,@spec=@t_spec
+			,@radius=@t_radius,@lengthb=@t_lengthb,@hard=@t_hard,@lengthb2=@t_lengthb2
 			,@source=@source,@lengthc=@lengthc,@hweight=@hweight,@uno=@uno
-			,@oth=@oth,@price=@price,@mount=@mount,@btime=@btime,@etime=@etime,@need=@need
+			,@oth=@oth,@price=@price,@mount=@mount,@btime=@btime,@etime=@etime,@need=@t_need
 			
 		fetch next from cursor_table
 		into @noa,@noq,@ordeno,@no2,@custno,@comp
