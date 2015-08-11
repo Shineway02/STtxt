@@ -142,7 +142,7 @@ insert into @result
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
-		  (a.salesno between @t_bsalesno and @t_esalesno) and
+		  (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) and
 		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
 	order by a.tggno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
@@ -214,7 +214,7 @@ insert into @result
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
-		  (a.salesno between @t_bsalesno and @t_esalesno) and
+		  (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) and
 		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
 	order by b.productno,gno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
@@ -282,7 +282,7 @@ insert into @result
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
-		  (a.salesno between @t_bsalesno and @t_esalesno) and
+		  (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) and
 		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
 	order by a.tggno,b.productno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
