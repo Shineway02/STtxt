@@ -1,4 +1,4 @@
-z_anavccfe1:--z_anavccfe1
+﻿z_anavccfe1:--z_anavccfe1
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 set @t_bdate = case when '#non'=[2] then '' else [2] end
@@ -100,7 +100,7 @@ from view_vcc a
 left join view_vccs b on a.noa = b.noa
 left join view_costs c on b.productno = c.productno and left(a.datea,6) = c.mon
 left join cust d on a.custno = d.noa
-left join view_ucaucc e on b.productno = d.noa
+left join view_ucaucc e on b.productno = e.noa
 where isnull(a.custno,'') != '' and (a.datea between @t_bdate and @t_edate) and
 		  (len(@t_groupano)=0 or e.groupano = @t_groupano)
 		  and a.custno between @t_bcustno and @t_ecustno
@@ -692,3 +692,4 @@ begin
 	select * from @tmp order by salesno,datea,noa
 end
 ;
+

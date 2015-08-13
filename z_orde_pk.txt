@@ -7,6 +7,7 @@ set @t_bnoa = case when '#non'=[3] then '' else [3] end
 set @t_enoa = case when '#non'=[4] then char(255) else [4] end
 
 ---------------------------------------------------------------------------------
+SET QUOTED_IDENTIFIER OFF
 
 declare @tmp1 table(
 	gno nvarchar(1),
@@ -39,7 +40,7 @@ declare @tmp1 table(
 )
 
 insert into @tmp1
-select '0',a.noa,a.odate,b.datea,a.nick,a.custorde,
+select '0',a.noa,a.odate,b.datea,a.nick,a.custorde+ '   ' + a.contract,
 	   case when LEN(dbo.split(a.addr2,'/',0)) > 0 then dbo.split(a.addr2,'/',0) + '/' + dbo.split(a.addr2,'/',1)else + dbo.split(a.addr2,'/',1) end,
 	   dbo.split(a.addr2,'/',2),a.memo,--簽單號碼
 	   b.ucolor,b.scolor,b.productno,b.size,b.mount,b.unit2,b.weight,b.price,b.unit,b.memo,
@@ -102,7 +103,7 @@ begin
 		set @srecno = 1 
 		
 		insert into @tmp2(gno,noa,odate,datea,nick,custorde,comptel,addr,memo,s_ucolor1,s_scolor1,s_pno1,s_size1,s_mount1,s_munit1,s_weight1,s_price1,s_punit1,s_memo1) 
-		select gno,noa,odate,datea,nick,custorde,comptel,addr,memo,s_ucolor,s_scolor,s_pno,s_size,s_mount,s_munit,s_weight,s_price,s_punit,s_memo
+		select gno,noa,odate,datea,nick,custorde,comptel,addr,memo,s_ucolor,s_scolor,s_pno,REPLACE (s_size,'~#$',"'"),s_mount,s_munit,s_weight,s_price,s_punit,s_memo
 		from @tmp1 where idno = @idno1 
 		
 		set @noa2 = @noa1 
@@ -116,7 +117,7 @@ begin
 		update @tmp2 set s_ucolor2 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor2 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno2 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size2 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size2 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount2 = (select s_mount from @tmp1 where idno = @idno1),  
 						 s_munit2 = (select s_munit from @tmp1 where idno = @idno1),
 						 s_weight2 = (select s_weight from @tmp1 where idno = @idno1),
@@ -134,7 +135,7 @@ begin
 		update @tmp2 set s_ucolor3 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor3 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno3 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size3 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size3 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount3 = (select s_mount from @tmp1 where idno = @idno1),  
 						 s_munit3 = (select s_munit from @tmp1 where idno = @idno1),
 						 s_weight3 = (select s_weight from @tmp1 where idno = @idno1),
@@ -152,7 +153,7 @@ begin
 		update @tmp2 set s_ucolor4 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor4 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno4 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size4 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size4 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount4 = (select s_mount from @tmp1 where idno = @idno1),  
 						 s_munit4 = (select s_munit from @tmp1 where idno = @idno1),
 						 s_weight4 = (select s_weight from @tmp1 where idno = @idno1),
@@ -170,7 +171,7 @@ begin
 		update @tmp2 set s_ucolor5 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor5 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno5 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size5 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size5 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount5 = (select s_mount from @tmp1 where idno = @idno1),  
 						 s_munit5 = (select s_munit from @tmp1 where idno = @idno1),
 						 s_weight5 = (select s_weight from @tmp1 where idno = @idno1),
@@ -188,7 +189,7 @@ begin
 		update @tmp2 set s_ucolor6 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor6 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno6 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size6 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size6 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount6 = (select s_mount from @tmp1 where idno = @idno1), 
 						 s_munit6 = (select s_munit from @tmp1 where idno = @idno1), 
 						 s_weight6 = (select s_weight from @tmp1 where idno = @idno1),
@@ -206,7 +207,7 @@ begin
 		update @tmp2 set s_ucolor7 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor7 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno7 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size7 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size7 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount7 = (select s_mount from @tmp1 where idno = @idno1), 
 						 s_munit7 = (select s_munit from @tmp1 where idno = @idno1), 
 						 s_weight7 = (select s_weight from @tmp1 where idno = @idno1),
@@ -224,7 +225,7 @@ begin
 		update @tmp2 set s_ucolor8 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor8 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno8 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size8 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size8 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount8 = (select s_mount from @tmp1 where idno = @idno1),  
 						 s_munit8 = (select s_munit from @tmp1 where idno = @idno1),
 						 s_weight8 = (select s_weight from @tmp1 where idno = @idno1),
@@ -242,7 +243,7 @@ begin
 		update @tmp2 set s_ucolor9 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor9 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno9 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size9 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size9 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount9 = (select s_mount from @tmp1 where idno = @idno1), 
 						 s_munit9 = (select s_munit from @tmp1 where idno = @idno1), 
 						 s_weight9 = (select s_weight from @tmp1 where idno = @idno1),
@@ -260,7 +261,7 @@ begin
 		update @tmp2 set s_ucolor10 = (select s_ucolor from @tmp1 where idno = @idno1),
 						 s_scolor10 = (select s_scolor from @tmp1 where idno = @idno1),
 						 s_pno10 = (select s_pno from @tmp1 where idno = @idno1), 
-						 s_size10 = (select s_size from @tmp1 where idno = @idno1), 
+						 s_size10 = (select REPLACE (s_size,'~#$',"'") from @tmp1 where idno = @idno1), 
 						 s_mount10 = (select s_mount from @tmp1 where idno = @idno1),  
 						 s_munit10 = (select s_munit from @tmp1 where idno = @idno1),
 						 s_weight10 = (select s_weight from @tmp1 where idno = @idno1),
@@ -358,16 +359,38 @@ end
 close cursor_table 
 deallocate cursor_table 
  
-update @tmp2 set s_mount1 = null where s_mount1 = 0.00
-update @tmp2 set s_mount2 = null where s_mount2 = 0.00 
-update @tmp2 set s_mount3 = null where s_mount3 = 0.00 
-update @tmp2 set s_mount4 = null where s_mount4 = 0.00 
-update @tmp2 set s_mount5 = null where s_mount5 = 0.00 
-update @tmp2 set s_mount6 = null where s_mount6 = 0.00
-update @tmp2 set s_mount7 = null where s_mount7 = 0.00 
-update @tmp2 set s_mount8 = null where s_mount8 = 0.00 
-update @tmp2 set s_mount9 = null where s_mount9 = 0.00 
-update @tmp2 set s_mount10 = null where s_mount10 = 0.00 
+update @tmp2 set s_mount1 = null where s_mount1 = 0
+update @tmp2 set s_mount2 = null where s_mount2 = 0
+update @tmp2 set s_mount3 = null where s_mount3 = 0
+update @tmp2 set s_mount4 = null where s_mount4 = 0
+update @tmp2 set s_mount5 = null where s_mount5 = 0
+update @tmp2 set s_mount6 = null where s_mount6 = 0
+update @tmp2 set s_mount7 = null where s_mount7 = 0
+update @tmp2 set s_mount8 = null where s_mount8 = 0
+update @tmp2 set s_mount9 = null where s_mount9 = 0
+update @tmp2 set s_mount10 = null where s_mount10 = 0
+
+update @tmp2 set s_weight1 = null where s_weight1 = 0
+update @tmp2 set s_weight2 = null where s_weight2 = 0
+update @tmp2 set s_weight3 = null where s_weight3 = 0
+update @tmp2 set s_weight4 = null where s_weight4 = 0
+update @tmp2 set s_weight5 = null where s_weight5 = 0
+update @tmp2 set s_weight6 = null where s_weight6 = 0
+update @tmp2 set s_weight7 = null where s_weight7 = 0
+update @tmp2 set s_weight8 = null where s_weight8 = 0
+update @tmp2 set s_weight9 = null where s_weight9 = 0
+update @tmp2 set s_weight10 = null where s_weight10 = 0
+
+update @tmp2 set s_price1 = null where s_price1 = 0
+update @tmp2 set s_price2 = null where s_price2 = 0
+update @tmp2 set s_price3 = null where s_price3 = 0
+update @tmp2 set s_price4 = null where s_price4 = 0
+update @tmp2 set s_price5 = null where s_price5 = 0
+update @tmp2 set s_price6 = null where s_price6 = 0
+update @tmp2 set s_price7 = null where s_price7 = 0
+update @tmp2 set s_price8 = null where s_price8 = 0
+update @tmp2 set s_price9 = null where s_price9 = 0
+update @tmp2 set s_price10 = null where s_price10 = 0 
 
 select gno,noa,odate,datea,nick,custorde,comptel,addr,memo,
 	   s_ucolor1,s_ucolor2,s_ucolor3,s_ucolor4,s_ucolor5,s_ucolor6,s_ucolor7,s_ucolor8,s_ucolor9,s_ucolor10,
@@ -376,7 +399,7 @@ select gno,noa,odate,datea,nick,custorde,comptel,addr,memo,
 	   s_size1,s_size2,s_size3,s_size4,s_size5,s_size6,s_size7,s_size8,s_size9,s_size10,
 	   dbo.getComma(s_mount1,-1)+s_munit1 s_mount1 ,dbo.getComma(s_mount2,-1)+s_munit2 s_mount2,dbo.getComma(s_mount3,-1)+s_munit3 s_mount3,dbo.getComma(s_mount4,-1)+s_munit4 s_mount4,dbo.getComma(s_mount5,-1)+s_munit5 s_mount5,dbo.getComma(s_mount6,-1)+s_munit6 s_mount6,dbo.getComma(s_mount7,-1)+s_munit7 s_mount7,dbo.getComma(s_mount8,-1)+s_munit8 s_mount8,dbo.getComma(s_mount9,-1)+s_munit9 s_mount9,dbo.getComma(s_mount10,-1)+s_munit10 s_mount10,
 	   dbo.getComma(s_weight1,-1)+'KG' s_weight1,dbo.getComma(s_weight2,-1)+'KG' s_weight2,dbo.getComma(s_weight3,-1)+'KG' s_weight3,dbo.getComma(s_weight4,-1)+'KG' s_weight4,dbo.getComma(s_weight5,-1)+'KG' s_weight5,dbo.getComma(s_weight6,-1)+'KG' s_weight6,dbo.getComma(s_weight7,-1)+'KG' s_weight7,dbo.getComma(s_weight8,-1)+'KG' s_weight8,dbo.getComma(s_weight9,-1)+'KG' s_weight9,dbo.getComma(s_weight10,-1)+'KG' s_weight10,
-	   dbo.getComma(s_price1,-1)+s_punit1 s_price1,dbo.getComma(s_price2,-1)+s_punit2 s_price2,dbo.getComma(s_price3,-1)+s_punit3 s_price3,dbo.getComma(s_price4,-1)+s_punit4 s_price4,dbo.getComma(s_price5,-1)+s_punit5 s_price5,dbo.getComma(s_price6,-1)+s_punit6 s_price6,dbo.getComma(s_price7,-1)+s_punit7 s_price7,dbo.getComma(s_price8,-1)+s_punit8 s_price8,dbo.getComma(s_price9,-1)+s_punit9 s_price9,dbo.getComma(s_price10,-1)+s_punit10 s_price10,
+	   dbo.getComma(s_price1,-1)+'/'+s_punit1 s_price1,dbo.getComma(s_price2,-1)+'/'+s_punit2 s_price2,dbo.getComma(s_price3,-1)+'/'+s_punit3 s_price3,dbo.getComma(s_price4,-1)+'/'+s_punit4 s_price4,dbo.getComma(s_price5,-1)+'/'+s_punit5 s_price5,dbo.getComma(s_price6,-1)+'/'+s_punit6 s_price6,dbo.getComma(s_price7,-1)+'/'+s_punit7 s_price7,dbo.getComma(s_price8,-1)+'/'+s_punit8 s_price8,dbo.getComma(s_price9,-1)+'/'+s_punit9 s_price9,dbo.getComma(s_price10,-1)+'/'+s_punit10 s_price10,
 	   s_memo1,s_memo2,s_memo3,s_memo4,s_memo5,s_memo6,s_memo7,s_memo8,s_memo9,s_memo10,
 	   t_uno1,t_uno2,t_uno3,t_uno4,t_uno5,t_pno1,t_pno2,t_pno3,t_pno4,t_pno5,
 	   t_size1,t_size2,t_size3,t_size4,t_size5,t_mount1,t_mount2,t_mount3,t_mount4,t_mount5
