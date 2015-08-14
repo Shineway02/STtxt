@@ -1,33 +1,9 @@
-z_cub_rk:--z_cub_rk
+z_cub_rk01:--z_cub_rk01
 	SET QUOTED_IDENTIFIER OFF
-	declare @cmd nvarchar(max)
-	declare @t_path nvarchar(max) = '[1]'
-	declare @t_db nvarchar(max) = '[2]'
-	declare @t_mm nvarchar(50) = case when '#non' = [4] then '' else [4] end
-	declare @t_dmm nvarchar(50) = case when '#non' = [5] then '' else [5] end
-	declare @bspec nvarchar(50)
-	declare @bmount nvarchar(50)
-	declare @bsp1 nvarchar(50)
-	declare @bsp2 nvarchar(50)
-	declare @bsp3 nvarchar(50)
-	declare @bsp4 nvarchar(50)
-	declare @bsp5 nvarchar(50)
-	declare @bsp6 nvarchar(50)
-	declare @bsp7 nvarchar(50)
-	declare @bsp8 nvarchar(50)
-	declare @bsp9 nvarchar(50)
-	declare @bsp10 nvarchar(50)
-	declare @bsp11 nvarchar(50)
-	declare @bsp12 nvarchar(50)
-	declare @bsp13 nvarchar(50)
-	declare @bsp14 nvarchar(50)
-	declare @bsp15 nvarchar(50)
+	declare @t_mm nvarchar(50) = case when '#non' = [1] then '' else [1] end
 	
+
 	------------------------------------------------------------------------------------------------
-
-
-
-
 declare @result table( 
 gno nvarchar(1),nob nvarchar(20),datea nvarchar(20),comp nvarchar(50), 
 ordeno nvarchar(20),dime float,radius float,wi float 
@@ -37,57 +13,126 @@ ordeno nvarchar(20),dime float,radius float,wi float
 ,mm nvarchar(4),yyyy nvarchar(4),dd nvarchar(8) 
 ,product2 nvarchar(50),bsp1 float ,bsp2 float ,bsp3 float ,bsp4 float ,bsp5 float ,bsp6 float ,bsp7 float , 
 bsp8 float ,bsp9 float ,bsp10 float ,bsp11 float , bsp12 float ,bsp13 float ,bsp14 float , 
-bsp15 float , gw float(50)) 
+bsp15 float , gw float,price float,prate nvarchar(20)) 
 
 insert into @result 
 select '0'gno,a.noa,a.datea,b.comp,b.ordeno, 
 b.dime,b.radius,b.width,b.lengthc,b.spec,b.hard,b.source 
 ,b.lengthb,b.lengthb2,b.weight,b.bdime,b.weight+b.lengthb+b.lengthc-b.bdime 
 ,b.hweight,(b.weight+b.lengthb+b.lengthc-b.bdime)-b.hweight,b.hmount 
-,(Convert(nvarchar(20),round(((b.weight+b.lengthb+b.lengthc-b.bdime)/((b.weight-b.hweight)+0.0000000001))/100,2))+'%') 
+,case when (b.weight-b.hweight) <> 0 then 
+(Convert(nvarchar(20),round(((b.weight+b.lengthb+b.lengthc-b.bdime)/((b.weight-b.hweight)))/100,2))+'%') 
+end 
 ,b.bspec,right(LEFt(@t_mm,6),2),LEFt(@t_mm,3),right(@t_mm,2),b.productno2 
-,case when b.bspec='TF-202' or b.bspec='WD101' or b.bspec='WD102' or b.bspec='UD-001' or b.bspec='UD002' then hmount else 0 end 
-,case when b.bspec='N653' then hmount else 0 end 
-,case when b.bspec='N450' then hmount else 0 end 
-,case when b.bspec='STA-008' or b.bspec='STA-007' or b.bspec='STA-011' or b.bspec='TA-053'or b.bspec='TA-052' then hmount else 0 end 
-,case when b.bspec='TA028' or b.bspec='TA035' or b.bspec='TA005' or b.bspec='TA043' or b.bspec='TA045' 
-or b.bspec='TA046' or b.bspec='TA047' or b.bspec='TA055' or b.bspec='TA056' or b.bspec='TA057' 
-or b.bspec='TA058' or b.bspec='TA059' or b.bspec='TA060' or b.bspec='TA061' or b.bspec='TA062' 
-or b.bspec='TA066' then hmount else 0 end 
-,case when b.bspec='TA-026' or b.bspec='TA048' then hmount else 0 end 
-,case when b.bspec='TB001' or b.bspec='TB012' then hmount else 0 end 
-,case when b.bspec='WD201' then hmount else 0 end 
-,case when b.bspec='N-440' OR b.bspec='TD001' or b.bspec='TD007' then hmount else 0 end 
-,case when b.bspec='TA014' OR b.bspec='TA027' or b.bspec='TA042' then hmount else 0 end 
-,case when b.bspec='TA24' then hmount else 0 end 
-,case when b.bspec='TC001' then hmount else 0 end 
-,case when b.bspec='UPI-3054' then hmount else 0 end 
-,case when b.bspec='TD-008' OR b.bspec='TD-009' or b.bspec='TD-010' or b.bspec='TD-010' or b.bspec='TD-011' 
-or b.bspec='TD-012' or b.bspec='TD-013' or b.bspec='TD-014' or b.bspec='TF-106' OR b.bspec='TD-107' 
-OR b.bspec='TA-049' OR b.bspec='TD-050' OR b.bspec='UF-001' OR b.bspec='TF-207' OR b.bspec='TF-208' 
+,b.need 
+-----------------------------判斷接著劑染料顏色---------------------------------------------------------------------- 
+,case when b.bspec like 'N653' then hmount else 0 end 
+,case when b.bspec like 'N450' then hmount else 0 end 
+,case when b.bspec like 'STA-008' or b.bspec like 'STA-007' or b.bspec like 'STA-011' or b.bspec like 'TA-053'or b.bspec like 'TA-052' then 0 else 0 end 
+,case when b.bspec like 'TA028' or b.bspec like 'TA035' or b.bspec like 'TA005' or b.bspec like 'TA043' or b.bspec like 'TA045' 
+or b.bspec like 'TA046' or b.bspec like 'TA047' or b.bspec like 'TA055' or b.bspec like 'TA056' or b.bspec like 'TA057' 
+or b.bspec like 'TA058' or b.bspec like 'TA059' or b.bspec like 'TA060' or b.bspec like 'TA061' or b.bspec like 'TA062' 
+or b.bspec like 'TA066' then hmount else 0 end 
+,case when b.bspec like 'TA-026' or b.bspec like 'TA048' then hmount else 0 end 
+,hmount 
+,case when b.bspec like 'WD201' then hmount else 0 end 
+,case when b.bspec like 'N-440' OR b.bspec like 'TD001' or b.bspec like 'TD007' then hmount else 0 end 
+,case when b.bspec like 'TA014' OR b.bspec like 'TA027' or b.bspec like 'TA042' then hmount else 0 end 
+,case when b.bspec like 'TA24' then hmount else 0 end 
+,case when b.bspec like 'TC001' then hmount else 0 end 
+,case when b.bspec like 'UPI-3054' then hmount else 0 end 
+,case when b.bspec like 'TD-008' OR b.bspec like 'TD-009' or b.bspec like 'TD-010' or b.bspec like 'TD-010' or b.bspec like 'TD-011' 
+or b.bspec like 'TD-012' or b.bspec like 'TD-013' or b.bspec like 'TD-014' or b.bspec like 'TF-106' OR b.bspec like 'TD-107' 
+OR b.bspec like 'TA-049' OR b.bspec like 'TD-050' OR b.bspec like 'UF-001' OR b.bspec like 'TF-207' OR b.bspec like 'TF-208' 
 then hmount else 0 end 
-,case when b.bspec='HDB800' then hmount else 0 end 
-,b.gweight
-from view_cubs b left join view_cub a on a.noa=b.noa 
-where a.noa =b.noa  AND a.datea between @t_mm and @t_dmm 
+,case when b.bspec like 'HDB800' then hmount else 0 end 
+------------------------------------------------------------------------------------------------------------ 
+,b.gweight ,b.price 
+,case when (b.weight-b.hweight) <> null then 
+(Convert(nvarchar(20),round((b.price/((b.weight-b.hweight)))/100,2))+'%') 
+end 
 
-insert into @result (gno,dime,radius,wi,lengthc,hard,lengthb,lengthb2,weight,bdime,intotal,hweight,hmount,bsp1,bsp2
-,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10,bsp11,bsp12,bsp13,bsp14,bsp15,gw)
-select '1',sum(dime),SUM(radius),sum(wi),SUM(lengthc),SUM(hard),SUM(lengthb),SUM(lengthb2),SUM(weight),SUM(bdime)
-,SUM(intotal),SUM(hweight),SUM(hmount),sum(bsp1),SUM(bsp2),SUM(bsp3),
-SUM(bsp4),SUM(bsp5),SUM(bsp6),SUM(bsp7),SUM(bsp8),SUM(bsp9),SUM(bsp10),SUM(bsp11),SUM(bsp12)
-,SUM(bsp13),SUM(bsp14),SUM(bsp15),sum(gw)
-from @result
-where datea between @t_mm and @t_dmm 
+from view_cubs b left join view_cub a on a.noa=b.noa 
+where a.noa =b.noa AND left(a.datea,6) like @t_mm 
+
+insert into @result (gno,dime,radius,wi,lengthc,hard,lengthb,lengthb2,weight,bdime,intotal,hweight,hmount,bsp1,bsp2 
+,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10,bsp11,bsp12,bsp13,bsp14,bsp15,gw,price) 
+select '1',sum(dime),SUM(radius),sum(wi),SUM(lengthc),SUM(hard),SUM(lengthb),SUM(lengthb2),SUM(weight),SUM(bdime) 
+,SUM(intotal),SUM(hweight),SUM(hmount) 
+,sum(convert(float,bsp1)),SUM(convert(float,bsp2)),SUM(convert(float,bsp3)),SUM(convert(float,bsp4)),SUM(convert(float,bsp5)),SUM(convert(float,bsp6)) 
+,SUM(convert(float,bsp7)),SUM(convert(float,bsp8)),SUM(convert(float,bsp9)),SUM(convert(float,bsp10)) 
+,SUM(convert(float,bsp11)),SUM(convert(float,bsp12)),SUM(convert(float,bsp13)) 
+,SUM(convert(float,bsp14)),SUM(convert(float,bsp15)),sum(gw) ,SUM(price) 
+from @result 
+where left(datea,6) like @t_mm 
+
 
 --------------------------------------------------------------------------------------- 
-
---group by gno
-
-select gno ,nob ,datea ,comp , 
+declare @yyyy nvarchar(20) =convert(nvarchar,convert(float,left(@t_mm,3))+1911) 
+select gno ,nob ,datea ,comp , @yyyy year, 
 ordeno ,dime ,radius ,wi 
-,lengthc ,spec ,hard ,source 
-,lengthb ,lengthb2 ,weight ,bdime ,intotal,hweight,deweight,hmount 
+,dbo.getComma(lengthc,0) lengthc ,spec ,hard ,source 
+,dbo.getComma(lengthb,0) lengthb ,dbo.getComma(lengthb2,0) lengthb2 
+,dbo.getComma(weight,0) weight,dbo.getComma(bdime,0) bdime 
+,dbo.getComma(intotal+(bsp1+bsp2+bsp3+bsp4+bsp5+bsp6+bsp7+bsp8+bsp9+bsp10+bsp11+bsp12+bsp13+bsp14+bsp15)-bsp5-bsp6,0) intotal 
+,dbo.getComma(hweight,0) hweight,dbo.getComma(deweight,0) deweight,dbo.getComma(hmount,0) hmount 
 ,derate,dd,mm,yyyy,bsp1,bsp2,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10 
-,bsp11,bsp12,bsp13,bsp14,bsp15 ,gw
-from @result  ;
+,bsp11,bsp12,bsp13,bsp14,bsp15 ,dbo.getComma(gw,0) gw ,price,prate 
+from @result ;
+
+------------------------------------------------------------------------------------------------------
+z_cub_rk02:--z_cub_rk02
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_mm nvarchar(50) = case when '#non' = [1] then '' else [1] end
+--------------------------------------------------------------------------------------
+declare @tmp1 table( 
+gno nvarchar(1),mnoa nvarchar(20),comp nvarchar(50),coil nvarchar(50),spec nvarchar(50),coilsp nvarchar(30),hweight float,hgweight float, 
+gweight float,a2 float,a22 float,a3 float,a4 float,a5 float,a6 nvarchar(50),a7 float,a8 float,a9 float,b1 float,b2 float,b3 float,b4 float,b5 float 
+,b6 float) 
+
+insert into @tmp1 
+
+select distinct '0', a.cubno,b.comp ,b.uno ,b.spec,convert(nvarchar,b.dime)+'*'+convert(nvarchar,b.width),a.mount3*a.weight3 
+,a.weight ,a.waste,0 ,0 ,0 ,0 ,0 ,convert(nvarchar,c.width)+'*'+convert(nvarchar,c.lengthb),c.mount*c.weight,20,' ' ,30 ,' ', 15 ,22,'' , '' 
+from view_cucs a left join view_cubs b on a.ordeno =b.ordeno and a.accy=b.accy 
+left join view_cuts c on a.ordeno =c.ordeno and a.accy=c.accy 
+left join view_cuc	d on a.noa=d.noa and a.accy=d.accy 
+where d.datea between @t_mm+'/01' and @t_mm+'31' 
+
+declare @tmp2 table(mnoa nvarchar(20),c1 float,c2 float,c3 float,c4 float ,c5 float,c6 float,c7 float,c8 float ,memo nvarchar(max)) 
+insert into @tmp2 
+select mnoa, 
+--c1 
+case when hweight > 0 then (b1+b2)/hweight else 0 end 
+,case when hweight > 0 then b3/hweight else 0 end 
+,case when hweight > 0 then (b4+b5+gweight+a2)/hweight else 0 end 
+,case when hweight > 0 then b6/hweight else 0 end 
+,(gweight+a2+b1+b2+b3+b4+b5) 
+,case when (hgweight+a3+a4+a5)-(a7+a8+a9+b1+b2+b3+b4+b5) >0 then 0 else (gweight+a2+b1+b2+b3+b4+b5)+gweight+a22+a7+a8+a9 end, 
+(hgweight+a3+a4+a5)-(a7+a8+a9+b1+b2+b3+b4+b5) 
+,(case when hweight > 0 then (b1+b2)/hweight else 0 end + 
+case when hweight > 0 then b3/hweight else 0 end + 
+case when hweight > 0 then (b4+b5+gweight+a2)/hweight else 0 end + 
+case when hweight > 0 then b6/hweight else 0 end),'' 
+from @tmp1 
+-----------------------------------------------------------------------------------------------
+select gno,a.mnoa,comp,coilsp,spec,coilsp,hweight,hgweight, 
+case when a2 = 0 then null else a2 end a2 
+,case when a22 = 0 then null else a22 end a22 
+,case when a3 = 0 then null else a3 end a3 
+,case when a4 = 0 then null else a4 end a4 
+,case when a5 =0 then null else a5 end a5 
+, a6 
+,case when a7 =0 then null else a7 end a7 
+,case when a8 =0 then null else a8 end a8 
+,case when a9 =0 then null else a9 end a9 
+,case when b1 =0 then null else b1 end b1 
+,case when b2 =0 then null else b2 end b2 
+,case when b3 =0 then null else b3 end b3 
+,case when b4 =0 then null else b4 end b4 
+,case when b5 =0 then null else b5 end b5 
+,case when b6 =0 then null else b6 end b6 
+,convert(nvarchar,ROUND(c1,2)/100)+'%' c1,convert(nvarchar,ROUND(c2,2)/100)+'%' c2
+,convert(nvarchar,ROUND(c3,2)/100)+'%' c3,convert(nvarchar,ROUND(c4,2)/100)+'%' c4,ROUND(c5,2) c5 
+,ROUND(c6,2) c6,ROUND(c7,2) c7,ROUND(c8,2) c8,memo,coil ,left(@t_mm,3) year,right(@t_mm,2) mon 
+from @tmp1 a left join @tmp2 b on a.mnoa=b.mnoa  ;
