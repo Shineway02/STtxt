@@ -1,0 +1,230 @@
+z_pay_pk01:--z_pay_pk01	廠商對帳單(明細)  日期
+	SET QUOTED_IDENTIFIER OFF 
+	declare @cmd nvarchar(max) 
+	
+	declare @t_btggno nvarchar(20) = case when '#non' = [2] then '' else [2] end
+	declare @t_etggno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
+	declare @t_bdate nvarchar(20) = case when '#non' = [4] then '' else [4] end
+	declare @t_edate nvarchar(20) = case when '#non' = [5] then CHAR(255) else [5] end
+	declare @t_bmon nvarchar(20) = case when '#non' = [6] then '' else [6] end
+	declare @t_emon nvarchar(20) = case when '#non' = [7] then CHAR(255) else [7] end
+	-------------------------------------------------------------------------------------------
+	declare @tmpb table( 
+		tggno nvarchar(20), 
+		[money] float, 
+		bkmoney float, 
+		tax float, 
+		total float, 
+		payed float, 
+		unpay float, 
+		tot float 
+	) 
+	insert into @tmpb(tggno,[money],bkmoney,tax)
+	select tggno
+		,SUM(case when typea='1' then ISNULL([money],0) else 0 end) 
+		,SUM(case when typea!='1' then ISNULL([money],0) else 0 end) 
+		,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end) 
+	from view_rc2 a
+	where isnull(a.tggno,'') between @t_btggno and @t_etggno
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	group by tggno 
+	
+	update @tmpb set total = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0) 
+	 ------------------------------------------------------------------------------------------ 	
+	declare @linecount int --每頁行數
+	declare @endcount int --總計行數
+	set @linecount = 36
+	set @endcount = 4 
+	
+	declare @tggno nvarchar(20)
+	declare @money float
+	declare @bkmoney float
+	declare @tax float
+	declare @total float
+	declare @payed float
+	declare @unpay float
+	declare @tot float
+	declare @nn int
+	declare @mm int
+	declare @totpage int
+	
+	declare @noa nvarchar(20)
+	--declare @ordeno nvarchar(max)
+	--declare @custorde nvarchar(max)
+	declare @moneys float
+	declare @typea nvarchar(20)
+	declare @datea nvarchar(20)
+	
+	declare @result table(
+		sel int identity(1,1),
+		gno nvarchar(10),
+		pno int,
+		totpage int,
+		tggno nvarchar(30),
+		[money] float,
+		bkmoney float,
+		tax float,
+		total float,
+		payed float,
+		unpay float,
+		tot float,
+		
+		ttype nvarchar(20),
+		tdate nvarchar(20),
+		trc2no nvarchar(20),
+		
+		nn int,--進貨單張數
+		
+		typea nvarchar(10),
+		datea nvarchar(10),
+		rc2no nvarchar(20),
+		productno nvarchar(50),
+		product nvarchar(MAX),
+		unit nvarchar(20),
+		[weight] float,
+		item nvarchar(20),
+		mount float,
+		price float,
+		moneys float,
+		memo nvarchar(max)
+	)
+	
+	declare cursor_table cursor for
+	select tggno,[money],bkmoney,tax,total,payed,unpay,tot from @tmpb
+	open cursor_table
+	fetch next from cursor_table
+	into @tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+	while(@@FETCH_STATUS <> -1)
+	begin
+		
+		declare cursor_table2 cursor for
+		select noa,typea,datea from view_rc2
+		where tggno=@tggno 
+		and ISNULL(datea,'') between @t_bdate and @t_edate
+		and left(noa,3)!='00Z'
+		order by datea,noa
+		open cursor_table2
+		fetch next from cursor_table2
+		into @noa,@typea,@datea
+		while(@@FETCH_STATUS <> -1)
+		begin
+			/*--客單編號
+			select @custorde = ''
+			select @custorde=custorde from view_orde where noa=@ordeno
+			
+			if LEN(ISNULL(@custorde,''))>0
+			begin
+				insert into @result(gno,pno,custno,vccno,typea,datea,memo)
+				select '1','1',@custno,@noa,case when @typea='1' then '進' else '退' end,@datea,@custorde
+			end*/
+			--進貨明細
+			insert into @result(gno,pno,tggno
+				,typea,datea,rc2no,productno,product,unit,[weight],item,mount,price,moneys)
+			select '2','1',@tggno
+			,case when a.typea='1' then '出' else '退' end
+			,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
+			,b.unit2,b.mount
+			,b.price
+			,b.total
+			from view_rc2 a
+			left join view_rc2s b on a.accy=b.accy and a.noa=b.noa
+			where a.noa=@noa
+			and b.noa is not null
+			order by b.noq
+			--稅額
+			--insert into @result(gno,pno,custno
+			--	,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
+			--select '3','1',@custno
+			--,'稅',datea,noa,'','稅額','',null,null,null,tax
+			--from view_vcc 
+			--where noa=@noa
+			--and isnull(tax,0)!=0
+			
+			--小計
+			select @moneys=0
+			select @moneys = SUM(ISNULL(total,0)) from view_rc2s where noa=@noa
+			insert into @result(gno,pno,tggno,rc2no,memo,moneys)
+			select '4','1',@tggno,@noa,'合計：',@moneys
+			
+			fetch next from cursor_table2
+			into @noa,@typea,@datea
+		end
+		close cursor_table2
+		deallocate cursor_table2
+
+		select @mm = COUNT(1) from @result where tggno=@tggno
+		if @mm>0 or @money!=0 or @bkmoney !=0 or @tax !=0 or @payed !=0 or @unpay!=0 or @tot!=0
+		begin
+			if(@mm+@endcount)%@linecount != 0
+			begin
+				insert into @result(gno,pno,tggno,memo)
+				select '5','3',@tggno,'---以下空白---'
+				set @mm = @mm + 1
+				while @linecount-@mm%@linecount!=@endcount
+				begin
+					insert into @result(gno,pno,tggno)
+					select '6','4',@tggno
+					set @mm = @mm + 1
+				end
+			end
+			
+			--進貨金額：
+			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '7','5',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			--退貨金額：
+			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '8','6',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			--稅    額：
+			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '9','7',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			--本期應收：
+			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '10','8',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			
+			select @nn = count(1) from (select rc2no from @result where tggno=@tggno and gno='1' group by rc2no)a
+			select @totpage = COUNT(1) from @result where tggno=@tggno
+			update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where tggno=@tggno
+		end
+
+		fetch next from cursor_table
+		into @tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+	end
+	close cursor_table
+	deallocate cursor_table
+--------------------------------------------------------------------------------------------------------	
+	update @result set ttype=b.typea,tdate=b.datea,trc2no=b.rc2no
+	from @result a
+	left join (select ROW_NUMBER()over(PARTITION by rc2no order by sel) recno, * from @result) b on a.sel=b.sel
+	where b.recno=1
+--------------------------------------------------------------------------------------------------------	
+	select a.* 
+	,(ROW_NUMBER()over(partition by a.tggno order by pno)-1)/@linecount+1 pp
+	,a.totpage qq
+	,a.tdate dd
+	,a.ttype tt
+	,a.unit uu
+	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
+	--計價單位 PC 都改為 KG
+	,case when a.[weight]=0 then '' else cast(a.[weight] as nvarchar(50))+isnull(replace(a.unit,'PC','KG'),'') end a2
+	,'重量' ww
+	,case when a.price=0 then '' else cast(a.price as nvarchar(50)) end a3
+	,case when a.[moneys]=0 then '' else cast(dbo.getComma(a.[moneys],0) as nvarchar(50)) end a4
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp +'</a>'comp
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.nick+'</a>' nick
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.addr_comp+'</a>' addr
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.tel+'</a>' tel
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.fax+'</a>' fax
+	,dbo.getComma(a.[money],0) b1
+	,dbo.getComma(a.[bkmoney],0) b2
+	,dbo.getComma(a.[tax],0) b3
+	,dbo.getComma(a.[total],0) b4
+	,dbo.getComma(a.[payed],0) b5
+	,dbo.getComma(a.[unpay],0) b6
+	,dbo.getComma(a.[tot],0) b7
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+ replace(product,'~#$',char(39)) +'</a>' ppt
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when @t_bdate=@t_edate then @t_bdate else @t_bdate+'～'+@t_edate end+'</a>' e01
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.AD2ChineseEraName(getdate())+'</a>' e02
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.serial+'</a>' e03
+	from @result a
+	left join tgg b on a.tggno=b.noa
+	order by a.tggno,a.sel;
