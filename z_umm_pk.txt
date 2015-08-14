@@ -98,6 +98,7 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	from view_vcc a
 	where isnull(a.custno,'') between @t_bcustno and @t_ecustno
 	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	and left(a.noa,3)!='00Z'
 	group by custno 
 	
 	update @tmpb set total = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0) 
