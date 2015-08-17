@@ -1,7 +1,7 @@
 z_pay_pk02:--z_pay_pk02	廠商對帳單(明細)  月份
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
-	
+	declare @t_cno nvarchar(20) = case when '#non' = [1] then '' else [1] end
 	declare @t_btggno nvarchar(20) = case when '#non' = [2] then '' else [2] end
 	declare @t_etggno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
 	declare @t_bdate nvarchar(20) = case when '#non' = [4] then '' else [4] end
@@ -265,6 +265,7 @@ z_pay_pk02:--z_pay_pk02	廠商對帳單(明細)  月份
 	where b.recno=1
 --------------------------------------------------------------------------------------------------------	
 	select a.* 
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.acomp +'</a>' aacomp
 	,(ROW_NUMBER()over(partition by a.tggno order by pno)-1)/@linecount+1 pp
 	,a.totpage qq
 	,a.tdate dd
@@ -294,12 +295,13 @@ z_pay_pk02:--z_pay_pk02	廠商對帳單(明細)  月份
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.serial+'</a>' e03
 	from @result a
 	left join tgg b on a.tggno=b.noa
+	left join acomp c on @t_cno=c.noa
 	order by a.tggno,a.sel;
 
 z_pay_pk01:--z_pay_pk01	廠商對帳單(明細)  日期
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
-	
+	declare @t_cno nvarchar(20) = case when '#non' = [1] then '' else [1] end
 	declare @t_btggno nvarchar(20) = case when '#non' = [2] then '' else [2] end
 	declare @t_etggno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
 	declare @t_bdate nvarchar(20) = case when '#non' = [4] then '' else [4] end
@@ -496,6 +498,7 @@ z_pay_pk01:--z_pay_pk01	廠商對帳單(明細)  日期
 	where b.recno=1
 --------------------------------------------------------------------------------------------------------	
 	select a.* 
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.acomp +'</a>' aacomp
 	,(ROW_NUMBER()over(partition by a.tggno order by pno)-1)/@linecount+1 pp
 	,a.totpage qq
 	,a.tdate dd
@@ -525,4 +528,5 @@ z_pay_pk01:--z_pay_pk01	廠商對帳單(明細)  日期
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.serial+'</a>' e03
 	from @result a
 	left join tgg b on a.tggno=b.noa
+	left join acomp c on @t_cno=c.noa
 	order by a.tggno,a.sel;
