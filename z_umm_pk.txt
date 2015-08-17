@@ -444,7 +444,7 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	,a.unit uu
 	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
 	--計價單位 PC 都改為 KG
-	,case when a.[weight]=0 or len(@t_isweight)=0 then '' else cast(a.[weight] as nvarchar(50))+isnull(replace(a.unit,'PC','KG'),'') end a2
+	,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG'  then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
 	,case when len(@t_isweight)=0 then '' else '重量' end ww
 	,case when a.price=0 then '' else cast(a.price as nvarchar(50)) end a3
 	,case when a.[moneys]=0 then '' else cast(dbo.getComma(a.[moneys],0) as nvarchar(50)) end a4
@@ -752,7 +752,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	,a.unit uu
 	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
 	--計價單位 PC 都改為 KG
-	,case when a.[weight]=0 or len(@t_isweight)=0 then '' else cast(a.[weight] as nvarchar(50))+isnull(replace(a.unit,'PC','KG'),'') end a2
+	,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG' then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
 	,case when len(@t_isweight)=0 then '' else '重量' end ww
 	,case when a.price=0 then '' else cast(a.price as nvarchar(50)) end a3
 	,case when a.[moneys]=0 then '' else cast(dbo.getComma(a.[moneys],0) as nvarchar(50)) end a4
