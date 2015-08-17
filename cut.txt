@@ -1,0 +1,19 @@
+updatecuts:--updatecuts	
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_cutno nvarchar(20) = [1]
+	----------------------------------------------------------------------
+	declare @accy nvarchar(20)=''
+	select @accy=accy from view_cut where noa=@t_cutno
+	
+	set @cmd="
+	update cuts"+@accy+" set [source]=ISNULL(c.[source],'')
+		,[ucolor]=ISNULL(c.[ucolor],'')
+		,[scolor]=ISNULL(c.[scolor],'')
+		,[class]=ISNULL(c.[class],'')
+	from cuts"+@accy+" a
+	left join cut"+@accy+" b on a.noa=b.noa
+	left join view_uccb c on b.uno=c.uno
+	where a.noa=@t_cutno"
+	execute sp_executesql @cmd,N'@t_cutno nvarchar(20)',@t_cutno=@t_cutno
+	select '' memo;
