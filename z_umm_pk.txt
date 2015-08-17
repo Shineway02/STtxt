@@ -1,3 +1,170 @@
+z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
+	SET QUOTED_IDENTIFIER OFF 
+	declare @cmd nvarchar(max) 
+	
+	declare @t_bcustno nvarchar(20) = case when '#non' = [1] then '' else [1] end
+	declare @t_ecustno nvarchar(20) = case when '#non' = [2] then CHAR(255) else [2] end
+	declare @t_bdate nvarchar(10) = case when '#non' = [3] then '' else [3] end
+	declare @t_edate nvarchar(10) = case when '#non' = [4] then CHAR(255) else [4] end
+	declare @t_memo1 nvarchar(max) = case when '#non' = [7] then '' else [7] end
+	declare @t_memo2 nvarchar(max) = case when '#non' = [8] then '' else [8] end
+	declare @t_memo3 nvarchar(max) = case when '#non' = [9] then '' else [9] end
+	declare @t_memo4 nvarchar(max) = case when '#non' = [10] then '' else [10] end
+--------------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		custno nvarchar(20),
+		typea nvarchar(10),
+		ctype nvarchar(10),
+		datea nvarchar(20),
+		noa nvarchar(20),
+		[money] float,
+		tax float,
+		total float
+	)
+	insert into @tmp(custno,typea,ctype,datea,noa,[money],tax,total)
+	select a.custno,a.typea
+		,case when ISNULL(a.typea,'')='1' then '出' else '退' end
+		,a.datea,a.noa,a.[money],a.tax,a.total
+	from view_vcc a
+	where a.custno between @t_bcustno and @t_ecustno
+	and a.datea between @t_bdate and @t_edate
+	
+	--UMMS 只抓月結的
+	insert into @tmp(custno,typea,ctype,datea,noa,[money],tax,total)
+	select LEFT(a.vccno,CHARINDEX('-',a.vccno)-1)
+		,'','收',b.datea,a.noa,0,0,SUM(ISNULL(a.paysale,0))
+	from umms a
+	left join umm b on a.noa=b.noa
+	where a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]'
+	and LEFT(a.vccno,CHARINDEX('-',a.vccno)-1) between @t_bcustno and @t_ecustno
+	and b.datea between @t_bdate and @t_edate
+	--and RIGHT(a.vccno,6) between @t_bmon and @t_emon 
+	group by LEFT(a.vccno,CHARINDEX('-',a.vccno)-1),b.datea,a.noa
+	
+	delete @tmp where [money]=0 and tax=0 and total=0
+	--------------------------------------------------------------------------------------------------
+	declare @result table(
+		sel int identity(1,1),
+		gno nvarchar(20),
+		nn int,
+		totpage int,
+		custno nvarchar(20),
+		ctype nvarchar(20),
+		datea nvarchar(10),
+		noa nvarchar(20),
+		[money] float,
+		tax float,
+		total float,
+		memo nvarchar(max),
+		
+		tmoney float,--出貨金額
+		tbkmoney float,--退貨金額
+		ttax float,--營業稅
+		ttotal float,--本期應收
+		tumm float,--本期收款
+		tunpay float,--前期未收
+		ttotal2 float--應收總計
+	)
+	declare @custno nvarchar(20)
+	declare @tmoney float
+	declare @tbkmoney float
+	declare @ttax float
+	declare @ttotal float
+	declare @tumm float
+	declare @tunpay float
+	declare @ttotal2 float
+	
+	declare @totpage int
+	declare @linecount int --每頁行數
+	declare @endcount int --總計行數
+	set @linecount = 36
+	set @endcount = 5 
+	declare @nn int
+	declare @mm int
+	
+	declare cursor_table cursor for
+	select custno from @tmp group by custno
+	open cursor_table
+	fetch next from cursor_table
+	into @custno
+	while(@@FETCH_STATUS <> -1)
+	begin
+		insert into @result(gno,custno,ctype,datea,noa,[money],tax,total)
+		select '1',custno,ctype,datea,noa,[money],tax,total
+		from @tmp
+		where custno=@custno
+		order by datea,noa
+		
+		select @tmoney=0,@tbkmoney=0,@ttax=0,@ttotal=0,@tumm=0,@tunpay=0,@ttotal2=0
+		
+		select @tmoney=SUM(ISNULL([money],0)) from @tmp where custno=@custno and ctype='出'
+		select @tbkmoney=SUM(ISNULL([money],0)) from @tmp where custno=@custno and ctype='退'
+		select @ttax=SUM(ISNULL([tax]*case when ctype='出' then 1 else -1 end,0)) from @tmp where custno=@custno and (ctype='出' or ctype='退')
+		set @ttotal = isnull(@tmoney,0) - isnull(@tbkmoney,0) + isnull(@ttax,0)
+		select @tumm=SUM(ISNULL([total],0)) from @tmp where custno=@custno and ctype='收'
+		--select @tunpay=SUM(ISNULL([unpay],0)) from cust_2s where noa=@custno and mon<=@t_bmon
+		--set @ttotal2 = isnull(@ttotal,0) - isnull(@tumm,0) + isnull(@tunpay,0)
+			
+		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2)
+		select '4',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2
+		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2,memo)
+		select '5',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo1
+		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2,memo)
+		select '6',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo2
+		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2,memo)
+		select '7',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo3
+		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2,memo)
+		select '8',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo4
+		--insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2)
+		--select '9',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2
+		--insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2)
+		--select '10',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2
+		--空白行	
+		select @nn = count(1) from @result where custno=@custno
+		while @nn%@linecount !=0
+		begin
+			insert into @result(gno,custno)values('3',@custno)
+			set @nn = @nn+1
+		end	
+		
+		select @nn = count(1) from (select noa from @result where custno=@custno and gno='1' and (ctype='出' or ctype='退') group by noa)a
+		select @totpage = COUNT(1) from @result where custno=@custno
+		update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where custno=@custno
+			
+		fetch next from cursor_table
+		into @custno
+	end
+	close cursor_table
+	deallocate cursor_table
+---------------------------------------------------------------------------------------------------------------
+	select gno,nn
+	,(ROW_NUMBER()over(partition by a.custno order by cast(a.gno as int))-1)/@linecount+1 pp
+	,a.totpage qq
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.custno+'</a>' custno
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.tel+'</a>' tel
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.fax+'</a>' fax
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp+'</a>' comp
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.addr_comp+'</a>' addr
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.AD2ChineseEraName(getdate())+'</a>' e02
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.serial+'</a>' e03
+	
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.ctype+'</a>' a01
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.datea+'</a>' a02
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.noa+'</a>' a03
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[money]<0 then'(' else '' end)+dbo.getComma(abs(a.[money]),0)+(case when a.[money]<0 then')' else '' end)+'</a>' a04
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tax]<0 then'(' else '' end)+dbo.getComma(abs(a.[tax]),0)+(case when a.[tax]<0 then')' else '' end)+'</a>' a05
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[total]<0 then'(' else '' end)+dbo.getComma(abs(a.[total]),0)+(case when a.[total]<0 then')' else '' end)+'</a>' a06
+	
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tmoney]<0 then'(' else '' end)+dbo.getComma(abs(a.[tmoney]),0)+(case when a.[tmoney]<0 then')' else '' end)+'</a>' b1
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tbkmoney]<0 then'(' else '' end)+dbo.getComma(abs(a.[tbkmoney]),0)+(case when a.[tbkmoney]<0 then')' else '' end)+'</a>' b2
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[ttax]<0 then'(' else '' end)+dbo.getComma(abs(a.[ttax]),0)+(case when a.[ttax]<0 then')' else '' end)+'</a>' b3
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[ttotal]<0 then'(' else '' end)+dbo.getComma(abs(a.[ttotal]),0)+(case when a.[ttotal]<0 then')' else '' end)+'</a>' b4
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tumm]<0 then'(' else '' end)+dbo.getComma(abs(a.[tumm]),0)+(case when a.[tumm]<0 then')' else '' end)+'</a>' b5
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo+'</a>' memo
+	from @result a
+	left join cust b on a.custno=b.noa
+	order by a.custno,cast(a.gno as int);
+
 z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
