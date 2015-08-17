@@ -248,7 +248,7 @@ z_pay_pk02:--z_pay_pk02	廠商對帳單(明細)  月份
 					insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
 					select '13','11',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 				end
-				select @nn = count(1) from (select rc2no from @result where tggno=@tggno and gno='1' group by rc2no)a
+				select @nn = count(1) from (select rc2no from @result where tggno=@tggno and gno='2' group by rc2no)a
 				select @totpage = COUNT(1) from @result where tggno=@tggno
 				update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where tggno=@tggno
 			end
@@ -481,7 +481,7 @@ z_pay_pk01:--z_pay_pk01	廠商對帳單(明細)  日期
 			insert into @result(gno,pno,tggno,[money],bkmoney,tax,total,payed,unpay,tot)
 			select '10','8',@tggno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 			
-			select @nn = count(1) from (select rc2no from @result where tggno=@tggno and gno='1' group by rc2no)a
+			select @nn = count(1) from (select rc2no from @result where tggno=@tggno and gno='2' group by rc2no)a
 			select @totpage = COUNT(1) from @result where tggno=@tggno
 			update @result set nn = ISNULL(@nn,0),totpage = @totpage/@linecount where tggno=@tggno
 		end
