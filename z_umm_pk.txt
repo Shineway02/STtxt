@@ -151,8 +151,8 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.ctype+'</a>' a01
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.datea+'</a>' a02
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.noa+'</a>' a03
-	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[money]<0 then'(' else '' end)+dbo.getComma(abs(a.[money]),0)+(case when a.[money]<0 then')' else '' end)+'</a>' a04
-	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tax]<0 then'(' else '' end)+dbo.getComma(abs(a.[tax]),0)+(case when a.[tax]<0 then')' else '' end)+'</a>' a05
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when a.ctype='收' then '' else (case when a.[money]<0 then'(' else '' end)+dbo.getComma(abs(a.[money]),0)+(case when a.[money]<0 then')' else '' end) end+'</a>' a04
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when a.ctype='收' then '' else (case when a.[tax]<0 then'(' else '' end)+dbo.getComma(abs(a.[tax]),0)+(case when a.[tax]<0 then')' else '' end) end+'</a>' a05
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[total]<0 then'(' else '' end)+dbo.getComma(abs(a.[total]),0)+(case when a.[total]<0 then')' else '' end)+'</a>' a06
 	
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tmoney]<0 then'(' else '' end)+dbo.getComma(abs(a.[tmoney]),0)+(case when a.[tmoney]<0 then')' else '' end)+'</a>' b1
@@ -610,6 +610,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 		
 		nn int,--出貨單張數
 		
+		noq nvarchar(20),
 		typea nvarchar(10),
 		datea nvarchar(10),
 		vccno nvarchar(20),
@@ -654,9 +655,23 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 					select '1','1',@custno,@noa,case when @typea='1' then '出' else '退' end,@datea,@custorde
 				end
 				--出貨明細
-				insert into @result(gno,pno,custno
+				insert into @result(gno,pno,noq,custno
 					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
-				select '2','1',@custno
+				select '2','1',b.noq,@custno
+				,case when a.typea='1' then '出' else '退' end
+				,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
+				,b.item,b.mount
+				,b.price
+				,b.total
+				from view_vcc a
+				left join view_vccs b on a.noa=b.noa
+				where a.noa=@noa
+				and b.noa is not null
+				order by b.noq
+				
+				insert into @result(gno,pno,noq,custno
+					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+				select '3','1',b.noq,@custno
 				,case when a.typea='1' then '出' else '退' end
 				,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 				,b.item,b.mount
@@ -679,8 +694,8 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				--小計
 				select @moneys=0
 				select @moneys = SUM(ISNULL(total,0)) from view_vccs where noa=@noa
-				insert into @result(gno,pno,custno,vccno,memo,moneys)
-				select '4','1',@custno,@noa,'合計：',@moneys
+				insert into @result(gno,pno,custno,vccno,noq,memo,moneys)
+				select '4','1',@custno,@noa,CHAR(255),'合計：',@moneys
 				
 				fetch next from cursor_table2
 				into @noa,@ordeno,@typea,@datea
@@ -693,46 +708,46 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 			begin
 				if(@mm+@endcount)%@linecount != 0
 				begin
-					insert into @result(gno,pno,custno,memo)
-					select '5','3',@custno,'---以下空白---'
+					insert into @result(gno,pno,custno,vccno,noq,memo)
+					select '5','3',@custno,CHAR(255),CHAR(255),'---以下空白---'
 					set @mm = @mm + 1
 					while @linecount-@mm%@linecount!=@endcount
 					begin
-						insert into @result(gno,pno,custno)
-						select '6','4',@custno
+						insert into @result(gno,pno,custno,vccno,noq)
+						select '6','4',@custno,CHAR(255),CHAR(255)
 						set @mm = @mm + 1
 					end
 				end
 				
 				--出貨金額：
-				insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
-				select '7','5',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot)
+				select '7','5',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 				--退貨金額：
-				insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '8','6',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
+				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+				select '8','6',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
 				--稅    額：
-				insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '9','7',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
+				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+				select '9','7',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
 				--本期應收：
-				insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '10','8',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
+				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+				select '10','8',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
 				--已收金額：
 				if LEN(@t_ispayed)>0
 				begin
-					insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-					select '11','9',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo4
+					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+					select '11','9',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo4
 				end
 				--前期未收：
 				if LEN(@t_isunpay)>0
 				begin
-					insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-					select '12','10',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
+					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+					select '12','10',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
 				end
 				--應收總計：
 				if LEN(@t_ispayed)>0 or LEN(@t_isunpay)>0
 				begin
-					insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
-					select '13','11',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot)
+					select '13','11',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 				end
 				select @nn = count(1) from (select vccno from @result where custno=@custno and gno='1' group by vccno)a
 				select @totpage = COUNT(1) from @result where custno=@custno
@@ -786,7 +801,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.serial+'</a>' e03
 	from @result a
 	left join cust b on a.custno=b.noa
-	order by a.custno,a.sel;
+	order by a.custno,a.vccno,a.noq,cast(a.gno as int),a.sel;
 
 z_umm_pk01:--z_umm_pk01  ref.z_ummst03
 	SET QUOTED_IDENTIFIER OFF 
