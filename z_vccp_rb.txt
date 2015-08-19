@@ -31,6 +31,7 @@ declare @tmp table(
 	a_invo nvarchar(50),
 	a_title nvarchar(50),
 	a_trantype nvarchar(100),
+	a_paytype nvarchar(100),
 	a_addr nvarchar(max),
 	a_datea nvarchar(10),
 	a_cardeal nvarchar(20),
@@ -52,7 +53,7 @@ insert into @tmp
 	select
 		'0',
 		ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),1,1,a.cno,a.acomp,d.tel,d.fax,d.addr
-		,a.noa,a.typea,a.stype,a.custno,c.comp,a.tel,a.fax,a.sales,a.sales2,a.invono,c.invoicetitle,a.trantype
+		,a.noa,a.typea,a.stype,a.custno,c.comp,a.tel,a.fax,a.sales,a.sales2,a.invono,c.invoicetitle,a.trantype,a.paytype
 		,(case when a.addr2!='' then a.addr2 else a.addr end),a.datea,a.cardeal,a.ordeno,a.memo
 		,a.tax,a.money,a.total
 		--,(case when a.taxtype='1' then round(a.money*0.05,0) when a.taxtype='3' then e.tax else 0 end)
@@ -142,7 +143,7 @@ set topage=(select MAX(pageno) from @tmp where a_noa=a.a_noa)
 from @tmp a
 
 select
-	gno,a_noa,a_typea,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_sale2s,a_invo,a_title,a_trantype,a_cardeal,a_ordeno
+	gno,a_noa,a_typea,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_sale2s,a_invo,a_title,a_trantype,a_paytype,a_cardeal,a_ordeno
 	,Replace(a_memo,'chr(10)','</BR>&nbsp') a_memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_tax),1)),4,12)) a_tax,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
