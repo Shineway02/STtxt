@@ -472,47 +472,63 @@ set @t_stype = case when '#non'=[12] then '' else [12] end
 set @t_trantype = case when '#non'=[13] then '' else [13] end
 set @t_cancel = case when '#non'=[14] then '' else [14] end
 set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
-declare @tmp table(
-	gno nvarchar(1),
-	noa nvarchar(30),
-	custno nvarchar(30),
-	comp nvarchar(90),
-	no2 nvarchar(10),
-	datea nvarchar(10),
-	productno nvarchar(30),
-	products nvarchar(90),
-	csize nvarchar(max),
-	unit nvarchar(12),
-	weight float,
-	mount float,
-	notv float,
-	price float,
-	nototal float,
-	e nvarchar(10),
-	qhref nvarchar(max)
-)
-insert into @tmp
-	select
-		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
-		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
-	from view_orde[1] a
-	left join view_ordes[1] b on a.noa = b.noa
-	left join cust c on a.custno = c.noa
-	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
-	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
-	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
-			and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
-	      and (len(@t_enda)=0 or @t_enda=isnull(b.enda,'0'))
-update @tmp set csize = replace(csize,'~#$','''')
-insert into @tmp(gno,custno,comp,weight,mount,notv,nototal)
-	select '1',custno,comp,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by custno,comp
-update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-select
-	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
-	row_number()over(partition by custno,comp order by custno,comp,gno,noa) idno
-from @tmp order by custno,comp,gno,noa;
+	declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		custno nvarchar(30),
+		comp nvarchar(90),
+		no2 nvarchar(10),
+		datea nvarchar(10),
+		productno nvarchar(30),
+		products nvarchar(90),
+		csize nvarchar(max),
+		unit nvarchar(12),
+		weight float,
+		mount float,
+		notv float,
+		price float,
+		nototal float,
+		e nvarchar(10),
+		qhref nvarchar(max)
+	)
+	insert into @tmp
+		select
+			'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+			b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
+		from view_orde a
+		left join view_ordes b on a.accy=b.accy and a.noa = b.noa
+		left join cust c on a.custno = c.noa
+		where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+			and (a.odate between @t_bodate and @t_eodate) 
+			and (a.custno between @t_bcustno and @t_ecustno) 
+			and (a.salesno between @t_bsalesno and @t_esalesno)
+			and (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+			  (len(@t_trantype)=0 or @t_trantype=a.trantype) 
+				and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
+			  and (len(@t_enda)=0 or @t_enda=isnull(b.enda,'0'))
+	update @tmp set csize = replace(csize,'~#$','''')
+	insert into @tmp(gno,custno,comp,weight,mount,notv,nototal)
+		select '1',custno,comp,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by custno,comp
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	-----------------------------------------------------------------------------------------------------
+	declare @dlabel nvarchar(max) = ''
+	declare @dvalue nvarchar(max) = ''
+	if len(@t_bdate)>0
+	begin
+		set @dlabel = '交貨日期：'
+		set @dvalue = @t_bdate + ' ～ ' + @t_edate
+	end
+	else
+	begin
+		set @dlabel = '訂貨日期：'
+		set @dvalue = @t_bodate + ' ～ ' + @t_eodate
+	end
+	
+	select @dlabel aaa,@dvalue bbb
+		,gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
+		row_number()over(partition by custno,comp order by custno,comp,gno,noa) idno
+	from @tmp order by custno,comp,gno,noa;
 --****************************************************************************************************
 z_ordest2b:--z_ordest2b
 declare @t_bdate nvarchar(10)
@@ -567,11 +583,12 @@ insert into @tmp
 		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
-	from view_orde[1] a
-	left join view_ordes[1] b on a.noa = b.noa
+	from view_orde a
+		left join view_ordes b on a.accy=b.accy and a.noa = b.noa
 	left join cust c on a.custno = c.noa
-	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
-	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+			and (a.odate between @t_bodate and @t_eodate)  
+			and (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
 	      and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
@@ -580,8 +597,22 @@ update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,productno,products,weight,mount,notv,nototal)
 	select '1',productno,products,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by productno,products
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-select
-	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
+-----------------------------------------------------------------------------------------------------
+	declare @dlabel nvarchar(max) = ''
+	declare @dvalue nvarchar(max) = ''
+	if len(@t_bdate)>0
+	begin
+		set @dlabel = '交貨日期：'
+		set @dvalue = @t_bdate + ' ～ ' + @t_edate
+	end
+	else
+	begin
+		set @dlabel = '訂貨日期：'
+		set @dvalue = @t_bodate + ' ～ ' + @t_eodate
+	end
+	
+	select @dlabel aaa,@dvalue bbb
+	,gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
 	row_number()over(partition by productno,products order by productno,products,gno,noa) idno
 from @tmp order by productno,products,gno,noa;
 --****************************************************************************************************
@@ -638,11 +669,12 @@ insert into @tmp
 		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
 		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
 		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
-	from view_orde[1] a
-	left join view_ordes[1] b on a.noa = b.noa
+	from view_orde a
+		left join view_ordes b on a.accy=b.accy and a.noa = b.noa
 	left join cust c on a.custno = c.noa
-	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
-	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+			and (a.odate between @t_bodate and @t_eodate) 
+		and (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
 	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
 	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
 	      and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
@@ -651,9 +683,22 @@ update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,noa,weight,mount,notv,nototal)
 	select '1',noa,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by noa
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-
-select
-	gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
+-----------------------------------------------------------------------------------------------------
+	declare @dlabel nvarchar(max) = ''
+	declare @dvalue nvarchar(max) = ''
+	if len(@t_bdate)>0
+	begin
+		set @dlabel = '交貨日期：'
+		set @dvalue = @t_bdate + ' ～ ' + @t_edate
+	end
+	else
+	begin
+		set @dlabel = '訂貨日期：'
+		set @dvalue = @t_bodate + ' ～ ' + @t_eodate
+	end
+	
+	select @dlabel aaa,@dvalue bbb
+	,gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
 	row_number()over(partition by noa order by noa,gno,no2) idno
 from @tmp order by noa,gno,no2;
 --****************************************************************************************************
