@@ -671,7 +671,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				
 				insert into @result(gno,pno,noq,custno
 					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
-				select '3','1',b.noq,@custno
+				select '4','1',b.noq,@custno
 				,case when a.typea='1' then '出' else '退' end
 				,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 				,b.item,b.mount
@@ -681,7 +681,14 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				left join view_vccs b on a.noa=b.noa
 				where a.noa=@noa
 				and b.noa is not null
+				and not(isnull(b.mount,0)=0 and ISNULL(b.[weight],0)=0)
 				order by b.noq
+
+				update @result set gno='3'
+				from @result a
+				outer apply(select * from @result where vccno=@noa and noq=a.noq and gno='4') b
+				where a.gno='2' and b.gno is null
+				
 				--稅額
 				--insert into @result(gno,pno,custno
 				--	,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
@@ -695,7 +702,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				select @moneys=0
 				select @moneys = SUM(ISNULL(total,0)) from view_vccs where noa=@noa
 				insert into @result(gno,pno,custno,vccno,noq,memo,moneys)
-				select '4','1',@custno,@noa,CHAR(255),'合計：',@moneys
+				select '5','1',@custno,@noa,CHAR(255),'合計：',@moneys
 				
 				fetch next from cursor_table2
 				into @noa,@ordeno,@typea,@datea
@@ -709,45 +716,45 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				if(@mm+@endcount)%@linecount != 0
 				begin
 					insert into @result(gno,pno,custno,vccno,noq,memo)
-					select '5','3',@custno,CHAR(255),CHAR(255),'---以下空白---'
+					select '6','3',@custno,CHAR(255),CHAR(255),'---以下空白---'
 					set @mm = @mm + 1
 					while @linecount-@mm%@linecount!=@endcount
 					begin
 						insert into @result(gno,pno,custno,vccno,noq)
-						select '6','4',@custno,CHAR(255),CHAR(255)
+						select '7','4',@custno,CHAR(255),CHAR(255)
 						set @mm = @mm + 1
 					end
 				end
 				
 				--出貨金額：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot)
-				select '7','5',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+				select '8','5',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 				--退貨金額：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '8','6',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
+				select '9','6',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
 				--稅    額：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '9','7',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
+				select '10','7',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
 				--本期應收：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '10','8',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
+				select '11','8',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
 				--已收金額：
 				if LEN(@t_ispayed)>0
 				begin
 					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-					select '11','9',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo4
+					select '12','9',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo4
 				end
 				--前期未收：
 				if LEN(@t_isunpay)>0
 				begin
 					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-					select '12','10',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
+					select '13','10',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
 				end
 				--應收總計：
 				if LEN(@t_ispayed)>0 or LEN(@t_isunpay)>0
 				begin
 					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot)
-					select '13','11',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+					select '14','11',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 				end
 				select @nn = count(1) from (select vccno from @result where custno=@custno and gno='1' group by vccno)a
 				select @totpage = COUNT(1) from @result where custno=@custno
