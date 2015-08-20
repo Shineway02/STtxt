@@ -129,9 +129,9 @@ z_vccp_pk01:--z_vccp_pk01
 	+ isnull([custpro],'') b01
 	,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
 	,case when [mount]!=0 then item  else '' end b04
-	--unit=KG  就顯示重量, 不然就顯示數量 
-	,case when unit='KG' or unit='公斤' then dbo.getComma([weight],-1) when isnull([mount],0)!=0 then dbo.getComma([mount],-1) else '' end b05
-	,unit b06
+	--unit=KG or M  就顯示重量, 不然就顯示數量 
+	,case when (unit='KG' or unit='公斤' or unit='M') and [weight]!=0 then dbo.getComma([weight],-1) when not(unit='KG' or unit='公斤' or unit='M') and isnull([mount],0)!=0 then dbo.getComma([mount],-1) else '' end b05
+	,case when (unit='KG' or unit='公斤' or unit='M') and isnull([weight],0)=0 then '' when not(unit='KG' or unit='公斤' or unit='M') and isnull([mount],0)=0 then '' else unit end b06
 	--,case when len(@t_isweight)>0 and [weight]!=0 and unit='KG' then dbo.getComma([weight],-1) else '' end b05
 	--,case when len(@t_isweight)>0 and [weight]!=0 and unit='KG' then unit  else '' end b06
 	
