@@ -83,20 +83,24 @@ begin
 		from view_cubs a left join acomp b on a.tggno=b.tggno
 			  left join tgg c on a.tggno= c.noa
 		where a.tgg='"+@tgg+"' and a.noa='"+ @noa+"'")
-		
-		
+	
 	--rc2s from view_cubs
 		exec("insert rc2s"+@year+" (noa,noq,product,unit,mount,price,total)
-		select '"+@rc2no+"' noa,noq	,product,product,mount,price,mo total
+		select '"+@rc2no+"' noa,noq	,product,unit,mount,price,mo total
 		from view_cubs  where noa='"+@noa+"' and tgg='"+@tgg+"' ")
 	
 	--view_cubs from rc2
-	exec("update cubs"+@year+" (noa,noq,product,unit,mount,price,total)
-		select '"+@rc2no+"' noa,noq	,product,product,mount,price,mo total
-		from rc2  where noa='"+@noa+"' and tgg='"+@tgg+"'")
 		
-	exec("update rc2"+@year+" (money ,price,total) select SUM(mo),price,SUM(mo)+price from view_cubs where tgg='"+@tgg+"' and noa= '"+@noa+"' group by price")
-	
+	exec("update cubs"+@year+" set noa=(select ordeno from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')	
+					  ,noq=(select no2 from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
+					  ,unit=(select unit from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
+					  ,mount=(select mount from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
+					  ,price=(select price from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
+					  ,mo=(select total from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"'")
+					
+	exec("update rc2"+@year+" set money =(select SUM(mo) from cubs104 where noa='"+@noa+"' and tgg='"+@tgg+"'),
+					  price =(select price from cubs104  where noa='"+@noa+"' and tgg='"+@tgg+"'),
+					  total =(select SUM(mo)+price from cubs104 where  noa='"+@noa+"' and tgg='"+@tgg+"')")
 	fetch next from cursor_table 
 	into @tgg,@tggno 
 	end 
