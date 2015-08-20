@@ -6,10 +6,13 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 	declare @t_ecustno nvarchar(20) = case when '#non' = [2] then CHAR(255) else [2] end
 	declare @t_bdate nvarchar(10) = case when '#non' = [3] then '' else [3] end
 	declare @t_edate nvarchar(10) = case when '#non' = [4] then CHAR(255) else [4] end
+	declare @t_bmon nvarchar(10) = case when '#non' = [5] then '' else [5] end
+	declare @t_emon nvarchar(10) = case when '#non' = [6] then CHAR(255) else [6] end
 	declare @t_memo1 nvarchar(max) = case when '#non' = [7] then '' else [7] end
 	declare @t_memo2 nvarchar(max) = case when '#non' = [8] then '' else [8] end
 	declare @t_memo3 nvarchar(max) = case when '#non' = [9] then '' else [9] end
 	declare @t_memo4 nvarchar(max) = case when '#non' = [10] then '' else [10] end
+	declare @t_memo5 nvarchar(max) = case when '#non' = [11] then '' else [11] end
 --------------------------------------------------------------------------------------------------------
 	declare @tmp table(
 		custno nvarchar(20),
@@ -77,8 +80,8 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 	declare @totpage int
 	declare @linecount int --每頁行數
 	declare @endcount int --總計行數
-	set @linecount = 36
-	set @endcount = 5 
+	set @linecount = 12
+	set @endcount = 7 
 	declare @nn int
 	declare @mm int
 	
@@ -102,8 +105,8 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 		select @ttax=SUM(ISNULL([tax]*case when ctype='出' then 1 else -1 end,0)) from @tmp where custno=@custno and (ctype='出' or ctype='退')
 		set @ttotal = isnull(@tmoney,0) - isnull(@tbkmoney,0) + isnull(@ttax,0)
 		select @tumm=SUM(ISNULL([total],0)) from @tmp where custno=@custno and ctype='收'
-		--select @tunpay=SUM(ISNULL([unpay],0)) from cust_2s where noa=@custno and mon<=@t_bmon
-		--set @ttotal2 = isnull(@ttotal,0) - isnull(@tumm,0) + isnull(@tunpay,0)
+		select @tunpay=SUM(ISNULL([unpay],0)) from cust_2s where noa=@custno and mon<=@t_bmon
+		set @ttotal2 = isnull(@ttotal,0) - isnull(@tumm,0) + isnull(@tunpay,0)
 			
 		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2)
 		select '4',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2
@@ -115,10 +118,10 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 		select '7',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo3
 		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2,memo)
 		select '8',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo4
-		--insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2)
-		--select '9',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2
-		--insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2)
-		--select '10',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2
+		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2,memo)
+		select '9',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo4
+		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2,memo)
+		select '10',@custno,@tmoney,@tbkmoney,@ttax,@ttotal,@tumm,@tunpay,@ttotal2,@t_memo4
 		--空白行	
 		select @nn = count(1) from @result where custno=@custno
 		while @nn%@linecount !=0
@@ -160,6 +163,8 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[ttax]<0 then'(' else '' end)+dbo.getComma(abs(a.[ttax]),0)+(case when a.[ttax]<0 then')' else '' end)+'</a>' b3
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[ttotal]<0 then'(' else '' end)+dbo.getComma(abs(a.[ttotal]),0)+(case when a.[ttotal]<0 then')' else '' end)+'</a>' b4
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tumm]<0 then'(' else '' end)+dbo.getComma(abs(a.[tumm]),0)+(case when a.[tumm]<0 then')' else '' end)+'</a>' b5
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tunpay]<0 then'(' else '' end)+dbo.getComma(abs(a.[tunpay]),0)+(case when a.[tunpay]<0 then')' else '' end)+'</a>' b6
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[ttotal2]<0 then'(' else '' end)+dbo.getComma(abs(a.[ttotal2]),0)+(case when a.[ttotal2]<0 then')' else '' end)+'</a>' b7
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo+'</a>' memo
 	from @result a
 	left join cust b on a.custno=b.noa
@@ -179,74 +184,6 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	
 	declare @t_isweight nvarchar(max) = case when '#non' = [14] then '' else [14] end
 --------------------------------------------------------------------------------------------------------
-	/*declare @tmpa table(
-		custno nvarchar(20), 
-		mon nvarchar(10), 
-		[money] float, 
-		bkmoney float, 
-		tax float 
-	) 
-	insert into @tmpa(custno,mon,[money],bkmoney,tax) 
-	select custno,mon 
-	,SUM(case when typea='1' then ISNULL([money],0) else 0 end) 
-	,SUM(case when typea!='1' then ISNULL([money],0) else 0 end) 
-	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end) 
-	from view_vcc 
-	where custno between @t_bcustno and @t_ecustno 
-	and datea between @t_bdate and @t_edate
-	and left(noa,3)!='00Z'
-	group by custno,mon 
---------------------------------------------------------------------------------------------------------
-	declare @tmpb table( 
-		custno nvarchar(20), 
-		[money] float, 
-		bkmoney float, 
-		tax float, 
-		total float, 
-		payed float, 
-		unpay float, 
-		tot float 
-	) 
-	insert into @tmpb(custno,[money],bkmoney,tax) 
-	select custno,SUM(ISNULL([money],0)),SUM(ISNULL([bkmoney],0)),SUM(ISNULL([tax],0)) 
-	from @tmpa 
-	where mon between @t_bmon and @t_emon 
-	group by custno
-	
-	---------------------------------------------------------------------------------------- 
-	update @tmpb set total = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0) 
-	
-	---------------------------------------------------------------------------------------- 
-	update @tmpb set payed=isnull(a.payed,0) + isnull(b.pay,0) 
-	from @tmpb a 
-	right join cust_2s b on a.custno=b.noa and b.mon between @t_bmon and @t_emon 
-	
-	insert into @tmpb(custno,[money],bkmoney,tax,total, payed) 
-	select noa,0,0,0,0,pay 
-	from cust_2s a 
-	where not exists(select * from @tmpb where custno=a.noa) 
-	and a.mon between @t_bmon and @t_emon 
-	and a.noa between @t_bcustno and @t_ecustno  
-	------------------------------------------------------------------------------------------ 
-	--unpay 
-	update @tmpb set unpay = ISNULL(a.unpay,0)+ISNULL(b.unpay,0) 
-	from @tmpb a 
-	right join (select noa ,SUM(unpay) unpay 
-	from cust_2s 
-	where mon<@t_bmon 
-	group by noa) b on a.custno=b.noa
-	
-	insert into @tmpb(custno,[money],bkmoney,tax,total,payed,unpay) 
-	select a.noa,0,0,0,0,0,a.unpay 
-	from (select noa ,SUM(unpay) unpay 
-	from cust_2s 
-	where mon<@t_bmon 
-	and noa between @t_bcustno and @t_ecustno  
-	group by noa) a 
-	where not exists(select * from @tmpb where custno=a.noa) 
-	and ISNULL(a.unpay,0)!=0 
-	
-	update @tmpb set tot = ISNULL([money],0)-ISNULL(bkmoney,0)+ISNULL(tax,0)-ISNULL(payed,0)+ISNULL(unpay,0)*/
 	declare @tmpb table( 
 		custno nvarchar(20), 
 		[money] float, 
@@ -314,6 +251,7 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 		
 		nn int,--出貨單張數
 		
+		noq nvarchar(20),
 		typea nvarchar(10),
 		datea nvarchar(10),
 		vccno nvarchar(20),
@@ -357,9 +295,9 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 				select '1','1',@custno,@noa,case when @typea='1' then '出' else '退' end,@datea,@custorde
 			end
 			--出貨明細
-			insert into @result(gno,pno,custno
+			insert into @result(gno,pno,noq,custno
 				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
-			select '2','1',@custno
+			select '2','1',b.noq,@custno
 			,case when a.typea='1' then '出' else '退' end
 			,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 			,b.item,b.mount
@@ -370,6 +308,26 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 			where a.noa=@noa
 			and b.noa is not null
 			order by b.noq
+			
+			insert into @result(gno,pno,noq,custno
+				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+			select '4','1',b.noq,@custno
+			,case when a.typea='1' then '出' else '退' end
+			,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
+			,b.item,b.mount
+			,b.price
+			,b.total
+			from view_vcc a
+			left join view_vccs b on a.noa=b.noa
+			where a.noa=@noa
+			and b.noa is not null
+			and not(isnull(b.mount,0)=0 and ISNULL(b.[weight],0)=0)
+			order by b.noq
+
+			update @result set gno='3'
+			from @result a
+			outer apply(select * from @result where custno=@custno and vccno=a.vccno and noq=a.noq and gno='4') b
+			where a.gno='2' and b.gno is null
 			--稅額
 			--insert into @result(gno,pno,custno
 			--	,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
@@ -382,8 +340,8 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 			--小計
 			select @moneys=0
 			select @moneys = SUM(ISNULL(total,0)) from view_vccs where noa=@noa
-			insert into @result(gno,pno,custno,vccno,memo,moneys)
-			select '4','1',@custno,@noa,'合計：',@moneys
+			insert into @result(gno,pno,custno,vccno,noq,memo,moneys)
+			select '5','1',@custno,@noa,CHAR(255),'合計：',@moneys
 			
 			fetch next from cursor_table2
 			into @noa,@ordeno,@typea,@datea
@@ -396,29 +354,29 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 		begin
 			if(@mm+@endcount)%@linecount != 0
 			begin
-				insert into @result(gno,pno,custno,memo)
-				select '5','3',@custno,'---以下空白---'
-				set @mm = @mm + 1
-				while @linecount-@mm%@linecount!=@endcount
-				begin
-					insert into @result(gno,pno,custno)
-					select '6','4',@custno
+				insert into @result(gno,pno,custno,vccno,noq,memo)
+					select '6','3',@custno,CHAR(255),CHAR(255),'---以下空白---'
 					set @mm = @mm + 1
-				end
+					while @linecount-@mm%@linecount!=@endcount
+					begin
+						insert into @result(gno,pno,custno,vccno,noq)
+						select '7','4',@custno,CHAR(255),CHAR(255)
+						set @mm = @mm + 1
+					end
 			end
 			
 			--出貨金額：
-			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot)
-			select '7','5',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+			insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot)
+			select '8','5',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 			--退貨金額：
-			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-			select '8','6',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
+			insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+			select '9','6',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
 			--稅    額：
-			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-			select '9','7',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
+			insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+			select '10','7',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
 			--本期應收：
-			insert into @result(gno,pno,custno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-			select '10','8',@custno,@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
+			insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
+			select '11','8',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
 			
 			select @nn = count(1) from (select vccno from @result where custno=@custno and gno='1' group by vccno)a
 			select @totpage = COUNT(1) from @result where custno=@custno
@@ -446,8 +404,8 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	--計價單位 PC 都改為 KG
 	--unit=KG OR M  就顯示重量, 不然就顯示數量 
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
 		+'</a>'a2
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(@t_isweight)=0 then '' else '重量' end +'</a>'ww
 	--,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG'  then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
@@ -472,7 +430,7 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.serial+'</a>' e03
 	from @result a
 	left join cust b on a.custno=b.noa
-	order by a.custno,a.sel;
+	order by a.custno,a.vccno,a.noq,cast(a.gno as int),a.sel;
 
 z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	SET QUOTED_IDENTIFIER OFF 
@@ -671,7 +629,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				
 				insert into @result(gno,pno,noq,custno
 					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
-				select '3','1',b.noq,@custno
+				select '4','1',b.noq,@custno
 				,case when a.typea='1' then '出' else '退' end
 				,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 				,b.item,b.mount
@@ -681,7 +639,14 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				left join view_vccs b on a.noa=b.noa
 				where a.noa=@noa
 				and b.noa is not null
+				and not(isnull(b.mount,0)=0 and ISNULL(b.[weight],0)=0)
 				order by b.noq
+
+				update @result set gno='3'
+				from @result a
+				outer apply(select * from @result where custno=@custno and vccno=a.vccno and noq=a.noq and gno='4') b
+				where a.gno='2' and b.gno is null
+				
 				--稅額
 				--insert into @result(gno,pno,custno
 				--	,typea,datea,vccno,productno,product,unit,[weight],mount,price,moneys)
@@ -695,7 +660,7 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				select @moneys=0
 				select @moneys = SUM(ISNULL(total,0)) from view_vccs where noa=@noa
 				insert into @result(gno,pno,custno,vccno,noq,memo,moneys)
-				select '4','1',@custno,@noa,CHAR(255),'合計：',@moneys
+				select '5','1',@custno,@noa,CHAR(255),'合計：',@moneys
 				
 				fetch next from cursor_table2
 				into @noa,@ordeno,@typea,@datea
@@ -709,45 +674,45 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				if(@mm+@endcount)%@linecount != 0
 				begin
 					insert into @result(gno,pno,custno,vccno,noq,memo)
-					select '5','3',@custno,CHAR(255),CHAR(255),'---以下空白---'
+					select '6','3',@custno,CHAR(255),CHAR(255),'---以下空白---'
 					set @mm = @mm + 1
 					while @linecount-@mm%@linecount!=@endcount
 					begin
 						insert into @result(gno,pno,custno,vccno,noq)
-						select '6','4',@custno,CHAR(255),CHAR(255)
+						select '7','4',@custno,CHAR(255),CHAR(255)
 						set @mm = @mm + 1
 					end
 				end
 				
 				--出貨金額：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot)
-				select '7','5',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+				select '8','5',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 				--退貨金額：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '8','6',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
+				select '9','6',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo1
 				--稅    額：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '9','7',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
+				select '10','7',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo2
 				--本期應收：
 				insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-				select '10','8',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
+				select '11','8',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo3
 				--已收金額：
 				if LEN(@t_ispayed)>0
 				begin
 					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-					select '11','9',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo4
+					select '12','9',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo4
 				end
 				--前期未收：
 				if LEN(@t_isunpay)>0
 				begin
 					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot,memo)
-					select '12','10',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
+					select '13','10',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot,@t_memo5
 				end
 				--應收總計：
 				if LEN(@t_ispayed)>0 or LEN(@t_isunpay)>0
 				begin
 					insert into @result(gno,pno,custno,vccno,[money],bkmoney,tax,total,payed,unpay,tot)
-					select '13','11',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
+					select '14','11',@custno,CHAR(255)+CHAR(255),@money,@bkmoney,@tax,@total,@payed,@unpay,@tot
 				end
 				select @nn = count(1) from (select vccno from @result where custno=@custno and gno='1' group by vccno)a
 				select @totpage = COUNT(1) from @result where custno=@custno
@@ -775,8 +740,8 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	--計價單位 PC 都改為 KG
 	--unit=KG OR M  就顯示重量, 不然就顯示數量 
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
 		+'</a>'a2
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(@t_isweight)=0 then '' else '重量' end+'</a>' ww
 	--,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG' then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2

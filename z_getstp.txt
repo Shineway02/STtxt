@@ -1,4 +1,5 @@
 ﻿z_getstp1:--z_getstp1
+	SET QUOTED_IDENTIFIER OFF
 	declare @t_kind nvarchar(max) = '[1]'
 	declare @t_bnoa nvarchar(20) = case when '#non' = [2] then '' else [2] end
 	declare @t_enoa nvarchar(20) = case when '#non' = [3] then char(255) else [3] end
@@ -131,11 +132,11 @@
 		if(CHARINDEX('chr(10)',@memo)>0)
 		begin
 			set @memo1 = LEFT(@memo,CHARINDEX('chr(10)',@memo)-1)
-			set @memo = right(@memo,LEN(@memo)-LEN(@memo1)-7)
+			set @memo = right(@memo,LEN(@memo)-LEN(@memo1)-7+1)
 			if(CHARINDEX('chr(10)',@memo)>0)
 			begin
 				set @memo2 = LEFT(@memo,CHARINDEX('chr(10)',@memo)-1)
-				set @memo3 = right(@memo,LEN(@memo)-LEN(@memo2)-7)
+				set @memo3 = right(@memo,LEN(@memo)-LEN(@memo2)-7+1)
 			end
 			else
 				set @memo2 = @memo
