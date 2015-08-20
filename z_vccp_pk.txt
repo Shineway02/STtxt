@@ -4,6 +4,7 @@ z_vccp_pk01:--z_vccp_pk01
 	declare @t_isweight nvarchar(max) = case when '#non'=[2] then '' else [2] end
 	declare @t_isprice nvarchar(max) = case when '#non'=[3] then '' else [3] end
 	-------------------------------------------------------------------------------------------------
+	-- unit=KG   才顯示重量
 	declare @tmp table(
 		sel int identity(1,1),
 		curpage int,
@@ -128,8 +129,13 @@ z_vccp_pk01:--z_vccp_pk01
 	+ isnull([custpro],'') b01
 	,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
 	,case when [mount]!=0 then item  else '' end b04
-	,case when len(@t_isweight)>0 and [weight]!=0 then dbo.getComma([weight],-1) else '' end b05
-	,case when len(@t_isweight)>0 and [weight]!=0 then unit  else '' end b06
+	--unit=KG or M  就顯示重量, 不然就顯示數量 
+	,case when (unit='KG' or unit='公斤' or unit='M') and [weight]!=0 then dbo.getComma([weight],-1) when not(unit='KG' or unit='公斤' or unit='M') and isnull([mount],0)!=0 then dbo.getComma([mount],-1) else '' end b05
+	,case when (unit='KG' or unit='公斤' or unit='M') and isnull([weight],0)=0 then '' when not(unit='KG' or unit='公斤' or unit='M') and isnull([mount],0)=0 then '' else unit end b06
+	--,case when len(@t_isweight)>0 and [weight]!=0 and unit='KG' then dbo.getComma([weight],-1) else '' end b05
+	--,case when len(@t_isweight)>0 and [weight]!=0 and unit='KG' then unit  else '' end b06
+	
+	
 	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma(case when floata=0 then [price] else ROUND(floata*price,4) end,-1) else '' end b07
 	,case when len(@t_isprice)>0 and [moneys]!=0 then dbo.getComma([moneys],0) else '' end b08
 	,case when len(@t_isprice)>0 and [money]!=0 then dbo.getComma([money],0) else '' end c01

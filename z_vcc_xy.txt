@@ -290,7 +290,7 @@ select * from (
 order by storeno,productno,datea,custno,typea
 
 insert @tmp (gno,idno,accy,datea,typea,storeno,stores,custno,comp,productno,products,vccno,mount,stkmount)
-select '0',idno,accy,datea,case when typea='1' then '寄庫' else '寄出' end,storeno,stores,custno,comp,productno,products,vccno,mount,0
+select '0',idno,accy,datea,case when typea='1' then '寄庫' else '庫出' end,storeno,stores,custno,comp,productno,products,vccno,mount,0
 from @tmpa where datea between @t_bdate and @t_edate
 
 if(@t_last='1')
@@ -329,7 +329,7 @@ begin
 	end
 	else
 	begin
-		if(@typea='寄出')
+		if(@typea='庫出')
 			set @stkmount=@stkmount-@mount
 		else
 			set @stkmount=@stkmount+@mount

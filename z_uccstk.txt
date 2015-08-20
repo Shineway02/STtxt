@@ -1239,17 +1239,19 @@ z_uccstk01:--z_uccstk01
 	into @tablea,@tableas,@accy
 	while(@@FETCH_STATUS <> -1)
 	begin
+		--deli 轉來的不計算
 		set @cmd =
 		" select 1,'rc2s',@accy,a.noa,a.noq,b.datea"+
 		" ,a.uno,isnull(a.mount,0),isnull(a.[weight],0)"+
-		" ,case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end + case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end"+
-		" ,case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end"+
+		" ,case when d.noa is not null then a.sprice else case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end + case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end end"+
+		" ,case when d.noa is not null then a.sprice2 else case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end end"+
 		" ,round((case when isnull(a.weight,0)=0 then isnull(a.price,0) else isnull(a.total,0)/isnull(a.weight,0) end+case when isnull(a.[weight],0)=0 or isnull(c.weight,0)=0 then 0 else isnull(a.[weight],0)/c.weight*isnull(b.tranmoney,0)/isnull(a.[weight],0) end)*isnull(a.[weight],0),0)"+
 		" ,isnull(a.total,0)"+
 		" ,case when b.noa is null then '表頭遺失' else '' end"+
 		" ,a.productno"+
 		" from "+@tableas+" a left join "+@tablea+" b on a.noa=b.noa"+
 		" outer apply (select sum(isnull(weight,0)) weight from "+@tableas+" where noa=a.noa and not(lower(left(uno,1))='x' or lower(left(uno,1))='y' or lower(left(uno,1))='z')) c"+
+		" left join deli d on a.noa=d.rc2no"+
 		" where len(isnull(a.uno,''))>0"+
 		" and isnull(b.typea,'1')='1'"+
 		" and not(lower(left(a.uno,1))='x' or lower(left(a.uno,1))='y' or lower(left(a.uno,1))='z')"
@@ -1262,6 +1264,7 @@ z_uccstk01:--z_uccstk01
 	end
 	close cursor_table
 	deallocate cursor_table
+	
 	----------------------------------------------------------------------------------
 	--廢料 X,Y,Z 不計算
 	--ina 入庫金額即成本
