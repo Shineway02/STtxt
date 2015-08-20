@@ -446,8 +446,8 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	--計價單位 PC 都改為 KG
 	--unit=KG OR M  就顯示重量, 不然就顯示數量 
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
 		+'</a>'a2
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(@t_isweight)=0 then '' else '重量' end +'</a>'ww
 	--,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG'  then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
@@ -775,8 +775,8 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	--計價單位 PC 都改為 KG
 	--unit=KG OR M  就顯示重量, 不然就顯示數量 
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
-		+case when (a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
+		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M') and isnull(a.[mount],0)=0 then '' else a.unit end
 		+'</a>'a2
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(@t_isweight)=0 then '' else '重量' end+'</a>' ww
 	--,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG' then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
