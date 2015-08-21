@@ -27,20 +27,17 @@ declare @accy nvarchar(20) --非rc2b的單號年度
 --declare @ordeno nvarchar(max)= (select ordeno from view_cubs where noa=@noa)
 
 --入庫單號
-declare @rc2no nvarchar(50) = isnull((select top 1 ordeno from view_cubs where noa=@noa),'')
-
---入庫日期
-declare @datea nvarchar(20) = isnull((select top 1 datea from view_cubs where noa=@noa),'')
-
-
+declare @rc2no nvarchar(50) = ''
 
 if(@condition='0')
 begin
-	if(len(@rc2no)>0)
+	if(len(@noa)>0)
 	begin
-		set @accy=(select accy from view_rc2 where noa=@rc2no)
+		set @accy=(select accy from view_rc2 where postname=@noa)
 		
-		set @cmd="delete rc2s"+@accy+" where noa='"+@noa+"'"
+		set @cmd="delete a 
+		from rc2s"+@accy+" a left join rc2"+@accy+" b on a.noa=b.noa
+		where postname='"+@noa+"'"
 		EXECUTE sp_executesql @cmd
 		
 		set @cmd="delete rc2"+@accy+" where postname='"+@noa+"'"
@@ -49,60 +46,59 @@ begin
 	end
 end
 
+
 --產生入庫單
 if(@condition='1')
 begin	
-	declare @tgg nvarchar(50),@tggno nvarchar(20)
-
+	declare @datea nvarchar(50),@tggno nvarchar(20)
+	
 	declare cursor_table cursor for 
-	select tgg,tggno  from view_cubs where noa=@noa group by tgg,tggno
+	select datea,tggno  from view_cubs where noa =@noa  group by tggno,datea
 	open cursor_table 
 	fetch next from cursor_table 
-	into @tgg,@tggno 
+	into @datea,@tggno 
 	while(@@FETCH_STATUS <> -1) 
 	begin 
-	 
-	set @rc2no =(select ordeno from view_cubs where tgg=@tgg)
-	
-	if(@rc2no!='' )
-	begin
-		--產生入庫單號
-		--取得當天最後一個領料單號
-		select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
-		--新的入庫單號(後面號碼+1)
-		set @rc2no=@rc2key+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)
-	end
-	select a.trantype
-	
-	from tgg a
-	--rc2 from view_cubs
-		exec("insert rc2"+@year+"(postname,datea,typea,stype,cno,acomp,mon,invono,invo,tggno,tgg,tel,post,addr,post2,addr2
-		,trantype,paytype,tax,taxtype,memo)
-		select "+@rc2no+" noa,a.datea,'1' typea,'1' stype,a.cno,a.comp,LEFT(a.datea,6),'' invono,'' invo,a.tggno,a.tgg,c.tel,c.zip_comp,c.addr_comp
-		,'' post2,'' addr2,c.trantype,c.paytype,0 tax,'由驗收作業("+@noa+")轉來 ' memo
-		from view_cubs a left join acomp b on a.tggno=b.tggno
-			  left join tgg c on a.tggno= c.noa
-		where a.tgg='"+@tgg+"' and a.noa='"+ @noa+"'")
-	
-	--rc2s from view_cubs
-		exec("insert rc2s"+@year+" (noa,noq,product,unit,mount,price,total)
-		select '"+@rc2no+"' noa,noq	,product,unit,mount,price,mo total
-		from view_cubs  where noa='"+@noa+"' and tgg='"+@tgg+"' ")
-	
-	--view_cubs from rc2
+		set @rc2no=''
+		set @rc2no =isnull((select MAX(ordeno) from view_cubs where noa=@noa and tggno=@tggno and datea=@datea ),'')	
+		if(@rc2no='' )
+		begin
+			--產生入庫單號
+			--取得當天最後一個領料單號
+			
+			select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
+			--新的入庫單號(後面號碼+1)
+			set @rc2no=@rc2key+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)		
+		end
+		BEGIN TRY
+		--rc2 from view_cubs
+			exec("insert rc2"+@year+"(noa,postname,datea,typea,stype,cno,acomp,mon,invono,invo,tggno,
+			tgg,nick,tel,post,addr,post2,addr2,trantype,paytype,	tax,memo)
+			select '"+@rc2no+"','"+@noa+"' postname,'"+@datea+"' datea,
+			'1' typea,'1' stype
+			,(select top 1 noa from acomp) cno,(select top 1 acomp from acomp) acomp
+			,LEFT('"+@datea+"',6),'' invono,'' invo,noa
+			,comp,nick,tel,zip_comp,addr_comp,'' post2,'' addr2,trantype,paytype,0 tax,'由連續製令單作業("+@noa+")轉來 ' memo
+			from tgg where noa='"+@tggno+"'
+			")
 		
-	exec("update cubs"+@year+" set noa=(select ordeno from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')	
-					  ,noq=(select no2 from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
-					  ,unit=(select unit from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
-					  ,mount=(select mount from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
-					  ,price=(select price from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"')
-					  ,mo=(select total from rc2s where noa='"+@noa+"' and tgg='"+@tgg+"'")
-					
-	exec("update rc2"+@year+" set money =(select SUM(mo) from cubs104 where noa='"+@noa+"' and tgg='"+@tgg+"'),
-					  price =(select price from cubs104  where noa='"+@noa+"' and tgg='"+@tgg+"'),
-					  total =(select SUM(mo)+price from cubs104 where  noa='"+@noa+"' and tgg='"+@tgg+"')")
-	fetch next from cursor_table 
-	into @tgg,@tggno 
+		--rc2s from view_cubs
+			exec("insert rc2s"+@year+" (noa,noq,productno,product,unit,mount,price,total,memo)
+			select '"+@rc2no+"' noa,noq	,productno,product,unit,mount,price,mo total,memo
+			from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'")
+			
+			
+		exec("update cubs"+@year+" set ordeno='"+@rc2no+"' where noa='"+@noa+"' and tggno='"+@tggno+"' and datea='"+@datea+"'")
+			
+		exec("update rc2"+@year+" set money =isnull((select SUM(total) from view_rc2 where noa='"+@rc2no+"'),0),
+						  total =isnull((select SUM(total) from view_rc2 where noa='"+@rc2no+"'),0)
+						where noa='"+@rc2no+"'")
+		END TRY
+		BEGIN CATCH
+		END CATCH
+	
+		fetch next from cursor_table 
+		into @datea,@tggno 
 	end 
 	close cursor_table 
 	deallocate cursor_table 
