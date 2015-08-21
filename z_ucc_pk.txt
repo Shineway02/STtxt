@@ -372,6 +372,9 @@ z_ucc_pk01:--z_ucc_pk01
 	declare @t_sort nvarchar(max) = case when '#non'=[23] then '' else [23] end
 	--declare @t_showprice nvarchar(max) = case when '#non'=[24] then '' else [24] end
 	declare @t_spec nvarchar(max) = case when '#non'=[25] then '' else [25] end
+	
+	declare @t_productno2 nvarchar(max) = case when '#non'=[29] then '' else [29] end
+	declare @t_style2 nvarchar(max) = case when '#non'=[30] then '' else [30] end
 	------------------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_ucc_pk01')is not null
 	BEGIN
@@ -452,15 +455,16 @@ z_ucc_pk01:--z_ucc_pk01
 	and ISNULL(a.width,0) between @t_bwidth and @t_ewidth
 	and ISNULL(a.lengthb,0) between @t_blengthb and @t_elengthb
 	and ISNULL(a.radius,0) between @t_bradius and @t_eradius
-	and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno
+	--and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno
 	and ISNULL(a.laststoreno,'') between @t_bstoreno and @t_estoreno
 	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
 	and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
 	and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
-	and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
+	--and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
 	and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
 	and (len(@t_spec)=0 or isnull(a.class,'') = @t_spec)
-
+	and (len(@t_style2)=0 or CHARINDEX(','+a.style+',',','+@t_style2+',')>0)
+	and (len(@t_productno2)=0 or CHARINDEX(','+a.productno+',',','+@t_productno2+',')>0)
 	update #z_ucc_pk01 set cstyle=b.product
 	from #z_ucc_pk01 a
 	left join style b on a.style=b.noa
