@@ -142,43 +142,30 @@ begin
 		
 	
 end
-;
 
-
-cubs2ina:--cubs2ina
------------------------------------------------------------------------
-SET QUOTED_IDENTIFIER OFF
-declare @year nvarchar(20)=[1]--年度[1]
-declare @noa nvarchar(50)=[2]
-declare @condition nvarchar(20)=[3]--動作 0 刪除, 1 新增[3]
-declare @rc2key nvarchar(50)=[4]--KEY
------------------------------------------------------------------------
-
-declare @cmd nvarchar(max)
-declare @accy nvarchar(20) 
---declare @ordeno nvarchar(max)= (select ordeno from view_cubs where noa=@noa)
 
 
 
 --入庫單號
-declare @rc2no nvarchar(50) = isnull((select top 1 noa from view_ina where product=@noa),'')
+declare @inano nvarchar(50)
+set @inano  = isnull((select top 1 noa from view_ina where product=@noa),'')
 
 --入庫日期
-declare @datea nvarchar(20) = isnull((select top 1 datea from view_cub where noa=@noa),'')
+set @datea  = isnull((select top 1 datea from view_cub where noa=@noa),'')
 
 
 if(@condition='0')
 begin
 	if(len(@noa)>0)
 	begin
-		set @accy=(select top 1 accy from view_rc2 where postname=@noa)
+		set @accy=(select top 1 accy from view_ina where product=@noa)
 		
 		set @cmd="delete a 
 		from ina"+@accy+" a left join  inas"+@accy+" b on a.noa=b.noa
 		where a.product='"+@noa+"'"
 		EXECUTE sp_executesql @cmd
 		
-		set @cmd="delete inas"+@accy+" where noa='"+@rc2no+"'"
+		set @cmd="delete inas"+@accy+" where noa='"+@inano+"'"
 		EXECUTE sp_executesql @cmd
 		
 	end
@@ -189,27 +176,27 @@ if(@condition='1')
 begin
 	set @accy=@year
 	--判斷是否已有入庫單號
-	if(@rc2no='')
+	if(@inano='')
 	begin
 		--產生入庫單號
 		--取得當天最後一個領料單號
-		select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
+		select @inano=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
 		--新的入庫單號(後面號碼+1)
-		set @rc2no=@rc2key+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)
+		set @inano=@inakey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)
 	end
 	
 	exec("insert ina"+@accy+"(noa,itype,datea,ordeno,tggno,comp,storeno,store,product)
-	select top 1 '"+@rc2no+"','生產入庫' itype,a.datea,a.ordeno,a.tggno,a.comp,a.storeno,a.store,a.noa
+	select top 1 '"+@inano+"','生產入庫' itype,a.datea,a.ordeno,a.tggno,a.comp,a.storeno,a.store,a.noa
 	from view_cubs a left join view_cub b on a.noa=b.noa
 	where a.noa ='"+@noa+"'")
 	
 	
 	exec("insert inas"+@accy+"(noa,noq,productno,product,mount,price,total)
-	select top 1 '"+@rc2no+"',a.no2,b.productno,b.product,b.total,sum(b.mo)/b.total price,SUM(b.mo) total
+	select top 1 '"+@inano+"',a.no2,b.productno,b.product,b.total,sum(b.mo)/b.total price,SUM(b.mo) total
 	from view_cubs a left join view_cub b on a.noa=b.noa
 	where a.noa ='"+@noa+"'
 	group by a.no2,b.productno,b.product,b.total")
 	
-	exec("update cubs"+@year+" set ordeno='"+@rc2no+"' where noa='"+@noa+"'  and datea='"+@datea+"'")
 	
+
 end
