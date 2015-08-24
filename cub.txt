@@ -1,4 +1,39 @@
-﻿cubstocubu:--cubstocubu
+﻿cub2get:--cub2get	
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max) = ''
+	declare @cubno nvarchar(max) = [1]
+	declare @condition nvarchar(max) = [2]
+-----------------------------------------------------------------------------------------	
+	declare @accy nvarchar(20) = ''
+
+	if @condition='0'
+	begin
+		select @accy = a.accy from view_get a where a.noa = @cubno
+		--刪除 GET
+		--CUB  GET  的單號一致
+		if LEN(@accy)>0
+		begin
+			set @cmd=N'delete get'+@accy+N' where noa=@cubno delete gets'+@accy+N' where noa=@cubno'
+			execute sp_executesql @cmd,N'@cubno nvarchar(max)',@cubno=@cubno
+		end
+	end
+	else
+	begin
+		select @accy = a.accy from view_cub a where a.noa = @cubno
+		if LEN(@accy)>0
+		begin
+			set @cmd='
+			insert into gets'+@accy+'(noa,noq,uno,[weight])
+			select noa,noq,uno,gweight 
+			from view_cubs where accy=@accy and noa=@cubno and len(uno)>0
+			insert into get'+@accy+N'(noa,typea,datea,memo)
+			select noa,"領料單",datea,"生產作業轉來"
+			from view_cub where accy=@accy and noa=@cubno' 
+			execute sp_executesql @cmd,N'@cubno nvarchar(max),@accy nvarchar(20)',@cubno=@cubno,@accy=@accy
+		end
+	end;
+----------------------------------------------------------------------------------------------------------------------------------------------------
+cubstocubu:--cubstocubu
 SET QUOTED_IDENTIFIER OFF
 declare @accy nvarchar(MAX) = [1]
 declare @noa nvarchar(MAX) = [2]
@@ -11,7 +46,8 @@ EXEC("delete cubu"+@accy+" where noa='"+@noa+"'")
 --重新寫入 (有交期date2才寫入cubu)
 EXEC("
 	insert cubu"+@accy+" (noa,noq,uno,productno,product,spec,size,dime,width,lengthb,radius,class,ucolor,unit,mount,weight,prt,memo,storeno,store,custno,comp,ordeno,no2,datea)
-	select noa,noq,uno,productno,product,spec,size,dime,width,lengthb,radius,class,ucolor,unit,mount,weight,prt,memo,storeno,store,custno,comp,ordeno,no2,date2 from cubs"+@accy+" where noa='"+@noa+"' and isnull(date2,'')!='' 
+	select noa,noq,uno,productno,product,spec,size,dime,width,lengthb,radius,class,ucolor,unit,mount,weight,prt,memo,storeno,store,custno,comp,ordeno,no2,date2 
+	from cubs"+@accy+" where noa='"+@noa+"' and isnull(date2,'')!='' 
 ")
 ;
 ---------------------------------------------------------------------------------------------------------
