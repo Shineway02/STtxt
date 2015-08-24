@@ -168,6 +168,7 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[tunpay]<0 then'(' else '' end)+dbo.getComma(abs(a.[tunpay]),0)+(case when a.[tunpay]<0 then')' else '' end)+'</a>' b6
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+(case when a.[ttotal2]<0 then'(' else '' end)+dbo.getComma(abs(a.[ttotal2]),0)+(case when a.[ttotal2]<0 then')' else '' end)+'</a>' b7
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo+'</a>' memo
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when @t_bdate=@t_edate then @t_bdate else @t_bdate+'～'+@t_edate end+'</a>' e01
 	from @result a
 	left join cust b on a.custno=b.noa
 	order by a.custno,cast(a.gno as int);
