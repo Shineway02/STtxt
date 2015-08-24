@@ -140,6 +140,8 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 	close cursor_table
 	deallocate cursor_table
 ---------------------------------------------------------------------------------------------------------------
+	update @result set [money]=-[money],[tax]=-[tax],[total]=-[total] where ctype='收' or ctype='退'
+	
 	select gno,nn
 	,(ROW_NUMBER()over(partition by a.custno order by cast(a.gno as int))-1)/@linecount+1 pp
 	,a.totpage qq
