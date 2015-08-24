@@ -181,9 +181,9 @@ begin
 	begin
 		--產生入庫單號
 		--取得當天最後一個領料單號
-		select @inano=MAX(noa) from view_rc2 where noa like @inakey+REPLACE(@datea,'/','')+'%'
+		select @inano=MAX(noa) from view_ina where noa like @inakey+REPLACE(@datea,'/','')+'%'
 		--新的入庫單號(後面號碼+1)
-		set @inano=@inakey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@inano,'000'),3) as int)+1 as nvarchar(10)),3)
+		set @inano=@inakey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)
 	end
 	
 	exec("insert ina"+@accy+"(noa,itype,datea,ordeno,tggno,comp,storeno,store,product)
@@ -197,5 +197,7 @@ begin
 	from view_cubs a left join view_cub b on a.noa=b.noa
 	where a.noa ='"+@noa+"'
 	group by a.no2,b.productno,b.product,b.total")
-
+	
+	exec("update cub"+@inano+" set vcceno='"+@inano+"' where noa=@noa")
+	
 end
