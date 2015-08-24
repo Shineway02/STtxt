@@ -3,26 +3,28 @@ z_cub_rk01:--z_cub_rk01
 	declare @t_mm nvarchar(50) = case when '#non' = [1] then '' else [1] end
 ------------------------------------------------------------------------------------------------
 declare @result table( 
-gno nvarchar(1),nob nvarchar(20),datea nvarchar(20),comp nvarchar(50), 
+gno nvarchar(1),nob nvarchar(30),datea nvarchar(20),comp nvarchar(50), 
 ordeno nvarchar(20),dime float,radius float,wi float 
 ,lengthc float,spec nvarchar(20),hard float,source nvarchar(20) 
 ,lengthb float,lengthb2 float,weight float,bdime float,intotal float 
 ,hweight float,deweight float,hmount float,derate nvarchar(50),bspec nvarchar(50) 
-,mm nvarchar(4),yyyy nvarchar(4),dd nvarchar(8) 
+,mm nvarchar(10),yyyy nvarchar(10),dd nvarchar(10) 
 ,product2 nvarchar(50),bsp1 float ,bsp2 float ,bsp3 float ,bsp4 float ,bsp5 float ,bsp6 float ,bsp7 float , 
 bsp8 float ,bsp9 float ,bsp10 float ,bsp11 float , bsp12 float ,bsp13 float ,bsp14 float , 
-bsp15 float ,bsp16 float, gw float,price float,prate nvarchar(20),mount float) 
+bsp15 float ,bsp16 float, gw float,price float,prate nvarchar(20),mount float,w01 float,w02 float,w03 float,
+w04 float,w05 float) 
 
 insert into @result 
-select '0'gno,a.noa,a.datea,b.comp,b.ordeno, 
+select '0'gno,a.noa+"-"+b.noq,a.datea,b.comp,b.ordeno, 
 b.dime,b.radius,b.width,b.lengthc,b.spec,b.hard,b.source 
-,b.lengthb,b.lengthb2,b.weight,b.bdime,b.weight+b.lengthb+b.lengthc-b.bdime 
-,b.hweight,(b.weight+b.lengthb+b.lengthc-b.bdime)-b.hweight,b.hmount 
+,b.lengthb,b.lengthb2,b.weight,b.bdime,b.weight+b.lengthb+b.lengthc-b.bdime intotal
+,b.hweight,(b.weight+b.lengthb+b.lengthc-b.bdime)-b.hweight,b.hmount deweight
 ,case when (b.weight-b.hweight) <> 0 then 
 (Convert(nvarchar(20),round(((b.weight+b.lengthb+b.lengthc-b.bdime)/((b.weight-b.hweight)))/100,2))+'%') 
-end 
+end derate
 ,b.bspec,right(LEFt(@t_mm,6),2),LEFt(@t_mm,3),right(@t_mm,2),b.productno2 
-,b.need 
+,case when c.productno like 'TF-202' or c.productno like 'WD101' or c.productno like 'WD102' 
+	    or c.productno like 'UD-001' or c.productno like 'UD-002' then hmount else 0 end 
 -----------------------------判斷接著劑染料顏色---------------------------------------------------------------------- 
 ,case when c.productno like 'N653' then hmount else 0 end 
 ,case when c.productno like 'N450' then hmount else 0 end 
@@ -48,20 +50,21 @@ then hmount else 0 end,case when c.productno like 'HDB800' then hmount else 0 en
 ,b.gweight ,b.price 
 ,case when (b.weight-b.hweight) <> null then 
 (Convert(nvarchar(20),round((b.price/((b.weight-b.hweight)))/100,2))+'%') 
-end ,b.mount
+end ,b.mount ,b.w01,b.w02,b.w03,b.w04,b.w05
 
-from view_cubs b left join view_cub a on a.noa=b.noa
-				 left join view_cubt c on a.noa=c.noa  and b.noq=c.noq
+from view_cubs b left join view_cub a on a.noa=b.noa 
+left join view_cubt c on a.noa=c.noa and b.noq=c.noq 
 where a.noa =b.noa AND left(a.datea,6) like @t_mm 
 
 insert into @result (gno,dime,radius,wi,lengthc,hard,lengthb,lengthb2,weight,bdime,intotal,hweight,hmount,bsp1,bsp2 
-,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10,bsp11,bsp12,bsp13,bsp14,bsp15,bsp16,gw,price,mount,deweight) 
+,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10,bsp11,bsp12,bsp13,bsp14,bsp15,bsp16,gw,price,mount,deweight,w01,w02,w03,w04,w05) 
 select '1',sum(dime),SUM(radius),sum(wi),SUM(lengthc),SUM(hard),SUM(lengthb),SUM(lengthb2),SUM(weight),SUM(bdime) 
 ,SUM(intotal),SUM(hweight),SUM(hmount) 
 ,sum(convert(float,bsp1)),SUM(convert(float,bsp2)),SUM(convert(float,bsp3)),SUM(convert(float,bsp4)),SUM(convert(float,bsp5)),SUM(convert(float,bsp6)) 
 ,SUM(convert(float,bsp7)),SUM(convert(float,bsp8)),SUM(convert(float,bsp9)),SUM(convert(float,bsp10)) 
 ,SUM(convert(float,bsp11)),SUM(convert(float,bsp12)),SUM(convert(float,bsp13)) 
 ,SUM(convert(float,bsp14)),SUM(convert(float,bsp15)),SUM(convert(float,bsp16)),sum(gw) ,SUM(price),SUM(mount),SUM(deweight) 
+,sum(w01),sum(w02),sum(w03),sum(w04),sum(w05)
 from @result 
 where left(datea,6) like @t_mm 
 
@@ -76,8 +79,8 @@ ordeno ,dime ,radius ,wi
 ,dbo.getComma(intotal+(bsp1+bsp2+bsp3+bsp4+bsp5+bsp6+bsp7+bsp8+bsp9+bsp10+bsp11+bsp12+bsp13+bsp14+bsp15)-bsp5-bsp6,0) intotal 
 ,dbo.getComma(hweight,0) hweight,dbo.getComma(deweight,0) deweight,dbo.getComma(hmount,0) hmount 
 ,derate,dd,mm,yyyy,bsp1,bsp2,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10 
-,bsp11,bsp12,bsp13,bsp14,bsp15,bsp16 ,dbo.getComma(gw,0) gw ,price,prate ,mount
-from @result   ;
+,bsp11,bsp12,bsp13,bsp14,bsp15,bsp16 ,dbo.getComma(gw,0) gw ,price,prate ,mount,w01,w02,w03,w04,w05 
+from @result  ;
 
 ------------------------------------------------------------------------------------------------------
 z_cub_rk02:--z_cub_rk02
