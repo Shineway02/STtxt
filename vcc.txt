@@ -321,16 +321,18 @@ declare @t_noa nvarchar(50) = [2]
 declare @t_worker nvarchar(30) = [3]
 declare @accy nvarchar(50)=@t_accy
 
---已產生領料單
+--已產生領料單 && vccs
 if((select count(*) from view_get where noa=@t_noa)>0 )
 begin
-	set @accy=isnull((select accy from view_get where noa=@t_noa),@t_accy)
-	
+	set @accy=isnull((select top 1 accy from view_get where noa=@t_noa),@t_accy)
 	EXEC(" delete get"+@accy+" where noa='"+@t_noa+"'")
 	EXEC(" delete gets"+@accy+" where noa='"+@t_noa+"'")
+	
+	set @accy=isnull((select top 1 accy from view_vcc where noa=@t_noa),@t_accy)
+	EXEC(" delete vccs"+@accy+" where noa='"+@t_noa+"' and item='packing' ")
 end
 
---產生領料單
+--產生領料單 && vccs
 if((select count(*) from packing where noa=@t_noa)>0 )
 begin
 	EXEC("
@@ -342,6 +344,19 @@ begin
 		select a.noa,b.noq,a.datea,b.uno,b.mount,b.weight,'領料',b.memo
 		from view_vcc a left join packing b on a.noa=b.noa where a.noa='"+@t_noa+"'
 	")
+	
+	EXEC("
+		insert vccs"+@accy+" (noa,noq,product,ucolor,spec,size,lengthb,class,mount,weight,price,total,ordeno,no2,item)
+		select '"+@t_noa+"' noa
+		,right('000'+cast(cast(isnull((select noq from view_vccs where noa='"+@t_noa+"'),'000') as int)+ROW_NUMBER()over (order by ordeno,no2) as nvarchar(10)),3) noq
+		,* from (
+			select b.product,b.ucolor,b.spec,b.size,b.lengthb,b.class
+			,sum(a.mount)mount,sum(a.weight)weight,b.price,sum(a.weight)*b.price total,b.noa ordeno,b.no2,'packing'item
+			from packing a left join view_ordes b on left(a.uno,len(b.noa))=b.noa and right(left(a.uno,len(b.noa)+len(b.no2)),len(b.no2))=b.no2
+			where a.noa='"+@t_noa+"' and b.noa!=''
+			group by right(left(a.uno,len(b.noa)+len(b.no2)),len(b.no2))
+			,b.product,b.ucolor,b.spec,b.size,b.lengthb,b.class,b.price,b.noa,b.no2
+		)tmp
+	")
 end
-
 ;
