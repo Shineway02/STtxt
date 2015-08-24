@@ -185,19 +185,24 @@ begin
 		--新的入庫單號(後面號碼+1)
 		set @inano=@inakey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)
 	end
-	
-	exec("insert ina"+@accy+"(noa,itype,datea,ordeno,tggno,comp,storeno,store,product)
-	select top 1 '"+@inano+"','生產入庫' itype,a.datea,a.ordeno,a.tggno,a.comp,a.storeno,a.store,a.noa
-	from view_cubs a left join view_cub b on a.noa=b.noa
-	where a.noa ='"+@noa+"'")
+	BEGIN TRY
+	exec("insert ina"+@accy+"(noa,itype,datea,product)
+	select top 1 '"+@inano+"','生產入庫' itype,datea,noa
+	from view_cub where noa ='"+@noa+"'
+	")
 	
 	
 	exec("insert inas"+@accy+"(noa,noq,productno,product,mount,price,total)
-	select top 1 '"+@inano+"',a.no2,b.productno,b.product,b.total,sum(b.mo)/b.total price,SUM(b.mo) total
-	from view_cubs a left join view_cub b on a.noa=b.noa
-	where a.noa ='"+@noa+"'
-	group by a.no2,b.productno,b.product,b.total")
+	select top 1 '"+@inano+"',no2,productno,product,
+	total,(select sum(mo) from view_cub where noa='"+@noa+"')/total price
+	,(select SUM(mo) from view_cub where noa='"+@noa+"') total
+	from  view_cub 
+	where noa ='"+@noa+"'
+	")
 	
-	exec("update cub"+@inano+" set vcceno='"+@inano+"' where noa=@noa")
-	
+	exec("update cub"+@accy+" set vcceno='"+@inano+"' where noa='"+@noa+"'")
+	END TRY
+	BEGIN CATCH
+	END CATCH
+		
 end
