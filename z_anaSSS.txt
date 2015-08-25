@@ -1,4 +1,4 @@
-z_anaSSS01:--z_anaSSS01
+
 z_anaSSS01:--z_anaSSS01
 SET QUOTED_IDENTIFIER OFF
 declare @t_mage float = case when '#non'=[1] then 0 else [1] end 
@@ -92,7 +92,9 @@ from sss
 
 
 insert into @tmp (gno ,noa ,namea ,outdate ,indate ,birthday ,workage ,age ) 
-select 7,noa,namea,outdate,indate,birthday,CONVERT(float,left(outdate,3))-CONVERT(float,left(indate,3)) 
+select 7,noa,namea,outdate,indate,birthday,
+case when isnull(CONVERT(float,left(outdate,3)),'')='' then YEAR(GETDATE())-1911 else CONVERT(float,left(outdate,3)) end
+-CONVERT(float,left(indate,3)) 
 ,convert(nvarchar,convert(float,year(getdate()))-1911)-CONVERT(float,left(birthday,3)) 
 from @tmp 
 where gno='5' 
@@ -100,7 +102,6 @@ where gno='5'
 --declare @i int = 0 
 declare @t_bmage nvarchar(10)= (convert(int,@t_mage)+convert(int,@t_rage)) 
 declare @orage nvarchar(10)=@t_mage 
-
 
 
 
@@ -168,7 +169,7 @@ declare @tmp1 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int )
 insert into @tmp1(gno,agerange,agecount) 
 select gno,agerange ,case when len(@c1) <>0 then count(agerange) else 0 end 
 from @tmp 
-where workage >=left(@c1,2) and  workage< right(@c1,2) and gno='0' 
+where workage >=left(@c1,2) and workage< right(@c1,2) and gno='0' 
 group by gno,agerange 
 
 insert into @tmp1 (gno ,agecount ) 
@@ -256,7 +257,7 @@ declare @tmp8 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int)
 insert into @tmp8(gno,agerange,agecount) 
 select gno, agerange ,case when len(@c8)<>0 then count(agerange) else 0 end 
 from @tmp 
-where workage >= left(@c8,2) and  workage < right(@c8,2) 
+where workage >= left(@c8,2) and workage < right(@c8,2) 
 and gno='0' 
 group by gno,agerange 
 
@@ -268,8 +269,7 @@ declare @tmp9 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int)
 insert into @tmp9(gno,agerange,agecount) 
 select gno, agerange ,case when len(@c9)<>0 then count(agerange) else 0 end a2 
 from @tmp 
-where workage >= left(@c9,2) and workage<right(@c9,2) 
-and gno='0' 
+where workage >= left(@c9,2) and workage< right(@c9,2)  and gno='0' 
 group by gno,agerange 
 
 insert into @tmp9 (gno ,agecount ) 
@@ -280,8 +280,7 @@ declare @tmp10 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int)
 insert into @tmp10(gno,agerange,agecount) 
 select gno, agerange ,case when len(@c10)<>0 then count(agerange) else 0 end a2 
 from @tmp 
-where workage >= left(@c10,2) and workage<right(@c10,2) 
-and gno='0' 
+where workage >= left(@c10,2) and workage < right(@c10,2)  and gno='0' 
 group by gno,agerange 
 
 insert into @tmp10 (gno ,agecount ) 
@@ -292,7 +291,7 @@ declare @tmp11 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int)
 insert into @tmp11(gno,agerange,agecount) 
 select gno, agerange ,case when len(@c11) <>0 then count(agerange) else 0 end a2 
 from @tmp 
-where workage >= left(@c11,2) and  workage< right(@c11,2) 
+where workage >= left(@c11,2) and workage< right(@c11,2) 
 and gno='0' 
 group by gno,agerange 
 
@@ -393,7 +392,7 @@ group by a.gno,a.agerange,b.agecount,c.agecount
 ,d.agecount,e.agecount,f.agecount ,g.agecount,h.agecount,i.agecount 
 ,j.agecount,k.agecount,l.agecount,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10 ,a11 ,a12 
 ,a.ac1,a.ac2,a.ac3,a.ac4,a.ac5,a.ac6,a.ac7,a.ac8,a.ac9,a.ac10,a.ac11,a.ac12 
-order by a.agerange  ;
+order by a.agerange   ;
 
 -------------------------------------------------------------------------------------------------------------- 
 z_anaSSS02:--z_anaSSS02
@@ -723,36 +722,29 @@ declare @t_bdate nvarchar(15) =case when '#non'=[8] then '' else [8] end
 declare @t_edate nvarchar(15) =case when '#non'=[9] then '' else [9] end 
 declare @type1 nvarchar(max) =case when '#non'=[10] then '' else [10] end 
 declare @type2 nvarchar(10)=case when '#non'=[11] then '' else [11] end 
-declare @t_byage float=
-case when  '#non'=[12] then '' else convert(float,left([12],2)+'.'+substring([12],4,2)) end
-declare @t_eyage float=
-case when  '#non'=[13] then '' else convert(float,left([13],2)+'.'+substring([13],4,2)) end
+
 -------------------------------------------------------------------------------------------------------
-declare @tmp table(gno nvarchar(1),noa nvarchar(50),namea nvarchar(50),birthday nvarchar(50),partno nvarchar(50),pp nvarchar(50)
-,rank nvarchar(50),age nvarchar(50),p1 nvarchar(50), pa1 nvarchar(50),bmm nvarchar(50),indate nvarchar(50),outdate nvarchar(50),
-id nvarchar(50),jobno nvarchar(50),typea nvarchar(50),wy float,pa2 nvarchar(50),datt float)
-insert into @tmp
-select 0,noa ,namea ,left(birthday,3)+'/'+left(right(birthday,4),2)+'/'+RIGHT(birthday,2) birthday,partno ,partno pp ,rank ,convert(nvarchar,convert(float,year(getdate()))-1911)-CONVERT(float,left(birthday,2)) age 
-,partno p1,part pa1,left(RIGHT(birthday,4),2) bmm,indate ,outdate ,id ,jobno,typea 
-,case when CONVERT(float,left(outdate,3)) =0 then convert(float,year(getdate()))-1911 else CONVERT(float,left(outdate,3)) end -CONVERT(float,left(indate,3)) wy,part pa2
-,case when CONVERT(float,left(outdate,3)) =0 then convert(float,month(getdate())) - convert(float,substring(indate,5,2)) else CONVERT(float,substring(outdate,5,2))-CONVERT(float,substring(indate,5,2))end datt
+declare @tmp table(gno nvarchar(1),noa nvarchar(50),namea nvarchar(50),birthday nvarchar(50),partno nvarchar(50),pp nvarchar(50) 
+,rank nvarchar(50),age nvarchar(50),p1 nvarchar(50), pa1 nvarchar(50),bmm nvarchar(50),indate nvarchar(50),outdate nvarchar(50), 
+id nvarchar(50),jobno nvarchar(50),typea nvarchar(50),wy float,pa2 nvarchar(50),datt float) 
+insert into @tmp 
+select 0,noa ,namea ,left(birthday,3)+'/'+right(left(birthday,6),2)+'/'+RIGHT(birthday,2) birthday,partno ,partno pp ,rank ,convert(nvarchar,convert(float,year(getdate()))-1911)-CONVERT(float,left(birthday,2)) age 
+,partno p1,part pa1,right(left(birthday,6),2) bmm,indate ,outdate ,id ,jobno,typea 
+,case when CONVERT(float,left(outdate,3)) =0 then convert(float,year(getdate()))-1911 else CONVERT(float,left(outdate,3)) end -CONVERT(float,left(indate,3)) wy,part pa2 
+,case when CONVERT(float,left(outdate,3)) =0 then convert(float,month(getdate())) - convert(float,substring(indate,5,2)) else CONVERT(float,substring(outdate,5,2))-CONVERT(float,substring(indate,5,2))end datt 
 from sss 
 where isclerk like case when @type1 like '在職員工' then '0' when @type1 like '離職員工' then '1' else '%' end 
 and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' else '%' end 
-and left(right(birthday,4),2) between right(@t_bdate,2) and right(@t_edate,2)
+and right(left(birthday,6),2) between right(@t_bdate,2) and right(@t_edate,2) 
 
-select gno,noa,namea,birthday,partno,pp,rank,age,p1,pa1,bmm,indate,outdate,id,jobno,typea tps,pa2
-,case when datt<0 then convert(nvarchar ,wy-1)+'.'+
-			(case when CONVERT(nvarchar ,datt +12 ) >= 10 then CONVERT(nvarchar ,datt +12)
-			else '0'+CONVERT(nvarchar ,datt+12)end)	
-			else 
-			convert(nvarchar ,wy)+'.'+(case when CONVERT(nvarchar ,datt) >= 10 then CONVERT(nvarchar ,datt)
-			else '0'+CONVERT(nvarchar ,datt) end )end wy
-from @tmp
-where convert(float,(case when datt<0 then convert(nvarchar ,wy-1)+'.'+
-			(case when CONVERT(nvarchar ,datt +12 ) >= 10 then CONVERT(nvarchar ,datt +12)
-			else '0'+CONVERT(nvarchar ,datt+12)end)	
-			else 
-			convert(nvarchar ,wy)+'.'+(case when CONVERT(nvarchar ,datt) >= 10 then CONVERT(nvarchar ,datt)
-			else '0'+CONVERT(nvarchar ,datt) end )end)) between @t_byage and @t_eyage
+select gno,noa,namea,birthday,partno,pp,rank,age,p1,pa1,bmm,indate,outdate,id,jobno,typea tps,pa2 
+,case when datt<0 then convert(nvarchar ,wy-1)+'.'+ 
+(case when CONVERT(nvarchar ,datt +12 ) >= 10 then CONVERT(nvarchar ,datt +12) 
+else '0'+CONVERT(nvarchar ,datt+12)end)	
+else 
+convert(nvarchar ,wy)+'.'+(case when CONVERT(nvarchar ,datt) >= 10 then CONVERT(nvarchar ,datt) 
+else '0'+CONVERT(nvarchar ,datt) end )end wy 
+from @tmp 
+order by bmm 
+;
 ;
