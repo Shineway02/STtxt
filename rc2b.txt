@@ -103,96 +103,63 @@ declare @condition nvarchar(20)=[3]--動作 0 刪除, 1 新增[3]
 declare @rc2key nvarchar(50)=[4]--KEY
 -----------------------------------------------------------------------
 declare @cmd nvarchar(max)
-declare @accy nvarchar(20) --非rc2b的單號年度
+declare @accy nvarchar(20) 
+--declare @ordeno nvarchar(max)= (select ordeno from view_cubs where noa=@noa)
+
+
 
 --入庫單號
-declare @rc2no nvarchar(50) = isnull((select rc2no from view_rc2b where noa=@noa),'')
+declare @rc2no nvarchar(50)
+
 --入庫日期
-declare @datea nvarchar(20) = isnull((select datea from view_rc2b where noa=@noa),'')
+declare @datea nvarchar(20) = isnull((select top 1 datea from view_cub where noa=@noa),'')
+ 	set @rc2no=isnull((select top 1 noa from view_ina where product=@noa),'')
 
 if(@condition='0')
 begin
-	if(len(@rc2no)>0)
+	if(len(@noa)>0)
 	begin
-		set @accy=(select accy from view_rc2 where noa=@rc2no)
-		--刪除產生的rc2
-		set @cmd="delete rc2"+@accy+" where noa='"+@rc2no+"'"
+		set @accy=(select top 1 accy from view_rc2 where postname=@noa)
+		
+		set @cmd="delete a 
+		from ina"+@accy+" a left join  inas"+@accy+" b on a.noa=b.noa
+		where a.product='"+@noa+"'"
 		EXECUTE sp_executesql @cmd
-		set @cmd="delete rc2s"+@accy+" where noa='"+@rc2no+"'"
+		
+		set @cmd="delete inas"+@accy+" where noa='"+@rc2no+"'"
 		EXECUTE sp_executesql @cmd
+		
 	end
 end
 
+
 if(@condition='1')
 begin
-	
-	if((select count(*)	from view_rc2bs a where a.noa=@noa and mount>0)>0)
+	set @accy=@year
+
+	--判斷是否已有入庫單號
+	if(@rc2no='')
 	begin
-		--判斷是否已有入庫單號
-		if(len(@rc2no)=0)
-		begin
-			--產生入庫單號
-			--取得當天最後一個領料單號
-			select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
-			--新的入庫單號(後面號碼+1)
-			set @rc2no=@rc2key+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)
-		end
-	
-		--產生入庫單
-		set @cmd="insert rc2"+@year+" (noa,datea,typea,stype,cno,acomp,mon,invono,invo,tggno,tgg,tel,ordcno,post,addr,post2,addr2,lcno
-		,trantype,paytype,cardealno,cardeal,price,transtartno,transtart,carno,transtyle,tranadd,money,tax,taxtype,total,floata,coin,totalus
-		,tranmoney,memo,worker,worker2,ordeno)
-		select '"+@rc2no+"' noa,datea,'1' typea,stype,cno,acomp,mon,invono,invo,tggno,tgg,tel,ordcno,post,addr,post2,addr2,lcno
-		,trantype,paytype,cardealno,cardeal,price,transtartno,transtart,carno,transtyle,tranadd,money,tax,taxtype,total,floata,coin,totalus
-		,tranmoney,'由驗收作業("+@noa+")轉來 '+memo,worker,worker2,ordeno
-		from view_rc2b where noa='"+@noa+"'"
-		EXECUTE sp_executesql @cmd
-		
-		exec("insert rc2s"+@year+" (noa,noq,productno,product,spec,style,unit,mount,weight,price,total,storeno,store,memo,ordeno,no2,uno,rackno)
-		select '"+@rc2no+"' noa,noq	,productno,product,spec,style,unit,mount,weight,price,total,storeno,store,memo,ordeno,no2,uno,rackno
-		from view_rc2bs a where a.noa='"+@noa+"' and mount>0 ")
-		
-		if(select COUNT(*) from view_rc2s where noa=@rc2no)=0
-		begin
-			set @cmd="delete rc2"+@year+" where noa='"+@rc2no+"'"
-			EXECUTE sp_executesql @cmd
-			set @rc2no=''
-		end
-		else
-		begin
-			exec("update a 	set money=isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)
-				,tax=(case when (select count(*) from ucca)>0 then 0
-				when taxtype='1' then round(isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)*0.05,0)
-				when taxtype='3' then round(isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)/1.05*0.05,0)
-				else 0 end)
-				,total=(case when (select count(*) from ucca)>0 then isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)
-				when taxtype='1' then round(isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)*0.05,0)+isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)
-				when taxtype='3' then round(isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)/1.05*0.05,0)+isnull((select sum(total) from rc2s"+@year+" where noa=a.noa),0)
-				else isnull((select sum(total) from rc2s where noa=a.noa),0) end)
-				from rc2"+@year+" a where noa='"+@rc2no+"'")
-				
-				exec("update a 	set totalus=total*isnull(floata,0) from rc2"+@year+" a where noa='"+@rc2no+"'")
-		end
-		
-		--------------------------------------------------------------------------------------------------------------------------------
-		--更新rc2b的rc2no
-		set @accy=(select accy from view_rc2b where noa=@noa)
-		set @cmd="update rc2b"+@accy+" set rc2no='"+@rc2no+"' where noa='"+@noa+"'"
-		EXECUTE sp_executesql @cmd
-	
-		if(LEN(@rc2no)!=0)
-		begin
-			--資料寫入dno 避免下次自動產生出現問題
-			insert dno(tablea,noa,usera)
-			select 'rc2',@rc2no,'z001'
-		end
-	end
-	else
-	begin
-		set @rc2no=''
+		--產生入庫單號
+		--取得當天最後一個領料單號
+		select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
+		--新的入庫單號(後面號碼+1)
+		set @rc2no=@rc2key+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)
 	end
 	
-	select @rc2no rc2no
+	exec("insert ina"+@accy+"(noa,itype,datea,ordeno,tggno,comp,storeno,store,product)
+	select top 1 '"+@rc2no+"','生產入庫' itype,a.datea,a.ordeno,a.tggno,a.comp,a.storeno,a.store,a.noa
+	from view_cubs a left join view_cub b on a.noa=b.noa
+	where a.noa ='"+@noa+"'")
+	
+	
+	exec("insert inas"+@accy+"(noa,noq,productno,product,mount,price,total)
+	select  '"+@rc2no+"',a.no2,b.productno,b.product,b.total,sum(b.mo)/b.total price,SUM(b.mo) total
+	from view_cubs a left join view_cub b on a.noa=b.noa
+	where a.noa ='"+@noa+"'
+	group by a.no2,b.productno,b.product,b.total")
+	
+	exec("update cubs"+@year+" set ordeno='"+@rc2no+"' where noa='"+@noa+"'  and datea='"+@datea+"'")
 	
 end
 ;
