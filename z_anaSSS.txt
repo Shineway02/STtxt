@@ -399,7 +399,7 @@ z_anaSSS02:--z_anaSSS02
 declare @type nvarchar(max)=[7]
 declare @t_smon nvarchar(max)=case when '#non'=[8] then '' else [8] end 
 declare @t_emon nvarchar(max)=case when '#non'=[9] then '' else [9] end
-declare @type1 nvarchar(10)=case when '#non'=[11] then '' else [11] end  
+declare @type1 nvarchar(10)=case when '#non'=[11] then '' else [12] end  
 declare @tmp table(smon nvarchar(max),outcc float)
 declare @tmp1 table(smon nvarchar(max),newcc float)
 declare @tmp2 table(smon nvarchar(max),outcc float)
@@ -555,9 +555,9 @@ convert(nvarchar,convert(float,left(@t_emon,3))+1911)+'年'+ right(@t_emon,2)+'�
 from @result   ; 
 ---------------------------------------------------------------------------------------------------------
 z_anaSSS03:--z_anaSSS03
-declare @t_smon nvarchar(max)=case when '#non'=[8] then '' else [8] end 
-declare @t_emon nvarchar(max)=case when '#non'=[9] then '' else [9] end
-declare @type nvarchar(10)=case when '#non'=[10] then '%' else [10] end  
+declare @t_smon nvarchar(max)=case when '#non'=[15] then '' else [15] end 
+declare @t_emon nvarchar(max)=case when '#non'=[16] then '' else [16] end
+declare @type nvarchar(10)=case when '#non'=[17] then '%' else [17] end  
 declare @tmp table(smon nvarchar(max),outcc float)
 declare @tmp1 table(smon nvarchar(max),newcc float)
 declare @tmp2 table(smon nvarchar(max),outcc float)
@@ -569,12 +569,12 @@ ae float,af float,ag float,sa float,sb float,sc float,sd float,se float,sf float
 ,isclek nvarchar(20),indate nvarchar(20),outdate nvarchar(20),partno nvarchar(20),part nvarchar(20),
 noa nvarchar(10),namea nvarchar(20)) 
 ---------------------------------------------------------------------------------------------------------
-declare @st nvarchar(2)= case when @type like '離職員工' then '1' when @type like '在職員工' then '0' else '%'  end 
+declare @st nvarchar(2)= case when @type like '離職員工' then '1' when @type like '在職員工' then '0' else '%' end 
 --目前的員工人數 
 insert into @tmp 
 select left(indate,6),count(*) 
 from sss 
-where isclerk = 0 and indate <> '' and indate < @t_smon and isclerk like @st 
+where isnull(outdate,'')='' and indate <> '' and indate < @t_smon 
 group by LEFT(indate,6) 
 
 declare @curcc float 
@@ -588,7 +588,7 @@ insert into @tmp1
 select LEFT(indate,6)月份,count(LEFT(indate,6)) 新進員工 
 from sss 
 where indate between @t_smon and @t_emon 
-and indate is not null and  isclerk like @st 
+and indate is not null 
 group by LEFT(indate,6) 
 order by LEFT(indate,6) 
 
@@ -597,7 +597,7 @@ order by LEFT(indate,6)
 insert into @tmp2 
 select LEFT(outdate,6)月份,count(LEFT(outdate,6))離職員工 
 from sss 
-where outdate between @t_smon and @t_emon and outdate <>' ' and isclerk like @st 
+where outdate between @t_smon and @t_emon and outdate <>' ' 
 group by LEFT(outdate,6) 
 --declare @tmp3 table(smon nvarchar(max),newcc float ,outcc float,cc float) 
 --insert into @tmp3(smon,newcc,outcc) 
@@ -633,38 +633,28 @@ left join @tmp4 d on a.smon =d.smon
 --dateadd(mm,convert(date,convert(nvarchar,convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'), 
 --1) 
 
-declare @tmp6 table(mon nvarchar(max),lmon nvarchar(max)) 
-insert into @tmp6 
-select a.mon, 
-(case when RIGHT(a.mon,2)like '01'then 
+if (@t_smon <>'' and @t_emon <>'')
+begin
+	declare @tmp6 table(mon nvarchar(max),lmon nvarchar(max)) 
+	insert into @tmp6 
+	select a.mon,
+		(case when RIGHT(a.mon,2)like '01'then 
 
-CONVERT(nvarchar, 
-year(DATEADD(year,-1, 
-(convert(date,convert(nvarchar, 
-convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'))))-1911) 
-+'/12' 
+			CONVERT(nvarchar,year(DATEADD(year,-1,(convert(date,convert(nvarchar,
+			convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'))))-1911)+'/12' 
+		else 
+			LEFT(a.mon,4)+case when CONVERT(nvarchar(2),MONTH(DATEADD(MONTH,-1, (convert(date,convert(nvarchar, 
+			convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01')))))<10 then '0'+CONVERT(nvarchar(2), MONTH(DATEADD(MONTH,-1, 
+			(convert(date,convert(nvarchar, convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'))))) 
+		else 
+			CONVERT(nvarchar(2), MONTH(DATEADD(MONTH,-1, (convert(date,convert(nvarchar, convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'))))) 
+			end 
+		end) lmon 
 
-else 
-LEFT(a.mon,4)+ 
-case when CONVERT(nvarchar(2), 
-MONTH(DATEADD(MONTH,-1, 
-(convert(date,convert(nvarchar, 
-convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01')))))<10 
-then 
-'0'+CONVERT(nvarchar(2), 
-MONTH(DATEADD(MONTH,-1, 
-(convert(date,convert(nvarchar, 
-convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'))))) 
-else 
-CONVERT(nvarchar(2), 
-MONTH(DATEADD(MONTH,-1, 
-(convert(date,convert(nvarchar, 
-convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'))))) 
-end 
-end) lmon 
-
-from @tmp5 a left join @tmp5 b on a.mon =b.mon 
+	from @tmp5 a left join @tmp5 b on a.mon =b.mon 
 --SELECT REPLICATE('0',4-LEN(Test_ID)) + RTRIM(CAST(Test_ID AS CHAR)) Test_Id'0001 
+end
+
 
 declare @first float 
 declare @last float 
@@ -700,7 +690,7 @@ begin
 insert into @result(gno,aa,isclek,indate,outdate,partno,part,noa,namea) 
 select '1',convert(nvarchar,@year-1911)+'/'+@mon,isclerk,indate,outdate,partno,part,noa,namea from sss 
 where ((left(indate,3)+1911 = @year and substring(indate,5,2)=@mon) or	
-(left(outdate,3)+1911 = @year and substring(outdate,5,2)=@mon) )and isclerk like @st
+(left(outdate,3)+1911 = @year and substring(outdate,5,2)=@mon) )and case when isnull(outdate,'')='' then 0 else 1 end like @st 
 end 
 
 fetch next from cursor_table 
@@ -709,33 +699,52 @@ end
 close cursor_table 
 deallocate cursor_table 
 
-select gno, left(aa,3) yy,right(aa,2) mm,indate,case when isclek =0 then '在職' when isclek=1 then '離職' end st,ab,outdate,partno,ac,part,ad,noa,ae,namea 
-,@t_smon smm,@t_emon emm
+select gno, left(aa,3) yy,right(aa,2) mm,indate,case when isnull(outdate,'')='' then '在職' when isnull(outdate,'')<>'' then '離職' end st,ab,outdate,partno,ac,part,ad,noa,ae,namea 
+,@t_smon smm,@t_emon emm 
 from @result 
 where aa is not null 
-order by aa,gno ;
+order by aa,gno,yy,mm 
+ ;
 
 --------------------------------------------------------------------------------------------------------
 z_anaSSS04:--z_anaSSS04
 SET QUOTED_IDENTIFIER OFF
-declare @t_bdate nvarchar(15) =case when '#non'=[8] then '' else [8] end 
-declare @t_edate nvarchar(15) =case when '#non'=[9] then '' else [9] end 
-declare @type1 nvarchar(max) =case when '#non'=[10] then '' else [10] end 
-declare @type2 nvarchar(10)=case when '#non'=[11] then '' else [11] end 
+declare @t_bdate nvarchar(15) =case when '#non'=[10] then '' else [10] end 
+declare @t_edate nvarchar(15) =case when '#non'=[11] then '' else [11] end 
+declare @type1 nvarchar(max) =case when '#non'=[17] then '' else [17] end 
+declare @type2 nvarchar(10)=case when '#non'=[12] then '' else [12] end 
 
 -------------------------------------------------------------------------------------------------------
-declare @tmp table(gno nvarchar(1),noa nvarchar(50),namea nvarchar(50),birthday nvarchar(50),partno nvarchar(50),pp nvarchar(50) 
-,rank nvarchar(50),age nvarchar(50),p1 nvarchar(50), pa1 nvarchar(50),bmm nvarchar(50),indate nvarchar(50),outdate nvarchar(50), 
-id nvarchar(50),jobno nvarchar(50),typea nvarchar(50),wy float,pa2 nvarchar(50),datt float) 
+declare @tmp table(
+gno nvarchar(1),
+noa nvarchar(50),
+namea nvarchar(50),
+birthday nvarchar(50),
+partno nvarchar(50),
+pp nvarchar(50),
+rank nvarchar(50),
+age nvarchar(50),
+p1 nvarchar(50), 
+pa1 nvarchar(50),
+bmm nvarchar(50),
+indate nvarchar(50),
+outdate nvarchar(50), 
+id nvarchar(50),
+jobno nvarchar(50),
+typea nvarchar(50),
+wy float,
+pa2 nvarchar(50),
+datt float) 
 insert into @tmp 
 select 0,noa ,namea ,left(birthday,3)+'/'+right(left(birthday,6),2)+'/'+RIGHT(birthday,2) birthday,partno ,partno pp ,rank ,convert(nvarchar,convert(float,year(getdate()))-1911)-CONVERT(float,left(birthday,2)) age 
 ,partno p1,part pa1,right(left(birthday,6),2) bmm,indate ,outdate ,id ,jobno,typea 
 ,case when CONVERT(float,left(outdate,3)) =0 then convert(float,year(getdate()))-1911 else CONVERT(float,left(outdate,3)) end -CONVERT(float,left(indate,3)) wy,part pa2 
 ,case when CONVERT(float,left(outdate,3)) =0 then convert(float,month(getdate())) - convert(float,substring(indate,5,2)) else CONVERT(float,substring(outdate,5,2))-CONVERT(float,substring(indate,5,2))end datt 
 from sss 
-where isclerk like case when @type1 like '在職員工' then '0' when @type1 like '離職員工' then '1' else '%' end 
-and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' else '%' end 
-and right(left(birthday,6),2) between right(@t_bdate,2) and right(@t_edate,2) 
+where case when isnull(outdate,'')='' then '0' else '1' end like 
+	 case when @type1 like '現況在職' then '0' when @type1 like '現況離職' then '1' when @type1='' then '' else '%' end 
+and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' when @type2='' then '' else '%' end 
+and right(left(birthday,6),2) between @t_bdate and @t_edate 
 
 select gno,noa,namea,birthday,partno,pp,rank,age,p1,pa1,bmm,indate,outdate,id,jobno,typea tps,pa2 
 ,case when datt<0 then convert(nvarchar ,wy-1)+'.'+ 
@@ -747,4 +756,29 @@ else '0'+CONVERT(nvarchar ,datt) end )end wy
 from @tmp 
 order by bmm 
 ;
+
+z_anaSSS05:--z_anaSSS05
+SET QUOTED_IDENTIFIER OFF 
+declare @t_bsssno nvarchar(20) = case when '#non'=[18] then '' else [18] end 
+declare @t_esssno nvarchar(20) = case when '#non'=[19] then CHAR(255) else [19] end 
+declare @t_option03 nvarchar(max) = case when '#non'=[20] then '' else [20] end 
+declare @t_sort03 nvarchar(max) = case when '#non'=[21] then '' else [21] end 
+declare @t_accy nvarchar(max) = '[22]'
+declare @t_namea nvarchar(max) = '[23]'
+declare @cmd nvarchar(max)
+--------------------------------------------------------------------------------------- 
+set @t_sort03 = case when @t_sort03 ='partno' then 'partno,a.jobno,a.noa' else @t_sort03 end 
+
+set @cmd = 
+" select row_number()over(order by a."+@t_sort03+") rr,'1' gno,@t_namea ww"+ 
+",case when sex='1' then '男' else '女' end sex,case when isnull(married,0)=1 then 'V' else '' end married,*"+ 
+" ,b.part pp,case when len(isnull(outdate,''))>0 then '*' else '' end yy"+ 
+" ,namea nn"+ 
+" from sss a"+ 
+" left join part b on a.partno=b.noa"+ 
+" where a.noa between @t_bsssno and @t_esssno"+ 
+" and ((charindex('in',@t_option03)>0 and len(isnull(outdate,''))=0) or (charindex('out',@t_option03)>0 and len(isnull(outdate,''))>0))"+ 
+" order by a."+@t_sort03 
+execute sp_executesql @cmd,N'@t_bsssno nvarchar(20),@t_esssno nvarchar(20),@t_namea nvarchar(max),@t_option03 nvarchar(max)' 
+,@t_bsssno=@t_bsssno,@t_esssno=@t_esssno,@t_namea=@t_namea,@t_option03=@t_option03 
 ;

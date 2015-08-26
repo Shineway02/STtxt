@@ -3,16 +3,44 @@ z_cub_rk01:--z_cub_rk01
 	declare @t_mm nvarchar(50) = case when '#non' = [1] then '' else [1] end
 ------------------------------------------------------------------------------------------------
 declare @result table( 
-gno nvarchar(1),nob nvarchar(30),datea nvarchar(20),comp nvarchar(50), 
-ordeno nvarchar(20),dime float,radius float,wi float 
-,lengthc float,spec nvarchar(20),hard float,source nvarchar(20) 
-,lengthb float,lengthb2 float,weight float,bdime float,intotal float 
-,hweight float,deweight float,hmount float,derate nvarchar(50),bspec nvarchar(50) 
-,mm nvarchar(10),yyyy nvarchar(10),dd nvarchar(10) 
-,product2 nvarchar(50),bsp1 float ,bsp2 float ,bsp3 float ,bsp4 float ,bsp5 float ,bsp6 float ,bsp7 float , 
-bsp8 float ,bsp9 float ,bsp10 float ,bsp11 float , bsp12 float ,bsp13 float ,bsp14 float , 
-bsp15 float ,bsp16 float, gw float,price float,prate nvarchar(20),mount float,w01 float,w02 float,w03 float, 
-w04 float,w05 float) 
+gno nvarchar(1), 
+nob nvarchar(30), 
+datea nvarchar(20), 
+comp nvarchar(50), 
+ordeno nvarchar(20), 
+dime float, 
+radius float, 
+wi float, 
+lengthc float, 
+spec nvarchar(20), 
+hard float, 
+source nvarchar(20) , 
+lengthb float, 
+lengthb2 float, 
+weight float, 
+bdime float, 
+intotal float , 
+hweight float, 
+deweight float, 
+hmount float, 
+derate nvarchar(50), 
+bspec nvarchar(50) , 
+mm nvarchar(10), 
+yyyy nvarchar(10), 
+dd nvarchar(10) , 
+product2 nvarchar(50), 
+bsp1 float ,bsp2 float , 
+bsp3 float ,bsp4 float , 
+bsp5 float , gw float, 
+price float, 
+prate nvarchar(20), 
+mount float, 
+w01 float, 
+w02 float, 
+w03 float, 
+w04 float, 
+w05 float,
+uno nvarchar(50)) 
 
 insert into @result 
 select '0'gno,a.noa+"-"+b.noq,a.datea,b.comp,b.ordeno, 
@@ -24,140 +52,127 @@ b.dime,b.radius,b.width,b.lengthc,b.spec,b.hard,b.source
 end derate 
 ,b.bspec,right(LEFt(@t_mm,6),2),LEFt(@t_mm,3),right(@t_mm,2),b.productno2 
 -----------------------------判斷接著劑染料顏色---------------------------------------------------------------------- 
-,case when c.productno like 'TF-202' or c.productno like 'WD101' or c.productno like 'WD102' 
-or c.productno like 'UD-001' or c.productno like 'UD-002' then hmount else 0 end 
-,case when c.productno like 'N653' then hmount else 0 end 
-,case when c.productno like 'N450' then hmount else 0 end 
-,case when c.productno like 'STA-008' or c.productno like 'STA-007' or c.productno like 'STA-011' or c.productno like 'TA-053'or c.productno like 'TA-052' then 0 else 0 end 
-,case when c.productno like 'TA028' or c.productno like 'TA035' or c.productno like 'TA005' or c.productno like 'TA043' or c.productno like 'TA045' 
-or c.productno like 'TA046' or c.productno like 'TA047' or c.productno like 'TA055' or c.productno like 'TA056' or c.productno like 'TA057' 
-or c.productno like 'TA058' or c.productno like 'TA059' or c.productno like 'TA060' or c.productno like 'TA061' or c.productno like 'TA062' 
-or c.productno like 'TA066' then hmount else 0 end 
-,case when c.productno like 'TA-026' or c.productno like 'TA048' then hmount else 0 end 
-,case when c.productno like 'TB-001' or c.productno like 'TB012' then hmount else 0 end  
-,case when c.productno like 'WD201' then hmount else 0 end 
-,case when c.productno like 'N-440' OR c.productno  like 'TD001' or c.productno  like 'TD007' then hmount else 0 end 
-,case when c.productno like 'TA014' OR c.productno like 'TA027' or c.productno like 'TA042' then hmount else 0 end 
-,case when c.productno like 'TA24' then hmount else 0 end 
-,case when c.productno like 'TC001' then hmount else 0 end 
-,case when c.productno like 'UPI-3054' then hmount else 0 end 
-,case when c.productno like 'TD-008' OR c.productno like 'TD-009' or c.productno like 'TD-010' or c.productno like 'TD-010' or c.productno like 'TD-011' 
-or c.productno like 'TD-012' or c.productno like 'TD-013' or c.productno like 'TD-014' or c.productno like 'TF-106' OR c.productno like 'TD-107' 
-OR c.productno like 'TA-049' OR c.productno like 'TD-050' OR c.productno like 'UF-001' OR c.productno like 'TF-207' OR c.productno like 'TF-208' 
-then hmount else 0 end
-,case when c.productno like 'HDB800' then hmount else 0 end 
-,case when c.productno like 'TA023' OR b.bspec like 'TA030' or b.bspec like 'TA042' then hmount else 0 end 
+,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A01' and e.noa=b.noa and e.noq=b.noq),0) bsp1 
+,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A02' and e.noa=b.noa and e.noq=b.noq),0) bsp2 
+,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A03' and e.noa=b.noa and e.noq=b.noq),0) bsp3 
+,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A04' and e.noa=b.noa and e.noq=b.noq),0) bsp4 
+,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A05' and e.noa=b.noa and e.noq=b.noq),0) bsp5 
 ------------------------------------------------------------------------------------------------------------ 
 ,b.gweight ,b.price 
 ,case when (b.weight-b.hweight) <> null then 
 (Convert(nvarchar(20),round((b.price/((b.weight-b.hweight)))/100,2))+'%') 
-end ,b.mount ,b.w01,b.w02,b.w03,b.w04,b.w05 
+end ,b.mount ,b.w01,b.w02,b.w03,b.w04,b.w05,b.uno
 
 from view_cubs b left join view_cub a on a.noa=b.noa 
 left join view_cubt c on a.noa=c.noa and b.noq=c.noq 
 where a.noa =b.noa 
 
-insert into @result (gno,dime,radius,wi,lengthc,hard,lengthb,lengthb2,weight,bdime,intotal,hweight,hmount,bsp1,bsp2 
-,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10,bsp11,bsp12,bsp13,bsp14,bsp15,bsp16,gw,price,mount,deweight,w01,w02,w03,w04,w05,datea) 
-select '1',sum(dime),SUM(radius),sum(wi),SUM(lengthc),SUM(hard),SUM(lengthb),SUM(lengthb2),SUM(weight),SUM(bdime) 
-,SUM(intotal),SUM(hweight),SUM(hmount) 
-,sum(convert(float,bsp1)),SUM(convert(float,bsp2)),SUM(convert(float,bsp3)),SUM(convert(float,bsp4)),SUM(convert(float,bsp5)),SUM(convert(float,bsp6)) 
-,SUM(convert(float,bsp7)),SUM(convert(float,bsp8)),SUM(convert(float,bsp9)),SUM(convert(float,bsp10)) 
-,SUM(convert(float,bsp11)),SUM(convert(float,bsp12)),SUM(convert(float,bsp13)) 
-,SUM(convert(float,bsp14)),SUM(convert(float,bsp15)),SUM(convert(float,bsp16)),sum(gw) ,SUM(price),SUM(mount),SUM(deweight) 
-,sum(w01),sum(w02),sum(w03),sum(w04),sum(w05),'999/99' 
-from @result 
-
-
 
 --------------------------------------------------------------------------------------- 
 declare @yyyy nvarchar(20) =convert(nvarchar,convert(float,left(@t_mm,3))+1911) 
 
-
 --本月結存 
 declare @tmp1 table(gno nvarchar(30),weight float,dime float,bsp1 float,bsp2 float,bsp3 float,bsp4 float,bsp5 float, 
-bsp6 float,bsp7 float,bsp8 float,bsp9 float,bsp10 float,bsp11 float,bsp12 float,bsp13 float, 
-bsp14 float,bsp15 float,bsp16 float,hard float,lengthc float,lengthb float) 
+hard float,lengthc float,lengthb float) 
 insert @tmp1 
 select gno,sum(weight) weight,sum(dime)-(select sum(dime)dime from view_cut) dime,sum(bsp1)bsp1,sum(bsp2)bsp2,sum(bsp3)bsp3, 
-sum(bsp4)bsp4,sum(bsp5)bsp5,sum(bsp6)bsp6,sum(bsp7)bsp7 
-,sum(bsp8)bsp8,sum(bsp9)bsp9,sum(bsp10)bsp10,sum(bsp11)bsp11,sum(bsp12)bsp12 
-,sum(bsp13)bsp13,sum(bsp14)bsp14,sum(bsp15)bsp15,sum(bsp16)bsp16,sum(hard) hard,sum(lengthc) 
+sum(bsp4)bsp4,sum(bsp5)bsp5,sum(hard) hard,sum(lengthc) 
 ,sum(lengthb)-(select sum(lengthb) lengthb from view_cut) lengthb 
 from @result 
 where left(datea,6) like @t_mm 
 group by gno 
 
 --到期初結存 
-insert @result(gno,weight,dime,hard,lengthc,bsp1,bsp2,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10,bsp11,bsp12,bsp13,bsp14,bsp15,bsp16,datea,lengthb2,hmount,gw,price)
-select '2', SUM(weight) -(select top 1 sum(weight) from view_vccs where left(datea,6)<@t_mm)-(select top 1 sum(weight)  from view_cuts where left(datea,6)<@t_mm) 
-	   ,SUM(dime)   -(select top 1 sum(dime)   from view_vccs where left(datea,6)<@t_mm)-(select top 1 sum(dime)    from view_cuts where left(datea,6)<@t_mm)	
-	   ,SUM(hard)   -(select top 1 sum(hard)   from view_vccs where left(datea,6)<@t_mm)-(select top 1 sum(hard)    from view_cuts where left(datea,6)<@t_mm) 
-	   ,SUM(lengthc)-(select top 1 sum(lengthc)from view_vccs where left(datea,6)<@t_mm)-(select top 1 sum(lengthc) from view_cuts where left(datea,6)<@t_mm)
-	   ,SUM(bsp1) -(select top 1 SUM(mount) from view_vccs where left(datea,6)<@t_mm and( productno=  'TF-202' or productno = 'WD101' or productno = 'WD102' or productno = 'UD-001' or productno = 'UD-002'))
-				  -(select top 1 SUM(mount) from view_cuts where left(datea,6)<@t_mm and( productno=  'TF-202' or productno = 'WD101' or productno = 'WD102' or productno = 'UD-001' or productno = 'UD-002'))
-	   ,SUM(bsp2) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno= 'N653' )
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno= 'N653' )
-	   ,SUM(bsp3) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno='N450')
-			      -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno='N450')
-	   ,SUM(bsp4) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno = 'STA-008' or productno = 'STA-007' or productno = 'STA-011' or productno = 'TA-053'or productno = 'TA-052')
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno = 'STA-008' or productno = 'STA-007' or productno = 'STA-011' or productno = 'TA-053'or productno = 'TA-052')
-	   ,SUM(bsp5) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno = 'TA028' or productno = 'TA035' or productno = 'TA005' or productno = 'TA043' or productno = 'TA045' 
-or productno = 'TA046' or productno = 'TA047' or productno = 'TA055' or productno = 'TA056' or productno = 'TA057'or productno = 'TA058' or productno = 'TA059' or productno = 'TA060' or productno = 'TA061' or productno = 'TA062' 
-or productno = 'TA066' )
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno = 'TA028' or productno = 'TA035' or productno = 'TA005' or productno = 'TA043' or productno = 'TA045' 
-or productno = 'TA046' or productno = 'TA047' or productno = 'TA055' or productno = 'TA056' or productno = 'TA057'or productno = 'TA058' or productno = 'TA059' or productno = 'TA060' or productno = 'TA061' or productno = 'TA062' 
-or productno = 'TA066' )
-	  ,SUM(bsp6)  -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno = 'TA-026' or productno = 'TA048')
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno = 'TA-026' or productno = 'TA048')
-	  ,SUM(bsp7)  -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno = 'TB-001' or productno = 'TB012')
-	              -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno = 'TB-001' or productno = 'TB012')
-	  ,sum(bsp8)  -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno = 'WD201')
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno = 'WD201')
-	  ,SUM(bsp9)  -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno ='N-440' OR productno = 'TD001' or productno= 'TD007')
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno ='N-440' OR productno = 'TD001' or productno= 'TD007')
-	  ,SUM(bsp10) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno ='TA014' OR productno = 'TA027' or productno= 'TA042' )
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno ='TA014' OR productno = 'TA027' or productno= 'TA042' )
-	  ,SUM(bsp11) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno ='TA24')
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno ='TA24')
-	  ,SUM(bsp12) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno ='TC001')
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno ='TC001')
-	  ,SUM(bsp13) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno ='UPI-3054')	
-	              -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno ='UPI-3054')
-	  ,SUM(bsp14) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno = 'TD-008' OR productno = 'TD-009' or productno = 'TD-010' or productno = 'TD-010' or productno = 'TD-011' 
-or productno = 'TD-012' or productno = 'TD-013' or productno = 'TD-014' or productno = 'TF-106' OR productno = 'TD-107' 
-OR productno = 'TA-049' OR productno = 'TD-050' OR productno = 'UF-001' OR productno = 'TF-207' OR productno = 'TF-208' )
-				 -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno = 'TD-008' OR productno = 'TD-009' or productno = 'TD-010' or productno = 'TD-010' or productno = 'TD-011' 
-or productno = 'TD-012' or productno = 'TD-013' or productno = 'TD-014' or productno = 'TF-106' OR productno = 'TD-107' 
-OR productno = 'TA-049' OR productno = 'TD-050' OR productno = 'UF-001' OR productno = 'TF-207' OR productno = 'TF-208' )
-	  ,SUM(bsp15) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno ='HDB800' )
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno ='HDB800' )
-	  ,SUM(bsp16) -(select top 1 SUM(mount) from view_vccs where LEFT(datea,6)<@t_mm and productno ='TA023' OR productno = 'TA030' or productno like 'TA042')
-				  -(select top 1 SUM(mount) from view_cuts where LEFT(datea,6)<@t_mm and productno ='TA023' OR productno = 'TA030' or productno like 'TA042')
-				  ,'000/98',sum(weight)-(select isnull(sum(weight),0) from view_inas)
-				  ,sum(hard)-(select isnull(sum(hard),0) from view_inas where left(datea,6)<@t_mm )
-				  ,(select SUM(weight) from view_cubs where left(datea,6)=@t_mm)
-				  ,(select SUM(hard) from view_cubs where left(datea,6)=@t_mm)
-from @result
-where left(datea,6)<@t_mm and gno='0'
+insert @result(gno,weight,dime,hard,lengthc,bsp1,bsp2,bsp3,bsp4,bsp5,datea,lengthb2,hmount,gw,price,w01,w02,w03,w04,w05,wi,mount) 
+select '2'
+, (select SUM(a.weight) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm)
+	 -(select top 1 sum(weight) from view_vccs where left(datea,6)<@t_mm)
+		-(select top 1 sum(weight) from view_gets where left(datea,6)<@t_mm) 
+,(select SUM(a.dime) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm) 
+	 -(select top 1 sum(dime) from view_vccs where left(datea,6)<@t_mm)
+		-(select top 1 sum(dime) from view_gets where left(datea,6)<@t_mm)	
+,(select SUM(a.hard) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm) 
+		-(select top 1 sum(hard) from view_vccs where left(datea,6)<@t_mm)
+			-(select top 1 sum(hard) from view_gets where left(datea,6)<@t_mm) 
+,(select SUM(a.lengthc) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm) 
+		-(select top 1 sum(lengthc)from view_vccs where left(datea,6)<@t_mm)
+			-(select top 1 sum(lengthc) from view_gets where left(datea,6)<@t_mm) 
+			
+,(select SUM(bsp1) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm ) 
+		-isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A01' ),0) 
+			-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A01' ),0) 
+,(select SUM(bsp2) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
+		 -isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A02' ),0) 
+			-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A02' ),0)
+,(select SUM(bsp3) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
+		 -isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A03' ),0) 
+			-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A03' ),0) 
+,(select SUM(bsp4) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
+		 -isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A04' ),0) 
+			-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A04' ),0) 
+,(select SUM(bsp5) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
+		 -isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A05' ),0) 
+			 -isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A05' ),0) 
+,'000/98'
+--客供品
+,isnull((select SUM(a.weight) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is not null and left(a.datea,6)<= @t_mm),0)
+	-(select top 1 sum(weight) from view_vccs where left(datea,6)<=@t_mm)
+		-(select top 1 sum(weight) from view_gets where left(datea,6)<=@t_mm) 
+,(select SUM(a.hard) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)<= @t_mm) 
+		-(select top 1 sum(hard) from view_vccs where left(datea,6)<=@t_mm)
+			-(select top 1 sum(hard) from view_gets where left(datea,6)<=@t_mm) 
+--本月進料			
+,(select SUM(weight) from @result where left(datea,6)=@t_mm)-(select SUM(gweight) from view_cubs where left(datea,6)=@t_mm) 
+,(select SUM(hard) from @result where left(datea,6)=@t_mm)  
+,(select SUM(bsp1) from @result where left(datea,6)=@t_mm)
+,(select SUM(bsp2) from @result where left(datea,6)=@t_mm)
+,(select SUM(bsp3) from @result where left(datea,6)=@t_mm)
+,(select SUM(bsp4) from @result where left(datea,6)=@t_mm)
+,(select SUM(bsp5) from @result where left(datea,6)=@t_mm)
+,(select SUM(hard) from @result where left(datea,6)=@t_mm)
+,(select SUM(lengthc) from @result where left(datea,6)=@t_mm)
 
-update @result set yyyy=left(@t_mm,3), mm=right(@t_mm,2),dd=day(GETDATE()) where gno=2
+from @result 
+where left(datea,6)<@t_mm and gno='0' 
 
+update @result set yyyy=left(@t_mm,3), mm=right(@t_mm,2),dd=day(GETDATE()) where gno=2 
 
+--加總
+insert into @result (gno,dime,radius,wi,lengthc,hard,lengthb,lengthb2,weight,bdime,intotal,hweight,hmount,bsp1,bsp2 
+,bsp3,bsp4,bsp5,gw,price,mount,deweight,w01,w02,w03,w04,w05,datea) 
+select '1',sum(dime),SUM(radius),sum(wi),SUM(lengthc),SUM(hard),SUM(lengthb),SUM(lengthb2),SUM(weight),SUM(bdime) 
+,SUM(intotal),SUM(hweight),SUM(hmount) 
+,sum(convert(float,bsp1)),SUM(convert(float,bsp2)),SUM(convert(float,bsp3)),SUM(convert(float,bsp4)),SUM(convert(float,bsp5)) 
+,sum(gw) ,SUM(price),SUM(mount),SUM(deweight) 
+,sum(w01),sum(w02),sum(w03),sum(w04),sum(w05),'999/99' 
+from @result 
+where gno='0' and left(datea,6)=@t_mm
 
 
 select gno ,nob ,datea ,comp , 
-ordeno ,dime ,radius ,wi 
-,dbo.getComma(lengthc,0) lengthc ,spec ,hard ,source 
-,dbo.getComma(lengthb,0) lengthb ,dbo.getComma(lengthb2,0) lengthb2 
+ordeno ,dime ,radius ,
+dbo.getComma(wi,0) wi 
+,dbo.getComma(lengthc,0) lengthc ,spec 
+,dbo.getComma(hard,0) hard ,source 
+,dbo.getComma(lengthb,0) lengthb 
+,dbo.getComma(lengthb2,0) lengthb2 
 ,dbo.getComma(weight,0) weight,dbo.getComma(bdime,0) bdime 
-,dbo.getComma(intotal+(bsp1+bsp2+bsp3+bsp4+bsp5+bsp6+bsp7+bsp8+bsp9+bsp10+bsp11+bsp12+bsp13+bsp14+bsp15)-bsp5-bsp6,0) intotal 
-,dbo.getComma(hweight,0) hweight,dbo.getComma(deweight,0) deweight,dbo.getComma(hmount,0) hmount 
-,derate,mm,yyyy,dd,bsp1,bsp2,bsp3,bsp4,bsp5,bsp6,bsp7,bsp8,bsp9,bsp10 
-,bsp11,bsp12,bsp13,bsp14,bsp15,bsp16 ,dbo.getComma(gw,0) gw ,price,prate ,mount,w01,w02,w03,w04,w05 
+,dbo.getComma(intotal+(bsp1+bsp2+bsp3+bsp4+bsp5)-bsp5,0) intotal 
+,dbo.getComma(hweight,0) hweight
+,dbo.getComma(deweight,0) deweight
+,dbo.getComma(hmount,0) hmount 
+,derate,mm,yyyy,dd,bsp1,bsp2,bsp3,bsp4,bsp5 
+,dbo.getComma(gw,0) gw 
+,dbo.getComma(price,0) price,prate 
+,dbo.getComma(mount,0) mount
+,dbo.getComma(w01,0) w01
+,dbo.getComma(w02,0) w02
+,dbo.getComma(w03,0) w03
+,dbo.getComma(w04,0) w04
+,dbo.getComma(w05,0) w05
 from @result 
 where left(datea,6) like @t_mm or left(datea,3)='000' or left(datea,3)='999' 
-order by datea 
+order by datea
 ;
 
 ------------------------------------------------------------------------------------------------------
