@@ -569,7 +569,7 @@ ae float,af float,ag float,sa float,sb float,sc float,sd float,se float,sf float
 ,isclek nvarchar(20),indate nvarchar(20),outdate nvarchar(20),partno nvarchar(20),part nvarchar(20),
 noa nvarchar(10),namea nvarchar(20)) 
 ---------------------------------------------------------------------------------------------------------
-declare @st nvarchar(2)= case when @type like '離職員工' then '1' when @type like '在職員工' then '0' else '%' end 
+declare @st nvarchar(2)= case when @type like '現況離職' then '1' when @type like '現況在職' then '0' else '%' end 
 --目前的員工人數 
 insert into @tmp 
 select left(indate,6),count(*) 
@@ -699,7 +699,7 @@ end
 close cursor_table 
 deallocate cursor_table 
 
-select gno, left(aa,3) yy,right(aa,2) mm,indate,case when isnull(outdate,'')='' then '在職' when isnull(outdate,'')<>'' then '離職' end st,ab,outdate,partno,ac,part,ad,noa,ae,namea 
+select gno, left(aa,3) yy,right(aa,2) mm,indate,case when isnull(outdate,'')='' then '在職' when isnull(outdate,'')<>'' then '離職' end st,ab,outdate,partno,ac,part,ad,noa,ae,namea nass
 ,@t_smon smm,@t_emon emm 
 from @result 
 where aa is not null 
@@ -746,7 +746,7 @@ where case when isnull(outdate,'')='' then '0' else '1' end like
 and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' when @type2='' then '' else '%' end 
 and right(left(birthday,6),2) between @t_bdate and @t_edate 
 
-select gno,noa,namea,birthday,partno,pp,rank,age,p1,pa1,bmm,indate,outdate,id,jobno,typea tps,pa2 
+select gno,noa,namea nnas,birthday,partno,pp,rank,age,p1,pa1,bmm,indate,outdate,id,jobno,typea tps,pa2 
 ,case when datt<0 then convert(nvarchar ,wy-1)+'.'+ 
 (case when CONVERT(nvarchar ,datt +12 ) >= 10 then CONVERT(nvarchar ,datt +12) 
 else '0'+CONVERT(nvarchar ,datt+12)end)	
@@ -764,21 +764,21 @@ declare @t_esssno nvarchar(20) = case when '#non'=[19] then CHAR(255) else [19] 
 declare @t_option03 nvarchar(max) = case when '#non'=[20] then '' else [20] end 
 declare @t_sort03 nvarchar(max) = case when '#non'=[21] then '' else [21] end 
 declare @t_accy nvarchar(max) = '[22]'
-declare @t_namea nvarchar(max) = '[23]'
+declare @t_nameb nvarchar(max) = '[23]'
 declare @cmd nvarchar(max)
 --------------------------------------------------------------------------------------- 
 set @t_sort03 = case when @t_sort03 ='partno' then 'partno,a.jobno,a.noa' else @t_sort03 end 
 
 set @cmd = 
-" select row_number()over(order by a."+@t_sort03+") rr,'1' gno,@t_namea ww"+ 
-",case when sex='1' then '男' else '女' end sex,case when isnull(married,0)=1 then 'V' else '' end married,*"+ 
+" select row_number()over(order by a."+@t_sort03+") rr,'1' gno,@t_nameb ww"+ 
+",case when sex='1' then '男' else '女' end sxs,case when isnull(married,0)=1 then 'V' else '' end married,*"+ 
 " ,b.part pp,case when len(isnull(outdate,''))>0 then '*' else '' end yy"+ 
-" ,namea nn"+ 
+" ,namea nsn,a.typea typps"+ 
 " from sss a"+ 
 " left join part b on a.partno=b.noa"+ 
 " where a.noa between @t_bsssno and @t_esssno"+ 
 " and ((charindex('in',@t_option03)>0 and len(isnull(outdate,''))=0) or (charindex('out',@t_option03)>0 and len(isnull(outdate,''))>0))"+ 
 " order by a."+@t_sort03 
-execute sp_executesql @cmd,N'@t_bsssno nvarchar(20),@t_esssno nvarchar(20),@t_namea nvarchar(max),@t_option03 nvarchar(max)' 
-,@t_bsssno=@t_bsssno,@t_esssno=@t_esssno,@t_namea=@t_namea,@t_option03=@t_option03 
+execute sp_executesql @cmd,N'@t_bsssno nvarchar(20),@t_esssno nvarchar(20),@t_nameb nvarchar(max),@t_option03 nvarchar(max)' 
+,@t_bsssno=@t_bsssno,@t_esssno=@t_esssno,@t_nameb=@t_nameb,@t_option03=@t_option03
 ;
