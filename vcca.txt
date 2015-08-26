@@ -1,3 +1,15 @@
+getvccadate:--getvccadate 檢查日期	
+	declare @vccano nvarchar(max) = [1]	
+	declare @tmpa table(datea nvarchar(max))
+	declare @binvono nvarchar(20) = ''
+	declare @einvono nvarchar(20) = ''
+	declare @datea nvarchar(20) = ''
+	select @binvono=binvono,@einvono=einvono from vccars where @vccano between binvono and einvono
+	select @datea=MAX(datea) from vcca where noa between @binvono and @einvono and noa<@vccano
+	insert into @tmpa(datea)values(isnull(@datea,''))
+	select * from @tmpa
+	;
+
 batchvcca_rb:--batchvcca_rb
 	declare @t_ordeno nvarchar(50) = [1]
 	declare @t_total nvarchar(50) = [2]
