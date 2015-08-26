@@ -415,10 +415,20 @@ begin
 		select noa,datea,'"+@t_worker+"','領料','由Packing轉來' from view_vcc where noa='"+@t_noa+"'
 	")
 	EXEC("
-		insert gets"+@accy+" (noa,noq,datea,uno,mount,weight,typea,memo)
-		select a.noa,b.noq,a.datea,b.uno,b.mount,b.weight,'領料',b.memo
+		insert gets"+@accy+" (noa,noq,datea,productno,product,unit,mount,typea,memo)
+		select a.noa,b.noq,a.datea,b.productno,b.product,b.unit,b.mount,'領料',b.memo
 		from view_vcc a left join packing b on a.noa=b.noa where a.noa='"+@t_noa+"'
 	")
 	
 end
+;
+--------------------------------------------------------------------------------------
+delepackboaj_gu:--delepackboaj_gu_gu
+SET QUOTED_IDENTIFIER OFF 
+declare @t_accy nvarchar(50) = [1]
+declare @t_noa nvarchar(50) = [2]
+
+--刪除packing 與 boat
+delete packing where noa=@t_noa
+delete boaj where noa=@t_noa
 ;
