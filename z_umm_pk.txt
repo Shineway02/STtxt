@@ -105,7 +105,16 @@ z_umm_pk05:--z_umm_pk05  客戶請款單(明細)  日期
 		select @ttax=SUM(ISNULL([tax]*case when ctype='出' then 1 else -1 end,0)) from @tmp where custno=@custno and (ctype='出' or ctype='退')
 		set @ttotal = isnull(@tmoney,0) - isnull(@tbkmoney,0) + isnull(@ttax,0)
 		select @tumm=SUM(ISNULL([total],0)) from @tmp where custno=@custno and ctype='收'
-		select @tunpay=SUM(ISNULL([unpay],0)) from cust_2s where noa=@custno and mon<=@t_bmon
+		select @tunpay=SUM(ISNULL([unpay],0)) from cust_2s where noa=@custno and mon<@t_bmon
+		
+		select @tunpay = @tunpay + SUM(ISNULL(a.paysale,0))
+		from umms a
+		left join umm b on a.noa=b.noa
+		where a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]'
+		and LEFT(a.vccno,CHARINDEX('-',a.vccno)-1) = @custno
+		and b.datea between @t_bdate and @t_edate
+		and RIGHT(a.vccno,6) < @t_bmon 
+		
 		set @ttotal2 = isnull(@ttotal,0) - isnull(@tumm,0) + isnull(@tunpay,0)
 			
 		insert into @result(gno,custno,tmoney,tbkmoney,ttax,ttotal,tumm,tunpay,ttotal2)
