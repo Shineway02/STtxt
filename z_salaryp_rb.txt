@@ -244,7 +244,7 @@ declare @tmp table(
 )
 
 insert @tmp
-select '0',isnull(c.partno,''),isnull(c.part,''),a.noa,c.namea
+select '0',isnull(c.partno,''),isnull(c.part,''),a.noa,isnull(c.namea,'員工主檔查無此人')
 ,SUM(b.la_person),SUM(b.he_person)
 ,(select SUM(sb.welfare) from salary sa left join salarys sb on sa.noa=sb.noa where sa.mon=@t_xmon and sb.sno=a.noa)
 ,null,SUM(b.re_person),null
