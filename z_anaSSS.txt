@@ -524,10 +524,27 @@ declare @tmp5 table(mon nvarchar(max),
 					outcc float)
 declare @result table(
 gno nvarchar(max),
-aa nvarchar(max),ab float, ac float,ad float, 
-ae float,af float,ag float,sa float,sb float,sc float,sd float,se float,sf float,sg float
-,isclek nvarchar(20),indate nvarchar(20),outdate nvarchar(20),partno nvarchar(20),part nvarchar(20),
-noa nvarchar(10),namea nvarchar(20)) 
+aa nvarchar(max),
+ab float, 
+ac float,
+ad float, 
+ae float,
+af float,
+ag float,
+sa float,
+sb float,
+sc float,
+sd float,
+se float,
+sf float,
+sg float,
+isclek nvarchar(20),
+indate nvarchar(20),
+outdate nvarchar(20),
+partno nvarchar(20),
+part nvarchar(20),
+noa nvarchar(10),
+namea nvarchar(20)) 
 ---------------------------------------------------------------------------------------------------------
 declare @st nvarchar(2)= case when @type like '現況離職' then '1' when @type like '現況在職' then '0' else '%' end 
 --目前的員工人數 
@@ -547,12 +564,9 @@ where smon <> ' ')
 insert into @tmp1 
 select LEFT(indate,6)月份,count(LEFT(indate,6)) 新進員工 
 from sss 
-where indate between @t_smon and @t_emon 
-and indate is not null 
+where indate between @t_smon and @t_emon and indate is not null 
 group by LEFT(indate,6) 
 order by LEFT(indate,6) 
-
-
 
 insert into @tmp2 
 select LEFT(outdate,6)月份,count(LEFT(outdate,6))離職員工 
@@ -575,7 +589,7 @@ group by a1.smon
 insert into @tmp4 (smon,outcc) 
 select a.smon,sum(case when b.outcc IS null then b2.outcc+0 else b2.outcc end) 
 from @tmp3 a left join @tmp2 b on a.smon=b.smon 
-left join @tmp2 b2 on a.smon >=b2.smon 
+			 left join @tmp2 b2 on a.smon >=b2.smon 
 group by a.smon,a.outcc,b.outcc 
 --SELECT a1.smon,SUM(a2.outcc) 
 --FROM @tmp2 a1, @tmp2 a2 
@@ -584,11 +598,11 @@ group by a.smon,a.outcc,b.outcc
 
 insert into @tmp5 
 select a.smon,@curcc+(case when c.outcc is null then 0 else c.outcc end)-( case when d.outcc is null 
-then 0 else d.outcc end) 
-,a.newcc,(case when b.outcc IS NULL then 0 else b.outcc end ) 
+	   then 0 else d.outcc end) 
+	   ,a.newcc,(case when b.outcc IS NULL then 0 else b.outcc end ) 
 from @tmp1 a left join @tmp2 b on a.smon =b.smon 
-left join @tmp3 c on a.smon= c.smon 
-left join @tmp4 d on a.smon =d.smon 
+			 left join @tmp3 c on a.smon= c.smon 
+			 left join @tmp4 d on a.smon =d.smon 
 -- DATEADD(MONTH, DATEDIFF(MONTH, -1, GETDATE() ), -1) 
 --dateadd(mm,convert(date,convert(nvarchar,convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'), 
 --1) 
@@ -599,7 +613,6 @@ begin
 	insert into @tmp6 
 	select a.mon,
 		(case when RIGHT(a.mon,2)like '01'then 
-
 			CONVERT(nvarchar,year(DATEADD(year,-1,(convert(date,convert(nvarchar,
 			convert(int,LEFT(a.mon,3))+1911)+RIGHT(a.mon,3)+'/01'))))-1911)+'/12' 
 		else 
@@ -625,15 +638,13 @@ insert into @result(gno,aa,ab,ac,ad,ae )
 select distinct '0' gno,a.mon aa,(case when a2.tcc is null then a.tcc-a.newcc else a2.tcc end) ab,a.tcc ac,a.newcc ad,a.outcc ae 
 
 
-
 from @tmp6 c left join @tmp5 a on c.mon=a.mon 
-left join @tmp4 b on c.mon=b.smon 
-left join @tmp5 a2 on c.lmon=a2.mon 
+		     left join @tmp4 b on c.mon=b.smon 
+			 left join @tmp5 a2 on c.lmon=a2.mon 
 
 insert into @result(gno,sb,sc,sd,se,sf,sg) 
 select '1',sum(ab),sum(ac),sum(ad),sum(ae),sum(af),sum(ag) 
 from @result 
-
 
 declare @year nvarchar(10) ,@mon nvarchar(10),@lastst nvarchar(10),@currst nvarchar(20),@newst nvarchar(50) 
 ,@outst nvarchar(20) 
@@ -644,14 +655,14 @@ open cursor_table
 fetch next from cursor_table 
 into @year,@mon,@lastst,@currst,@newst,@outst 
 while(@@FETCH_STATUS <> -1) 
-begin 
-if @newst <> 0 or @outst <>0 
-begin 
-insert into @result(gno,aa,isclek,indate,outdate,partno,part,noa,namea) 
-select '1',convert(nvarchar,@year-1911)+'/'+@mon,isclerk,indate,outdate,partno,part,noa,namea from sss 
-where ((left(indate,3)+1911 = @year and substring(indate,5,2)=@mon) or	
-(left(outdate,3)+1911 = @year and substring(outdate,5,2)=@mon) )and case when isnull(outdate,'')='' then 0 else 1 end like @st 
-end 
+	begin 
+		if @newst <> 0 or @outst <>0 
+		begin 
+			insert into @result(gno,aa,isclek,indate,outdate,partno,part,noa,namea) 
+			select '1',convert(nvarchar,@year-1911)+'/'+@mon,isclerk,indate,outdate,partno,part,noa,namea from sss 
+			where ((left(indate,3)+1911 = @year and substring(indate,5,2)=@mon) or	
+			(left(outdate,3)+1911 = @year and substring(outdate,5,2)=@mon) )and case when isnull(outdate,'')='' then 0 else 1 end like @st 
+		end 
 
 fetch next from cursor_table 
 into @year,@mon,@lastst,@currst,@newst,@outst 
@@ -660,11 +671,11 @@ close cursor_table
 deallocate cursor_table 
 
 select gno, left(aa,3) yy,right(aa,2) mm,indate,case when isnull(outdate,'')='' then '在職' when isnull(outdate,'')<>'' then '離職' end st,ab,outdate,partno,ac,part,ad,noa,ae,namea nass
-,@t_smon smm,@t_emon emm 
+		  ,@t_smon smm,@t_emon emm 
 from @result 
 where aa is not null 
 order by aa,gno,yy,mm 
- ;
+;
 
 --------------------------------------------------------------------------------------------------------
 z_anaSSS04:--z_anaSSS04
@@ -673,7 +684,6 @@ declare @t_bdate nvarchar(15) =case when '#non'=[10] then '' else [10] end
 declare @t_edate nvarchar(15) =case when '#non'=[11] then '' else [11] end 
 declare @type1 nvarchar(max) =case when '#non'=[17] then '' else [17] end 
 declare @type2 nvarchar(10)=case when '#non'=[12] then '' else [12] end 
-
 -------------------------------------------------------------------------------------------------------
 declare @tmp table(
 gno nvarchar(1),
@@ -697,22 +707,24 @@ pa2 nvarchar(50),
 datt float) 
 insert into @tmp 
 select 0,noa ,namea ,left(birthday,3)+'/'+right(left(birthday,6),2)+'/'+RIGHT(birthday,2) birthday,partno ,partno pp ,rank ,convert(nvarchar,convert(float,year(getdate()))-1911)-CONVERT(float,left(birthday,2)) age 
-,partno p1,part pa1,right(left(birthday,6),2) bmm,indate ,outdate ,id ,jobno,typea 
-,case when CONVERT(float,left(outdate,3)) =0 then convert(float,year(getdate()))-1911 else CONVERT(float,left(outdate,3)) end -CONVERT(float,left(indate,3)) wy,part pa2 
-,case when CONVERT(float,left(outdate,3)) =0 then convert(float,month(getdate())) - convert(float,substring(indate,5,2)) else CONVERT(float,substring(outdate,5,2))-CONVERT(float,substring(indate,5,2))end datt 
+		,partno p1,part pa1,right(left(birthday,6),2) bmm,indate ,outdate ,id ,jobno,typea 
+		,case when CONVERT(float,left(outdate,3)) =0 then convert(float,year(getdate()))-1911 else CONVERT(float,left(outdate,3)) end -CONVERT(float,left(indate,3)) wy,part pa2 
+		,case when CONVERT(float,left(outdate,3)) =0 then convert(float,month(getdate())) - convert(float,substring(indate,5,2)) else CONVERT(float,substring(outdate,5,2))-CONVERT(float,substring(indate,5,2))end datt 
 from sss 
 where case when isnull(outdate,'')='' then '0' else '1' end like 
-	 case when @type1 like '現況在職' then '0' when @type1 like '現況離職' then '1' when @type1='' then '' else '%' end 
-and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' when @type2='' then '' else '%' end 
-and right(left(birthday,6),2) between @t_bdate and @t_edate 
+	  case when @type1 like '現況在職' then '0' when @type1 like '現況離職' then '1' when @type1='' then '' else '%' end 
+	  and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' when @type2='' then '' else '%' end 
+	  and right(left(birthday,6),2) between @t_bdate and @t_edate 
 
 select gno,noa,namea nnas,birthday,partno,pp,rank,age,p1,pa1,bmm,indate,outdate,id,jobno,typea tps,pa2 
-,case when datt<0 then convert(nvarchar ,wy-1)+'.'+ 
-(case when CONVERT(nvarchar ,datt +12 ) >= 10 then CONVERT(nvarchar ,datt +12) 
-else '0'+CONVERT(nvarchar ,datt+12)end)	
-else 
-convert(nvarchar ,wy)+'.'+(case when CONVERT(nvarchar ,datt) >= 10 then CONVERT(nvarchar ,datt) 
-else '0'+CONVERT(nvarchar ,datt) end )end wy 
+	   ,case when datt<0 then convert(nvarchar ,wy-1)+'.'+ 
+			(case when CONVERT(nvarchar ,datt +12 ) >= 10 then CONVERT(nvarchar ,datt +12) 
+	   	 	 else '0'+CONVERT(nvarchar ,datt+12)end)	
+	  	else 
+			convert(nvarchar ,wy)+'.'+(case when CONVERT(nvarchar ,datt) >= 10 then CONVERT(nvarchar ,datt) 
+		else 
+			'0'+CONVERT(nvarchar ,datt) end )
+		end wy 
 from @tmp 
 order by bmm 
 ;
