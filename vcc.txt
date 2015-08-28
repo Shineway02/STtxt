@@ -157,7 +157,7 @@ vcc2cng_rb:--vcc2cng_rb
 	declare @t_accy nvarchar(20) = [1]
 	declare @t_noa nvarchar(20) = [2]
 	declare @t_worker nvarchar(30) = [3]
-	
+		
 	declare @cmd nvarchar(max)
 	declare @t_err nvarchar(30) 
 	declare @accy nvarchar(30) 
@@ -168,87 +168,96 @@ vcc2cng_rb:--vcc2cng_rb
 		EXECUTE sp_executesql @cmd
 	END
 	
-	--產生新的歸還單
+	--抓vcc調撥單單號
 	declare @new_cngno nvarchar(30)=isnull((select transtyle from view_vcc where noa=@t_noa),'')
 	declare @cngdate nvarchar(30)=isnull((select datea from view_vcc where noa=@t_noa),'')
 	declare @cng_accy nvarchar(20)=isnull((select accy from view_cng where noa=@new_cngno),@t_accy)
 	
-	if(@new_cngno='')
-	begin
-		set @new_cngno=isnull((select top 1 noa from view_cng where noa like 'XE'+REPLACE(@cngdate,'/','')+'%'),'XE'+REPLACE(@cngdate,'/','')+'000')
-		set @new_cngno=LEFT(@new_cngno,9)+right('000'+cast(cast(RIGHT(@new_cngno,3) as int)+1 as nvarchar(10)),3)
-	end
-	else
-	begin
-		--刪除已產生的歸還單
-		EXEC("delete cng"+@cng_accy+" where noa='"+@new_cngno+"'")
-		EXEC("delete cngs"+@cng_accy+" where noa='"+@new_cngno+"'")
-		
-		set @t_err='modi'
-	end
+	--vccs有調撥單單號 或 已產生調撥單號
+	if( (select count(*) from view_vccs a left join view_vcc b on a.noa=b.noa where a.noa=@t_noa and left(a.ordeno,2)='XD' )>0
+	or @new_cngno!='' )
+	BEGIN
 	
-	create table #tmp(
-		noa nvarchar(50),
-		noq nvarchar(20),
-		productno nvarchar(50),
-		product nvarchar(100), 
-		unit nvarchar(50),
-		mount float,
-		cngno nvarchar(50),
-		cngnoq nvarchar(50),
-		storeno nvarchar(50),
-		store nvarchar(50),
-		memo nvarchar(MAX)
-	) 
-	
-	insert #tmp
-	select a.noa,a.noq,a.productno,a.product,a.unit,a.mount,a.ordeno,a.no2,b.storeno,b.store,a.memo
-	from view_vccs a left join view_vcc b on a.noa=b.noa 
-	where a.noa=@t_noa and left(a.ordeno,1)!='E' --不抓訂單
-	
-	if((select count(*) from #tmp)>0)
-	begin
-		declare @t_sno nvarchar(50)
-		declare @t_sname nvarchar(50)
-		declare @t_sino nvarchar(50)
-		declare @t_siname nvarchar(50) 
-		
-		--抓取原借出倉與入庫倉
-		select top 1 @t_sno=storeinno,@t_sname=storein
-		,@t_sino=storeno,@t_siname=store
-		from view_cng where noa=(select top 1 cngno from #tmp where isnull(cngno,'')!='') 
-		
-		--出貨有倉庫 歸還的入庫倉變成出庫倉
-		if(isnull((select top 1 storeno from #tmp where isnull(cngno,'')!='' and isnull(storeno,'')!=''),'')!='')
+		--產生新的歸還單
+		if(@new_cngno='')
 		begin
-			select top 1 @t_sino=storeno,@t_siname=store from #tmp where isnull(cngno,'')!='' and isnull(storeno,'')!=''
+			set @new_cngno=isnull((select top 1 noa from view_cng where noa like 'XE'+REPLACE(@cngdate,'/','')+'%'),'XE'+REPLACE(@cngdate,'/','')+'000')
+			set @new_cngno=LEFT(@new_cngno,9)+right('000'+cast(cast(RIGHT(@new_cngno,3) as int)+1 as nvarchar(10)),3)
+		end
+		else
+		begin
+			--刪除已產生的歸還單
+			EXEC("delete cng"+@cng_accy+" where noa='"+@new_cngno+"'")
+			EXEC("delete cngs"+@cng_accy+" where noa='"+@new_cngno+"'")
+			
+			set @t_err='modi'
 		end
 		
-		set @accy=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
+		create table #tmp(
+			noa nvarchar(50),
+			noq nvarchar(20),
+			productno nvarchar(50),
+			product nvarchar(100), 
+			unit nvarchar(50),
+			mount float,
+			cngno nvarchar(50),
+			cngnoq nvarchar(50),
+			storeno nvarchar(50),
+			store nvarchar(50),
+			memo nvarchar(MAX)
+		) 
 		
-		exec("insert cng"+@accy+"(noa,datea,storeno,store,storeinno,storein,memo
-		,typea,custno,comp,addr,tel,transtartno,transtart,worker)
-		select '"+@new_cngno+"','"+@cngdate+"','"+@t_sno+"','"+@t_sname+"','"+@t_sino+"','"+@t_siname+"','由出貨單號"+@t_noa+"轉來'
-		,'5' typea,custno,comp,addr,tel,transtartno,transtart,'"+@t_worker+"'
-		from view_cng where noa=(select top 1 cngno from #tmp where isnull(cngno,'')!='') ")
+		insert #tmp
+		select a.noa,a.noq,a.productno,a.product,a.unit,a.mount,a.ordeno,a.no2,b.storeno,b.store,a.memo
+		from view_vccs a left join view_vcc b on a.noa=b.noa 
+		where a.noa=@t_noa and left(a.ordeno,2)='XD' --抓調撥單借出
 		
-		exec("insert cngs"+@accy+"(noa,noq,productno,product,unit,mount,storeno,storeinno,memo,typea,retno,retnoq)
-		select '"+@new_cngno+"',noq,productno,product,unit,mount,'"+@t_sno+"','"+@t_sino+"',memo,'5',cngno,cngnoq from #tmp")
+		if((select count(*) from #tmp)>0)
+		begin
+			declare @t_sno nvarchar(50)
+			declare @t_sname nvarchar(50)
+			declare @t_sino nvarchar(50)
+			declare @t_siname nvarchar(50) 
+			
+			--抓取原借出倉與入庫倉
+			select top 1 @t_sno=storeinno,@t_sname=storein
+			,@t_sino=storeno,@t_siname=store
+			from view_cng where noa=(select top 1 cngno from #tmp where isnull(cngno,'')!='') 
+			
+			--出貨有倉庫 歸還的入庫倉變成出庫倉
+			if(isnull((select top 1 storeno from #tmp where isnull(cngno,'')!='' and isnull(storeno,'')!=''),'')!='')
+			begin
+				select top 1 @t_sino=storeno,@t_siname=store from #tmp where isnull(cngno,'')!='' and isnull(storeno,'')!=''
+			end
+			
+			set @accy=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
+			
+			exec("insert cng"+@accy+"(noa,datea,storeno,store,storeinno,storein,memo
+			,typea,custno,comp,addr,tel,transtartno,transtart,worker)
+			select '"+@new_cngno+"','"+@cngdate+"','"+@t_sno+"','"+@t_sname+"','"+@t_sino+"','"+@t_siname+"','由出貨單號"+@t_noa+"轉來'
+			,'5' typea,custno,comp,addr,tel,transtartno,transtart,'"+@t_worker+"'
+			from view_cng where noa=(select top 1 cngno from #tmp where isnull(cngno,'')!='') ")
+			
+			exec("insert cngs"+@accy+"(noa,noq,productno,product,unit,mount,storeno,storeinno,memo,typea,retno,retnoq)
+			select '"+@new_cngno+"',noq,productno,product,unit,mount,'"+@t_sno+"','"+@t_sino+"',memo,'5',cngno,cngnoq from #tmp")
+			
+			exec("update vcc"+@accy+" set transtyle='"+@new_cngno+"' where noa='"+@t_noa+"'")
+			
+			if(len(@t_err)=0)
+				set @t_err='OK'
+		end
+		else
+		begin
+			--修改後 沒有 調撥借出單
+			set @accy=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
+			exec("update vcc"+@accy+" set transtyle='' where noa='"+@t_noa+"'")
+			if(len(@t_err)=0)
+				set @t_err='dele'
+		end
 		
-		exec("update vcc"+@accy+" set transtyle='"+@new_cngno+"' where noa='"+@t_noa+"'")
-		
-		if(len(@t_err)=0)
-			set @t_err='OK'
-	end
-	else
-	begin
-		set @accy=isnull((select accy from view_vcc where noa=@t_noa),@t_accy)
-		set @new_cngno=''
-		exec("update vcc"+@accy+" set transtyle='"+@new_cngno+"' where noa='"+@t_noa+"'")
-	end
-	
+	END
 	select @new_cngno cngno,@t_err err
-
+	
 	IF OBJECT_ID('tempdb..#tmp')is not null
 	BEGIN
 		set @cmd = 'drop table #tmp'
@@ -312,16 +321,18 @@ declare @t_noa nvarchar(50) = [2]
 declare @t_worker nvarchar(30) = [3]
 declare @accy nvarchar(50)=@t_accy
 
---已產生領料單
+--已產生領料單 && vccs
 if((select count(*) from view_get where noa=@t_noa)>0 )
 begin
-	set @accy=isnull((select accy from view_get where noa=@t_noa),@t_accy)
-	
+	set @accy=isnull((select top 1 accy from view_get where noa=@t_noa),@t_accy)
 	EXEC(" delete get"+@accy+" where noa='"+@t_noa+"'")
 	EXEC(" delete gets"+@accy+" where noa='"+@t_noa+"'")
+	
+	set @accy=isnull((select top 1 accy from view_vcc where noa=@t_noa),@t_accy)
+	EXEC(" delete vccs"+@accy+" where noa='"+@t_noa+"' and item='packing' ")
 end
 
---產生領料單
+--產生領料單 && vccs
 if((select count(*) from packing where noa=@t_noa)>0 )
 begin
 	EXEC("
@@ -333,6 +344,91 @@ begin
 		select a.noa,b.noq,a.datea,b.uno,b.mount,b.weight,'領料',b.memo
 		from view_vcc a left join packing b on a.noa=b.noa where a.noa='"+@t_noa+"'
 	")
+	
+	EXEC("
+		insert vccs"+@accy+" (noa,noq,product,ucolor,spec,size,lengthb,class,mount,weight,price,total,ordeno,no2,item)
+		select '"+@t_noa+"' noa
+		,right('000'+cast(cast(isnull((select noq from view_vccs where noa='"+@t_noa+"'),'000') as int)+ROW_NUMBER()over (order by ordeno,no2) as nvarchar(10)),3) noq
+		,* from (
+			select b.product,b.ucolor,b.spec,b.size,b.lengthb,b.class
+			,sum(a.mount)mount,sum(a.weight)weight,b.price,sum(a.weight)*b.price total,b.noa ordeno,b.no2,'packing'item
+			from packing a left join view_ordes b on left(a.uno,len(b.noa))=b.noa and right(left(a.uno,len(b.noa)+len(b.no2)),len(b.no2))=b.no2
+			where a.noa='"+@t_noa+"' and b.noa!=''
+			group by right(left(a.uno,len(b.noa)+len(b.no2)),len(b.no2))
+			,b.product,b.ucolor,b.spec,b.size,b.lengthb,b.class,b.price,b.noa,b.no2
+		)tmp
+	")
+end
+;
+-----------------------------------------------------------------------------------------------------------------------------------
+changevcct_vu:--changevcct_vu
+SET QUOTED_IDENTIFIER OFF 
+declare @t_accy nvarchar(50) = [1]
+declare @t_noa nvarchar(50) = [2]
+declare @accy nvarchar(50)=@t_accy
+
+--已產生 vccs
+set @accy=isnull((select top 1 accy from view_vcc where noa=@t_noa),@t_accy)
+EXEC(" delete vccs"+@accy+" where noa='"+@t_noa+"' and item='vcct' ")
+
+--產生 vccs
+if((select count(*) from view_vcct where noa=@t_noa)>0 )
+begin
+	
+	EXEC("
+		insert vccs"+@accy+" (noa,noq,product,ucolor,spec,size,lengthb,class,mount,weight,price,total,ordeno,no2,item)
+		select '"+@t_noa+"' noa
+		,right('000'+cast(cast(isnull((select noq from view_vccs where noa='"+@t_noa+"'),'000') as int)+ROW_NUMBER()over (order by ordeno,no2) as nvarchar(10)),3) noq
+		,* from (
+			select b.product,b.ucolor,b.spec,b.size,b.lengthb,b.class
+			,sum(a.mount)mount,sum(a.weight)weight,b.price,sum(a.weight)*b.price total,b.noa ordeno,b.no2,'vcct' item
+			from view_vcct a left join view_ordes b on left(a.uno,len(b.noa))=b.noa and right(left(a.uno,len(b.noa)+len(b.no2)),len(b.no2))=b.no2
+			where a.noa='"+@t_noa+"' and b.noa!=''
+			group by right(left(a.uno,len(b.noa)+len(b.no2)),len(b.no2))
+			,b.product,b.ucolor,b.spec,b.size,b.lengthb,b.class,b.price,b.noa,b.no2
+		)tmp
+	")
+end
+;
+-----------------------------------------------------------------------------------------------------------------------------------
+changepacking_gu:--changepacking_gu
+SET QUOTED_IDENTIFIER OFF 
+declare @t_accy nvarchar(50) = [1]
+declare @t_noa nvarchar(50) = [2]
+declare @t_worker nvarchar(30) = [3]
+declare @accy nvarchar(50)=@t_accy
+
+--已產生領料單
+if((select count(*) from view_get where noa=@t_noa)>0 )
+begin
+	set @accy=isnull((select top 1 accy from view_get where noa=@t_noa),@t_accy)
+	EXEC(" delete get"+@accy+" where noa='"+@t_noa+"'")
+	EXEC(" delete gets"+@accy+" where noa='"+@t_noa+"'")
+	
 end
 
+--產生領料單 
+if((select count(*) from packing where noa=@t_noa)>0 )
+begin
+	EXEC("
+		insert get"+@accy+" (noa,datea,worker,typea,memo)
+		select noa,datea,'"+@t_worker+"','領料','由Packing轉來' from view_vcc where noa='"+@t_noa+"'
+	")
+	EXEC("
+		insert gets"+@accy+" (noa,noq,datea,productno,product,unit,mount,typea,memo)
+		select a.noa,b.noq,a.datea,b.productno,b.product,b.unit,b.mount,'領料',b.memo
+		from view_vcc a left join packing b on a.noa=b.noa where a.noa='"+@t_noa+"'
+	")
+	
+end
+;
+--------------------------------------------------------------------------------------
+delepackboaj_gu:--delepackboaj_gu_gu
+SET QUOTED_IDENTIFIER OFF 
+declare @t_accy nvarchar(50) = [1]
+declare @t_noa nvarchar(50) = [2]
+
+--刪除packing 與 boat
+delete packing where noa=@t_noa
+delete boaj where noa=@t_noa
 ;

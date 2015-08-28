@@ -48,6 +48,7 @@ z_cub_rkp01:--z_cub_rkp01
 	declare @lengthb2 float
 	declare @source nvarchar(max)
 	declare @lengthc float
+	declare @w06 float
 	declare @hweight float
 	declare @uno nvarchar(max)
 	declare @oth nvarchar(max)
@@ -88,14 +89,14 @@ z_cub_rkp01:--z_cub_rkp01
 	declare @t_spec nvarchar(max)
 	declare @t_radius float
 	declare @t_lengthb float
-	declare @t_hard nvarchar(max)
+	declare @t_hard float
 	declare @t_lengthb2 float
 	
 	declare cursor_table cursor for
 	select top 6 a.noa,a.noq,a.ordeno,a.no2,a.custno,a.comp
 		,a.size,a.dime,a.radius,a.width,a.lengthb,a.[weight],a.bdime
 		,a.productno2,a.product2,a.edime,a.bspec,a.hmount,a.wmount
-		,a.spec,a.hard,a.lengthb2,a.[source],a.lengthc,a.hweight
+		,a.spec,a.hard,a.lengthb2,a.[source],a.lengthc,a.w06,a.hweight
 		,a.uno,a.oth,a.price,a.mount,a.btime,a.etime,a.need
 	from view_cubs a 
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
@@ -107,7 +108,7 @@ z_cub_rkp01:--z_cub_rkp01
 	into @noa,@noq,@ordeno,@no2,@custno,@comp
 		,@size,@dime,@radius,@width,@lengthb,@weight,@bdime
 		,@productno2,@product2,@edime,@bspec,@hmount,@wmount
-		,@spec,@hard,@lengthb2,@source,@lengthc,@hweight
+		,@spec,@hard,@lengthb2,@source,@lengthc,@w06,@hweight
 		,@uno,@oth,@price,@mount,@btime,@etime,@need
 	while(@@FETCH_STATUS <> -1)
 	begin		
@@ -179,7 +180,7 @@ z_cub_rkp01:--z_cub_rkp01
 			,m"+@key+"=dbo.getComma(@wmount,0),n"+@key+"=@spec
 			,o"+@key+"=cast(@radius as nvarchar)+'X'+cast(@lengthb as nvarchar)
 			,p"+@key+"=dbo.getComma(@hard,0),q"+@key+"=dbo.getComma(@lengthb2,0)
-			,r"+@key+"=@source,s"+@key+"=dbo.getComma(@lengthc,0)
+			,r"+@key+"=dbo.getComma(@lengthc,0),s"+@key+"=dbo.getComma(@w06,0)
 			,t"+@key+"=dbo.getComma(@hweight,0),u"+@key+"=@uno,v"+@key+"=@oth
 			,w"+@key+"=dbo.getComma(@price,0),x"+@key+"=dbo.getComma(@mount,0)
 			,y"+@key+"=@btime
@@ -189,7 +190,7 @@ z_cub_rkp01:--z_cub_rkp01
 			,@weight float,@bdime float,@productno2 nvarchar(max),@product2 nvarchar(max)
 			,@edime float,@bspec nvarchar(max),@hmount float,@wmount float,@spec nvarchar(max)
 			,@radius float,@lengthb float,@hard float,@lengthb2 float
-			,@source nvarchar(max),@lengthc float,@hweight float,@uno nvarchar(max)
+			,@source nvarchar(max),@lengthc float,@w06 float,@hweight float,@uno nvarchar(max)
 			,@oth nvarchar(max),@price float,@mount float,@btime nvarchar(max),@etime nvarchar(max)
 			,@need nvarchar(max)'
 			,@ordeno=@ordeno,@no2=@no2,@comp=@comp
@@ -197,14 +198,14 @@ z_cub_rkp01:--z_cub_rkp01
 			,@productno2=@t_productno2,@product2=@t_product2,@edime=@t_edime
 			,@bspec=@t_bspec,@hmount=@t_hmount,@wmount=@t_wmount,@spec=@t_spec
 			,@radius=@t_radius,@lengthb=@t_lengthb,@hard=@t_hard,@lengthb2=@t_lengthb2
-			,@source=@source,@lengthc=@lengthc,@hweight=@hweight,@uno=@uno
+			,@source=@source,@lengthc=@lengthc,@w06=@w06,@hweight=@hweight,@uno=@uno
 			,@oth=@oth,@price=@price,@mount=@mount,@btime=@btime,@etime=@etime,@need=@t_need
 			
 		fetch next from cursor_table
 		into @noa,@noq,@ordeno,@no2,@custno,@comp
 		,@size,@dime,@radius,@width,@lengthb,@weight,@bdime
 		,@productno2,@product2,@edime,@bspec,@hmount,@wmount
-		,@spec,@hard,@lengthb2,@source,@lengthc,@hweight
+		,@spec,@hard,@lengthb2,@source,@lengthc,@w06,@hweight
 		,@uno,@oth,@price,@mount,@btime,@etime,@need
 	end
 	close cursor_table
