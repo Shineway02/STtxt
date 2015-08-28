@@ -270,7 +270,7 @@ z_rc2_pkp01:--z_rc2_pkp01
 		select a.*,cast(rrno as nvarchar)+'&nbsp'+char(59)+'/'+'&nbsp'+char(59)+cast(ttno as nvarchar) pno
 		from(
 			select gno,noa,noq,no2
-			,ceiling((ROW_NUMBER()over(partition by noa order by noq)-1)/@t_pageline)+1 rrno
+			,ceiling((ROW_NUMBER()over(partition by noa order by ISNULL(noq,CHAR(255)),no2)-1)/@t_pageline)+1 rrno
 			,b.rrno ttno
 			,noa a01
 			,tggno+'&nbsp'+char(59)+'-'+'&nbsp'+char(59)+tgg a02
