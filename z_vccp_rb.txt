@@ -28,7 +28,7 @@ declare @tmp table(
 	a_fax nvarchar(90),
 	a_sales nvarchar(50),
 	a_sale2s nvarchar(50),
-	a_invo nvarchar(50),
+	a_invo nvarchar(max),
 	a_title nvarchar(50),
 	a_trantype nvarchar(100),
 	a_paytype nvarchar(100),
@@ -205,7 +205,7 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0',0,0,a.datea,a.noa,b.noq,
-		case when isnull(a.buyerno,'') != '' then (case when isnull(d.invoicetitle,'') != '' then d.invoicetitle else d.comp end) else null end,
+		case when isnull(a.buyer,'') != '' then a.buyer else a.comp end,
 		case when isnull(a.buyerno,'') != '' then (case when isnull(a.serial,'') != '' then a.serial else d.serial end) else null end,
 		case when isnull(a.buyerno,'') != '' then (case when isnull(a.address,'') != '' then a.address else d.addr_invo end) else null end,
 		a.chkno,a.vccno,c.zipcode,case when c.ordeno!='' then c.ordeno else REPLACE(a.memo,vccno,'') end,b.productno,b.product,b.mount,b.price,b.money,
@@ -437,7 +437,6 @@ select
 	a.money8 m8
 from @tmp a
 order by a.noa,a.pageno,a.pageorder,a.productno,a.noq,a.gno;
-
 --*******************************************************************************
 z_vccp_rb03:--z_vccp_rb03
 declare @t_bxnoa nvarchar(20)
