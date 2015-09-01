@@ -140,7 +140,11 @@ if (isnull(@tggno,'') !='')
 --更新cubs 
 		exec("update cubs"+@year+" set ordeno='"+@rc2no+"' where noa='"+@noa+"' and cut='1' and tggno='"+@tggno+"' and datea='"+@datea+"'") 
 
-end
+	end
+	ELSE
+		begin
+		exec("update cubs"+@year+" set ordeno='' where noa='"+@noa+"' and cut='1' and tggno='"+@tggno+"' and datea='"+@datea+"'")
+	end
 fetch next from cursor_table 
 into @datea,@tggno
 end 
@@ -153,7 +157,7 @@ deallocate cursor_table
 END CATCH 
 
 end 
-;
+
 if(@condition='0')
 begin
 	if(len(@noa)>0)
