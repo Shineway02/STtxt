@@ -28,16 +28,17 @@ z_cut_rkp01:--z_cut_rkp01
 		custno nvarchar(20),
 		comp nvarchar(50),
 		uno nvarchar(30),
+		bno nvarchar(30),
 		special nvarchar(30),
 		memo nvarchar(max)
 	)
 	insert into @tmp(recno,gno,accy,noa,noq,datea,ordeno,no2
 		,productno,product,dime,radius,width,lengthb,mount,[weight]
-		,custno,comp,uno,special,memo)
+		,custno,comp,uno,bno,special,memo)
 	select ROW_NUMBER()over(order by a.noa,a.no2),'1'
 		,a.accy,a.noa,a.noq,b.datea,a.ordeno,a.no2
 		,c.productno,c.product,a.dime,a.radius,a.width,a.lengthb
-		,a.mount,a.[weight],a.custno,a.comp,a.bno,a.special,a.memo
+		,a.mount,a.[weight],a.custno,a.comp,a.uno,a.bno,a.special,a.memo
 	from view_cuts a
 	left join view_cut b on a.accy=b.accy and a.noa=b.noa 
 	left join view_ordes c on a.ordeno=b.noa and a.no2=c.no2
