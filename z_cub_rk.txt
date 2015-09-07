@@ -29,22 +29,22 @@ declare @result table(
 	yyyy nvarchar(10), 
 	dd nvarchar(10) , 
 	product2 nvarchar(50), 
-	-- bsp1 接著劑  ,bsp2 接著劑稀釋劑 , bsp3 背漆 bsp4 背漆稀釋劑 ,bsp5 面漆
+-- bsp1 接著劑 ,bsp2 接著劑稀釋劑 , bsp3 背漆 bsp4 背漆稀釋劑 ,bsp5 面漆 
 	bsp1 float , 
 	bsp2 float , 
-	bsp3 float ,
+	bsp3 float , 
 	bsp4 float , 
 	bsp5 float , 
 	gw float, 
-	price float,
+	price float,	
 	prate nvarchar(20), 
 	mount float, 
 	w01 float, 
 	w02 float, 
 	w03 float, 
 	w04 float, 
-	w05 float,
-	uno nvarchar(50),
+	w05 float, 
+	uno nvarchar(50), 
 	w06 nvarchar(50)) 
 
 insert into @result 
@@ -53,132 +53,83 @@ select '0'gno,a.ordeno+case when isnull(a.ordeno,'')='' then '' else '-' end + a
 		,b.lengthb,b.lengthb2,b.weight,b.bdime,b.weight+b.lengthb+b.lengthc-b.bdime intotal 
 		,b.hweight,(b.weight+b.lengthb+b.lengthc-b.bdime)-b.hweight,b.hmount deweight 
 		,case when (b.weight-b.hweight) <> 0 then 
-			  (Convert(nvarchar(20),round(((b.weight+b.lengthb+b.lengthc-b.bdime)/((b.weight-b.hweight)))/100,2))+'%') 
-			  end derate 
+		(Convert(nvarchar(20),round(((b.weight+b.lengthb+b.lengthc-b.bdime)/((b.weight-b.hweight)))/100,2))+'%') 
+		end derate 
 		,b.bspec,right(LEFt(@t_mm,6),2),LEFt(@t_mm,3),right(@t_mm,2),b.productno2 
 -----------------------------判斷接著劑染料顏色---------------------------------------------------------------------- 
-		,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A01' and e.noa=b.noa and e.noq=b.noq),0) bsp1 
-		,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A02' and e.noa=b.noa and e.noq=b.noq),0) bsp2 
-		,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A03' and e.noa=b.noa and e.noq=b.noq),0) bsp3 
-		,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A04' and e.noa=b.noa and e.noq=b.noq),0) bsp4 
-		,isnull((select b.mount from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A05' and e.noa=b.noa and e.noq=b.noq),0) bsp5 
+		,isnull((select sum(e.mount) from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A01' and e.noa=b.noa and e.nor=b.noq),0) bsp1 
+		,isnull((select sum(e.mount) from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A02' and e.noa=b.noa and e.nor=b.noq),0) bsp2 
+		,isnull((select sum(e.mount) from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A03' and e.noa=b.noa and e.nor=b.noq),0) bsp3 
+		,isnull((select sum(e.mount) from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A04' and e.noa=b.noa and e.nor=b.noq),0) bsp4 
+		,isnull((select sum(e.mount) from view_cubt e left join bcc f on e.productno=f.noa where f.typea ='A05' and e.noa=b.noa and e.nor=b.noq),0) bsp5 
 ------------------------------------------------------------------------------------------------------------ 
 		,b.gweight ,b.price 
 		,case when (b.weight-b.hweight) <> null then 
 		(Convert(nvarchar(20),round((b.price/((b.weight-b.hweight)))/100,2))+'%') 
-		end ,b.mount ,b.w01,b.w02,b.w03,b.w04,b.w05,b.uno,w06
-
+		end ,b.mount ,b.w01,b.w02,b.w03,b.w04,b.w05,b.uno,w06 
 from view_cubs b left join view_cub a on a.noa=b.noa 
 				 left join view_cubt c on a.noa=c.noa and b.noq=c.noq 
 where a.noa =b.noa 
 --------------------------------------------------------------------------------------- 
 declare @yyyy nvarchar(20) =convert(nvarchar,convert(float,left(@t_mm,3))+1911) 
 
---本月結存 
-declare @tmp1 table(gno nvarchar(30),weight float,dime float,bsp1 float,bsp2 float,bsp3 float,bsp4 float,bsp5 float, 
-hard float,lengthc float,lengthb float) 
-insert @tmp1 
-select gno,sum(weight) weight,sum(dime)-(select sum(dime)dime from view_cut) dime,sum(bsp1)bsp1,sum(bsp2)bsp2,sum(bsp3)bsp3, 
-		   sum(bsp4)bsp4,sum(bsp5)bsp5,sum(hard) hard,sum(lengthc) 
-		  ,sum(lengthb)-(select sum(lengthb) lengthb from view_cut) lengthb 
-from @result 
-where left(datea,6) like @t_mm 
-group by gno 
+--本月總重 
+declare @monweight float =(select SUM(weight) from @result  where left(datea,6) like @t_mm and gno='0')
 
 --到期初結存 
-insert @result(gno,weight,dime,hard,lengthc,bsp1,bsp2,bsp3,bsp4,bsp5,datea,lengthb2,hmount,gw,price,w01,w02,w03,w04,w05,wi,mount) 
-select '2'
-		, (select SUM(a.weight) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm)
-	 		-(select top 1 sum(weight) from view_vccs where left(datea,6)<@t_mm)
-				-(select top 1 sum(weight) from view_gets where left(datea,6)<@t_mm) 
-		,(select SUM(a.dime) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm) 
-	 		-(select top 1 sum(dime) from view_vccs where left(datea,6)<@t_mm)
-				-(select top 1 sum(dime) from view_gets where left(datea,6)<@t_mm)	
-		,(select SUM(a.hard) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm) 
-			-(select top 1 sum(hard) from view_vccs where left(datea,6)<@t_mm)
-				-(select top 1 sum(hard) from view_gets where left(datea,6)<@t_mm) 
-		,(select SUM(a.lengthc) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm) 
-			-(select top 1 sum(lengthc)from view_vccs where left(datea,6)<@t_mm)
-				-(select top 1 sum(lengthc) from view_gets where left(datea,6)<@t_mm) 
-			
-		,(select SUM(bsp1) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm ) 
-			-isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A01' ),0) 
-				-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A01' ),0) 
-		,(select SUM(bsp2) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
-			 -isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A02' ),0) 
-				-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A02' ),0)
-		,(select SUM(bsp3) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
-			 -isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A03' ),0) 
-				-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A03' ),0) 
-		,(select SUM(bsp4) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
-		 	-isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A04' ),0) 
-				-isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A04' ),0) 
-		,(select SUM(bsp5) from @result a left join view_inas b on a.uno=b.uno left join view_ina c on b.noa=c.noa and b.accy=c.accy where c.custno is null and left(a.datea,6)< @t_mm)
-			 -isnull((select top 1 SUM(a.mount) from view_vccs a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A05' ),0) 
-				 -isnull((select top 1 SUM(a.mount) from view_gets a left join bcc b on productno =b.noa where left(datea,6)<@t_mm and b.typea='A05' ),0) 
-,'000/98'
---客供品
-		,isnull((select SUM(a.weight) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is not null and left(a.datea,6)<= @t_mm),0)
-			-(select top 1 sum(weight) from view_vccs where left(datea,6)<=@t_mm)
-				-(select top 1 sum(weight) from view_gets where left(datea,6)<=@t_mm) 
-		,(select SUM(a.hard) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)<= @t_mm) 
-			-(select top 1 sum(hard) from view_vccs where left(datea,6)<=@t_mm)
-				-(select top 1 sum(hard) from view_gets where left(datea,6)<=@t_mm) 
---本月進料			
-		,(select SUM(weight) from @result where left(datea,6)=@t_mm)-(select SUM(gweight) from view_cubs where left(datea,6)=@t_mm) 
-		,(select SUM(hard) from @result where left(datea,6)=@t_mm)  
-		,(select SUM(bsp1) from @result where left(datea,6)=@t_mm)
-		,(select SUM(bsp2) from @result where left(datea,6)=@t_mm)
-		,(select SUM(bsp3) from @result where left(datea,6)=@t_mm)
-		,(select SUM(bsp4) from @result where left(datea,6)=@t_mm)
-		,(select SUM(bsp5) from @result where left(datea,6)=@t_mm)
-		,(select SUM(hard) from @result where left(datea,6)=@t_mm)
-		,(select SUM(lengthc) from @result where left(datea,6)=@t_mm)
-from @result 
-where left(datea,6)<@t_mm and gno='0' 
+declare @iniweight float=((select SUM(a.weight) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is null and left(a.datea,6)< @t_mm) 
+					 -(select top 1 sum(weight) from view_vccs where left(datea,6)<@t_mm) 
+					 -(select top 1 sum(weight) from view_gets where left(datea,6)<@t_mm) )
 
-update @result set yyyy=left(@t_mm,3), mm=right(@t_mm,2),dd=day(GETDATE()) where gno=2 
+--客供品 
+declare @custweight float=(isnull((select SUM(a.weight) from view_cubs a left join view_inas b on a.uno=b.uno left join view_ina c on a.noa=c.noa and a.accy=b.accy where c.custno is not null and left(a.datea,6)<= @t_mm),0) 
+							-(select top 1 sum(weight) from view_vccs where left(datea,6)<=@t_mm) 
+							-(select top 1 sum(weight) from view_gets where left(datea,6)<=@t_mm))
 
---加總
+insert @result(gno,weight,lengthb2,gw,yyyy,mm,dd)
+select '2',@iniweight,@custweight,@monweight,year(GETDATE()), month(GETDATE()),day(GETDATE())
+
+
+--加總 
 insert into @result (gno,dime,radius,wi,lengthc,hard,lengthb,lengthb2,weight,bdime,intotal,hweight,hmount,bsp1,bsp2 
-			,bsp3,bsp4,bsp5,gw,price,mount,deweight,w01,w02,w03,w04,w05,datea) 
+					,bsp3,bsp4,bsp5,gw,price,mount,deweight,w01,w02,w03,w04,w05,datea) 
 select '1',sum(dime),SUM(radius),sum(wi),SUM(lengthc),SUM(hard),SUM(lengthb),SUM(lengthb2),SUM(weight),SUM(bdime) 
-		  ,SUM(intotal),SUM(hweight),SUM(hmount) 
-		  ,sum(convert(float,bsp1)),SUM(convert(float,bsp2)),SUM(convert(float,bsp3)),SUM(convert(float,bsp4)),SUM(convert(float,bsp5)) 
-		  ,sum(gw) ,SUM(price),SUM(mount),SUM(deweight) 
-		  ,sum(w01),sum(w02),sum(w03),sum(w04),sum(w05),'999/99' 
+		,SUM(intotal),SUM(hweight),SUM(hmount) 
+		,sum(convert(float,bsp1)),SUM(convert(float,bsp2)),SUM(convert(float,bsp3)),SUM(convert(float,bsp4)),SUM(convert(float,bsp5)) 
+		,sum(gw) ,SUM(price),SUM(mount),SUM(deweight) 
+		,sum(w01),sum(w02),sum(w03),sum(w04),sum(w05),'999/99' 
 from @result 
-where gno='0' and left(datea,6)=@t_mm
+where gno='0' and left(datea,6)=@t_mm 
 
 
 select gno ,nob ,datea ,comp ,ordeno ,dime ,radius 
-		   ,dbo.getComma(wi,0) wi 
-		   ,dbo.getComma(lengthc,0) lengthc ,spec 
-		   ,dbo.getComma(hard,0) hard ,source 
-		   ,dbo.getComma(lengthb,0) lengthb 
-		   ,dbo.getComma(lengthb2,0) lengthb2 
-		   ,dbo.getComma(weight,0) weight,dbo.getComma(bdime,0) bdime 
-		   ,dbo.getComma(intotal+(bsp1+bsp2+bsp3+bsp4+bsp5)-bsp5,0) intotal 
-		   ,dbo.getComma(hweight,0) hweight
-		   ,dbo.getComma(deweight,0) deweight
-		   ,dbo.getComma(hmount,0) hmount 	
-		   ,derate,mm,yyyy,dd
-		   ,case when dbo.getComma(bsp1,0) =0 then '' else dbo.getComma(bsp1,0) end bsp1
-		   ,case when dbo.getComma(bsp2,0) =0 then '' else dbo.getComma(bsp2,0) end bsp2
-		   ,case when dbo.getComma(bsp3,0) =0 then '' else dbo.getComma(bsp3,0) end bsp3
-		   ,case when dbo.getComma(bsp4,0) =0 then '' else dbo.getComma(bsp4,0) end bsp4
-		   ,case when dbo.getComma(bsp5,0) =0 then '' else dbo.getComma(bsp5,0) end bsp5  
-		   ,dbo.getComma(gw,0) gw 
-		   ,dbo.getComma(price,0) price,prate 
-		   ,dbo.getComma(mount,0) mount
-		   ,dbo.getComma(w01,0) w01
-		   ,dbo.getComma(w02,0) w02
-		   ,dbo.getComma(w03,0) w03
-		   ,dbo.getComma(w04,0) w04
-		   ,dbo.getComma(w05,0) w05,uno
+,dbo.getComma(wi,0) wi 
+,dbo.getComma(lengthc,0) lengthc ,spec 
+,dbo.getComma(hard,0) hard ,source 
+,dbo.getComma(lengthb,0) lengthb 
+,dbo.getComma(lengthb2,0) lengthb2 
+,dbo.getComma(weight,0) weight,dbo.getComma(bdime,0) bdime 
+,dbo.getComma(intotal+(bsp1+bsp2+bsp3+bsp4+bsp5)-bsp5,0) intotal 
+,dbo.getComma(hweight,0) hweight 
+,dbo.getComma(deweight,0) deweight 
+,dbo.getComma(hmount,0) hmount 
+,derate,mm,yyyy,dd 
+,case when dbo.getComma(bsp1,0) =0 then '' else dbo.getComma(bsp1,0) end bsp1 
+,case when dbo.getComma(bsp2,0) =0 then '' else dbo.getComma(bsp2,0) end bsp2 
+,case when dbo.getComma(bsp3,0) =0 then '' else dbo.getComma(bsp3,0) end bsp3 
+,case when dbo.getComma(bsp4,0) =0 then '' else dbo.getComma(bsp4,0) end bsp4 
+,case when dbo.getComma(bsp5,0) =0 then '' else dbo.getComma(bsp5,0) end bsp5 
+,dbo.getComma(gw,0) gw 
+,dbo.getComma(price,0) price,prate 
+,dbo.getComma(mount,0) mount 
+,dbo.getComma(w01,0) w01 
+,dbo.getComma(w02,0) w02 
+,dbo.getComma(w03,0) w03 
+,dbo.getComma(w04,0) w04 
+,dbo.getComma(w05,0) w05,uno 
 from @result 
-where left(datea,6) like @t_mm or left(datea,3)='000' or left(datea,3)='999' 
-order by datea;
+where left(datea,6) like @t_mm or gno='2' or gno='1'
+order by datea ;
 
 ------------------------------------------------------------------------------------------------------
 z_cub_rk02:--z_cub_rk02
@@ -186,15 +137,40 @@ z_cub_rk02:--z_cub_rk02
 	declare @t_mm nvarchar(50) = case when '#non' = [1] then '' else [1] end
 --------------------------------------------------------------------------------------
 declare @tmp1 table( 
-gno nvarchar(1),mnoa nvarchar(20),comp nvarchar(50),coil nvarchar(50),spec nvarchar(50),coilsp nvarchar(30),hweight float,hgweight float, 
-gweight float,a2 float,a22 float,a3 float,a4 float,a5 float,a6 nvarchar(50),a7 float,a8 float,a9 float,b1 float,b2 float,b3 float,b4 float,b5 float 
-,b6 float,noa nvarchar(20)) 
+	gno nvarchar(1),
+	mnoa nvarchar(20),
+	comp nvarchar(50),
+	coil nvarchar(50),
+	spec nvarchar(50),
+	coilsp nvarchar(30),
+	hweight float,
+	hgweight float, 
+	gweight float,
+	a2 float,
+	a22 float,
+	a3 float,
+	a4 float,
+	a5 float,
+	a6 nvarchar(50),
+	a7 float,
+	a8 float,
+	a9 float,
+	b1 float,
+	b2 float,
+	b3 float,
+	b4 float,
+	b5 float,
+	b6 float,
+	noa nvarchar(20)) 
 
 insert into @tmp1 
 
-select distinct '0', a.cubno,b.comp ,b.uno ,b.spec,convert(nvarchar,b.dime)+'*'+convert(nvarchar,b.width),a.mount3*a.weight3 
-				   ,a.weight ,a.waste,0 ,0 ,0 ,0 ,0 ,convert(nvarchar,c.width)+'*'+convert(nvarchar,c.lengthb),c.mount*c.weight,(a.mount3*a.weight3)-(c.mount*c.weight),' ' ,30 ,' ', b.w01 ,b.w02,b.w03 , '' 
+
+select distinct '0', a.cubno,b.comp ,b.uno ,b.spec,convert(nvarchar,b.dime)+'*'+convert(nvarchar,b.width),b.weight
+				   ,a.weight ,b.w05,a.weight4*a.mount4 ,a.waste ,0 ,a.weight5*a.mount5 ,a.weight3*a.mount3 
+				   ,convert(nvarchar,c.width)+'*'+convert(nvarchar,c.lengthb),c.mount*c.weight,(a.mount3*a.weight3)-(c.mount*c.weight),' ' ,'',' ', b.w01 ,b.w02,b.w03 , '' 
 				   ,a.noa 
+				   
 from view_cucs a left join view_cubs b on a.ordeno =b.ordeno and a.accy=b.accy 
 				 left join view_cuts c on a.ordeno =c.ordeno and a.accy=c.accy 
 				 left join view_cuc	d on a.noa=d.noa and a.accy=d.accy 
@@ -218,40 +194,40 @@ select noa,
 from @tmp1 
 ----------------------------------------------------------------------------------------------- 
 declare @result table( 
-gno nvarchar(1),
-mnoa nvarchar(20),
-comp nvarchar(50),
-coilsp nvarchar(50),
-spec nvarchar(50),
-hweight float, 
-hgweight float,
-a2 float,
-a22 float,
-a3 float,
-a4 float,
-a5 float,
-a6 nvarchar(50),
-a7 float,
-a8 float,
-a9 float,
-b1 float,
-b2 float,
-b3 float,
-b4 float,
-b5 float,
-b6 float,
-c1 float,
-c2 float,
-c3 float,
-c4 float,
-c5 float,
-c6 float,
-c7 float,
-c8 float,
-memo nvarchar(max),
-coil nvarchar(50),
-year nvarchar(10),
-mon nvarchar(10)
+	gno nvarchar(1),
+	mnoa nvarchar(20),
+	comp nvarchar(50),
+	coilsp nvarchar(50),
+	spec nvarchar(50),
+	hweight float, 
+	hgweight float,
+	a2 float,
+	a22 float,
+	a3 float,
+	a4 float,
+	a5 float,
+	a6 nvarchar(50),
+	a7 float,
+	a8 float,
+	a9 float,
+	b1 float,
+	b2 float,
+	b3 float,
+	b4 float,
+	b5 float,
+	b6 float,
+	c1 float,
+	c2 float,
+	c3 float,
+	c4 float,
+	c5 float,
+	c6 float,
+	c7 float,
+	c8 float,
+	memo nvarchar(max),
+	coil nvarchar(50),
+	year nvarchar(10),
+	mon nvarchar(10)
 ) 
 
 
