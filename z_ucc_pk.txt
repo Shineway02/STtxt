@@ -375,6 +375,9 @@ z_ucc_pk01:--z_ucc_pk01
 	
 	declare @t_productno2 nvarchar(max) = case when '#non'=[29] then '' else [29] end
 	declare @t_style2 nvarchar(max) = case when '#non'=[30] then '' else [30] end
+	declare @t_bproductno3 nvarchar(max) = case when '#non'=[31] then '' else [31] end
+	declare @t_eproductno3 nvarchar(max) = case when '#non'=[32] then '' else [32] end
+	declare @t_exclude nvarchar(max) = case when '#non'=[33] then '' else [33] end
 	------------------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_ucc_pk01')is not null
 	BEGIN
@@ -460,11 +463,13 @@ z_ucc_pk01:--z_ucc_pk01
 	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
 	and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
 	and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
-	--and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
+	and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
 	and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
 	and (len(@t_spec)=0 or isnull(a.class,'') = @t_spec)
-	and (len(@t_style2)=0 or CHARINDEX(','+a.style+',',','+@t_style2+',')>0)
-	and (len(@t_productno2)=0 or CHARINDEX(','+a.productno+',',','+@t_productno2+',')>0)
+	--and (len(@t_style2)=0 or CHARINDEX(','+a.style+',',','+@t_style2+',')>0)
+	--and (len(@t_productno2)=0 or CHARINDEX(','+a.productno+',',','+@t_productno2+',')>0)
+	and ISNULL(a.productno,'') between @t_bproductno3 and @t_eproductno3
+	and (len(@t_exclude)=0 or (@t_exclude='H' and CHARINDEX('H',a.productno)=0))
 	update #z_ucc_pk01 set cstyle=b.product
 	from #z_ucc_pk01 a
 	left join style b on a.style=b.noa
