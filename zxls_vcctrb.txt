@@ -1,0 +1,131 @@
+﻿zxls_vcctrb:--zxls_vcctrb
+----------------------------------------------------
+SET QUOTED_IDENTIFIER OFF
+declare @cmd nvarchar(max)
+
+IF OBJECT_ID('tempdb..#z_vcctrb')is not null
+BEGIN
+	drop table #z_vcctrb
+END
+----------------------------------------------------
+create table #z_vcctrb(
+	isexist int,
+	noa nvarchar(50),
+	
+	typea nvarchar(50),
+	kind nvarchar(50),
+	cno nvarchar(50),
+	acomp nvarchar(50),
+	datea nvarchar(50),
+	mon nvarchar(50), 
+	serial nvarchar(50),
+	isasset bit,
+	isself bit,
+	money float,
+	taxtype nvarchar(50),
+	tax float,
+	total float,
+	mount float,
+	dutymemo nvarchar(50),
+	book nvarchar(50),
+	sono nvarchar(50)
+)
+declare @a nvarchar(max)
+declare @b nvarchar(max)
+declare @c nvarchar(max)
+declare @d nvarchar(max)
+declare @e nvarchar(max)
+declare @f nvarchar(max)
+declare @g nvarchar(max)
+declare @h nvarchar(max)
+declare @i nvarchar(max)
+declare @j nvarchar(max)
+declare @k nvarchar(max)
+declare @l nvarchar(max)
+declare @m nvarchar(max)
+declare @n nvarchar(max)
+declare @o nvarchar(max)
+declare @p nvarchar(max)
+declare @q nvarchar(max)
+
+declare @isexist int
+declare	@noa nvarchar(50)
+declare	@typea nvarchar(50)	
+declare	@kind nvarchar(50)
+declare	@cno nvarchar(50)
+declare	@acomp nvarchar(50)
+declare	@datea nvarchar(50)
+declare	@mon nvarchar(50)
+declare	@serial nvarchar(50)
+declare	@isasset bit
+declare	@isself bit
+declare	@money float
+declare	@taxtype nvarchar(50)
+declare	@tax float
+declare	@total float
+declare	@mount float
+declare	@dutymemo nvarchar(50)
+declare	@book nvarchar(50)
+declare	@sono nvarchar(50)
+
+declare cursor_table cursor for
+select noa,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q from ztmpxls where f like '%[a-zA-Z0-9]%'
+open cursor_table
+fetch next from cursor_table
+into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q
+while(@@FETCH_STATUS <> -1)
+begin
+	
+	set @typea = case when @a = '進' then '1' else '2' end
+	set @kind = @b
+	set @cno = @c
+	set @acomp = (select acomp from acomp where noa = @cno)
+	set @datea = @d
+	set @mon = @e
+	set @serial = @g
+	set @isasset = CAST(@h as bit)
+	set @isself = CAST(@i as bit)
+	set @money = CAST(@j as float)
+	set @taxtype = @k
+	set @tax = CAST(@l as float)
+	set @total = CAST(@m as float)
+	set @mount = CAST(@n as float)
+	set @dutymemo = @o
+	set @book = @p
+	set @sono = @q
+	
+	set @noa = @f
+	set @isexist = case when (LEN(ISNULL((select noa from vcct where noa = @noa),''))=0) then 0 else 1 end
+	
+	insert into #z_vcctrb
+	select @isexist,@noa,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono
+
+	fetch next from cursor_table
+	into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q
+end
+close cursor_table
+deallocate cursor_table
+
+--寫入vcct
+declare cursor_table cursor for
+select isexist,noa from #z_vcctrb
+open cursor_table
+fetch next from cursor_table
+into @isexist,@noa
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@isexist = 1)
+	begin
+		delete vcct where noa = @noa
+	end
+	
+	insert into vcct(typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono)
+	select typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono from #z_vcctrb where noa = @noa 
+	
+	fetch next from cursor_table
+	into @isexist,@noa
+end
+close cursor_table
+deallocate cursor_table
+
+drop table #z_vcctrb;

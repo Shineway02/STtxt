@@ -1,0 +1,42 @@
+z_modeq_rs01:--z_modeq_rs01
+
+declare @t_bnoa nvarchar(10)
+declare @t_enoa nvarchar(10)
+
+set @t_bnoa = case when '#non'=[3] then '' else [3] end
+set @t_enoa = case when '#non'=[4] then char(255) else [4] end
+---------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(1),
+	device nvarchar(50),
+	saver nvarchar(50),
+	noa nvarchar(50),
+	tgg nvarchar(50),
+	datea nvarchar(50),
+	heart nvarchar(50),
+	style nvarchar(50),
+	worker nvarchar(50),
+	gen float,
+	genmon float,
+	material nvarchar(50),
+	product nvarchar(max),
+	form float,
+	name nvarchar(30),
+	tggs nvarchar(30), 
+	spec nvarchar(30),
+	hpower float,
+	mount float,
+	dateas nvarchar(30), 
+	memo nvarchar(max)
+)
+
+insert into @tmp
+select '0',a.device,a.saver,a.noa,a.tgg,a.datea,a.heart,a.style,a.worker,a.gen,a.genmon,a.material,a.product,a.form,b.name,b.tgg,b.spec,b.hpower,b.mount,b.datea,b.memo
+from modeq a
+left join modegb b on a.noa = b.noa
+where(a.noa between @t_bnoa and @t_enoa)
+
+insert into @tmp(gno,noa)
+select DISTINCT '1',noa from @tmp
+
+select * from @tmp order by noa,gno;om @tmp order by noa,gno;
