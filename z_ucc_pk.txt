@@ -463,7 +463,7 @@ z_ucc_pk01:--z_ucc_pk01
 	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
 	and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
 	and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
-	and (len(@t_style)=0 or ISNULL(a.style,'')=@t_style)
+	and (len(@t_style)=0 or charindex(','+a.style+',',','+@t_style+',')>0)
 	and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
 	and (len(@t_spec)=0 or isnull(a.class,'') = @t_spec)
 	--and (len(@t_style2)=0 or CHARINDEX(','+a.style+',',','+@t_style2+',')>0)
@@ -492,14 +492,14 @@ z_ucc_pk01:--z_ucc_pk01
 	begin
 		update #z_ucc_pk01 set recno=b.recno
 		from #z_ucc_pk01 a
-		left join(select sel,ROW_NUMBER()over(order by productno,dime,width,lengthb) recno 
+		left join(select sel,ROW_NUMBER()over(order by dime,width,lengthb) recno 
 		from #z_ucc_pk01) b on a.sel=b.sel
 	end
 	else
 	begin
 		set @cmd = "update #z_ucc_pk01 set recno=b.recno
 			from #z_ucc_pk01 a
-			left join(select sel,ROW_NUMBER()over(order by "+@t_sort+") recno from #z_ucc_pk01) b on a.sel=b.sel"
+			left join(select sel,ROW_NUMBER()over(order by "+@t_sort+",dime,width,lengthb) recno from #z_ucc_pk01) b on a.sel=b.sel"
 		execute sp_executesql @cmd
 	end
 	
