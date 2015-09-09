@@ -1,0 +1,157 @@
+z_model_rs1:--z_model_rs1
+
+declare @t_noa nvarchar(20)
+declare @t_tgg nvarchar(50)
+declare @t_frame nvarchar(50)
+declare @t_bdate nvarchar(30)
+declare @t_edate nvarchar(30)
+set @t_noa = case when '#non' = [1] then '' else [1] end
+set @t_frame = case when '#non' = [2] then '' else [2] end
+set @t_tgg = case when '#non' = [3] then '' else [3] end
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then '' else [5] end
+-------------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	tgg nvarchar(50),
+	tube nvarchar(50),
+	heart float,
+	spec nvarchar(50),
+	frame nvarchar(3),
+	usetype nvarchar(20),
+	saver nvarchar(30),
+	datea nvarchar(20),
+	nob nvarchar(25),
+	model nvarchar(50),
+	memo nvarchar(30),
+	bottom float,
+	mount float,
+	memo2 nvarchar(max),
+	datea1 nvarchar(30)
+)
+
+insert @result
+select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
+	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+from model a left join models b on a.noa=b.noa
+where a.datea between @t_bdate and @t_edate and
+	  (len(ISNULL(@t_noa,''))=0 or @t_noa=a.noa) and
+	  (len(isnull(@t_tgg,''))=0 or @t_tgg=a.tgg) and
+	  (len(isnull(@t_frame,''))=0 or @t_frame=a.frame)
+
+insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
+select '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
+from @result
+group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
+
+select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
+	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
+	   
+from @result
+order by noa,nob,gno
+;
+
+
+z_model_rs2:--z_model_rs2
+
+declare @t_noa nvarchar(20)
+declare @t_tgg nvarchar(50)
+declare @t_frame nvarchar(50)
+declare @t_bdate nvarchar(30)
+declare @t_edate nvarchar(30)
+set @t_noa = case when '#non' = [1] then '' else [1] end
+set @t_frame = case when '#non' = [2] then '' else [2] end
+set @t_tgg = case when '#non' = [3] then '' else [3] end
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then '' else [5] end
+-------------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	tgg nvarchar(50),
+	tube nvarchar(50),
+	heart float,
+	spec nvarchar(50),
+	frame nvarchar(3),
+	usetype nvarchar(20),
+	saver nvarchar(30),
+	datea nvarchar(20),
+	nob nvarchar(25),
+	model nvarchar(50),
+	memo nvarchar(30),
+	bottom float,
+	mount float,
+	memo2 nvarchar(max),
+	datea1 nvarchar(30)
+)
+
+insert @result
+select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
+	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+from model a left join models b on a.noa=b.noa
+where a.datea between @t_bdate and @t_edate and
+	  (len(ISNULL(@t_noa,''))=0 or @t_noa=a.noa) and
+	  (len(isnull(@t_tgg,''))=0 or @t_tgg=a.tgg) and
+	  (len(isnull(@t_frame,''))=0 or @t_frame=a.frame)
+
+insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
+select '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
+from @result
+group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
+
+select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
+	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
+	   
+from @result
+order by noa,nob,gno;
+
+z_model_rs3:--z_model_rs3
+
+declare @t_noa nvarchar(20)
+declare @t_tgg nvarchar(50)
+declare @t_frame nvarchar(50)
+declare @t_bdate nvarchar(30)
+declare @t_edate nvarchar(30)
+set @t_noa = case when '#non' = [1] then '' else [1] end
+set @t_frame = case when '#non' = [2] then '' else [2] end
+set @t_tgg = case when '#non' = [3] then '' else [3] end
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then '' else [5] end
+-------------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	tgg nvarchar(50),
+	tube nvarchar(50),
+	heart float,
+	spec nvarchar(50),
+	frame nvarchar(3),
+	usetype nvarchar(20),
+	saver nvarchar(30),
+	datea nvarchar(20),
+	nob nvarchar(25),
+	model nvarchar(50),
+	memo nvarchar(30),
+	bottom float,
+	mount float,
+	memo2 nvarchar(max),
+	datea1 nvarchar(30)
+)
+
+insert @result
+select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
+	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo,b.datea
+from model a left join models b on a.noa=b.noa
+where  @t_noa=a.noa
+
+insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
+select TOP 1 '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
+from @result
+group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
+
+select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
+	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
+	   
+from @result
+order by gno;
