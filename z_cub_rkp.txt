@@ -92,14 +92,13 @@ z_cub_rkp02:--z_cub_rkp02
 	update @tmpa set money05 = isnull(money02,0)+isnull(money03,0)+isnull(money04,0) 
 	update @tmpa set rate02 = case when @makeless=0 then 0 else round(money05/@makeless*100,2) end
 	update @tmpa set money06 = ISNULL(money01,0)+ISNULL(money05,0)
-	
-	
-------------------------------------------------------------------------------------------------------------	
+	-------------------------------------------------------------------------------------------------------------------
 	declare @tmpb table(
 		gno nvarchar(1),
 		sel int identity(1,1),
 		noa nvarchar(20),
 		noq nvarchar(10),
+		mins float,
 		dime float,
 		radius float,
 		width float,
@@ -109,14 +108,17 @@ z_cub_rkp02:--z_cub_rkp02
 		custno nvarchar(20),
 		cust nvarchar(50),
 		uno01 nvarchar(30),--鋼捲
+		size01 nvarchar(max),
 		weight01 float,
 		price01 float,
 		money01 float,
 		uno02 nvarchar(30),--PVC膜
+		size02 nvarchar(max),
 		weight02 float,
 		price02 float,
 		money02 float,
 		uno03 nvarchar(30),--PE膜
+		size03 nvarchar(max),
 		weight03 float,
 		price03 float,
 		money03 float,
@@ -159,19 +161,22 @@ z_cub_rkp02:--z_cub_rkp02
 		a16 float,--單位成本
 		memo nvarchar(max)
 	)
-	insert into @tmpb(gno,noa,noq,dime,radius,width,lengthb,spec,makeno,custno,cust
-		,uno01,weight01
-		,uno02,weight02
-		,uno03,weight03
+	insert into @tmpb(gno,noa,noq,mins
+		,dime,radius,width,lengthb,spec,makeno,custno,cust
+		,uno01,size01,weight01
+		,uno02,size02,weight02
+		,uno03,size03,weight03
 		,a06)
-	select '1',a.noa,a.noq,a.dime,a.radius,a.width,a.lengthb,a.spec,a.makeno,a.custno,a.comp
-		,a.uno,a.[weight]
-		,a.uno2,a.lengthb2
-		,a.uno3,a.w06
+	select '1',a.noa,a.noq,a.mins
+		,a.dime,a.radius,a.width,a.lengthb,a.spec,a.makeno,a.custno,a.comp
+		,a.uno,a.size,a.[weight]
+		,a.uno2,a.size,a.lengthb2
+		,a.uno3,a.size,a.w06
 		,isnull(a.hweight,0)
 	from view_cubs a
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa 		
-	where left(b.datea,6) between @t_bmon and @t_emon											
+	where left(b.datea,6) between @t_bmon and @t_emon	
+	and len(ISNULL(a.makeno,''))>0										
 	
 	update @tmpb set price01=b.sprice,money01 = round(ISNULL(weight01,0)*ISNULL(price01,0),0)
 	from @tmpb a
@@ -190,36 +195,10 @@ z_cub_rkp02:--z_cub_rkp02
 	declare @productno nvarchar(20)
 	declare @mount float
 	declare @mon nvarchar(10)
---------------------------
-	--select * from @tmpb where noa='M1040908001'
 	
-	--select * from view_cubt where noa='M1040908001'
-	
-	--select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],LEFT(b.datea,6) 
-	--	from @tmpb a
-	--	left join view_cub b on a.noa=b.noa
-	--	left join view_cubt c on a.noa=c.noa and a.noq=c.nor
-	--	left join bcc d on c.productno=d.noa
-	--	where b.noa is not null
-	--	and c.noa is not null
-	--	and a.noa='M1040908001'
-	--	order by a.noa
-		
-		
-	--select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],isnull(e.price,0),LEFT(b.datea,6) 
-	--	from @tmpb a
-	--	left join view_cub b on a.noa=b.noa
-	--	left join view_cubt c on a.noa=c.noa and a.noq=c.nor
-	--	left join bcc d on b.productno=c.noa
-	--	left join costbcc104 e on c.productno=e.productno and e.mon=LEFT(b.datea,6) 
-	--	where b.noa is not null
-	--	and c.noa is not null
-
 	declare @price float	
 	declare @money float
-		
-	--select * from bcctype
-		
+	-------------------------------------------------------------------------------------------------------------
 	declare cursor_table cursor for
 	select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],LEFT(isnull(b.datea,''),6) 
 		from @tmpb a
@@ -266,7 +245,7 @@ z_cub_rkp02:--z_cub_rkp02
 	close cursor_table
 	deallocate cursor_table
 -----------------------------------------------------------------------------------------------------------------------	
-	insert into @tmpb(gno
+	insert into @tmpb(gno,mins
 		,weight01,money01
 		,weight02,money02
 		,weight03,money03
@@ -276,7 +255,8 @@ z_cub_rkp02:--z_cub_rkp02
 		,mount07,money07
 		,mount08,money08
 		)
-	select '2',SUM(ISNULL(weight01,0)),SUM(ISNULL(money01,0))
+	select '2',SUM(ISNULL(mins,0))
+		,SUM(ISNULL(weight01,0)),SUM(ISNULL(money01,0))
 		,SUM(ISNULL(weight02,0)),SUM(ISNULL(money02,0))
 		,SUM(ISNULL(weight03,0)),SUM(ISNULL(money03,0))
 		,SUM(ISNULL(mount04,0)),SUM(ISNULL(money04,0))
@@ -284,19 +264,57 @@ z_cub_rkp02:--z_cub_rkp02
 		,SUM(ISNULL(mount06,0)),SUM(ISNULL(money06,0))
 		,SUM(ISNULL(mount07,0)),SUM(ISNULL(money07,0))
 		,SUM(ISNULL(mount08,0)),SUM(ISNULL(money08,0))
-		
 	from @tmpb where gno='1'	
 ---------------------------------------------------------------
 	--在製品分攤 金額
 	declare @m01 float = 0
-	select @m01 = SUM(ISNULL(money05,0)) from @tmpa where mechno='A05'
-
+	--人工
+	declare @m02 float = 0
+	select @m01 = SUM(ISNULL(money05,0)),@m02 = SUM(ISNULL(money01,0)) from @tmpa where mechno='A07'
+-----------------------------------------------------------
+	declare @result table(
+		gno nvarchar(20),
+		sel int identity(1,1),
+		a01 float,
+		a02 float,
+		a03 float,
+		a04 float,
+		a05 nvarchar(30),--PVC皮
+		a06 nvarchar(30),--製造批號
+		a07 nvarchar(30),--客戶名稱
+		a08 nvarchar(30),--材質
+		a09 float,--工時
+		a09rate float,--工時比率
+		a10 float,--投入重量/KG
+		a11 float,--完工重量/KG
+		a12 float,--半成品
+		a13 float,--﹪ 半成品/合計
+		a14 float,--直接人工
+		a15 float,--﹪ 直接人工/合計
+		a16 float,--製造費用
+		a17 float,--﹪  製造費用/合計
+		a18 float,--合計
+		a19 float,--加工成本
+		a20 float,--單位成本
 		
-	--select * from costbcc104 
-	
-	--select * from @tmpa
+		b01 nvarchar(30),--機台
+		b02 float,--工時比率
+		b03 float,--人工
+		b04 float,--扣除折舊及人工之製費
+		b05 float,--折舊
+		b06 float,--瓦斯費
+		b07 float,--製造費用合計
+		b08 float,--製費比率
+		b09 float,--加工成本合計
+		
+		c01 float,--人工
+		c02 float,--製造費用
+		
+		memo nvarchar(max)
+	)
+	insert into @result(gno,a01,a02,a03,a04,a05,a06,a07,a08,a09,a09rate
+		,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
 	select a.gno
-		,ROW_NUMBER()over(order by a.gno,a.noa,a.noq) rr
 		--規格尺寸	
 		,a.dime a01
 		,a.radius a02
@@ -311,39 +329,62 @@ z_cub_rkp02:--z_cub_rkp02
 		--材質
 		,'' a08
 		--工時
-		,'' a09
-		--底-鋁
-		,'' a10
-		--比例
-		,'' a11
+		,a.mins a09
+		,case when @totmins=0 then 0 else a.mins/@totmins end a09rate
 		--投入重量/KG
 		,ISNULL(a.weight01,0)+ISNULL(a.weight02,0)+ISNULL(a.weight03,0)
-		+ISNULL(a.mount04,0)+ISNULL(a.mount05,0)+ISNULL(a.mount06,0)+ISNULL(a.mount07,0)+ISNULL(a.mount08,0) a12
+		+ISNULL(a.mount04,0)+ISNULL(a.mount05,0)+ISNULL(a.mount06,0)+ISNULL(a.mount07,0)+ISNULL(a.mount08,0) a10
 		--完工重量/KG
-		,a.a05 a13
-		--0.6
-		,0.6*a.dime*1 a14
+		,a.a05 a11
 		--半成品
 		,ISNULL(a.money01,0)+ISNULL(a.money02,0)+ISNULL(a.money03,0)+ISNULL(a.money04,0)
-		+ISNULL(a.money05,0)+ISNULL(a.money06,0)+ISNULL(a.money07,0)+ISNULL(a.money08,0) a15
+		+ISNULL(a.money05,0)+ISNULL(a.money06,0)+ISNULL(a.money07,0)+ISNULL(a.money08,0) a12
 		--﹪ 半成品/合計
-		,'' a16
+		,'' a13
 		--直接人工
-		,'' a17
+		,'' a14
 		--﹪ 直接人工/合計
-		,'' a18
+		,'' a15
 		--製造費用
-		,'' a19
+		,'' a16
 		--﹪  製造費用/合計
-		,'' a20
+		,'' a17
 		--合計
-		,'' a21
+		,'' a18
 		--加工成本
-		,'' a22
+		,'' a19
 		--單位成本
-		,'' a23
+		,'' a20
 	from @tmpb a
-	order by a.gno,a.noa,a.noq;
+	order by a.gno,a.noa,a.noq
+
+	update @result set a14 = round(@m02*a09rate,0),a16 = round(@m01*a09rate,0)
+	update @result set a18 = ISNULL(a12,0)+ISNULL(a14,0)+ISNULL(a16,0)
+	update @result set a13 = case when a18=0 then 0 else round(a12/a18*100,2) end
+		,a15 = case when a18=0 then 0 else round(a14/a18*100,2) end
+		,a17 = case when a18=0 then 0 else round(a16/a18*100,2) end
+	-----------------------------------------------------------------------------------
+	select @m01=0,@m02=0
+	select @m01=SUM(ISNULL(money01,0)),@m02=SUM(ISNULL(money05,0)) from @tmpa
+	insert into @result(gno)values('3')
+	insert into @result(gno,c01,c02)values('4',0,0)
+	insert into @result(gno,c01,c02)values('5',0,0)
+	insert into @result(gno,c01,c02)values('6',@m01,@m02)
+	-----------------------------------------------------------------------------------
+	insert into @result(gno)values('7')
+	
+	insert into @result(gno,b01,b02,b03,b04,b05,b06,b07,b08,b09)
+	select '8',mech,rate01,money01,money02,money03,money04,money05,rate02,money06
+	from @tmpa
+	order by mechno
+	
+	insert into @result(gno,b01,b02,b03,b04,b05,b06,b07,b08,b09)
+	select '9','',sum(isnull(rate01,0)),sum(isnull(money01,0)),sum(isnull(money02,0)),sum(isnull(money03,0))
+		,sum(isnull(money04,0)),sum(isnull(money05,0)),sum(isnull(rate02,0)),sum(isnull(money06,0))
+	from @tmpa
+
+	select * from @result order by gno,sel;
+
 
 z_cub_rkp01:--z_cub_rkp01
 	SET QUOTED_IDENTIFIER OFF
