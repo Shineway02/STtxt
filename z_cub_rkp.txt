@@ -1,3 +1,350 @@
+z_cub_rkp02:--z_cub_rkp02
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_path nvarchar(max) = '[1]'
+	declare @t_db nvarchar(max) = '[2]'
+	declare @t_noa nvarchar(max) = case when '#non' = [3] then '' else [3] end
+	declare @t_bmon nvarchar(20)=case when '#non' = [4] then '' else [4] end
+	declare @t_emon nvarchar(20)=case when '#non' = [5] then char(255) else [5] end
+	------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		mechno nvarchar(20),
+		mech nvarchar(20),
+		mins float,
+		memo nvarchar(max)
+	)
+	
+	insert into @tmp(mechno,mech,mins)
+	select 'A07','生產線',SUM(ISNULL(a.mins,0))
+	from view_cubs a
+	left join view_cub b on a.accy=b.accy and a.noa=b.noa
+	where left(b.datea,6) between @t_bmon and @t_emon
+	
+	insert into @tmp(mechno,mech,mins)
+	select isnull(b.mechno,''),isnull(c.mech,''),SUM(ISNULL(a.mins,0))
+	from view_cucs a
+	left join view_cuc b on a.accy=b.accy and a.noa=b.noa
+	left join mech c on b.mechno=c.noa
+	where left(b.datea,6) between @t_bmon and @t_emon
+	group by isnull(b.mechno,''),isnull(c.mech,'')
+	
+	insert into @tmp(mechno,mech,mins)
+	select 'A04','烘板',SUM(ISNULL(a.mins,0))
+	from view_cuds a
+	left join view_cud b on a.accy=b.accy and a.noa=b.noa
+	where left(b.datea,6) between @t_bmon and @t_emon
+	-----------------------------------------------------------------------------------------------
+	declare @wages float = 0 --直接人工	
+	declare @makeless float = 0 --製造費用
+	select @wages=SUM(ISNULL(wages,0)),@makeless=SUM(ISNULL(makeless,0))
+	from costa 
+	where mon between @t_bmon and @t_emon
+	
+	declare @tmpa table(
+		gno nvarchar(10),
+		sel int identity(1,1),
+		mins int,
+		mechno nvarchar(20),
+		mech nvarchar(20),
+		rate01 float,--平均工時比率
+		money01 float,--人工
+		money02 float,--扣除折舊及人工之製費
+		money03 float,--折舊
+		money04 float,--瓦斯費
+		money05 float,--製造費用合計
+		rate02 float,--製費比率
+		money06 float--加工成本合計
+	)
+	declare @totmins float = 0
+	select @totmins=SUM(mins) from @tmp
+	
+	insert into @tmpa(gno,mins,mechno,mech,rate01,money01,money02,money03,money04,money05,rate02,money06)
+	select '1',mins,mechno,mech
+		,case when @totmins=0 then 0 else ROUND(mins/@totmins*100,2) end
+		,0,0,0,0,0,0,0
+	from @tmp
+	
+	update @tmpa set money03=b.[money]
+	from @tmpa a
+	left join (select a.mechno,sum(isnull(a.[money],0)) [money]
+		from costas a
+		left join costa b on a.noa=b.noa
+		where b.mon between @t_bmon and @t_emon
+		and CHARINDEX('折舊',a.product)>0
+		group by a.mechno) b on a.mechno=b.mechno
+	update @tmpa set money04=b.[money]
+	from @tmpa a
+	left join (select a.mechno,sum(isnull(a.[money],0)) [money]
+		from costas a
+		left join costa b on a.noa=b.noa
+		where b.mon between @t_bmon and @t_emon
+		and CHARINDEX('瓦斯費',a.product)>0
+		group by a.mechno) b on a.mechno=b.mechno
+	update @tmpa set money01=round(@wages*rate01/100,0)
+	---------------------------------------------------------------------------
+	declare @money02 float--扣除折舊及人工之製費
+	declare @money03 float--折舊
+	declare @money04 float--瓦斯費
+	
+	select @money03=SUM(isnull(money03,0)),@money04=SUM(isnull(money04,0)) from @tmpa
+	set @money02 = @makeless - @money03 - @money04
+	update @tmpa set money02 = ROUND(rate01*@money02/100,0)
+	update @tmpa set money05 = isnull(money02,0)+isnull(money03,0)+isnull(money04,0) 
+	update @tmpa set rate02 = case when @makeless=0 then 0 else round(money05/@makeless*100,2) end
+	update @tmpa set money06 = ISNULL(money01,0)+ISNULL(money05,0)
+	
+	
+------------------------------------------------------------------------------------------------------------	
+	declare @tmpb table(
+		gno nvarchar(1),
+		sel int identity(1,1),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		dime float,
+		radius float,
+		width float,
+		lengthb float,
+		spec nvarchar(20),--PVC皮
+		makeno nvarchar(20),--製造批號
+		custno nvarchar(20),
+		cust nvarchar(50),
+		uno01 nvarchar(30),--鋼捲
+		weight01 float,
+		price01 float,
+		money01 float,
+		uno02 nvarchar(30),--PVC膜
+		weight02 float,
+		price02 float,
+		money02 float,
+		uno03 nvarchar(30),--PE膜
+		weight03 float,
+		price03 float,
+		money03 float,
+		--接著劑
+		mount04 float,
+		price04 float,
+		money04 float,
+		--接著劑稀釋劑
+		mount05 float,
+		price05 float,
+		money05 float,
+		--背漆
+		mount06 float,
+		price06 float,
+		money06 float,
+		--背漆稀釋劑
+		mount07 float,
+		price07 float,
+		money07 float,
+		--面漆
+		mount08 float,
+		price08 float,
+		money08 float,
+		
+		a01 nvarchar(20),--材質
+		a02 float,--工時
+		a03 float,--底-鋁
+		a04 float,--比例
+		a05 float,--投入重量/KG
+		a06 float,--完工重量/KG   recoil重量   hweight
+		a07 float,--0.6
+		a08 float,--半成品
+		a09 float,--﹪
+		a10 float,--直接人工
+		a11 float,--﹪
+		a12 float,--製造費用
+		a13 float,--﹪
+		a14 float,--合計
+		a15 float,--加工成本
+		a16 float,--單位成本
+		memo nvarchar(max)
+	)
+	insert into @tmpb(gno,noa,noq,dime,radius,width,lengthb,spec,makeno,custno,cust
+		,uno01,weight01
+		,uno02,weight02
+		,uno03,weight03
+		,a06)
+	select '1',a.noa,a.noq,a.dime,a.radius,a.width,a.lengthb,a.spec,a.makeno,a.custno,a.comp
+		,a.uno,a.[weight]
+		,a.uno2,a.lengthb2
+		,a.uno3,a.w06
+		,isnull(a.hweight,0)
+	from view_cubs a
+	left join view_cub b on a.accy=b.accy and a.noa=b.noa 		
+	where left(b.datea,6) between @t_bmon and @t_emon											
+	
+	update @tmpb set price01=b.sprice,money01 = round(ISNULL(weight01,0)*ISNULL(price01,0),0)
+	from @tmpb a
+	left join view_uccb b on a.uno01=b.uno
+	update @tmpb set price02=b.sprice,money02 = round(ISNULL(weight02,0)*ISNULL(price02,0),0)
+	from @tmpb a
+	left join view_uccb b on a.uno02=b.uno
+	update @tmpb set price03=b.sprice,money03 = round(ISNULL(weight03,0)*ISNULL(price03,0),0)
+	from @tmpb a
+	left join view_uccb b on a.uno03=b.uno
+	-----------------------------------------------------------------------------------------------------------
+	declare @sel int
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(10)
+	declare @typea nvarchar(20)
+	declare @productno nvarchar(20)
+	declare @mount float
+	declare @mon nvarchar(10)
+--------------------------
+	--select * from @tmpb where noa='M1040908001'
+	
+	--select * from view_cubt where noa='M1040908001'
+	
+	--select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],LEFT(b.datea,6) 
+	--	from @tmpb a
+	--	left join view_cub b on a.noa=b.noa
+	--	left join view_cubt c on a.noa=c.noa and a.noq=c.nor
+	--	left join bcc d on c.productno=d.noa
+	--	where b.noa is not null
+	--	and c.noa is not null
+	--	and a.noa='M1040908001'
+	--	order by a.noa
+		
+		
+	--select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],isnull(e.price,0),LEFT(b.datea,6) 
+	--	from @tmpb a
+	--	left join view_cub b on a.noa=b.noa
+	--	left join view_cubt c on a.noa=c.noa and a.noq=c.nor
+	--	left join bcc d on b.productno=c.noa
+	--	left join costbcc104 e on c.productno=e.productno and e.mon=LEFT(b.datea,6) 
+	--	where b.noa is not null
+	--	and c.noa is not null
+
+	declare @price float	
+	declare @money float
+		
+	--select * from bcctype
+		
+	declare cursor_table cursor for
+	select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],LEFT(isnull(b.datea,''),6) 
+		from @tmpb a
+		left join view_cub b on a.noa=b.noa
+		left join view_cubt c on a.noa=c.noa and a.noq=c.nor
+		left join bcc d on c.productno=d.noa
+		where b.noa is not null
+		and c.noa is not null
+	open cursor_table
+	fetch next from cursor_table
+	into @sel,@noa,@noq,@typea,@productno,@mount,@mon
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @price = 0
+		set @cmd = "select @price=isnull(price,0) from costbcc"+LEFT(@mon,3)+" where productno=@productno and mon=@mon"
+		execute sp_executesql @cmd,N'@price float output,@productno nvarchar(20),@mon nvarchar(20)'
+			,@price=@price output,@productno=@productno,@mon=@mon
+
+		set @money = ROUND(@price*@mount,0)
+		if @typea='A01'
+		begin
+			update @tmpb set mount04=ISNULL(mount04,0)+@mount, money04=ISNULL(money04,0)+@money where  sel=@sel
+		end
+		else if @typea='A02'
+		begin
+			update @tmpb set mount05=ISNULL(mount05,0)+@mount, money05=ISNULL(money05,0)+@money where  sel=@sel
+		end
+		else if @typea='A03'
+		begin
+			update @tmpb set mount06=ISNULL(mount06,0)+@mount, money06=ISNULL(money06,0)+@money where  sel=@sel
+		end
+		else if @typea='A04'
+		begin
+			update @tmpb set mount07=ISNULL(mount07,0)+@mount, money07=ISNULL(money07,0)+@money where  sel=@sel
+		end
+		else if @typea='A05'
+		begin
+			update @tmpb set mount08=ISNULL(mount08,0)+@mount, money08=ISNULL(money08,0)+@money where  sel=@sel
+		end
+		
+		fetch next from cursor_table
+		into @sel,@noa,@noq,@typea,@productno,@mount,@mon
+	end
+	close cursor_table
+	deallocate cursor_table
+-----------------------------------------------------------------------------------------------------------------------	
+	insert into @tmpb(gno
+		,weight01,money01
+		,weight02,money02
+		,weight03,money03
+		,mount04,money04
+		,mount05,money05
+		,mount06,money06
+		,mount07,money07
+		,mount08,money08
+		)
+	select '2',SUM(ISNULL(weight01,0)),SUM(ISNULL(money01,0))
+		,SUM(ISNULL(weight02,0)),SUM(ISNULL(money02,0))
+		,SUM(ISNULL(weight03,0)),SUM(ISNULL(money03,0))
+		,SUM(ISNULL(mount04,0)),SUM(ISNULL(money04,0))
+		,SUM(ISNULL(mount05,0)),SUM(ISNULL(money05,0))
+		,SUM(ISNULL(mount06,0)),SUM(ISNULL(money06,0))
+		,SUM(ISNULL(mount07,0)),SUM(ISNULL(money07,0))
+		,SUM(ISNULL(mount08,0)),SUM(ISNULL(money08,0))
+		
+	from @tmpb where gno='1'	
+---------------------------------------------------------------
+	--在製品分攤 金額
+	declare @m01 float = 0
+	select @m01 = SUM(ISNULL(money05,0)) from @tmpa where mechno='A05'
+
+		
+	--select * from costbcc104 
+	
+	--select * from @tmpa
+	select a.gno
+		,ROW_NUMBER()over(order by a.gno,a.noa,a.noq) rr
+		--規格尺寸	
+		,a.dime a01
+		,a.radius a02
+		,a.width a03
+		,a.lengthb a04
+		--PVC皮	
+		,a.spec a05
+		--製造批號
+		,a.makeno a06
+		--客戶名稱
+		,a.cust a07
+		--材質
+		,'' a08
+		--工時
+		,'' a09
+		--底-鋁
+		,'' a10
+		--比例
+		,'' a11
+		--投入重量/KG
+		,ISNULL(a.weight01,0)+ISNULL(a.weight02,0)+ISNULL(a.weight03,0)
+		+ISNULL(a.mount04,0)+ISNULL(a.mount05,0)+ISNULL(a.mount06,0)+ISNULL(a.mount07,0)+ISNULL(a.mount08,0) a12
+		--完工重量/KG
+		,a.a05 a13
+		--0.6
+		,0.6*a.dime*1 a14
+		--半成品
+		,ISNULL(a.money01,0)+ISNULL(a.money02,0)+ISNULL(a.money03,0)+ISNULL(a.money04,0)
+		+ISNULL(a.money05,0)+ISNULL(a.money06,0)+ISNULL(a.money07,0)+ISNULL(a.money08,0) a15
+		--﹪ 半成品/合計
+		,'' a16
+		--直接人工
+		,'' a17
+		--﹪ 直接人工/合計
+		,'' a18
+		--製造費用
+		,'' a19
+		--﹪  製造費用/合計
+		,'' a20
+		--合計
+		,'' a21
+		--加工成本
+		,'' a22
+		--單位成本
+		,'' a23
+	from @tmpb a
+	order by a.gno,a.noa,a.noq;
+
 z_cub_rkp01:--z_cub_rkp01
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
