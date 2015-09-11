@@ -35,10 +35,7 @@ insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
 	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
 from model a left join models b on a.noa=b.noa
-where a.datea between @t_bdate and @t_edate and
-	  (len(ISNULL(@t_noa,''))=0 or @t_noa=a.noa) and
-	  (len(isnull(@t_tgg,''))=0 or @t_tgg=a.tgg) and
-	  (len(isnull(@t_frame,''))=0 or @t_frame=a.frame)
+where @t_noa=a.noa
 
 insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
 select '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
@@ -155,3 +152,170 @@ select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
 	   
 from @result
 order by gno;
+------------------------------------------------------------------------------------------------------
+z_model_rs4:--z_model_rs4
+declare @t_frame nvarchar(10)
+set @t_frame =case when '#non' = [2] then '' else [2] end
+----------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(20),
+	tube nvarchar(10),
+	heart float,
+	spec nvarchar(50),
+	model nvarchar(50),
+	wheel nvarchar(50),
+	a1 float,
+	a2 float,
+	a3 float,
+	a4 float,
+	a5 float,
+	a6 float,
+	a7 float,
+	a8 float,
+	a9 float,
+	a10 float,
+	a11 float,
+	a12 float,
+	a13 float,
+	a14 float,
+	b1 float,
+	b2 float,
+	b3 float,
+	b4 float,
+	b5 float,
+	b6 float,
+	b7 float,
+	b8 float,
+	b9 float,
+	c1 float,
+	c2 float,
+	d1 float,
+	d2 float,
+	e1 float,
+	e2 float,
+	e3 float,
+	e4 float,
+	e5 float,
+	e6 float,
+	e7 float,
+	e8 float,
+	e9 float,
+	e10 float,
+	f1 float,
+	f2 float,
+	f3 float,
+	f4 float,
+	f5 float,
+	g1 float,
+	g2 float,
+	g3 float,
+	g4 float,
+	h1 float,
+	total float,
+	frame nvarchar(10)
+)
+insert @result
+
+select distinct '1', a.noa,a.tube,a.heart,a.spec,b.model,b.wheel,
+isnull((select SUM(mount) from models c where number='F1T' and c.noa=a.noa),'') F1T,
+isnull((select SUM(mount) from models c where number='F1B' and c.noa=a.noa),'') F1B,
+isnull((select SUM(mount) from models c where number='F2T' and c.noa=a.noa),'') F2T,
+isnull((select SUM(mount) from models c where number='F2B' and c.noa=a.noa),'') F2B,
+isnull((select SUM(mount) from models c where number='F3T' and c.noa=a.noa),'') F3T,
+isnull((select SUM(mount) from models c where number='F3B' and c.noa=a.noa),'') F3B,
+isnull((select SUM(mount) from models c where number='F4T' and c.noa=a.noa),'') F4T,
+isnull((select SUM(mount) from models c where number='F4B' and c.noa=a.noa),'') F4B,
+isnull((select SUM(mount) from models c where number='F5T' and c.noa=a.noa),'') F5T,
+isnull((select SUM(mount) from models c where number='F5B' and c.noa=a.noa),'') F5B,
+isnull((select SUM(mount) from models c where number='F6T' and c.noa=a.noa),'') F6T,
+isnull((select SUM(mount) from models c where number='F6B' and c.noa=a.noa),'') F6B,
+isnull((select SUM(mount) from models c where number='F7T' and c.noa=a.noa),'') F7T,
+isnull((select SUM(mount) from models c where number='F7B' and c.noa=a.noa),'') F7B,
+isnull((select SUM(mount) from models c where number='FS1' and c.noa=a.noa),'') FS1,
+isnull((select SUM(mount) from models c where number='FS2' and c.noa=a.noa),'') FS2,
+isnull((select SUM(mount) from models c where number='FS3' and c.noa=a.noa),'') FS3,
+isnull((select SUM(mount) from models c where number='FS4' and c.noa=a.noa),'') FS4,
+isnull((select SUM(mount) from models c where number='FS41' and c.noa=a.noa),'') FS41,
+isnull((select SUM(mount) from models c where number='FS5' and c.noa=a.noa),'') FS5,
+isnull((select SUM(mount) from models c where number='FS6' and c.noa=a.noa),'') FS6,
+isnull((select SUM(mount) from models c where number='IR' and c.noa=a.noa),'') IR,
+isnull((select SUM(mount) from models c where number='FS4-1' and c.noa=a.noa),'')  'FS4-1',
+isnull((select SUM(mount) from models c where number='SGT' and c.noa=a.noa),'') SGT,
+isnull((select SUM(mount) from models c where number='SGB' and c.noa=a.noa),'') SGB,
+isnull((select SUM(mount) from models c where number='SQT' and c.noa=a.noa),'') SQT,
+isnull((select SUM(mount) from models c where number='SQB' and c.noa=a.noa),'') SQB,
+isnull((select SUM(mount) from models c where number='S1T' and c.noa=a.noa),'') S1T,
+isnull((select SUM(mount) from models c where number='S1B' and c.noa=a.noa),'') S1B,
+isnull((select SUM(mount) from models c where number='S2T' and c.noa=a.noa),'') S2T,
+isnull((select SUM(mount) from models c where number='S2B' and c.noa=a.noa),'') S2B,
+isnull((select SUM(mount) from models c where number='S3T' and c.noa=a.noa),'') S3T,
+isnull((select SUM(mount) from models c where number='S3B' and c.noa=a.noa),'') S3B,
+isnull((select SUM(mount) from models c where number='S4T' and c.noa=a.noa),'') S4T,
+isnull((select SUM(mount) from models c where number='S4B' and c.noa=a.noa),'') S4B,
+isnull((select SUM(mount) from models c where number='S5T' and c.noa=a.noa),'') S5T,
+isnull((select SUM(mount) from models c where number='S5B' and c.noa=a.noa),'') S5B,
+isnull((select SUM(mount) from models c where number='SS1' and c.noa=a.noa),'') SS1,
+isnull((select SUM(mount) from models c where number='SS2' and c.noa=a.noa),'') SS2,
+isnull((select SUM(mount) from models c where number='SS3' and c.noa=a.noa),'') SS3,
+isnull((select SUM(mount) from models c where number='SS4' and c.noa=a.noa),'') SS4,
+isnull((select SUM(mount) from models c where number='SS5' and c.noa=a.noa),'') SS5,
+isnull((select SUM(mount) from models c where number='TH1T' and c.noa=a.noa),'') TH1T,
+isnull((select SUM(mount) from models c where number='TH1B' and c.noa=a.noa),'') TH1B,
+isnull((select SUM(mount) from models c where number='TH2T' and c.noa=a.noa),'') TH2T,
+isnull((select SUM(mount) from models c where number='TH2B' and c.noa=a.noa),'') TH2B,
+isnull((select SUM(mount) from models c where number='THG' and c.noa=a.noa),'') THG,
+(select SUM(mount) from models c where  c.noa=a.noa) total,
+a.frame
+from model a left join models b on a.noa=b.noa
+where a.frame=@t_frame
+
+select *
+from @result;
+
+z_model_rs5:--z_model_rs5
+
+declare @t_noa nvarchar(20)
+declare @t_tgg nvarchar(50)
+declare @t_frame nvarchar(50)
+declare @t_bdate nvarchar(30)
+declare @t_edate nvarchar(30)
+set @t_noa = case when '#non' = [1] then '' else [1] end
+set @t_frame = case when '#non' = [2] then '' else [2] end
+set @t_tgg = case when '#non' = [3] then '' else [3] end
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then '' else [5] end
+-------------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	tgg nvarchar(50),
+	tube nvarchar(50),
+	heart float,
+	spec nvarchar(50),
+	frame nvarchar(3),
+	usetype nvarchar(20),
+	saver nvarchar(30),
+	datea nvarchar(20),
+	nob nvarchar(25),
+	model nvarchar(50),
+	memo nvarchar(30),
+	bottom float,
+	mount float,
+	memo2 nvarchar(max),
+	datea1 nvarchar(30)
+)
+
+insert @result
+select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
+	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+from model a left join models b on a.noa=b.noa
+where a.frame=@t_frame
+
+
+select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
+	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
+	   
+from @result
+order by noa,nob,gno
+;
