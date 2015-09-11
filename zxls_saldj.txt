@@ -1,0 +1,89 @@
+﻿zxls_saldj:--打卡上傳
+ 
+declare @t_gowork nvarchar(10)='08:00' --正常上班時間+公司規定
+declare @t_offwork nvarchar(10)='17:00' --正常下班時間-公司規定
+declare @t_overtime nvarchar(10)='18:00' --加班判斷時間-因通常加班會加一個小時以上
+declare @t_gowork2 nvarchar(10)='13:00' --中午上班時間
+
+declare @t_weekday nvarchar(10)--星期
+declare @t_satday nvarchar(10)=1 --星期六是否休假 1有 0沒有
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#bbm')is not null
+BEGIN
+   drop table #bbm
+END
+
+IF OBJECT_ID('tempdb..#bbs')is not null
+BEGIN
+   drop table #bbs
+END
+
+--拆解傳入的資料
+create table #tmp(
+		sssno nvarchar(100),
+--		namea nvarchar(100),
+		timea nvarchar(100),
+		nos nvarchar(100),
+		barcode nvarchar(100)
+)
+
+insert into #tmp
+select left(a,CHARINDEX(' ',a)-1) 
+,LEFT(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))-1) 
++' '+LEFT(SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)),CHARINDEX(' ',SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)))-1) 
+,LEFT(SUBSTRING(SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)),CHARINDEX(' ',SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)))+1,len(a)),CHARINDEX(' ',SUBSTRING(SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)),CHARINDEX(' ',SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)))+1,len(a)))-1) 
+,SUBSTRING(SUBSTRING(SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)),CHARINDEX(' ',SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)))+1,len(a)),CHARINDEX(' ',SUBSTRING(SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)),CHARINDEX(' ',SUBSTRING(SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)),CHARINDEX(' ',SUBSTRING(a,CHARINDEX(' ',a)+1,len(a)))+1,len(a)))+1,len(a)))+1,len(a)) 
+from ztmpxls
+where a!=''
+
+--bbm
+create table #bbm(
+		noa nvarchar(20),
+		w133 float,
+		w166 float,
+		w100 float,
+		mount float,
+		holiday bit,
+		workerno nvarchar(50),
+		worker nvarchar(50)
+)
+
+--bbs
+create table #bbs(
+		noa nvarchar(20),
+		noq nvarchar(10),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		clockin nvarchar(50),
+		clockout nvarchar(50),
+		w133 float,
+		w166 float,
+		w100 float,
+		memo nvarchar(50),
+		clockins nvarchar(50),
+		clockouts nvarchar(50)
+)
+
+
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#bbm')is not null
+BEGIN
+   drop table #bbm
+END
+
+IF OBJECT_ID('tempdb..#bbs')is not null
+BEGIN
+   drop table #bbs
+END
+
+;

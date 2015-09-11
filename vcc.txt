@@ -269,6 +269,8 @@ changequat_vu:--changequat_vu
 SET QUOTED_IDENTIFIER OFF 
 declare @t_accy nvarchar(50) = [1]
 declare @t_noa nvarchar(50) = [2]
+declare @t_cont1 nvarchar(50) = case when '#non'=[3] then '' else [3] end
+declare @t_cont2 nvarchar(50) = case when '#non'=[4] then '' else [4] end
 
 declare @accy nvarchar(50)
 declare @t_quatno1 nvarchar(50)=(select dbo.split(dbo.split(apvmemo,'##',0),'@',0) from view_vcc where noa=@t_noa)
@@ -280,9 +282,9 @@ EXEC("
 	update a
 	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
 	from quat"+@accy+" a
-	outer apply((select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
 	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
-	from view_vcc where charindex(a.noa,apvmemo)>0))b
+	from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
 	where a.noa='"+@t_quatno1+"'
 ")
 
@@ -299,9 +301,9 @@ EXEC("
 	update a
 	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
 	from quat"+@accy+" a
-	outer apply((select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
 	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
-	from view_vcc where charindex(a.noa,apvmemo)>0))b
+	from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
 	where a.noa='"+@t_quatno2+"'
 ")
 
@@ -312,6 +314,49 @@ EXEC("
 	where a.noa='"+@t_quatno2+"'
 ")
 
+if(len(@t_cont1)>0)
+begin
+	set @accy=isnull((select top 1 accy from view_quat where noa=@t_cont1),@t_accy)
+
+	EXEC("
+		update a
+		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+		from quat"+@accy+" a
+		outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
+		from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
+		where a.noa='"+@t_cont1+"'
+	")
+	
+	EXEC("
+		update a
+		set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+		from quats"+@accy+" a left join quat"+@accy+" b on a.noa=b.noa
+		where a.noa='"+@t_cont1+"'
+	")
+end
+
+if(len(@t_cont2)>0)
+begin
+	set @accy=isnull((select top 1 accy from view_quat where noa=@t_cont2),@t_accy)
+
+	EXEC("
+		update a
+		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+		from quat"+@accy+" a
+		outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
+		from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
+		where a.noa='"+@t_cont2+"'
+	")
+	
+	EXEC("
+		update a
+		set enda=(case when isnull(b.enda,0)=1 then 1 else a.enda end)
+		from quats"+@accy+" a left join quat"+@accy+" b on a.noa=b.noa
+		where a.noa='"+@t_cont2+"'
+	")
+end
 ;
 -----------------------------------------------------------------------------------------------------------------------------------
 changepacking_vu:--changepacking_vu
