@@ -367,9 +367,13 @@ z_cub_rkp02:--z_cub_rkp02
 	-----------------------------------------------------------------------------------
 	select @m01=0,@m02=0
 	select @m01=SUM(ISNULL(money01,0)),@m02=SUM(ISNULL(money05,0)) from @tmpa
+	declare @m03 float=0,@m04 float=0,@m05 float=0,@m06 float=0
+	select @m03=ISNULL(money01,0),@m04=ISNULL(money05,0) from @tmpa where mechno='A07'
+	select @m05 = @m01-@m03,@m06=@m02-@m04
+	
 	insert into @result(gno)values('3')
-	insert into @result(gno,c01,c02)values('4',0,0)
-	insert into @result(gno,c01,c02)values('5',0,0)
+	insert into @result(gno,c01,c02)values('4',@m03,@m04)
+	insert into @result(gno,c01,c02)values('5',@m05,@m06)
 	insert into @result(gno,c01,c02)values('6',@m01,@m02)
 	-----------------------------------------------------------------------------------
 	insert into @result(gno)values('7')
