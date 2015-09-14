@@ -34,65 +34,73 @@ z_cub_rkp01:--z_cub_rkp01
 	left join view_cud b on a.accy=b.accy and a.noa=b.noa
 	where left(b.datea,6) between @t_bmon and @t_emon
 	-----------------------------------------------------------------------------------------------
-	declare @wages float = 0 --直接人工	
-	declare @makeless float = 0 --製造費用
-	select @wages=SUM(ISNULL(wages,0)),@makeless=SUM(ISNULL(makeless,0))
+	declare @money01 float = 0 --直接人工	
+	declare @money02 float = 0 --製造費用
+	declare @money03 float = 0 --變動成本
+	declare @money04 float = 0 --(製造費用-變動成本)
+	
+	select @money01=SUM(ISNULL(wages,0)),@money02=SUM(ISNULL(makeless,0))
 	from costa 
 	where mon between @t_bmon and @t_emon
 	
 	declare @tmpa table(
-		gno nvarchar(10),
 		sel int identity(1,1),
 		mins int,
 		mechno nvarchar(20),
 		mech nvarchar(20),
 		rate01 float,--平均工時比率
 		money01 float,--人工
-		money02 float,--扣除折舊及人工之製費
-		money03 float,--折舊
-		money04 float,--瓦斯費
-		money05 float,--製造費用合計
-		rate02 float,--製費比率
-		money06 float--加工成本合計
+		money02 float,--製造費用
+		money03 float,--變動成本
+		money04 float --(製造費用-變動成本)
 	)
 	declare @totmins float = 0
 	select @totmins=SUM(mins) from @tmp
 	
-	insert into @tmpa(gno,mins,mechno,mech,rate01,money01,money02,money03,money04,money05,rate02,money06)
-	select '1',mins,mechno,mech
+	insert into @tmpa(mins,mechno,mech,rate01)
+	select mins,mechno,mech
 		,case when @totmins=0 then 0 else ROUND(mins/@totmins*100,2) end
-		,0,0,0,0,0,0,0
 	from @tmp
+
+	declare @mechno nvarchar(20)
+	declare @mech nvarchar(20)
+	declare @money float
 	
-	update @tmpa set money03=b.[money]
-	from @tmpa a
-	left join (select a.mechno,sum(isnull(a.[money],0)) [money]
+	declare cursor_table cursor for
+	select a.mechno,c.mech,sum(isnull(a.[money],0)) 
 		from costas a
-		left join costa b on a.noa=b.noa
-		where b.mon between @t_bmon and @t_emon
-		and CHARINDEX('折舊',a.product)>0
-		group by a.mechno) b on a.mechno=b.mechno
-	update @tmpa set money04=b.[money]
-	from @tmpa a
-	left join (select a.mechno,sum(isnull(a.[money],0)) [money]
-		from costas a
-		left join costa b on a.noa=b.noa
-		where b.mon between @t_bmon and @t_emon
-		and CHARINDEX('瓦斯費',a.product)>0
-		group by a.mechno) b on a.mechno=b.mechno
-	update @tmpa set money01=round(@wages*rate01/100,0)
-	---------------------------------------------------------------------------
-	declare @money02 float--扣除折舊及人工之製費
-	declare @money03 float--折舊
-	declare @money04 float--瓦斯費
+		left join costa b on a.noa=b.noa 
+		left join mech c on a.mechno=c.noa
+	where b.mon between @t_bmon and @t_emon	
+	group by a.mechno,c.mech
+	open cursor_table
+	fetch next from cursor_table
+	into @mechno,@mech,@money
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if exists(select * from @tmpa where mechno=@mechno)
+		begin
+			update @tmpa set money03=@money where mechno=@mechno
+		end
+		else
+		begin
+			insert into @tmpa(mins,mechno,mech,rate01,money03)
+			values(0,@mechno,@mechno,0,@money)
+		end
+		
+		fetch next from cursor_table
+		into @mechno,@mech,@money
+	end
+	close cursor_table
+	deallocate cursor_table
+	-----------------------------------------------------------------------------------------
+	select @money03=SUM(ISNULL(money03,0)) from @tmpa
+	set @money04=@money02-@money03
 	
-	select @money03=SUM(isnull(money03,0)),@money04=SUM(isnull(money04,0)) from @tmpa
-	set @money02 = @makeless - @money03 - @money04
-	update @tmpa set money02 = ROUND(rate01*@money02/100,0)
-	update @tmpa set money05 = isnull(money02,0)+isnull(money03,0)+isnull(money04,0) 
-	update @tmpa set rate02 = case when @makeless=0 then 0 else round(money05/@makeless*100,2) end
-	update @tmpa set money06 = ISNULL(money01,0)+ISNULL(money05,0)
-	-------------------------------------------------------------------------------------------------------------------
+	update @tmpa set money01=round(@money01*isnull(rate01,0)/100,0)
+		,money02=round(@money02*isnull(rate01,0)/100,0)
+	update @tmpa set money04= ISNULL(money02,0)+ISNULL(money03,0)	
+	-----------------------------------------------------------------------------------------	
 	declare @tmpb table(
 		gno nvarchar(1),
 		sel int identity(1,1),
@@ -203,7 +211,6 @@ z_cub_rkp01:--z_cub_rkp01
 	declare @mon nvarchar(10)
 	
 	declare @price float	
-	declare @money float
 	-------------------------------------------------------------------------------------------------------------
 	declare cursor_table cursor for
 	select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],LEFT(isnull(b.datea,''),6) 
@@ -226,23 +233,23 @@ z_cub_rkp01:--z_cub_rkp01
 		set @money = ROUND(@price*@mount,0)
 		if @typea='A01'
 		begin
-			update @tmpb set mount04=ISNULL(mount04,0)+@mount, money04=ISNULL(money04,0)+@money where  sel=@sel
+			update @tmpb set price04=@price,mount04=ISNULL(mount04,0)+@mount, money04=ISNULL(money04,0)+@money where  sel=@sel
 		end
 		else if @typea='A02'
 		begin
-			update @tmpb set mount05=ISNULL(mount05,0)+@mount, money05=ISNULL(money05,0)+@money where  sel=@sel
+			update @tmpb set price05=@price,mount05=ISNULL(mount05,0)+@mount, money05=ISNULL(money05,0)+@money where  sel=@sel
 		end
 		else if @typea='A03'
 		begin
-			update @tmpb set mount06=ISNULL(mount06,0)+@mount, money06=ISNULL(money06,0)+@money where  sel=@sel
+			update @tmpb set price06=@price,mount06=ISNULL(mount06,0)+@mount, money06=ISNULL(money06,0)+@money where  sel=@sel
 		end
 		else if @typea='A04'
 		begin
-			update @tmpb set mount07=ISNULL(mount07,0)+@mount, money07=ISNULL(money07,0)+@money where  sel=@sel
+			update @tmpb set price07=@price,mount07=ISNULL(mount07,0)+@mount, money07=ISNULL(money07,0)+@money where  sel=@sel
 		end
 		else if @typea='A05'
 		begin
-			update @tmpb set mount08=ISNULL(mount08,0)+@mount, money08=ISNULL(money08,0)+@money where  sel=@sel
+			update @tmpb set price08=@price,mount08=ISNULL(mount08,0)+@mount, money08=ISNULL(money08,0)+@money where  sel=@sel
 		end
 		
 		fetch next from cursor_table
@@ -276,8 +283,8 @@ z_cub_rkp01:--z_cub_rkp01
 	declare @m01 float = 0
 	--人工
 	declare @m02 float = 0
-	select @m01 = SUM(ISNULL(money05,0)),@m02 = SUM(ISNULL(money01,0)) from @tmpa where mechno='A07'
------------------------------------------------------------
+	select @m01 = SUM(ISNULL(money04,0)),@m02 = SUM(ISNULL(money01,0)) from @tmpa where mechno='A07'
+-------------------------------------------------------------
 	declare @result table(
 		gno nvarchar(20),
 		sel int identity(1,1),
@@ -496,65 +503,73 @@ z_cub_rkp02:--z_cub_rkp02
 	left join view_cud b on a.accy=b.accy and a.noa=b.noa
 	where left(b.datea,6) between @t_bmon and @t_emon
 	-----------------------------------------------------------------------------------------------
-	declare @wages float = 0 --直接人工	
-	declare @makeless float = 0 --製造費用
-	select @wages=SUM(ISNULL(wages,0)),@makeless=SUM(ISNULL(makeless,0))
+	declare @money01 float = 0 --直接人工	
+	declare @money02 float = 0 --製造費用
+	declare @money03 float = 0 --變動成本
+	declare @money04 float = 0 --(製造費用-變動成本)
+	
+	select @money01=SUM(ISNULL(wages,0)),@money02=SUM(ISNULL(makeless,0))
 	from costa 
 	where mon between @t_bmon and @t_emon
 	
 	declare @tmpa table(
-		gno nvarchar(10),
 		sel int identity(1,1),
 		mins int,
 		mechno nvarchar(20),
 		mech nvarchar(20),
 		rate01 float,--平均工時比率
 		money01 float,--人工
-		money02 float,--扣除折舊及人工之製費
-		money03 float,--折舊
-		money04 float,--瓦斯費
-		money05 float,--製造費用合計
-		rate02 float,--製費比率
-		money06 float--加工成本合計
+		money02 float,--製造費用
+		money03 float,--變動成本
+		money04 float --(製造費用-變動成本)
 	)
 	declare @totmins float = 0
 	select @totmins=SUM(mins) from @tmp
 	
-	insert into @tmpa(gno,mins,mechno,mech,rate01,money01,money02,money03,money04,money05,rate02,money06)
-	select '1',mins,mechno,mech
+	insert into @tmpa(mins,mechno,mech,rate01)
+	select mins,mechno,mech
 		,case when @totmins=0 then 0 else ROUND(mins/@totmins*100,2) end
-		,0,0,0,0,0,0,0
 	from @tmp
+
+	declare @mechno nvarchar(20)
+	declare @mech nvarchar(20)
+	declare @money float
 	
-	update @tmpa set money03=b.[money]
-	from @tmpa a
-	left join (select a.mechno,sum(isnull(a.[money],0)) [money]
+	declare cursor_table cursor for
+	select a.mechno,c.mech,sum(isnull(a.[money],0)) 
 		from costas a
-		left join costa b on a.noa=b.noa
-		where b.mon between @t_bmon and @t_emon
-		and CHARINDEX('折舊',a.product)>0
-		group by a.mechno) b on a.mechno=b.mechno
-	update @tmpa set money04=b.[money]
-	from @tmpa a
-	left join (select a.mechno,sum(isnull(a.[money],0)) [money]
-		from costas a
-		left join costa b on a.noa=b.noa
-		where b.mon between @t_bmon and @t_emon
-		and CHARINDEX('瓦斯費',a.product)>0
-		group by a.mechno) b on a.mechno=b.mechno
-	update @tmpa set money01=round(@wages*rate01/100,0)
-	---------------------------------------------------------------------------
-	declare @money02 float--扣除折舊及人工之製費
-	declare @money03 float--折舊
-	declare @money04 float--瓦斯費
+		left join costa b on a.noa=b.noa 
+		left join mech c on a.mechno=c.noa
+	where b.mon between @t_bmon and @t_emon	
+	group by a.mechno,c.mech
+	open cursor_table
+	fetch next from cursor_table
+	into @mechno,@mech,@money
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if exists(select * from @tmpa where mechno=@mechno)
+		begin
+			update @tmpa set money03=@money where mechno=@mechno
+		end
+		else
+		begin
+			insert into @tmpa(mins,mechno,mech,rate01,money03)
+			values(0,@mechno,@mechno,0,@money)
+		end
+		
+		fetch next from cursor_table
+		into @mechno,@mech,@money
+	end
+	close cursor_table
+	deallocate cursor_table
+	-----------------------------------------------------------------------------------------
+	select @money03=SUM(ISNULL(money03,0)) from @tmpa
+	set @money04=@money02-@money03
 	
-	select @money03=SUM(isnull(money03,0)),@money04=SUM(isnull(money04,0)) from @tmpa
-	set @money02 = @makeless - @money03 - @money04
-	update @tmpa set money02 = ROUND(rate01*@money02/100,0)
-	update @tmpa set money05 = isnull(money02,0)+isnull(money03,0)+isnull(money04,0) 
-	update @tmpa set rate02 = case when @makeless=0 then 0 else round(money05/@makeless*100,2) end
-	update @tmpa set money06 = ISNULL(money01,0)+ISNULL(money05,0)
-	-------------------------------------------------------------------------------------------------------------------
+	update @tmpa set money01=round(@money01*isnull(rate01,0)/100,0)
+		,money02=round(@money02*isnull(rate01,0)/100,0)
+	update @tmpa set money04= ISNULL(money02,0)+ISNULL(money03,0)	
+	-----------------------------------------------------------------------------------------	
 	declare @tmpb table(
 		gno nvarchar(1),
 		sel int identity(1,1),
@@ -659,7 +674,6 @@ z_cub_rkp02:--z_cub_rkp02
 	declare @mon nvarchar(10)
 	
 	declare @price float	
-	declare @money float
 	-------------------------------------------------------------------------------------------------------------
 	declare cursor_table cursor for
 	select a.sel,a.noa,a.noq,isnull(d.typea,''),c.productno,c.[mount],LEFT(isnull(b.datea,''),6) 
@@ -732,7 +746,7 @@ z_cub_rkp02:--z_cub_rkp02
 	declare @m01 float = 0
 	--人工
 	declare @m02 float = 0
-	select @m01 = SUM(ISNULL(money05,0)),@m02 = SUM(ISNULL(money01,0)) from @tmpa where mechno='A07'
+	select @m01 = SUM(ISNULL(money04,0)),@m02 = SUM(ISNULL(money01,0)) from @tmpa where mechno='A07'
 -----------------------------------------------------------
 	declare @result table(
 		gno nvarchar(20),
@@ -827,29 +841,7 @@ z_cub_rkp02:--z_cub_rkp02
 		,a19 = case when isnull(a11,0) =0 then 0 else round((a14+a16)/a11,0) end
 		,a20 = case when isnull(a11,0) =0 then 0 else round(a18/a11,0) end	
 	-----------------------------------------------------------------------------------
-	select @m01=0,@m02=0
-	select @m01=SUM(ISNULL(money01,0)),@m02=SUM(ISNULL(money05,0)) from @tmpa
-	declare @m03 float=0,@m04 float=0,@m05 float=0,@m06 float=0
-	select @m03=ISNULL(money01,0),@m04=ISNULL(money05,0) from @tmpa where mechno='A07'
-	select @m05 = @m01-@m03,@m06=@m02-@m04
 	
-	insert into @result(gno)values('3')
-	insert into @result(gno,c01,c02)values('4',@m03,@m04)
-	insert into @result(gno,c01,c02)values('5',@m05,@m06)
-	insert into @result(gno,c01,c02)values('6',@m01,@m02)
-	-----------------------------------------------------------------------------------
-	insert into @result(gno)values('7')
-	
-	insert into @result(gno,b01,b02,b03,b04,b05,b06,b07,b08,b09)
-	select '8',mech,rate01,money01,money02,money03,money04,money05,rate02,money06
-	from @tmpa
-	order by mechno
-	
-	insert into @result(gno,b01,b02,b03,b04,b05,b06,b07,b08,b09)
-	select '9','',sum(isnull(rate01,0)),sum(isnull(money01,0)),sum(isnull(money02,0)),sum(isnull(money03,0))
-		,sum(isnull(money04,0)),sum(isnull(money05,0)),sum(isnull(rate02,0)),sum(isnull(money06,0))
-	from @tmpa
-
 	select * from @result order by gno,sel;
 
 
