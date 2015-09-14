@@ -208,3 +208,21 @@ begin
 	BEGIN CATCH
 	END CATCH
 end;
+-------------------------------------------------------------------------------------------------------------------------
+cubnouno_vu:--cubnouno_vu
+SET QUOTED_IDENTIFIER OFF
+declare @accy nvarchar(MAX) = [1]
+declare @uno nvarchar(MAX) = [2]
+declare @noa nvarchar(MAX) = ''
+
+set @noa = isnull((select top 1 noa from view_uccb where uno=@uno and tablea='cubu'),'')
+set @accy = isnull((select top 1 accy from view_cubu where noa=@noa),@accy)
+
+if(len(@noa)>0)
+begin
+	EXEC(" update cubu"+@accy+" set uno='' where noa='"+@noa+"' and uno='"+@uno+"' ")
+	EXEC(" update cubs"+@accy+" set uno='' where noa='"+@noa+"' and uno='"+@uno+"' ")
+end
+
+select @noa noa
+;
