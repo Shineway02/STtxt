@@ -33,12 +33,12 @@ create table #tmpa(
 		part nvarchar(50),
 
 		money float, --底薪 日/時薪 給薪金額
-		bo_admin float, --特別責任加給
+		bo_admin float, --主管加給
 		bo_special float, --技術加給
 		bo_full float,	--全勤獎金
 		meals float,--伙食津貼
 		bo_traffic float,--交通津貼
-		bo_oth float,--其他津貼
+		bo_oth float,--特別責任加給
 		total1 float,--小計
 		
 		mi_total float, --扣薪金額
@@ -132,6 +132,7 @@ create table #tmp(
 	lev1 nvarchar(50), lev2 nvarchar(50), lev3 nvarchar(50),
 	money1 float, money2 float, money3 float,
 	admin1 float, admin2 float, admin3 float,
+	oth1 float, oth2 float, oth3 float,
 	special1 float, special2 float, special3 float,
 	full1 float, full2 float, full3 float,
 	meals1 float, meals2 float, meals3 float,
@@ -170,10 +171,10 @@ create table #tmp(
 	msi41 nvarchar(50),msm41 float,msi42 nvarchar(50),msm42 float,msi43 nvarchar(50),msm43 float
 ) 
 
-	insert #tmp(gno,sno1,name1,job1,lev1,money1,admin1,special1,full1,meals1,traffic1,addmoney1,m11,m21,m31,m41,m51,m61
+	insert #tmp(gno,sno1,name1,job1,lev1,money1,admin1,oth1,special1,full1,meals1,traffic1,addmoney1,m11,m21,m31,m41,m51,m61
 	,l21,h21,r21,t21,l11,h11,pm1,ps1,nl1,h31,l31,r31,hp21,t31,t41,hs1,m71
 	,psi11,psm11,psi21,psm21,psi31,psm31,psi41,psm41,msi11,msm11,msi21,msm21,msi31,msm31,msi41,msm41)
-	select '0',a.sssno,a.namea,a.job,a.levels,a.money,a.bo_admin,a.bo_special,a.bo_full,a.meals,a.bo_traffic
+	select '0',a.sssno,a.namea,a.job,a.levels,a.money,a.bo_admin,a.bo_oth,a.bo_special,a.bo_full,a.meals,a.bo_traffic
 	,a.addmoney,a.money1,a.money2,a.money3,a.money4,a.money5,a.money6
 	,a.ch_labor2,a.ch_health2,a.ch_retire2
 	,isnull(a.money,0)+isnull(a.bo_admin,0)+isnull(a.bo_special,0)+isnull(a.bo_full,0)+isnull(a.meals,0)+isnull(a.bo_traffic,0)+isnull(a.bo_oth,0)
@@ -201,7 +202,7 @@ create table #tmp(
 		
 	update a
 	set sno2=b.sssno,name2=b.namea,job2=b.job,lev2=b.levels,money2=b.money
-	,admin2=b.bo_admin,special2=b.bo_special,full2=b.bo_full,meals2=b.meals,traffic2=b.bo_traffic
+	,admin2=b.bo_admin,oth2=b.bo_oth,special2=b.bo_special,full2=b.bo_full,meals2=b.meals,traffic2=b.bo_traffic
 	,addmoney2=b.addmoney,m12=b.money1,m22=b.money2,m32=b.money3,m42=b.money4,m52=b.money5,m62=b.money6
 	,l22=b.ch_labor2,h22=b.ch_health2,r22=b.ch_retire2
 	,t22=isnull(b.money,0)+isnull(b.bo_admin,0)+isnull(b.bo_special,0)+isnull(b.bo_full,0)+isnull(b.meals,0)+isnull(b.bo_traffic,0)+isnull(b.bo_oth,0)
@@ -229,7 +230,7 @@ create table #tmp(
 	
 	update a
 	set sno3=b.sssno,name3=b.namea,job3=b.job,lev3=b.levels,money3=b.money
-	,admin3=b.bo_admin,special3=b.bo_special,full3=b.bo_full,meals3=b.meals,traffic3=b.bo_traffic
+	,admin3=b.bo_admin,oth3=b.bo_oth,special3=b.bo_special,full3=b.bo_full,meals3=b.meals,traffic3=b.bo_traffic
 	,addmoney3=b.addmoney,m13=b.money1,m23=b.money2,m33=b.money3,m43=b.money4,m53=b.money5,m63=b.money6
 	,l23=b.ch_labor2,h23=b.ch_health2,r23=b.ch_retire2
 	,t23=isnull(b.money,0)+isnull(b.bo_admin,0)+isnull(b.bo_special,0)+isnull(b.bo_full,0)+isnull(b.meals,0)+isnull(b.bo_traffic,0)+isnull(b.bo_oth,0)
@@ -258,6 +259,7 @@ create table #tmp(
 select 
 dbo.getComma(money1,0)money1,dbo.getComma(money2,0)money2,dbo.getComma(money3,0)money3,
 dbo.getComma(admin1,0)admin1,dbo.getComma(admin2,0)admin2,dbo.getComma(admin3,0)admin3,
+dbo.getComma(oth1,0)oth1,dbo.getComma(oth2,0)oth2,dbo.getComma(oth3,0)oth3,
 dbo.getComma(special1,0)special1,dbo.getComma(special2,0)special2,dbo.getComma(special3,0)special3,
 dbo.getComma(full1,0)full1,dbo.getComma(full2,0)full2,dbo.getComma(full3,0)full3,
 dbo.getComma(meals1,0)meals1,dbo.getComma(meals2,0)meals2,dbo.getComma(meals3,0)meals3,
