@@ -213,16 +213,38 @@ cubnouno_vu:--cubnouno_vu
 SET QUOTED_IDENTIFIER OFF
 declare @accy nvarchar(MAX) = [1]
 declare @uno nvarchar(MAX) = [2]
-declare @noa nvarchar(MAX) = ''
 
-set @noa = isnull((select top 1 noa from view_uccb where uno=@uno and tablea='cubu'),'')
-set @accy = isnull((select top 1 accy from view_cubu where noa=@noa),@accy)
+set @uno=REPLACE(@uno,'#',',')
 
-if(len(@noa)>0)
-begin
-	EXEC(" update cubu"+@accy+" set uno='' where noa='"+@noa+"' and uno='"+@uno+"' ")
-	EXEC(" update cubs"+@accy+" set uno='' where noa='"+@noa+"' and uno='"+@uno+"' ")
-end
+declare @unotable table(
+	accy nvarchar(10),
+	uno nvarchar(50),
+	noa nvarchar(50)
+)
+insert @unotable
+select  b.accy,a.n,b.noa
+from dbo.fnSplit(@uno) a left join view_uccb b on b.uno=a.n and tablea='cubu'
 
-select @noa noa
+declare @xaccy nvarchar(MAX)
+declare @xuno nvarchar(MAX)
+declare @xnoa nvarchar(MAX)
+
+declare cursor_table cursor for 
+select accy,uno,noa from @unotable where noa!=''
+open cursor_table 
+fetch next from cursor_table 
+into @xaccy,@xuno,@xnoa
+while(@@FETCH_STATUS <> -1) 
+begin 
+
+	EXEC(" update cubu"+@xaccy+" set uno='' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
+	EXEC(" update cubs"+@xaccy+" set uno='' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
+		
+	fetch next from cursor_table 
+	into @xaccy,@xuno,@xnoa
+end 
+close cursor_table 
+deallocate cursor_table 
+
+select * from @unotable where noa!=''
 ;
