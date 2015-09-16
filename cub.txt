@@ -208,3 +208,43 @@ begin
 	BEGIN CATCH
 	END CATCH
 end;
+-------------------------------------------------------------------------------------------------------------------------
+cubnouno_vu:--cubnouno_vu
+SET QUOTED_IDENTIFIER OFF
+declare @accy nvarchar(MAX) = [1]
+declare @uno nvarchar(MAX) = [2]
+
+set @uno=REPLACE(@uno,'#',',')
+
+declare @unotable table(
+	accy nvarchar(10),
+	uno nvarchar(50),
+	noa nvarchar(50)
+)
+insert @unotable
+select  b.accy,a.n,b.noa
+from dbo.fnSplit(@uno) a left join view_uccb b on b.uno=a.n and tablea='cubu'
+
+declare @xaccy nvarchar(MAX)
+declare @xuno nvarchar(MAX)
+declare @xnoa nvarchar(MAX)
+
+declare cursor_table cursor for 
+select accy,uno,noa from @unotable where noa!=''
+open cursor_table 
+fetch next from cursor_table 
+into @xaccy,@xuno,@xnoa
+while(@@FETCH_STATUS <> -1) 
+begin 
+
+	EXEC(" update cubu"+@xaccy+" set uno='' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
+	EXEC(" update cubs"+@xaccy+" set uno='' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
+		
+	fetch next from cursor_table 
+	into @xaccy,@xuno,@xnoa
+end 
+close cursor_table 
+deallocate cursor_table 
+
+select * from @unotable where noa!=''
+;

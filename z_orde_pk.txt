@@ -2,10 +2,11 @@ z_orde_pk01:--z_orde_pk01
 
 declare @t_bnoa nvarchar(20)
 declare @t_enoa nvarchar(20)
+declare @t_show nvarchar(10)
 
 set @t_bnoa = case when '#non'=[3] then '' else [3] end
 set @t_enoa = case when '#non'=[4] then char(255) else [4] end
-
+set @t_show = case when '#non'=[5] then char(255) else [5] end
 ---------------------------------------------------------------------------------
 SET QUOTED_IDENTIFIER OFF
 
@@ -43,7 +44,9 @@ insert into @tmp1
 select '0',a.noa,a.odate,b.datea,a.nick,a.custorde+ '   ' + a.contract,
 	   case when LEN(dbo.split(a.addr2,'/',0)) > 0 then dbo.split(a.addr2,'/',0) + '/' + dbo.split(a.addr2,'/',1)else + dbo.split(a.addr2,'/',1) end,
 	   dbo.split(a.addr2,'/',2),a.memo,--簽單號碼
-	   b.ucolor,b.scolor,b.productno,b.size,b.mount,b.unit2,b.weight,b.price,b.unit,b.memo,
+	   b.ucolor,b.scolor,b.productno,b.size,b.mount,b.unit2,
+	   case when CHARINDEX('show',@t_show)>0 then b.weight else null end,
+	   b.price,b.unit,b.memo,
 	   c.uno,c.productno,CAST(d.dime as nvarchar(10))+'x'+CAST(d.width as nvarchar(10))+'x'+CAST(d.lengthb as nvarchar(10)),c.mount
 from view_orde a
 left join view_ordes b on a.noa = b.noa

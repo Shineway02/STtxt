@@ -1,0 +1,226 @@
+z_modfixb_rs01:--z_modfixb_rs01
+
+declare @t_bnoa nvarchar(30)
+declare @t_enoa nvarchar(30)
+
+set @t_bnoa = case when '#non'=[3] then '' else [3] end
+set @t_enoa = case when '#non'=[4] then char(255) else [4] end
+---------------------------------------------------------------------------------
+SET QUOTED_IDENTIFIER OFF
+
+declare @tmp table(
+	gno nvarchar(1),
+	rec int,
+	noa nvarchar(30),
+	datea nvarchar(10),
+	deviceno nvarchar(10),
+	device nvarchar(50),
+	ordeno nvarchar(20),
+	description nvarchar(50),
+	way nvarchar(30),
+	contents nvarchar(50),
+	bdate nvarchar(max),
+	btime nvarchar(max),
+	edate nvarchar(max),
+	etime nvarchar(max),
+	worker nvarchar(20),
+	badddate nvarchar(max),
+	baddtime nvarchar(max),
+	eadddate nvarchar(max),
+	eaddtime nvarchar(max),
+	addworker nvarchar(20),
+	product nvarchar(max),
+	retired nvarchar(max)
+)
+
+insert into @tmp
+select '0',ROW_NUMBER() over (partition by a.noa order by a.noa),a.noa,a.datea,a.deviceno,a.device,a.ordeno,a.description,a.way,a.contents,a.bdate,a.btime,a.edate,a.etime,a.worker,a.badddate,a.baddtime,a.eadddate,a.eaddtime,a.addworker,
+	   b.productno+'、'+b.product+'、'+b.tgg+'、'+CAST(b.mount as nvarchar(10))+'、'+CAST(b.price as nvarchar(10))+'、'+CAST(b.money as nvarchar(10)),b.retired
+from modfixb a
+left join modfixbs b on a.noa = b.noa
+where(a.noa between @t_bnoa and @t_enoa)
+
+declare @rec int
+declare @noa nvarchar(30)
+declare @xnoa nvarchar(30)
+declare @product nvarchar(max)
+declare @retired nvarchar(max)
+declare @max int
+declare @pstr nvarchar(max)
+declare @rstr nvarchar(max)
+
+set @xnoa = 'xxxxxx'
+
+declare cursor_table cursor for 
+select rec,noa,product,retired from @tmp
+open cursor_table 
+fetch next from cursor_table 
+into @rec,@noa,@product,@retired
+while(@@FETCH_STATUS <> -1) 
+begin
+	print @product
+	if(@noa != @xnoa)
+	begin
+		set @max = (select MAX(rec) from @tmp where noa = @noa)
+		set @pstr = ''
+		set @rstr = ''
+	end
+	
+	if(@rec != @max)
+	begin
+		set @pstr = @pstr + @product + '<br>'
+		set @rstr = @rstr + case when @retired = 1 then '&#8744' else '' end + '<br>'
+	end
+	else
+	begin 
+		set @pstr = @pstr + @product
+		update @tmp set product = @pstr where noa = @noa
+		set @rstr = @rstr + case when @retired = 1 then '&#8744' else '' end	
+		update @tmp set retired = @rstr where noa = @noa
+	end	
+	
+	set @xnoa = @noa
+	fetch next from cursor_table 
+	into @rec,@noa,@product,@retired
+end 
+close cursor_table 
+deallocate cursor_table 
+
+delete @tmp where rec > 1
+
+--設定時間格式
+update @tmp set btime = case when LEN(bdate)>0 and LEN(btime)>0
+						then dbo.split(bdate,'/',0)+'年'+dbo.split(bdate,'/',1)+'月'+dbo.split(bdate,'/',2)+'日'+dbo.split(btime,':',0)+'時'+dbo.split(btime,':',1)+'分' 
+						else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
+update @tmp set etime = case when LEN(edate)>0 and LEN(etime)>0 
+						then dbo.split(edate,'/',0)+'年'+dbo.split(edate,'/',1)+'月'+dbo.split(edate,'/',2)+'日'+dbo.split(etime,':',0)+'時'+dbo.split(etime,':',1)+'分' 
+						else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
+update @tmp set baddtime =	case when LEN(badddate)>0 and LEN(baddtime)>0
+							then dbo.split(badddate,'/',0)+'年'+dbo.split(badddate,'/',1)+'月'+dbo.split(badddate,'/',2)+'日'+dbo.split(baddtime,':',0)+'時'+dbo.split(baddtime,':',1)+'分' 
+							else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
+update @tmp set eaddtime =	case when LEN(eadddate)>0 and LEN(eaddtime)>0 
+							then dbo.split(eadddate,'/',0)+'年'+dbo.split(eadddate,'/',1)+'月'+dbo.split(eadddate,'/',2)+'日'+dbo.split(eaddtime,':',0)+'時'+dbo.split(eaddtime,':',1)+'分' 
+							else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
+--設定方式格式
+update @tmp set way = case when CHARINDEX('委外',way)>0 then '&#9745委外<br>&#9744自修' else '&#9744委外<br>&#9745自修' end
+
+--換頁->1維修單號(noa)1頁 gno = '1'
+insert into @tmp(gno,noa)
+select DISTINCT '1',noa from @tmp
+
+select 
+	*,deviceno dno,btime+'　　至　　'+etime b2e ,baddtime+'　　至　　'+eaddtime addb2e
+from @tmp order by noa,gno;
+
+
+
+--*******************************************************************************
+z_modfixb_rs02:--z_modfixb_rs02
+
+declare @t_bdno nvarchar(50)
+declare @t_edno nvarchar(50)
+
+set @t_bdno = case when '#non'=[5] then '' else [5] end
+set @t_edno = case when '#non'=[6] then char(255) else [6] end
+---------------------------------------------------------------------------------
+SET QUOTED_IDENTIFIER OFF
+
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(50),
+	tgg nvarchar(90),
+	years nvarchar(50),
+	saver nvarchar(50),
+	datea nvarchar(10),
+	product nvarchar(100),
+	way nvarchar(10), 
+	tgg1 nvarchar(90),
+	money1 float,
+	worker1 nvarchar(20),
+	tgg2 nvarchar(90),
+	money2 float
+)
+
+insert into @tmp
+select '0',a.noa,a.tgg,a.years,a.saver,b.datea,c.product+'*'+CAST(c.mount as nvarchar(10)),way,c.tggno,c.money,b.worker,c.tggno,c.money
+from modeq a
+left join modfixb b on a.noa = b.deviceno
+left join modfixbs c on b.noa = c.noa
+where(a.noa between @t_bdno and @t_edno)
+
+update @tmp set tgg1 = case when CHARINDEX('委外',way) > 0 then tgg1 else null end,
+				money1 = case when CHARINDEX('委外',way) > 0 then money1 else null end,
+				worker1 = case when CHARINDEX('委外',way) > 0 then worker1 else null end			
+
+insert into @tmp(gno,noa)
+select DISTINCT '1',noa from @tmp
+
+select * from @tmp order by noa,gno;
+
+
+
+--*******************************************************************************
+z_modfixb_rs03:--z_modfixb_rs03
+
+declare @t_bdno nvarchar(50)
+declare @t_edno nvarchar(50)
+
+set @t_bdno = case when '#non'=[5] then '' else [5] end
+set @t_edno = case when '#non'=[6] then char(255) else [6] end
+---------------------------------------------------------------------------------
+SET QUOTED_IDENTIFIER OFF
+
+declare @tmp table(
+	gno nvarchar(1),
+	rec int,
+	deviceno nvarchar(10),
+	device nvarchar(50),
+	productno nvarchar(30),
+	product nvarchar(100),
+	description nvarchar(50),
+	way nvarchar(10),
+	contents nvarchar(50),
+	retired nvarchar(10),
+	mount float
+)
+
+insert into @tmp
+select '0',ROW_NUMBER() over (order by a.deviceno),a.deviceno,a.device,b.productno,b.product,a.description,a.way,a.contents,b.retired,b.mount
+from modfixb a
+left join modfixbs b on a.noa = b.noa
+where(a.deviceno between @t_bdno and @t_edno)
+
+
+declare @div int
+declare @mod int
+declare @max int
+declare @i int 
+
+--補滿最後一頁不足30行
+set @mod = (select MAX(rec) from @tmp) % 30
+set @max = (select MAX(rec) from @tmp)
+set @i = 1
+
+while(@i <= 30-@mod)
+begin
+	insert into @tmp(gno,rec)
+	select '0',@max+@i
+			
+	set @i = @i + 1
+end
+
+--每30行換頁
+set @div = (select MAX(rec) from @tmp) / 30
+set @i = 1
+
+while(@i <= @div)
+begin
+	insert into @tmp(gno,rec)
+	select '1',30*@i
+			
+	set @i = @i + 1
+end
+
+update @tmp set retired = case when retired = 1 then '&#8744' else '' end
+
+select * from @tmp order by rec;
