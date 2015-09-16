@@ -1,0 +1,38 @@
+z_modfixc_rs01:--z_modfixc_rs01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(30)
+	set @t_noa= case when '#non' = [1] then '' else [1] end
+------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(50),
+	mech nvarchar(50),
+	code nvarchar(50),
+	detail nvarchar(50),
+	frame nvarchar(50),
+	mount float,
+	way nvarchar(50),
+	bebottom nvarchar(50),
+	enbottom nvarchar(50),
+	datea1 nvarchar(50),
+	datea2 nvarchar(50),
+	worker nvarchar(50)
+
+)
+insert @result
+select '0',max(a.noa),max(a.mech),b.code,max(b.detail),
+		max(b.frame),sum(b.mount),max(b.way),max(b.bebottom),max(b.enbottom)
+		,max(b.datea1),max(b.datea2),max(b.worker)
+from modfixc a left join modfixcs b on a.noa=b.noa
+where a.noa=@t_noa
+group by  b.code
+
+
+select gno,noa,code,mech,detail,frame,mount,
+		case when way =1 then'傳統車床(砂紙研磨)'
+			 when way =2 then'傳統車床(砂輪機研磨)'
+			 when way =3 then'CNC 車修'
+			 when way =4 then'不須車修或研磨'
+			 else '' end way,bebottom,enbottom,datea1,datea2,worker
+from @result
+;
