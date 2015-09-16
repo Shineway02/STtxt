@@ -1,0 +1,39 @@
+﻿updatesalpresent:--更新出勤加班時數
+declare @t_datea nvarchar(50) = [1]
+declare @t_sssno nvarchar(50) = [2]
+
+declare @t_hours float=isnull((select sum(hours) from saladd where isnull(isapv,0)=1 and sssno=@t_sssno and datea=@t_datea),0)
+declare @t_weekday nvarchar(10)
+
+if((select count(*) from salpresents a where a.noa=@t_datea and a.sssno=@t_sssno)=0 and @t_hours>0)
+begin
+	insert salpresents(noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo)
+	select @t_datea,right('000'+cast(cast(isnull((select MAX(noq) from salpresents),'000')as int)+1 as nvarchar(50)),3)
+	,noa,namea,'','',0,0,0,'' from sss where noa=@t_sssno
+	
+	if((select count(*) from salpresent a where a.noa=@t_datea)=0)
+	begin
+		set @t_weekday=DATEPART(WEEKDAY, dbo.ChineseEraName2AD(@t_datea))-1
+		insert salpresent(noa,w133,w166,w100,mount,holiday)
+		select @t_datea,0,0,0,1
+		,case when (@t_datea not in (select noa from holiday where isnull(iswork,0)!=1)
+		and @t_weekday!='0' and @t_weekday!='6') or @t_datea in (select noa from holiday where isnull(iswork,0)=1)then 0 else 1 end
+	end
+end
+
+--bbs
+update a
+set w133=(case when isnull(b.holiday,0)=1 then 0 else (case when @t_hours>2 then 2 else @t_hours end) end)
+,w166=(case when isnull(b.holiday,0)=1 then 0 else (case when @t_hours>2 then @t_hours-2 else 0 end) end)
+,w100=(case when isnull(b.holiday,0)=1 then @t_hours else 0 end)
+from salpresents a left join salpresent b on a.noa=b.noa 
+where a.noa=@t_datea and a.sssno=@t_sssno
+
+--bbm
+update a
+set w100=isnull((select sum(w100) from salpresents where noa=a.noa),0)
+,w133=isnull((select sum(w133) from salpresents where noa=a.noa),0)
+,w166=isnull((select sum(w166) from salpresents where noa=a.noa),0)
+from salpresent a
+where a.noa=@t_datea
+;
