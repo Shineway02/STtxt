@@ -1,0 +1,98 @@
+z_modout_rs01:--z_modout_rs01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(30)
+	set @t_noa= case when '#non' = [1] then '' else [1] end
+------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(50),
+	mech nvarchar(50),
+	datea nvarchar(50),
+	detail nvarchar(50),
+	code nvarchar(50),
+	frame nvarchar(50),
+	mount float,
+	memo nvarchar(max)
+)
+insert @result
+select '0',max(a.noa),max(a.machine),max(a.datea),MAX(b.detail)
+	  ,b.code,max(b.frame),sum(b.mount),max(b.memo)
+from modout a left join modouts b on a.noa=b.noa
+where a.noa=@t_noa
+group by b.code
+
+select gno,noa,mech,datea,code,detail,frame,mount,memo
+from @result
+;
+
+z_modout_rs02:--z_modout_rs02
+SET QUOTED_IDENTIFIER OFF
+declare @t_noa nvarchar(30)
+set @t_noa= case when '#non' = [1] then '' else [1] end
+---------------------------------------------------------------------------------------------------
+declare @b_noa nvarchar(30)=(select noa from model where noa=@t_noa)
+declare @b_tgg nvarchar(30)=(select tgg from model where noa=@t_noa)
+declare @b_datea nvarchar(30)=(select datea from model where noa=@t_noa)
+declare @b_mount nvarchar(30)=(select mount from model where noa=@t_noa)
+declare @b_usetype nvarchar(30)=(select usetype from model where noa=@t_noa)
+declare @b_frame nvarchar(30)=(select frame from model where noa=@t_noa)
+
+
+declare @result table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	detail nvarchar(100),
+	type nvarchar(30),
+	weight float,
+	bebottom float,
+	enbottom float,
+	way nvarchar(50),
+	datea1 nvarchar(20),
+	datea2 nvarchar(20),
+	worktime float,
+	mount float,
+	mech nvarchar(30),
+	worker nvarchar(30)
+
+)
+
+declare @nob nvarchar(30)
+
+
+DECLARE cursor_table CURSOR FOR 
+select nob from modfixs b left join modfix a on a.noa=b.noa where @t_noa=b.noa
+OPEN cursor_table
+FETCH NEXT FROM cursor_table
+INTO @nob
+WHILE @@FETCH_STATUS = 0
+BEGIN
+   insert @result (noa,detail,type,weight,way,datea1,mount,mech)
+   select b.noa+b.code1,b.detail1,'入庫維修',b.weight1,b.way1,a.datea,b.mount1,a.mech
+   from modfixs b left join modfix a on a.noa=b.noa
+   where @nob=b.nob
+  
+   insert @result(noa,detail,type,bebottom,enbottom,way,datea1,datea2,mount,mech,worker)
+   select b.noa+b.code,b.detail,'維修',b.bebottom,b.enbottom,b.way,b.datea1,b.datea2,
+		b.mount,a.mech,b.worker
+   from modfixcs  b left join modfixc a on a.noa=b.noa
+   where @nob=b.nob
+  
+   insert @result(noa,detail,type,enbottom,datea1,worktime,mount,mech)
+   select b.noa+b.code,b.detail,'領用出庫',(select enbottom from modfixcs c where b.nob=c.nob)
+		,a.datea,0,a.mount,a.machine
+	from modouts b left join modout a on a.noa=b.noa
+	where @nob=b.nob
+  
+  fetch next from cursor_table 
+  into @nob
+end 
+
+CLOSE cursor_table
+DEALLOCATE cursor_table
+
+select '0' gno ,noa,detail,type,weight,bebottom,enbottom
+	,way,datea1,datea2,worktime,mount,mech,worker
+	,@b_noa bnoa,@b_tgg btgg,@b_datea bdatea
+	,@b_mount bmount,@b_usetype buse,@b_frame bframe
+from @result;	
+
