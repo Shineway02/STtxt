@@ -1,0 +1,86 @@
+z_modfix_rs01:--z_modfix_rs01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(30)
+	set @t_noa= case when '#non' = [1] then '' else [1] end
+------------------------------------------------------------------------------------------------
+
+declare @tmp table(
+	gno nvarchar(1),
+	code nvarchar(50),
+	detail nvarchar(50),
+	frame nvarchar(50),
+	mount nvarchar(50),
+	way nvarchar(50),
+	weight nvarchar(50),
+	noa nvarchar(50),
+	mech  nvarchar(50),
+	datea nvarchar(50)
+)
+insert @tmp
+select 0,code1,MAX(detail1),max(frame1),sum(mount1),max(way1),sum(weight1),MAX(a.noa),MAX(a.mech),MAX(a.datea)
+from modfix a left join modfixs b on a.noa=b.noa
+where a.noa=@t_noa
+group by code1
+--成型段
+declare @tmp1 table(
+	gno nvarchar(1),
+	code nvarchar(50),
+	detail nvarchar(50),
+	frame nvarchar(50),
+	mount nvarchar(50),
+	way nvarchar(50),
+	weight nvarchar(50),
+	seq int,
+	noa nvarchar(50),
+	mech  nvarchar(50),
+	datea nvarchar(50)
+)
+insert @tmp1
+select 0,code,detail,frame,mount,way,weight,ROW_NUMBER() over (order by code),noa,mech,datea
+from @tmp
+where left(code,1)='F' or left(code,2)='sg' or left(code,2)='sq'
+
+
+--定徑段
+declare @tmp2 table(
+	gno nvarchar(1),
+	code nvarchar(50),
+	detail nvarchar(50),
+	frame nvarchar(50),
+	mount nvarchar(50),
+	way nvarchar(50),
+	weight nvarchar(50),
+	seq int
+)
+insert @tmp2
+select 0,code,detail,frame,mount,way,weight,ROW_NUMBER() over (order by code)
+from @tmp
+where left(code,1)!='f' and left(code,2)!='sg' and left(code,2)!='sq'
+		
+if((select count(*) from @tmp1)  < (select count(*) from @tmp2) )
+	begin
+		declare @div float = ((select count(*) from @tmp2)-(select count(*) from @tmp1)) 
+		declare @i float=1
+		while(@i<=@div)
+			begin
+				insert @tmp1(gno,seq)
+				select 0,@i
+				set @i=@i+1
+			end
+	end
+		
+			
+select a.gno,a.code,a.detail,a.frame,a.mount,
+		case when a.way =1 then'傳統車床(砂紙研磨)'
+			 when a.way =2 then'傳統車床(砂輪機研磨)'
+			 when a.way =3 then'CNC 車修'
+			 when a.way =4 then'不須車修或研磨'
+			 else '' end way,dbo.getComma(a.weight,0) weight
+			,b.code bcode,b.detail bdetail,b.frame bframe,b.mount bmount,
+		case when b.way =1 then'傳統車床(砂紙研磨)'
+			 when b.way =2 then'傳統車床(砂輪機研磨)'
+			 when b.way =3 then'CNC 車修'
+			 when b.way =4 then'不須車修或研磨'	end bway,dbo.getComma(b.weight,0) bweight
+			,a.noa,a.datea,a.mech
+from @tmp1 a left join @tmp2 b on a.seq=b.seq
+;
