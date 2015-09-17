@@ -76,6 +76,7 @@ set @t_eprocessno = case when '#non'=[11] then char(255) else [11] end
 declare @result table(
 	gno nvarchar(10),
 	datea nvarchar(30),
+	noa nvarchar(30),
 	productno nvarchar(30),
 	product nvarchar(max),
 	total float,
@@ -94,7 +95,7 @@ declare @result table(
 
 )
 insert @result
-select '0',a.datea,a.productno,a.product,a.total,a.price,a.mo,b.datea,b.tggno
+select '0',a.datea,a.noa,a.productno,a.product,a.total,a.price,a.mo,b.datea,b.tggno
 	   ,c.nick,b.processno,b.process,b.mount,b.price,b.mo,b.w02,b.w01
 from view_cubs b left join  view_cub a on a.accy=b.accy and a.noa=b.noa 
 				 left join tgg  c on b.tggno =c.noa
@@ -114,7 +115,7 @@ select '2','9999/999/999',sum(total),sum(price),SUM(mo),SUM(mount),SUM(price1),S
 from @result 
 where gno='0'
 
-select gno,row_number()over(order by datea,product,productno,gno)ino, 
+select gno,noa,row_number()over(order by datea,product,productno,gno)ino, 
 datea,productno pno,product pdt, 
 dbo.getComma(total,0) total, 
 dbo.getComma(price,0) price, 
