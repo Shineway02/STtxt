@@ -1,0 +1,48 @@
+orde2cub_pk:--orde2cub_pk
+
+declare @year nvarchar(20)=[1]--年度[1]
+declare @noa nvarchar(50)=[2]
+declare @condition nvarchar(20)=[3]--動作 0 刪除, 1 新增[3]
+-----------------------------------------------------------------------
+SET QUOTED_IDENTIFIER OFF
+
+declare @cmd nvarchar(max)
+declare @accy nvarchar(20)
+declare @isexist bit = 0
+
+if(@condition='0') --刪除已存在的單號資料
+begin 
+	if(len(@noa)>0) 
+	begin 
+		set @accy = (select top 1 accy from view_orde where noa=@noa)	
+		
+		set @cmd="delete a from cubs"+@accy+" a left join cub"+@accy+" b on a.noa=b.noa where a.noa='"+@noa+"'" 
+		EXECUTE sp_executesql @cmd 
+		
+		--set @cmd="delete cub"+@accy+" where noa='"+@noa+"'" 
+		--EXECUTE sp_executesql @cmd 
+	end 
+end 
+
+if(@condition='1')
+begin
+	set @accy = (select top 1 accy from view_orde where noa=@noa) 
+	
+	IF EXISTS(SELECT 1 FROM view_cub WHERE noa = @noa)
+		set @isexist = 1
+		
+	--bbm
+	if(@isexist = 0)
+	begin
+		set @cmd = "insert into cub"+@accy+"(noa,datea,memo) select noa,odate,memo from view_orde where noa = '"+@noa++"'" 
+		EXECUTE sp_executesql @cmd
+	end
+	 
+	--bbs
+	set @cmd = "insert into cubs"+@accy+"(noa,noq,custno,comp,productno,product,class,spec,dime,width,lengthb,mount,weight,size,memo,date2,ordeno,no2,price) 
+				select a.noa,b.no2,a.custno,a.comp,b.productno,b.product,b.class,b.spec,b.dime,b.width,b.lengthb,b.mount,b.weight,b.size,b.memo,b.datea,b.noa,b.no2,b.price 
+				from view_orde a 
+				left join view_ordes b on a.noa = b.noa 
+				where a.noa = '"+@noa++"'" 
+	EXECUTE sp_executesql @cmd
+end;

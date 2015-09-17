@@ -1,0 +1,103 @@
+z_modcuc_rs01:--z_modcuc_rs01
+
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+
+set @t_bdate = case when '#non'=[3] then '' else [3] end
+set @t_edate = case when '#non'=[4] then char(255) else [4] end
+---------------------------------------------------------------------------------
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+IF OBJECT_ID('tempdb..#result')is not null
+BEGIN
+	drop table #result
+END
+----------------------------------------------------
+SET QUOTED_IDENTIFIER OFF
+
+declare @hcmd nvarchar(max) --控制日期
+declare @scmd nvarchar(max)	--控制資料
+declare @pcmd nvarchar(max)	--控制換行
+
+create table #tmp(
+	datea nvarchar(10),
+	device nvarchar(50),
+	memo nvarchar(max)
+)
+insert into #tmp
+select a.datea,b.device,b.memo
+from modcuc a
+left join modcucs b on a.noa = b.noa
+where(a.datea between @t_bdate and @t_edate)
+
+create table #result(
+	gno  nvarchar(1),
+	device nvarchar(50),
+	day1 nvarchar(max),
+	day2 nvarchar(max),
+	day3 nvarchar(max),
+	day4 nvarchar(max),
+	day5 nvarchar(max)
+)
+
+declare @weekday int
+declare @bdate nvarchar(10)
+declare @edate nvarchar(10)
+declare @date nvarchar(10)
+
+set @t_bdate = REPLACE(dbo.ChineseEraName2AD(@t_bdate),'-','/')
+set @t_edate = REPLACE(dbo.ChineseEraName2AD(@t_edate),'-','/')
+set @bdate = @t_bdate
+
+while(@bdate <= @t_edate) --日期判斷(星期一:@bdate星期五:@edate)
+begin
+	set @weekday = (DATEPART(WeekDay,@bdate)-1)
+	set @bdate = CONVERT(char, DATEADD(DAY, 1-@weekday, @bdate), 111)
+	set @edate = CONVERT(char, DATEADD(DAY, 4, @bdate), 111)
+	
+	declare @i int = 0
+	declare @pagestr nvarchar(30) = '第一聯：設備聯,第二聯：生計聯,第三聯：製造聯'	
+	while(@i < 3) --顯示三聯
+	begin
+		declare @j int = 0
+		
+		set @hcmd = 'insert into #result select '+"'"+'0'+"',"+"'"+"'"+', '
+		set @scmd = 'select DISTINCT '+"'"+'1'+"',"+'device,'
+		
+		while(@j < 5) --放置星期一~五資料
+		begin
+			set @date = dbo.AD2ChineseEraName(CONVERT(char, DATEADD(DAY, @j, @bdate), 111))
+			set @hcmd = @hcmd + "'"+@date+"',"
+			set @scmd = @scmd + '(select memo from #tmp a where a.device=b.device and a.datea = '+"'"+@date+"'"+') as '+"'"+@date+"'"+','
+			
+			set @j = @j + 1
+		end
+	
+		set @hcmd = LEFT(@hcmd ,LEN(@hcmd)-1)
+		execute sp_executesql @hcmd
+		
+		set @scmd = 'insert into #result ' + LEFT(@scmd ,LEN(@scmd)-1) + ' from #tmp b '
+		execute sp_executesql @scmd
+		
+		set @pcmd = 'insert into #result(gno,device) select '+"'"+'2'+"'"+','+"'"+dbo.split(@pagestr,',',@i)+"'"
+		execute sp_executesql @pcmd
+		
+		set @i = @i + 1
+	end
+	
+	set @bdate = CONVERT(char, DATEADD(DAY, 7, @bdate), 111)
+end
+
+--空資料:--
+update #result set day1 = '--' where day1 is null
+update #result set day2 = '--' where day2 is null
+update #result set day3 = '--' where day3 is null
+update #result set day4 = '--' where day4 is null
+update #result set day5 = '--' where day5 is null
+
+select * from #result
+
+drop table #tmp
+drop table #result;

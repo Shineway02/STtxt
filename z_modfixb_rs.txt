@@ -19,23 +19,41 @@ declare @tmp table(
 	description nvarchar(50),
 	way nvarchar(30),
 	contents nvarchar(50),
-	bdate nvarchar(max),
-	btime nvarchar(max),
-	edate nvarchar(max),
-	etime nvarchar(max),
+	byy nvarchar(10),
+	bmm nvarchar(10),
+	bdd nvarchar(10),
+	bhh nvarchar(10),
+	bmi nvarchar(10),
+	eyy nvarchar(10),
+	emm nvarchar(10),
+	edd nvarchar(10),
+	ehh nvarchar(10),
+	emi nvarchar(10),
 	worker nvarchar(20),
-	badddate nvarchar(max),
-	baddtime nvarchar(max),
-	eadddate nvarchar(max),
-	eaddtime nvarchar(max),
+	baddyy nvarchar(10),
+	baddmm nvarchar(10),
+	badddd nvarchar(10),
+	baddhh nvarchar(10),
+	baddmi nvarchar(10),
+	eaddyy nvarchar(10),
+	eaddmm nvarchar(10),
+	eadddd nvarchar(10),
+	eaddhh nvarchar(10),
+	eaddmi nvarchar(10),
 	addworker nvarchar(20),
 	product nvarchar(max),
-	retired nvarchar(max)
+	retired nvarchar(max),
+	
+	pageword nvarchar(20)
 )
 
 insert into @tmp
-select '0',ROW_NUMBER() over (partition by a.noa order by a.noa),a.noa,a.datea,a.deviceno,a.device,a.ordeno,a.description,a.way,a.contents,a.bdate,a.btime,a.edate,a.etime,a.worker,a.badddate,a.baddtime,a.eadddate,a.eaddtime,a.addworker,
-	   b.productno+'、'+b.product+'、'+b.tgg+'、'+CAST(b.mount as nvarchar(10))+'、'+CAST(b.price as nvarchar(10))+'、'+CAST(b.money as nvarchar(10)),b.retired
+select '0',ROW_NUMBER() over (partition by a.noa order by a.noa),a.noa,a.datea,a.deviceno,a.device,a.ordeno,a.description,a.way,a.contents,
+	   dbo.split(a.bdate,'/',0),dbo.split(a.bdate,'/',1),dbo.split(a.bdate,'/',2),dbo.split(a.btime,':',0),dbo.split(a.btime,':',1),
+	   dbo.split(a.edate,'/',0),dbo.split(a.edate,'/',1),dbo.split(a.edate,'/',2),dbo.split(a.etime,':',0),dbo.split(a.etime,':',1),a.worker,
+	   dbo.split(a.badddate,'/',0),dbo.split(a.badddate,'/',1),dbo.split(a.badddate,'/',2),dbo.split(a.baddtime,':',0),dbo.split(a.baddtime,':',1),
+	   dbo.split(a.eadddate,'/',0),dbo.split(a.eadddate,'/',1),dbo.split(a.eadddate,'/',2),dbo.split(a.eaddtime,':',0),dbo.split(a.eaddtime,':',1),a.addworker,
+	   b.productno+'、'+b.product+'、'+b.tgg+'、'+CAST(b.mount as nvarchar(10))+'、'+CAST(b.price as nvarchar(10))+'、'+CAST(b.money as nvarchar(10)),b.retired,''
 from modfixb a
 left join modfixbs b on a.noa = b.noa
 where(a.noa between @t_bnoa and @t_enoa)
@@ -58,7 +76,6 @@ fetch next from cursor_table
 into @rec,@noa,@product,@retired
 while(@@FETCH_STATUS <> -1) 
 begin
-	print @product
 	if(@noa != @xnoa)
 	begin
 		set @max = (select MAX(rec) from @tmp where noa = @noa)
@@ -69,13 +86,13 @@ begin
 	if(@rec != @max)
 	begin
 		set @pstr = @pstr + @product + '<br>'
-		set @rstr = @rstr + case when @retired = 1 then '&#8744' else '' end + '<br>'
+		set @rstr = @rstr + case when @retired = 1 then '&#8744' else '&nbsp' end + '<br>'
 	end
 	else
 	begin 
 		set @pstr = @pstr + @product
 		update @tmp set product = @pstr where noa = @noa
-		set @rstr = @rstr + case when @retired = 1 then '&#8744' else '' end	
+		set @rstr = @rstr + case when @retired = 1 then '&#8744' else '&nbsp' end	
 		update @tmp set retired = @rstr where noa = @noa
 	end	
 	
@@ -88,29 +105,31 @@ deallocate cursor_table
 
 delete @tmp where rec > 1
 
---設定時間格式
-update @tmp set btime = case when LEN(bdate)>0 and LEN(btime)>0
-						then dbo.split(bdate,'/',0)+'年'+dbo.split(bdate,'/',1)+'月'+dbo.split(bdate,'/',2)+'日'+dbo.split(btime,':',0)+'時'+dbo.split(btime,':',1)+'分' 
-						else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
-update @tmp set etime = case when LEN(edate)>0 and LEN(etime)>0 
-						then dbo.split(edate,'/',0)+'年'+dbo.split(edate,'/',1)+'月'+dbo.split(edate,'/',2)+'日'+dbo.split(etime,':',0)+'時'+dbo.split(etime,':',1)+'分' 
-						else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
-update @tmp set baddtime =	case when LEN(badddate)>0 and LEN(baddtime)>0
-							then dbo.split(badddate,'/',0)+'年'+dbo.split(badddate,'/',1)+'月'+dbo.split(badddate,'/',2)+'日'+dbo.split(baddtime,':',0)+'時'+dbo.split(baddtime,':',1)+'分' 
-							else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
-update @tmp set eaddtime =	case when LEN(eadddate)>0 and LEN(eaddtime)>0 
-							then dbo.split(eadddate,'/',0)+'年'+dbo.split(eadddate,'/',1)+'月'+dbo.split(eadddate,'/',2)+'日'+dbo.split(eaddtime,':',0)+'時'+dbo.split(eaddtime,':',1)+'分' 
-							else '&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp年　月　日　時　分' end
 --設定方式格式
 update @tmp set way = case when CHARINDEX('委外',way)>0 then '&#9745委外<br>&#9744自修' else '&#9744委外<br>&#9745自修' end
 
 --換頁->1維修單號(noa)1頁 gno = '1'
-insert into @tmp(gno,noa)
-select DISTINCT '1',noa from @tmp
+insert into @tmp(gno,rec,noa)
+select DISTINCT '1',1,noa from @tmp
 
-select 
-	*,deviceno dno,btime+'　　至　　'+etime b2e ,baddtime+'　　至　　'+eaddtime addb2e
-from @tmp order by noa,gno;
+declare @i int = 1
+declare @pagestr nvarchar(50) = '第一聯<br>：<br>申請聯,第二聯<br>：<br>財會聯,第三聯<br>：<br>維修聯'
+while(@i < 3)
+begin
+	insert into @tmp
+	select 
+		gno,@i+1,noa,datea,deviceno,device,ordeno,description,way,contents,byy,bmm,bdd,bhh,bmi,eyy,emm,edd,ehh,emi,worker,
+		baddyy,baddmm,badddd,baddhh,baddmi,eaddyy,eaddmm,eadddd,eaddhh,eaddmi,addworker,product,retired,''
+	from @tmp where rec = @i
+	
+	set @i = @i + 1
+end
+
+update @tmp set pageword = case when rec = 1 then dbo.split(@pagestr,',',0) 
+								when rec = 2 then dbo.split(@pagestr,',',1)
+								when rec = 3 then dbo.split(@pagestr,',',2) end
+								
+select *,deviceno dno from @tmp order by noa,rec,gno;
 
 
 
@@ -127,6 +146,7 @@ SET QUOTED_IDENTIFIER OFF
 
 declare @tmp table(
 	gno nvarchar(1),
+	rec int,
 	noa nvarchar(50),
 	tgg nvarchar(90),
 	years nvarchar(50),
@@ -142,7 +162,7 @@ declare @tmp table(
 )
 
 insert into @tmp
-select '0',a.noa,a.tgg,a.years,a.saver,b.datea,c.product+'*'+CAST(c.mount as nvarchar(10)),way,c.tggno,c.money,b.worker,c.tggno,c.money
+select '0',1,a.noa,a.tgg,a.years,a.saver,b.datea,c.product+'*'+CAST(c.mount as nvarchar(10)),way,c.tggno,c.money,b.worker,c.tggno,c.money
 from modeq a
 left join modfixb b on a.noa = b.deviceno
 left join modfixbs c on b.noa = c.noa
@@ -152,10 +172,25 @@ update @tmp set tgg1 = case when CHARINDEX('委外',way) > 0 then tgg1 else null
 				money1 = case when CHARINDEX('委外',way) > 0 then money1 else null end,
 				worker1 = case when CHARINDEX('委外',way) > 0 then worker1 else null end			
 
-insert into @tmp(gno,noa)
-select DISTINCT '1',noa from @tmp
+insert into @tmp(gno,rec,noa)
+select DISTINCT '1',1,noa from @tmp
 
-select * from @tmp order by noa,gno;
+declare @i int = 1
+declare @pagestr nvarchar(30) = '正本：財會聯,影本1：製造聯,影本2：設備聯'
+while(@i < 3)
+begin
+	insert into @tmp
+	select gno,@i+1,noa,tgg,years,saver,datea,product,way,tgg1,money1,worker1,tgg2,money2
+	from @tmp where rec = @i
+	
+	set @i = @i + 1
+end
+
+update @tmp set tgg = case when rec = 1 then dbo.split(@pagestr,',',0) 
+							  when rec = 2 then dbo.split(@pagestr,',',1)
+							  when rec = 3 then dbo.split(@pagestr,',',2) end where gno = '1'	
+
+select *,dbo.getComma(money1,0)mny1,dbo.getComma(money2,0)mny2 from @tmp order by noa,rec,gno;
 
 
 

@@ -106,8 +106,6 @@ declare @cmd nvarchar(max)
 declare @accy nvarchar(20) 
 --declare @ordeno nvarchar(max)= (select ordeno from view_cubs where noa=@noa)
 
-
-
 --入庫單號
 declare @rc2no nvarchar(50)
 
@@ -152,7 +150,6 @@ begin
 	from view_cubs a left join view_cub b on a.noa=b.noa
 	where a.noa ='"+@noa+"'")
 	
-	
 	exec("insert inas"+@accy+"(noa,noq,productno,product,mount,price,total)
 	select  '"+@rc2no+"',a.no2,b.productno,b.product,b.total,sum(b.mo)/b.total price,SUM(b.mo) total
 	from view_cubs a left join view_cub b on a.noa=b.noa
@@ -162,4 +159,6 @@ begin
 	exec("update cubs"+@year+" set ordeno='"+@rc2no+"' where noa='"+@noa+"'  and datea='"+@datea+"'")
 	
 end
+
+select @rc2no rc2no
 ;

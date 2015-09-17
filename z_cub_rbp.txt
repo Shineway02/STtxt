@@ -1,4 +1,4 @@
-z_cub_xyp1:--z_cub_xyp1
+z_cub_rbp1:--z_cub_rbp1
 	declare @t_accy nvarchar(max)
 	declare @t_bxnoa nvarchar(50)
 	declare @t_exnoa nvarchar(50)
@@ -18,12 +18,20 @@ z_cub_xyp1:--z_cub_xyp1
 		comp nvarchar(100),
 		pno nvarchar(50),
 		product nvarchar(150),
+		spec nvarchar(150),
+		total float,
+		price float,
+		mo float,
+		vcceno nvarchar(50),
 		amemo nvarchar(MAX),
+		
 		tggno nvarchar(100),
 		tggs nvarchar(100),
 		processno nvarchar(100),
 		processs nvarchar(100),
-		mount float,
+		bmount float,
+		bprice float,
+		bmo float,
 		need nvarchar(MAX),
 		bmemo nvarchar(MAX),
 		uno nvarchar(50),
@@ -31,26 +39,29 @@ z_cub_xyp1:--z_cub_xyp1
 	)
 	
 	insert into @result
-	select '0'gno,a.noa,b.noq,a.datea,a.ordeno+'_'+a.no2,a.custno,a.comp,a.productno,a.product,a.memo
-	,b.tggno,b.tgg,b.processno,b.process,b.mount,b.need,b.memo,'',''
+	select '0'gno,a.noa,b.noq,a.datea,a.ordeno+'_'+a.no2,a.custno,a.comp,a.productno,a.product
+	,a.spec,a.total,a.price,a.mo,a.vcceno,a.memo
+	,b.tggno,b.tgg,b.processno,b.process,b.mount,b.price,b.mo,b.need,b.memo,'',''
 	from view_cub a left join view_cubs b on a.noa=b.noa
 	where a.noa between @t_bxnoa and @t_exnoa
 	
-	insert into @result
-	select '2' gno,a.noa,b.noq,a.datea,a.ordeno+'_'+a.no2,a.custno,a.comp,a.productno,a.product,a.memo
-	,'','','','',b.mount,'',b.memo,b.productno,b.product
-	from view_cub a left join view_cubt b on a.noa=b.noa
-	where a.noa between @t_bxnoa and @t_exnoa and b.noa!=''
+	
 	
 	insert into @result (gno,noa)
-	select '1',noa from @result where gno='2' group by noa
+	select '1',noa from @result group by noa
 	
 	
 	select 
-	dbo.getComma(mount,[2]) mount,*
+	dbo.getComma(total,0) total,
+	dbo.getComma(price,[4]) price,
+	dbo.getComma(mo,0) mo,
+	dbo.getComma(bmount,[2]) bmount,
+	dbo.getComma(bprice,[4]) bprice,
+	dbo.getComma(bmo,0) bmo,
+	*
 	from @result order by noa,gno,noq;
 --*******************************************************************************************************
-z_cub_xyp2:--z_cub_xyp2
+z_cub_rbp2:--z_cub_rbp2
 declare @t_bprocessno nvarchar(30)
 declare @t_eprocessno nvarchar(30)
 declare @t_bdate nvarchar(30)
@@ -65,6 +76,7 @@ set @t_eprocessno = case when '#non'=[11] then char(255) else [11] end
 declare @result table(
 	gno nvarchar(10),
 	datea nvarchar(30),
+	noa nvarchar(30),
 	productno nvarchar(30),
 	product nvarchar(max),
 	total float,
@@ -83,7 +95,7 @@ declare @result table(
 
 )
 insert @result
-select '0',a.datea,a.productno,a.product,a.total,a.price,a.mo,b.datea,b.tggno
+select '0',a.datea,a.noa,a.productno,a.product,a.total,a.price,a.mo,b.datea,b.tggno
 	   ,c.nick,b.processno,b.process,b.mount,b.price,b.mo,b.w02,b.w01
 from view_cubs b left join  view_cub a on a.accy=b.accy and a.noa=b.noa 
 				 left join tgg  c on b.tggno =c.noa
@@ -103,7 +115,7 @@ select '2','9999/999/999',sum(total),sum(price),SUM(mo),SUM(mount),SUM(price1),S
 from @result 
 where gno='0'
 
-select gno,row_number()over(order by datea,product,productno,gno)ino, 
+select gno,noa,row_number()over(order by datea,product,productno,gno)ino, 
 datea,productno pno,product pdt, 
 dbo.getComma(total,0) total, 
 dbo.getComma(price,0) price, 
