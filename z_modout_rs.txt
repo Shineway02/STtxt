@@ -286,3 +286,417 @@ select '0'gno,@t_noa noa,frame,detail,type,mech,dbo.getComma(weight,0)
 			 else '' end way
 		,datea dtt1,mount,worker man
 from @result;
+
+------------------------------------------------------------------------------------------------------
+z_modout_rs06:--z_modout_rs06
+
+declare @t_bdate nvarchar(100) 
+declare @t_edate nvarchar(100) 
+set @t_bdate = case when '#non' = [3] then ''  else [3] end
+set @t_edate = case when '#non' = [4] then char(255) else [4] end
+------------------------------------------------------------------------------------------------------
+IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		drop table #tmp
+	END
+create table #tmp (
+	a1 nvarchar(100),
+	a2 nvarchar(100),
+	a3 nvarchar(100),
+	a4 nvarchar(100),
+	a5 nvarchar(100),
+	a6 nvarchar(100),
+	a7 nvarchar(100),
+	a8 nvarchar(100),
+	a9 nvarchar(100),
+	a10 nvarchar(100),
+	seq float
+	
+)
+declare @i float =0
+
+while @i <19
+	begin
+		insert #tmp(seq)
+		select @i
+		set @i=@i+1
+	end
+declare @j float =1
+
+declare @mech nvarchar(100),@num nvarchar(100)
+--where datea between @t_bdate and @t_edate 
+DECLARE cursor_table CURSOR FOR 
+select b.namea,a.device from modeqs b left join modeq a on a.noa=b.noa	order by  b.namea
+OPEN cursor_table
+FETCH NEXT FROM cursor_table
+INTO @mech,@num
+WHILE @@FETCH_STATUS = 0
+BEGIN
+
+	--成型段
+	
+	declare @sum1 float=(
+		select sum(c.mount)
+		from  modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
+			and c.datea between @t_bdate and @t_edate  and b.machine = @mech)
+	exec('update #tmp set a'+@j+' ='''+@sum1+''' where seq=1')
+	--定徑段
+	declare @sum2 float=(
+		select sum(c.mount)
+		from  modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)!='f' and left(c.code,2)!='sg' and  left(c.code,2)!='sq')
+				and c.datea between @t_bdate and @t_edate
+				and b.machine =@mech
+				) 
+	exec('update #tmp set a'+@j+' ='''+@sum2+''' where seq=2')
+	declare @total float = @sum1+@sum2
+	exec('update #tmp set a'+@j+' ='''+@total+''' where seq=3')
+
+	declare @smount1 float=(
+		select sum(c.weight1)
+		from  modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)='f' or left(c.code1,2)='sg' or  left(c.code1,2)='sq' )
+				and d.datea between @t_bdate and @t_edate
+				and d.mech =@mech		
+		)
+	exec('update #tmp set a'+@j+' ='''+@smount1+''' where seq=4')
+	declare @smount2 float=(
+		select sum(c.weight1)
+		from  modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)!='f' and left(c.code1,2)!='sg' and  left(c.code1,2)!='sq') 
+				 and d.datea between @t_bdate and @t_edate	
+				 and d.mech =@mech
+		)
+	exec('update #tmp set a'+@j+' ='''+@smount2+''' where seq=5')			
+	declare @total2 float =@smount1 + @smount2
+	exec('update #tmp set a'+@j+' ='''+@total2+''' where seq=6')
+--	select @sum1,@sum2,@total,@smount1,@smount2,@total2
+
+----------------------------------------------------------------------------------------------------
+	--成型段
+	declare @bsum1 float=(
+		select sum(c.mount)
+		from modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
+			and c.datea < @t_bdate 	
+			and b.machine = @mech)
+		exec('update #tmp set a'+@j+' ='''+@bsum1+''' where seq=7')
+	--定徑段
+	declare @bsum2 float=(
+		select sum(c.mount)
+		from modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)!='f' and left(c.code,2)!='sg' and  left(c.code,2)!='sq')
+			and c.datea < @t_bdate 	
+			and b.machine = @mech) 
+	exec('update #tmp set a'+@j+' ='''+@bsum2+''' where seq=8')
+	declare @btotal float = @bsum1+@bsum2
+	exec('update #tmp set a'+@j+' ='''+@btotal+''' where seq=9')
+-------------------------------------------------------------------------------------------------
+	declare @bsmount1 float=(
+		select sum(c.weight1)
+		from modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)='f' or left(c.code1,2)='sg' or  left(c.code1,2)='sq' )
+				and d.datea between  @t_bdate and @t_edate and d.mech =@mech		
+		)
+	exec('update #tmp set a'+@j+' ='''+@bsmount1+''' where seq=10')
+	declare @bsmount2 float=(
+		select sum(c.weight1)
+		from modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)!='f' and left(c.code1,2)!='sg' and  left(c.code1,2)!='sq') 
+				 and d.datea <=  @t_bdate and d.mech =@mech	
+		)
+	exec('update #tmp set a'+@j+' ='''+@bsmount2+''' where seq=11')			
+	declare @btotal2 float =@bsmount1 + @bsmount2
+	exec('update #tmp set a'+@j+' ='''+@btotal2+''' where seq=12')	
+--	select @bsum1,@bsum2,@btotal,@bsmount1,@bsmount2,@btotal2
+	
+	declare @otime1 float,@addtime1 float,@otime2 float,@addtime2 float
+
+	set @otime1=(select count(isovertime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea between  @t_bdate and @t_edate
+		  and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@otime1+''' where seq=13')		  
+	set @addtime1=(select count(isovertime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea <=  @t_bdate 
+		  and a.station = @mech)	  
+	exec('update #tmp set a'+@j+' ='''+@addtime1+''' where seq=14')  
+		  
+	set @otime2 =(select sum(addtime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea between @t_bdate and @t_edate
+			and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@otime2+''' where seq=15') 
+	
+	set @addtime2=(select sum(addtime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea <=  @t_bdate
+			and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@addtime2+''' where seq=16') 		
+	exec('update #tmp set a'+@j+' ='''+@num+@mech+''' where seq=0') 	
+	set @j=@j+1
+  fetch next from cursor_table 
+  into @mech,@num
+end 
+
+CLOSE cursor_table
+DEALLOCATE cursor_table
+-- update #tmp set gno= seq
+ select seq gno,seq,case when seq = 0 then a1 else dbo.getComma(convert(float,a1),0) end a1
+		   ,case when seq = 0 then a2 else dbo.getComma(convert(float,a2),0) end a2
+		   ,case when seq = 0 then a3 else dbo.getComma(convert(float,a3),0) end a3
+		   ,case when seq = 0 then a4 else dbo.getComma(convert(float,a4),0) end a4
+		   ,case when seq=0 then '合計' else 
+		   dbo.getComma(convert(float,a1)+convert(float,a2)+convert(float,a3)+convert(float,a4),0) end a5
+		   ,case when seq = 0 then a4 else dbo.getComma(convert(float,a5),0) end a6
+		   ,case when seq = 0 then a5 else dbo.getComma(convert(float,a6),0) end a7
+		   ,case when seq=0 then '合計' else 
+		   dbo.getComma(convert(float,a5)+convert(float,a6),0) end a8
+		   ,case when seq = 0 then a7 else dbo.getComma(convert(float,a7),0) end a9
+		   ,case when seq = 0 then a8 else dbo.getComma(convert(float,a8),0) end a10
+		   ,case when seq = 0 then a9 else dbo.getComma(convert(float,a9),0) end a11
+		   ,case when seq = 0 then a10 else dbo.getComma(convert(float,a10),0) end a12
+ from #tmp 
+ drop table #tmp
+ ;
+ 
+----------------------------------------------------------------------------------------------------
+z_modout_rs07:--z_modout_rs07
+
+declare @t_bdate nvarchar(100) 
+declare @t_edate nvarchar(100) 
+set @t_bdate = case when '#non' = [3] then ''  else [3] end
+set @t_edate = case when '#non' = [4] then char(255) else [4] end
+---------------------------------------------------------------------------------------------------
+IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		drop table #tmp
+	END
+create table #tmp (
+	a1 nvarchar(100),
+	a2 nvarchar(100),
+	a3 nvarchar(100),
+	a4 nvarchar(100),
+	a5 nvarchar(100),
+	a6 nvarchar(100),
+	a7 nvarchar(100),
+	a8 nvarchar(100),
+	a9 nvarchar(100),
+	a10 nvarchar(100),
+	seq float
+	
+)
+declare @i float =0
+
+while @i <29
+	begin
+		insert #tmp(seq)
+		select @i
+		set @i=@i+1
+	end
+declare @j float =1
+
+declare @mech nvarchar(100),@num nvarchar(100)
+--where datea between @t_bdate and @t_edate 
+DECLARE cursor_table CURSOR FOR 
+select b.namea,a.device from modeqs b left join modeq a on a.noa=b.noa	order by  b.namea
+OPEN cursor_table
+FETCH NEXT FROM cursor_table
+INTO @mech,@num
+WHILE @@FETCH_STATUS = 0
+BEGIN
+
+	--成型段
+	
+	declare @sum1 float=(
+		select sum(c.mount)
+		from  modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
+			and c.datea between @t_bdate and @t_edate  and b.machine = @mech)
+--	exec('update #tmp set a'+@j+' ='''+@sum1+''' where seq=1')
+	--定徑段
+	declare @sum2 float=(
+		select sum(c.mount)
+		from  modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)!='f' and left(c.code,2)!='sg' and  left(c.code,2)!='sq')
+				and c.datea between @t_bdate and @t_edate
+				and b.machine =@mech
+				) 
+--	exec('update #tmp set a'+@j+' ='''+@sum2+''' where seq=2')
+	declare @total float = @sum1+@sum2
+--	exec('update #tmp set a'+@j+' ='''+@total+''' where seq=3')
+
+	declare @smount1 float=(
+		select sum(c.weight1)
+		from  modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)='f' or left(c.code1,2)='sg' or  left(c.code1,2)='sq' )
+				and d.datea between @t_bdate and @t_edate
+				and d.mech =@mech		
+		)
+--	exec('update #tmp set a'+@j+' ='''+@smount1+''' where seq=4')
+	declare @smount2 float=(
+		select sum(c.weight1)
+		from  modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)!='f' and left(c.code1,2)!='sg' and  left(c.code1,2)!='sq') 
+				 and d.datea between @t_bdate and @t_edate	
+				 and d.mech =@mech
+		)
+--	exec('update #tmp set a'+@j+' ='''+@smount2+''' where seq=5')			
+	declare @total2 float =@smount1 + @smount2
+	--exec('update #tmp set a'+@j+' ='''+@total2+''' where seq=6')
+--	select @sum1,@sum2,@total,@smount1,@smount2,@total2
+
+----------------------------------------------------------------------------------------------------
+	--成型段
+	declare @bsum1 float=(
+		select sum(c.mount)
+		from modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
+			and c.datea < @t_bdate 	
+			and b.machine = @mech)
+		exec('update #tmp set a'+@j+' ='''+@bsum1+''' where seq=7')
+	--定徑段
+	declare @bsum2 float=(
+		select sum(c.mount)
+		from modout b  left join modouts c on b.noa=c.noa
+		where (left(c.code,1)!='f' and left(c.code,2)!='sg' and  left(c.code,2)!='sq')
+			and c.datea < @t_bdate 	
+			and b.machine = @mech) 
+	exec('update #tmp set a'+@j+' ='''+@bsum2+''' where seq=8')
+	declare @btotal float = @bsum1+@bsum2
+	exec('update #tmp set a'+@j+' ='''+@btotal+''' where seq=9')
+-------------------------------------------------------------------------------------------------
+	declare @bsmount1 float=(
+		select sum(c.weight1)
+		from modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)='f' or left(c.code1,2)='sg' or  left(c.code1,2)='sq' )
+				and d.datea between  @t_bdate and @t_edate and d.mech =@mech		
+		)
+	exec('update #tmp set a'+@j+' ='''+@bsmount1+''' where seq=10')
+	declare @bsmount2 float=(
+		select sum(c.weight1)
+		from modfixs c   left join modfix d on c.noa =d.noa
+		where (left(c.code1,1)!='f' and left(c.code1,2)!='sg' and  left(c.code1,2)!='sq') 
+				 and d.datea <=  @t_bdate and d.mech =@mech	
+		)
+	exec('update #tmp set a'+@j+' ='''+@bsmount2+''' where seq=11')			
+	declare @btotal2 float =@bsmount1 + @bsmount2
+	exec('update #tmp set a'+@j+' ='''+@btotal2+''' where seq=12')	
+--	select @bsum1,@bsum2,@btotal,@bsmount1,@bsmount2,@btotal2
+	
+	declare @otime1 float,@addtime1 float,@otime2 float,@addtime2 float
+
+	set @otime1=(select count(isovertime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea between  @t_bdate and @t_edate
+		  and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@otime1+''' where seq=13')		  
+	set @addtime1=(select count(isovertime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea <=  @t_bdate 
+		  and a.station = @mech)	  
+	exec('update #tmp set a'+@j+' ='''+@addtime1+''' where seq=14')  
+		  
+	set @otime2 =(select sum(addtime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea between @t_bdate and @t_edate
+			and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@otime2+''' where seq=15') 
+	
+	set @addtime2=(select sum(addtime)
+	from view_cuws b left join view_cuw a on a.noa =b.noa
+	where isovertime=1 and a.datea <=  @t_bdate
+			and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@addtime2+''' where seq=16') 		
+		
+	
+	declare @faulttime float =(
+	select sum(b.faulttime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@faulttime+''' where seq=17') 
+	
+	declare @faulttime1 float =(
+	select sum(b.faulttime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea <  @t_bdate  and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@faulttime1+''' where seq=18') 
+	
+	declare @delaytime float =(
+		select sum(b.delaytime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@delaytime+''' where seq=19') 
+	
+	declare @delaytime1 float =(
+		select sum(b.delaytime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea <=  @t_bdate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@delaytime1+''' where seq=20') 
+	
+	declare @waittime float=(
+	select sum(b.waittime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@waittime+''' where seq=21') 
+	
+	declare @waittime1 float=(
+	select sum(b.waittime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea <= @t_bdate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@waittime1+''' where seq=22') 
+	
+	
+	declare @waitfedtime float=(
+	select sum(b.waitfedtime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@waitfedtime+''' where seq=23') 
+	
+	declare @waitfedtime1 float=(
+	select sum(b.waitfedtime)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@waitfedtime1+''' where seq=24') 
+	
+	declare @lacksss float=(
+	select sum(b.lacksss)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@lacksss+''' where seq=25') 
+	
+	declare @lacksss1 float=(
+	select sum(b.lacksss)
+	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
+	exec('update #tmp set a'+@j+' ='''+@lacksss1+''' where seq=26') 
+	
+	exec('update #tmp set a'+@j+' ='''+@num+@mech+''' where seq=6') 
+	set @j=@j+1
+  fetch next from cursor_table 
+  into @mech,@num
+end 
+
+CLOSE cursor_table
+DEALLOCATE cursor_table
+--delete #tmp where ISNULL(a1,'')=''
+-- update #tmp set gno= seq
+ select seq-6 gno,seq,case when seq = 6 then a1 else dbo.getComma(convert(float,a1),0) end a1
+		   ,case when seq = 6 then a2 else dbo.getComma(convert(float,a2),0) end a2
+		   ,case when seq = 6 then a3 else dbo.getComma(convert(float,a3),0) end a3
+		   ,case when seq = 6 then a4 else dbo.getComma(convert(float,a4),0) end a4
+		   ,case when seq = 6 then '合計' else 
+		   dbo.getComma(convert(float,a1)+convert(float,a2)+convert(float,a3)+convert(float,a4),0) end a5
+		   ,case when seq = 6 then a4 else dbo.getComma(convert(float,a5),0) end a6
+		   ,case when seq = 6 then a5 else dbo.getComma(convert(float,a6),0) end a7
+		   ,case when seq = 6 then '合計' else 
+		   dbo.getComma(convert(float,a5)+convert(float,a6),0) end a8
+		   ,case when seq = 6 then a7 else dbo.getComma(convert(float,a7),0) end a9
+		   ,case when seq = 6 then a8 else dbo.getComma(convert(float,a8),0) end a10
+		   ,case when seq = 6 then a9 else dbo.getComma(convert(float,a9),0) end a11
+		   ,case when seq = 6 then a10 else dbo.getComma(convert(float,a10),0) end a12
+ from #tmp 
+ where seq-6 >=0
+ drop table #tmp;

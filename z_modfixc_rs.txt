@@ -36,3 +36,138 @@ select gno,noa,code,mech,detail,frame,mount,
 			 else '' end way,bebottom,enbottom,datea1,datea2,worker
 from @result
 ;
+
+z_modfixc_rs02:--z_modfixc_rs02
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+
+set @t_bdate = case when '#non' = [2] then ''  else [2] end
+set @t_edate = case when '#non' = [3] then char(255) else [3] end
+
+declare @count float = (select count(distinct namea) from modeqs) 
+
+
+
+declare @date1 datetime 
+	set @date1= (select convert(datetime,replace(convert(nvarchar,(convert(float,left(@t_bdate ,3))+1911))+SUBSTRING(@t_bdate,4,20),'-',' ')))
+declare @date2 datetime = (select convert(datetime,replace(convert(nvarchar,(convert(float,left(@t_edate ,3))+1911))+SUBSTRING(@t_edate,4,20),'-',' ')))
+declare @datecount float =(select convert(float,DATEDIFF(day,@date1,@date2)))
+declare @j float =1, @k float =0
+
+
+IF OBJECT_ID('tempdb..#result')is not null
+	BEGIN
+		drop table #result
+	END
+	
+	
+create table #result (datea nvarchar(50),
+					  a1 nvarchar(max),
+					  a2 nvarchar(max),
+					  a3 nvarchar(max),
+					  a4 nvarchar(max),
+					  a5 nvarchar(max),
+					  a6 nvarchar(max),
+					  a7 nvarchar(max),
+					  a8 nvarchar(max),
+					  a9 nvarchar(max),
+					  a10 nvarchar(max),
+					  seq float)
+
+
+while (@k <= @datecount)
+	begin
+	--	select dateadd(day,@j,@date1)
+		exec('	declare  @day'+@j+' nvarchar(100)
+				set @day'+@j+' =
+				convert(nvarchar,year(dateadd(day,'+@k+','''+@date1+'''))-1911)
+				+''/''+
+				case when convert(nvarchar,month(dateadd(day,'+@k+','''+@date1+''')))
+				< 10 then ''0''+ convert(nvarchar,month(dateadd(day,'+@k+','''+@date1+''')))
+				else convert(nvarchar,month(dateadd(day,'+@k+','''+@date1+'''))) end
+				+''/''+
+				case when convert(nvarchar,day(dateadd(day,'+@k+','''+@date1+''')))
+				< 10 then ''0''+ convert(nvarchar,day(dateadd(day,'+@k+','''+@date1+''')))
+				else convert(nvarchar,day(dateadd(day,'+@k+','''+@date1+'''))) end
+				insert #result(datea,seq)
+				select @day'+@j+','+@j+'
+				
+				')
+		set @j=@j+1
+		set @k=@k+1
+		
+	end	
+
+
+
+   
+
+declare @tmp table( namea nvarchar(100),mech nvarchar(50),tgg nvarchar(50),seq float)
+insert @tmp
+select  a.device,b.namea,b.tgg,ROW_NUMBER() over(order by datea) 
+from modeqs b left join modeq a on a.noa=b.noa
+						
+declare @mech nvarchar(50),
+		@tgg nvarchar(50), @cmd nvarchar(50),@pre nvarchar(50)=''
+		,@bmech nvarchar(max),@datea nvarchar(max),@namea nvarchar(max)
+	
+
+insert #result(datea)
+select '000#000'
+if(@count > 0 )
+	begin				
+		DECLARE my_cursor CURSOR FOR 
+		select datea from #result 
+		OPEN my_cursor
+		FETCH NEXT FROM my_cursor 
+		INTO @datea
+		WHILE @@FETCH_STATUS = 0
+		BEGIN
+			declare @l float =1
+			set @bmech=@mech+@tgg
+			DECLARE cursor2 CURSOR FOR 
+			select mech,tgg,namea from @tmp order by mech
+			OPEN cursor2
+			FETCH NEXT FROM cursor2
+			INTO @mech,@tgg,@namea
+			WHILE @@FETCH_STATUS = 0
+			BEGIN	
+				
+				
+				
+				set @cmd=(select max(c.spec)+' '+convert(nvarchar,sum(b.mount))
+						 +' '+max(a.mech)
+						 +' '+max(b.worker)
+				from modfixcs b left join modfixc a on a.noa=b.noa
+							left join model c on b.noa=c.noa
+				where a.datea =@datea and a.mech=@mech)
+				
+				exec('update #result set a'+@l+' = '''+@cmd+ '''
+					  where datea='''+@datea+'''')
+				exec('update #result set a'+@l+' = '''+@namea+' '+@tgg+ '''
+					  where datea=''000#000''')
+			set @l =@l+1			
+			
+			fetch next from cursor2 
+			into @mech,@tgg,@namea
+			end 
+		
+		CLOSE cursor2
+		DEALLOCATE cursor2
+			
+			
+		fetch next from my_cursor 
+		into @datea
+		end 
+		
+		CLOSE my_cursor
+		DEALLOCATE my_cursor
+			
+					
+	end
+select '0' gno,case when datea = '000#000' then '日期/機台'
+					else datea end date
+,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10
+from #result
+order by datea
+Drop TABLE #result;
