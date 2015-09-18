@@ -67,19 +67,35 @@ INTO @nob
 WHILE @@FETCH_STATUS = 0
 BEGIN
    insert @result (noa,detail,type,weight,way,datea1,mount,mech)
-   select b.noa+b.code1,b.detail1,'入庫維修',b.weight1,b.way1,a.datea,b.mount1,a.mech
+   select b.noa+b.code1,b.detail1,'入庫維修',b.weight1,
+   case when b.way1 =1 then'傳統車床(砂紙研磨)'
+			 when b.way1 =2 then'傳統車床(砂輪機研磨)'
+			 when b.way1 =3 then'CNC 車修'
+			 when b.way1 =4 then'不須車修或研磨'
+			 else '' end way ,a.datea,b.mount1,a.mech
    from modfixs b left join modfix a on a.noa=b.noa
    where @nob=b.nob
   
-   insert @result(noa,detail,type,bebottom,enbottom,way,datea1,datea2,mount,mech,worker)
-   select b.noa+b.code,b.detail,'維修',b.bebottom,b.enbottom,b.way,b.datea1,b.datea2,
-		b.mount,a.mech,b.worker
+   insert @result(noa,detail,type,bebottom,enbottom,
+   way,datea1,datea2,mount,mech,worker,worktime)
+   select b.noa+b.code,b.detail,'維修',b.bebottom,b.enbottom,
+   case when b.way =1 then'傳統車床(砂紙研磨)'
+			 when b.way =2 then'傳統車床(砂輪機研磨)'
+			 when b.way =3 then'CNC 車修'
+			 when b.way =4 then'不須車修或研磨'
+			 else '' end way,
+  		replace(b.datea1,'-',' '),replace(b.datea2,'-',' '),
+		b.mount,a.mech,b.worker,
+		  convert(float,DATEDIFF(MINUTE,
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea1,3))+1911))+SUBSTRING(b.datea1,4,20),'-',' ')),
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea2,3))+1911))+SUBSTRING(b.datea2,4,20),'-',' '))
+		  ))/60
    from modfixcs  b left join modfixc a on a.noa=b.noa
    where @nob=b.nob
   
-   insert @result(noa,detail,type,enbottom,datea1,worktime,mount,mech)
+   insert @result(noa,detail,type,enbottom,datea1,mount,mech)
    select b.noa+b.code,b.detail,'領用出庫',(select enbottom from modfixcs c where b.nob=c.nob)
-		,a.datea,0,a.mount,a.machine
+		,a.datea,a.mount,a.machine
 	from modouts b left join modout a on a.noa=b.noa
 	where @nob=b.nob
   
@@ -96,3 +112,177 @@ select '0' gno ,noa,detail,type,weight,bebottom,enbottom
 	,@b_mount bmount,@b_usetype buse,@b_frame bframe
 from @result;	
 
+z_modout_rs03:--z_modout_rs03
+SET QUOTED_IDENTIFIER OFF
+declare @t_nob nvarchar(30)
+set @t_nob= case when '#non' = [2] then '' else [2] end
+---------------------------------------------------------------------------------------------------
+--declare @b_nob nvarchar(30)=(select b.productno from model a left join models b on a.noa=b.noa where  b.productno like @t_nob+'%')
+declare @b_tgg nvarchar(30)=(select max(a.tgg) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
+declare @b_datea nvarchar(30)=(select max(a.datea) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
+declare @b_mount nvarchar(30)=(select max(a.mount) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
+declare @b_usetype nvarchar(30)=(select max(a.usetype) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
+declare @b_frame nvarchar(30)=(select max(a.frame) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
+
+declare @result table(
+	gno nvarchar(1),
+	nob nvarchar(30),
+	detail nvarchar(100),
+	type nvarchar(30),
+	weight float,
+	bebottom float,
+	enbottom float,
+	way nvarchar(50),
+	datea1 nvarchar(20),
+	datea2 nvarchar(20),
+	worktime float,
+	mount float,
+	mech nvarchar(30),
+	worker nvarchar(30)
+
+)
+
+declare @nob nvarchar(30)
+
+
+DECLARE cursor_table CURSOR FOR 
+select nob from modfixs b left join modfix a on a.noa=b.noa where b.nob like @t_nob+'%'
+OPEN cursor_table
+FETCH NEXT FROM cursor_table
+INTO @nob
+WHILE @@FETCH_STATUS = 0
+BEGIN
+   insert @result (nob,detail,type,weight,way,datea1,mount,mech)
+   select b.nob,b.detail1,'入庫維修',b.weight1,
+   case when b.way1 =1 then'傳統車床(砂紙研磨)'
+			 when b.way1 =2 then'傳統車床(砂輪機研磨)'
+			 when b.way1 =3 then'CNC 車修'
+			 when b.way1 =4 then'不須車修或研磨'
+			 else '' end way ,a.datea,b.mount1,a.mech
+   from modfixs b left join modfix a on a.noa=b.noa
+   where @nob=b.nob
+  
+   insert @result(nob,detail,type,bebottom,enbottom,
+   way,datea1,datea2,mount,mech,worker,worktime)
+   select b.nob,b.detail,'維修',b.bebottom,b.enbottom,
+   case when b.way =1 then'傳統車床(砂紙研磨)'
+			 when b.way =2 then'傳統車床(砂輪機研磨)'
+			 when b.way =3 then'CNC 車修'
+			 when b.way =4 then'不須車修或研磨'
+			 else '' end way,
+  		replace(b.datea1,'-',' '),replace(b.datea2,'-',' '),
+		b.mount,a.mech,b.worker,
+		  convert(float,DATEDIFF(MINUTE,
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea1,3))+1911))+SUBSTRING(b.datea1,4,20),'-',' ')),
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea2,3))+1911))+SUBSTRING(b.datea2,4,20),'-',' '))
+		  ))/60
+   from modfixcs  b left join modfixc a on a.noa=b.noa
+   where @nob=b.nob
+  
+   insert @result(nob,detail,type,enbottom,datea1,mount,mech)
+   select b.nob,b.detail,'領用出庫',(select enbottom from modfixcs c where b.nob=c.nob)
+		,a.datea,a.mount,a.machine
+	from modouts b left join modout a on a.noa=b.noa
+	where @nob=b.nob
+  
+  fetch next from cursor_table 
+  into @nob
+end 
+
+CLOSE cursor_table
+DEALLOCATE cursor_table
+
+select '0' gno ,nob,detail,type,weight,bebottom,enbottom
+	,way,datea1,datea2,worktime,mount,mech,worker
+	,@t_nob bnoa,@b_tgg btgg,@b_datea bdatea
+	,@b_mount bmount,@b_usetype buse,@b_frame bframe
+from @result;
+
+z_modout_rs04:--z_modout_rs04
+
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+declare @t_worker nvarchar(100)
+set @t_bdate = case when '#non' = [3] then ''  else [3] end
+set @t_edate = case when '#non' = [4] then char(255) else [4] end
+set @t_worker = case when '#non' = [5] then '' else [5] end
+declare @result table(
+	worker nvarchar(100),
+	noa nvarchar(30),
+	detail nvarchar(50),
+	type nvarchar(20),
+	mech nvarchar(30),
+	weight float,
+	betn float,
+	ebtn float,
+	way float,
+	datea1 nvarchar(20),
+	datea2 nvarchar(20),
+	datea3 nvarchar(20),
+	mount float,
+	datea4 nvarchar(20)
+)
+
+insert @result
+select MAX(b.worker) worker,b.noa+b.code noa,max(b.detail) detail,'維修',max(a.mech) mech,sum(d.weight1) weight,max(b.bebottom) betn
+			,max(b.enbottom)ebtn,max(b.way) way,max(c.datea) datea1,max(b.datea1) datea2,max(b.datea2) datea3,sum(b.mount) mount,
+			max(a.datea) datea4
+from modfixcs b left join modfixc a on a.noa=b.noa
+				left join modfix c on a.noa=c.noa
+				left join modfixs d on b.nob=d.nob
+where a.datea between @t_bdate and @t_edate	 and
+	  (b.worker =@t_worker or isnull(@t_worker,'')='')
+group by b.noa+b.code
+
+select '0' gno ,worker man,noa,detail,type,mech,weight,betn,ebtn,
+		case when way =1 then'傳統車床(砂紙研磨)'
+			 when way =2 then'傳統車床(砂輪機研磨)'
+			 when way =3 then'CNC 車修'
+			 when way =4 then'不須車修或研磨'
+			 else '' end way
+		,datea1 dtt1,
+		datea2+case when isnull(datea2,'')='' then '' else '~' end
+		+datea3 dtt2, mount,datea4 dtt4 
+from @result;
+
+z_modout_rs05:--z_modout_rs05
+
+declare @t_noa nvarchar(20)
+declare @t_frame nvarchar(100)
+set @t_noa= case when '#non' = [1] then '' else [1] end
+set @t_frame = case when '#non' = [6] then '' else [6] end
+-------------------------------------------------------------------------------------------------
+declare @result table(
+	noa nvarchar(50),
+	frame float,
+	nob nvarchar(30),
+	detail nvarchar(50),
+	type nvarchar(50),
+	mech nvarchar(50),
+	weight float,
+	betm float,
+	ebtm float,
+	way float,
+	datea nvarchar(20),
+	mount float,
+	worker nvarchar(30)
+)
+insert @result
+select max(a.noa),max(b.frame1),b.noa+b.code1,max(b.detail1),'入庫維修',max(a.mech),sum(b.weight1),sum(c.bebottom),sum(c.enbottom)
+		,max(b.way1),max(a.datea),sum(b.mount1),max(c.worker)
+from modfixs b left join modfix a on a.noa=b.noa
+			   left join modfixcs c on b.nob=c.nob
+where isnull(c.nob,'')='' and a.noa = @t_noa
+	  and(frame=@t_frame or ISNULL(@t_frame,'')='') 
+group by b.noa+b.code1
+
+
+select '0'gno,@t_noa noa,frame,detail,type,mech,dbo.getComma(weight,0)
+	   ,betm,ebtm,weight,noa nob
+	   ,case when way =1 then'傳統車床(砂紙研磨)'
+			 when way =2 then'傳統車床(砂輪機研磨)'
+			 when way =3 then'CNC 車修'
+			 when way =4 then'不須車修或研磨'
+			 else '' end way
+		,datea dtt1,mount,worker man
+from @result;
