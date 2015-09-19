@@ -313,7 +313,7 @@ select
 	gno,noa,cust,amount,aweight,datea,row_number()over(partition by datea order by datea desc,gno) idno,
 	product,pno,csize,spec,qhref,
 	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice
-from @tmp order by datea desc,idno;
+from @tmp order by datea,idno;
 ----------********************************************************************----------
 z_vccst5:--z_vccst5
 	SET QUOTED_IDENTIFIER OFF
