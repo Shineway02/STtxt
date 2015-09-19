@@ -33,7 +33,7 @@ declare @result table(
 
 insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+	   b.productno,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
 from model a left join models b on a.noa=b.noa
 where @t_noa=a.noa
 
@@ -46,7 +46,7 @@ select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
 	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
 	   
 from @result
-order by noa,nob,gno
+order by noa,nob
 ;
 
 
@@ -85,7 +85,7 @@ declare @result table(
 
 insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+	   b.productno,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
 from model a left join models b on a.noa=b.noa
 where a.datea between @t_bdate and @t_edate and
 	  (len(ISNULL(@t_noa,''))=0 or @t_noa=a.noa) and
@@ -138,7 +138,7 @@ declare @result table(
 
 insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo,b.datea
+	   b.productno,b.model,b.memo,b.bottom,b.mount,b.memo,b.datea
 from model a left join models b on a.noa=b.noa
 where  @t_noa=a.noa
 
@@ -308,7 +308,7 @@ declare @result table(
 
 insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+	   b.productno,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
 from model a left join models b on a.noa=b.noa
 where a.frame=@t_frame
 
