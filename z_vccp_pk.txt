@@ -40,7 +40,9 @@ z_vccp_pk01:--z_vccp_pk01
 		price decimal(20,4),
 		moneys float,
 		[class] nvarchar(max),
-		custpro nvarchar(max)
+		custpro nvarchar(max),
+		tranmoney float,
+		tranmoney2 float
 	)
 	insert into @tmp(gno,pno,accy,noa,noq,product)
 	select '1','0',a.accy,a.noa,'','訂單編號：'+ b.custorde
@@ -52,11 +54,11 @@ z_vccp_pk01:--z_vccp_pk01
 	insert into @tmp(gno,pno,accy,noa,noq,productno,product
 		,dime,width,lengthb,radius,size
 		,mount,item,[weight],unit,price,moneys,[class]
-		,custpro)
+		,custpro,tranmoney,tranmoney2)
 	select '1','1',b.accy,b.noa,b.noq,b.productno,b.product
 		,b.dime,b.width,b.lengthb,b.radius,b.size
 		,b.mount,b.item,b.[weight],b.unit,b.price,b.total,b.[class]
-		,c.custpro
+		,c.custpro,b.tranmoney,b.tranmoney2
 	from view_vcc a
 	left join view_vccs b on a.accy=b.accy and a.noa=b.noa
 	left join view_ordes c on b.ordeno=c.noa and b.no2=c.no2
@@ -127,14 +129,17 @@ z_vccp_pk01:--z_vccp_pk01
 	+ isnull([size],'') 
 	+ case when len(isnull([product],''))+len(isnull([class],'')) + len(isnull([size],''))>0 then '&nbsp'+char(59) else '' end 
 	+ isnull([custpro],'') b01
-	,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
-	,case when [mount]!=0 then item  else '' end b04
+	--,case when [mount]!=0 then dbo.getComma([mount],-1) else '' end b03
+	--,case when [mount]!=0 then item  else '' end b04
+	,case when isnull(tranmoney,0)!=0 then dbo.getComma([tranmoney],-1) else '' end b03
+	,case when isnull(tranmoney,0)!=0 then item  else '' end b04
 	--unit=KG or M  就顯示重量, 不然就顯示數量 
-	,case when (unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and [weight]!=0 then dbo.getComma([weight],-1) when not(unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and isnull([mount],0)!=0 then dbo.getComma([mount],-1) else '' end b05
-	,case when (unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and isnull([weight],0)=0 then '' when not(unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and isnull([mount],0)=0 then '' else unit end b06
+	--,case when (unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and [weight]!=0 then dbo.getComma([weight],-1) when not(unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and isnull([mount],0)!=0 then dbo.getComma([mount],-1) else '' end b05
+	--,case when (unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and isnull([weight],0)=0 then '' when not(unit='KG' or unit='公斤' or unit='M' or unit='㎡' or unit='M²') and isnull([mount],0)=0 then '' else unit end b06
 	--,case when len(@t_isweight)>0 and [weight]!=0 and unit='KG' then dbo.getComma([weight],-1) else '' end b05
 	--,case when len(@t_isweight)>0 and [weight]!=0 and unit='KG' then unit  else '' end b06
-	
+	,case when isnull(tranmoney2,0)!=0 then dbo.getComma([tranmoney2],-1) else '' end b05
+	,case when isnull(tranmoney2,0)!=0 then unit else '' end b06
 	
 	,case when len(@t_isprice)>0 and [price]!=0 then dbo.getComma(case when floata=0 then [price] else ROUND(floata*price,4) end,-1) else '' end b07
 	,case when len(@t_isprice)>0 and [moneys]!=0 then dbo.getComma([moneys],0) else '' end b08
