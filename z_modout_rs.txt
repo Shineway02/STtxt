@@ -700,3 +700,56 @@ DEALLOCATE cursor_table
  from #tmp 
  where seq-6 >=0
  drop table #tmp;
+ 
+z_modout_rs08:--z_modout_rs08
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_noa nvarchar(30)
+	set @t_noa= case when '#non' = [1] then '' else [1] end
+------------------------------------------------------------------------------------------------
+
+declare @tmp1 table(
+	mech1 nvarchar(50),
+	detail nvarchar(100),
+	noa nvarchar(30),
+	frame nvarchar(30),
+	mount float,
+	weight float,
+	mech2 nvarchar(50),
+	mode nvarchar(30),
+	memo nvarchar(max),
+	seq float
+)
+insert @tmp1(mech1,detail,noa,frame,mount,weight,mech2,memo,seq)
+select d.device,b.detail1,b.noa,b.frame1,b.mount1,b.weight1,c.namea,e.memo,ROW_NUMBER() over(order by c.namea)
+from modfix a left join modfixs b on a.noa = b.noa
+			  left join modeqs c on a.mech = namea
+			  left join modeq d on c.noa=d.noa
+			  left join modouts e on b.nob=e.nob
+where (left(b.code1,1)='F' or left(b.code1,2)='sg' or left(b.code1,2)='sq')
+	  and a.noa=@t_noa
+--update @result
+declare @tmp2 table(
+	mech1 nvarchar(50),
+	detail nvarchar(100),
+	noa nvarchar(30),
+	frame nvarchar(30),
+	mount float,
+	weight float,
+	mech2 nvarchar(50),
+	mode nvarchar(30),
+	memo nvarchar(max),
+	seq float
+)
+insert @tmp2(mech1,detail,noa,frame,mount,weight,mech2,seq)
+select d.device,b.detail1,b.noa,b.frame1,b.mount1,b.weight1,c.namea,ROW_NUMBER()over(order by c.namea)
+from modfix a left join modfixs b on a.noa = b.noa
+			  left join modeqs c on a.mech = namea
+			  left join modeq d on c.noa=d.noa
+			  left join modouts e on b.nob=e.nob
+where (left(b.code1,1)!='F' and left(b.code1,2)!='sg' and left(b.code1,2)!='sq')
+		and a.noa=@t_noa
+select '0' gno, a.mech1 mech1,a.detail+' '+b.detail detail
+	,a.noa noa,a.frame frm1,a.mount mount1,a.weight weight1
+	,b.frame frm2,b.mount mount2,b.weight weight2,a.mech2 mech2,a.mode mode,a.memo memo
+from @tmp1 a left join @tmp2 b on a.seq=b.seq			  
+;		 

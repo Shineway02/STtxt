@@ -34,6 +34,8 @@ where(a.datea between @t_bdate and @t_edate)
 
 create table #result(
 	gno  nvarchar(1),
+	rno int,
+	rec int,
 	device nvarchar(50),
 	day1 nvarchar(max),
 	day2 nvarchar(max),
@@ -46,6 +48,7 @@ declare @weekday int
 declare @bdate nvarchar(10)
 declare @edate nvarchar(10)
 declare @date nvarchar(10)
+declare @rno int = 0
 
 set @t_bdate = REPLACE(dbo.ChineseEraName2AD(@t_bdate),'-','/')
 set @t_edate = REPLACE(dbo.ChineseEraName2AD(@t_edate),'-','/')
@@ -57,35 +60,29 @@ begin
 	set @bdate = CONVERT(char, DATEADD(DAY, 1-@weekday, @bdate), 111)
 	set @edate = CONVERT(char, DATEADD(DAY, 4, @bdate), 111)
 	
-	declare @i int = 0
-	declare @pagestr nvarchar(30) = '第一聯：設備聯,第二聯：生計聯,第三聯：製造聯'	
-	while(@i < 3) --顯示三聯
+	set @rno = @rno + 1
+	declare @j int = 0
+		
+	set @hcmd = 'insert into #result select '+"'"+'0'+"',"+"'"+CAST(@rno as nvarchar(5))+"',1,"+"'"+"'"+', '
+	set @scmd = 'select DISTINCT '+"'"+'1'+"',"+"'"+CAST(@rno as nvarchar(5))+"',1,"+'device,'
+		
+	while(@j < 5) --放置星期一~五資料
 	begin
-		declare @j int = 0
-		
-		set @hcmd = 'insert into #result select '+"'"+'0'+"',"+"'"+"'"+', '
-		set @scmd = 'select DISTINCT '+"'"+'1'+"',"+'device,'
-		
-		while(@j < 5) --放置星期一~五資料
-		begin
-			set @date = dbo.AD2ChineseEraName(CONVERT(char, DATEADD(DAY, @j, @bdate), 111))
-			set @hcmd = @hcmd + "'"+@date+"',"
-			set @scmd = @scmd + '(select memo from #tmp a where a.device=b.device and a.datea = '+"'"+@date+"'"+') as '+"'"+@date+"'"+','
+		set @date = dbo.AD2ChineseEraName(CONVERT(char, DATEADD(DAY, @j, @bdate), 111))
+		set @hcmd = @hcmd + "'"+@date+"',"
+		set @scmd = @scmd + '(select memo from #tmp a where a.device=b.device and a.datea = '+"'"+@date+"'"+') as '+"'"+@date+"'"+','
 			
-			set @j = @j + 1
-		end
-	
-		set @hcmd = LEFT(@hcmd ,LEN(@hcmd)-1)
-		execute sp_executesql @hcmd
-		
-		set @scmd = 'insert into #result ' + LEFT(@scmd ,LEN(@scmd)-1) + ' from #tmp b '
-		execute sp_executesql @scmd
-		
-		set @pcmd = 'insert into #result(gno,device) select '+"'"+'2'+"'"+','+"'"+dbo.split(@pagestr,',',@i)+"'"
-		execute sp_executesql @pcmd
-		
-		set @i = @i + 1
+		set @j = @j + 1
 	end
+	
+	set @hcmd = LEFT(@hcmd ,LEN(@hcmd)-1)
+	execute sp_executesql @hcmd
+		
+	set @scmd = 'insert into #result ' + LEFT(@scmd ,LEN(@scmd)-1) + ' from #tmp b '
+	execute sp_executesql @scmd
+	
+	set @pcmd = 'insert into #result(gno,rno,rec) select '+"'"+'2'+"',"+"'"+CAST(@rno as nvarchar(5))+"',1"--+','--+"'"+dbo.split(@pagestr,',',@i)+"'"
+	execute sp_executesql @pcmd
 	
 	set @bdate = CONVERT(char, DATEADD(DAY, 7, @bdate), 111)
 end
@@ -97,7 +94,25 @@ update #result set day3 = '--' where day3 is null
 update #result set day4 = '--' where day4 is null
 update #result set day5 = '--' where day5 is null
 
-select * from #result
+delete #result where gno = 1 and day1='--' and day2='--' and day3='--' and day4='--' and day5='--'
+
+--產生三聯單
+declare @i int = 1
+declare @pagestr nvarchar(30) = '第一聯：設備聯,第二聯：生計聯,第三聯：製造聯'
+while(@i < 3)
+begin
+	insert into #result
+	select gno,rno,@i+1,device,day1,day2,day3,day4,day5
+	from #result where rec = @i
+	
+	set @i = @i + 1
+end
+update #result set device = case when rec = 1 then dbo.split(@pagestr,',',0) 
+								 when rec = 2 then dbo.split(@pagestr,',',1)
+								 when rec = 3 then dbo.split(@pagestr,',',2) end where gno = '2'	
+
+
+select * from #result order by rno,rec,gno
 
 drop table #tmp
 drop table #result;
