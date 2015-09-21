@@ -91,7 +91,9 @@ z_umm_pk06:--z_umm_pk06  客戶請款單(明細) A5橫印  日期   ref.z_umm_pk
 		mount float,
 		price float,
 		moneys float,
-		memo nvarchar(max)
+		memo nvarchar(max),
+		tranmoney float,
+		tranmoney2 float
 	)
 	
 	declare cursor_table cursor for
@@ -124,13 +126,14 @@ z_umm_pk06:--z_umm_pk06  客戶請款單(明細) A5橫印  日期   ref.z_umm_pk
 			end
 			--出貨明細
 			insert into @result(gno,pno,noq,custno
-				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys,tranmoney,tranmoney2)
 			select '2','1',b.noq,@custno
 			,case when a.typea='1' then '出' else '退' end
 			,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 			,b.item,b.mount
 			,b.price
 			,b.total
+			,b.tranmoney,b.tranmoney2
 			from view_vcc a
 			left join view_vccs b on a.noa=b.noa
 			where a.noa=@noa
@@ -138,13 +141,14 @@ z_umm_pk06:--z_umm_pk06  客戶請款單(明細) A5橫印  日期   ref.z_umm_pk
 			order by b.noq
 			
 			insert into @result(gno,pno,noq,custno
-				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys,tranmoney,tranmoney2)
 			select '4','1',b.noq,@custno
 			,case when a.typea='1' then '出' else '退' end
 			,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 			,b.item,b.mount
 			,b.price
 			,b.total
+			,b.tranmoney,b.tranmoney2
 			from view_vcc a
 			left join view_vccs b on a.noa=b.noa
 			where a.noa=@noa
@@ -228,12 +232,13 @@ z_umm_pk06:--z_umm_pk06  客戶請款單(明細) A5橫印  日期   ref.z_umm_pk
 	,a.tdate dd
 	,a.ttype tt
 	,a.unit uu
-	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
+	,case when isnull(a.tranmoney,0)!=0 then dbo.getComma(a.tranmoney,-1) else '' end
+		+case when isnull(a.tranmoney,0)!=0 then a.item else '' end a1
 	--計價單位 PC 都改為 KG
 	--unit=KG OR M  就顯示重量, 不然就顯示數量 
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'
-		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
-		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)=0 then '' else a.unit end
+		+case when isnull(a.tranmoney2,0)!=0 then dbo.getComma(a.tranmoney2,-1) else '' end
+		+case when isnull(a.tranmoney2,0)!=0 then a.unit else '' end
 		+'</a>'a2
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(@t_isweight)=0 then '' else '重量' end +'</a>'ww
 	--,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG'  then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
@@ -537,7 +542,9 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 		mount float,
 		price float,
 		moneys float,
-		memo nvarchar(max)
+		memo nvarchar(max),
+		tranmoney float,
+		tranmoney2 float
 	)
 	
 	declare cursor_table cursor for
@@ -570,13 +577,14 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 			end
 			--出貨明細
 			insert into @result(gno,pno,noq,custno
-				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys,tranmoney,tranmoney2)
 			select '2','1',b.noq,@custno
 			,case when a.typea='1' then '出' else '退' end
 			,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 			,b.item,b.mount
 			,b.price
 			,b.total
+			,b.tranmoney,b.tranmoney2
 			from view_vcc a
 			left join view_vccs b on a.noa=b.noa
 			where a.noa=@noa
@@ -584,13 +592,14 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 			order by b.noq
 			
 			insert into @result(gno,pno,noq,custno
-				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+				,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys,tranmoney,tranmoney2)
 			select '4','1',b.noq,@custno
 			,case when a.typea='1' then '出' else '退' end
 			,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 			,b.item,b.mount
 			,b.price
 			,b.total
+			,b.tranmoney,b.tranmoney2
 			from view_vcc a
 			left join view_vccs b on a.noa=b.noa
 			where a.noa=@noa
@@ -674,12 +683,13 @@ z_umm_pk04:--z_umm_pk04  客戶請款單(明細)  日期
 	,a.tdate dd
 	,a.ttype tt
 	,a.unit uu
-	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
+	,case when isnull(a.tranmoney,0)!=0 then dbo.getComma(a.tranmoney,-1) else '' end
+		+case when isnull(a.tranmoney,0)!=0 then a.item else '' end a1
 	--計價單位 PC 都改為 KG
 	--unit=KG OR M  就顯示重量, 不然就顯示數量 
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'
-		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
-		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)=0 then '' else a.unit end
+		+case when isnull(a.tranmoney2,0)!=0 then dbo.getComma(a.tranmoney2,-1) else '' end
+		+case when isnull(a.tranmoney2,0)!=0 then a.unit else '' end
 		+'</a>'a2
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(@t_isweight)=0 then '' else '重量' end +'</a>'ww
 	--,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG'  then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
@@ -854,7 +864,9 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 		mount float,
 		price float,
 		moneys float,
-		memo nvarchar(max)
+		memo nvarchar(max),
+		tranmoney float,
+		tranmoney2 float
 	)
 	
 	declare cursor_table cursor for
@@ -888,13 +900,14 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				end
 				--出貨明細
 				insert into @result(gno,pno,noq,custno
-					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys,tranmoney,tranmoney2)
 				select '2','1',b.noq,@custno
 				,case when a.typea='1' then '出' else '退' end
 				,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 				,b.item,b.mount
 				,b.price
 				,b.total
+				,b.tranmoney,b.tranmoney2
 				from view_vcc a
 				left join view_vccs b on a.noa=b.noa
 				where a.noa=@noa
@@ -902,13 +915,14 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 				order by b.noq
 				
 				insert into @result(gno,pno,noq,custno
-					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys)
+					,typea,datea,vccno,productno,product,unit,[weight],item,mount,price,moneys,tranmoney,tranmoney2)
 				select '4','1',b.noq,@custno
 				,case when a.typea='1' then '出' else '退' end
 				,a.datea,a.noa,b.productno,isnull(b.product,'')+case when len(isnull(b.product,''))>0 then ' ' else '' end+isnull(b.size,''),b.unit,b.weight
 				,b.item,b.mount
 				,b.price
 				,b.total
+				,b.tranmoney,b.tranmoney2
 				from view_vcc a
 				left join view_vccs b on a.noa=b.noa
 				where a.noa=@noa
@@ -1010,12 +1024,15 @@ z_umm_pk03:--z_umm_pk03  客戶請款單(明細)   月結
 	,a.tdate dd
 	,a.ttype tt
 	,a.unit uu
-	,case when a.mount=0 then '' else cast(a.mount as nvarchar(50))+isnull(a.item,'') end a1
+	,case when isnull(a.tranmoney,0)!=0 then dbo.getComma(a.tranmoney,-1) else '' end
+		+case when isnull(a.tranmoney,0)!=0 then a.item else '' end a1
 	--計價單位 PC 都改為 KG
 	--unit=KG OR M  就顯示重量, 不然就顯示數量 
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'
-		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
-		+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)=0 then '' else a.unit end
+		+case when isnull(a.tranmoney2,0)!=0 then dbo.getComma(a.tranmoney2,-1) else '' end
+		+case when isnull(a.tranmoney2,0)!=0 then a.unit else '' end
+		--+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or a.unit='㎡' or a.unit='M²') and a.[weight]!=0 then dbo.getComma(a.[weight],-1) when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)!=0 then dbo.getComma(a.[mount],-1) else '' end
+		--+case when (a.unit='KG' or a.unit='公斤' or a.unit='M' or a.unit='㎡' or a.unit='M²') and isnull(a.[weight],0)=0 then '' when not(a.unit='KG' or a.unit='公斤' or a.unit='M' or unit='㎡' or unit='M²') and isnull(a.[mount],0)=0 then '' else a.unit end
 		+'</a>'a2
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(@t_isweight)=0 then '' else '重量' end+'</a>' ww
 	--,case when a.[weight]=0 or len(@t_isweight)=0 or a.unit!='KG' then '' else cast(a.[weight] as nvarchar(50))+isnull(a.unit,'') end a2
