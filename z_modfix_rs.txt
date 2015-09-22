@@ -3,6 +3,8 @@ z_modfix_rs01:--z_modfix_rs01
 	declare @t_noa nvarchar(30)
 	set @t_noa= case when '#non' = [1] then '' else [1] end
 ------------------------------------------------------------------------------------------------
+declare @t_mech nvarchar(100) =(select max(a.mech) from modfix a left join modfixs b on a.noa=b.noa where a.noa=@t_noa )
+declare @t_datea nvarchar(100) =(select max(a.datea) from modfix a left join modfixs b on a.noa=b.noa where a.noa=@t_noa )
 
 declare @tmp table(
 	gno nvarchar(1),
@@ -81,6 +83,6 @@ select a.gno,a.code,a.detail,a.frame,a.mount,
 			 when b.way =2 then'傳統車床(砂輪機研磨)'
 			 when b.way =3 then'CNC 車修'
 			 when b.way =4 then'不須車修或研磨'	end bway,dbo.getComma(b.weight,0) bweight
-			,a.noa,a.datea,a.mech
+			,@t_noa noa,@t_datea datea,@t_mech mech
 from @tmp1 a left join @tmp2 b on a.seq=b.seq
 ;
