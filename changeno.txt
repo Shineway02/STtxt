@@ -4,6 +4,7 @@ declare @old_noa nvarchar(MAX) = [1]
 declare @new_noa nvarchar(MAX) = [2]
 declare @tablea nvarchar(MAX)
 declare @column nvarchar(MAX)
+declare @mess nvarchar(MAX)='success'
 
 if(@old_noa!='' and @new_noa!='')
 begin
@@ -25,7 +26,14 @@ begin
 		end 
 		close cursor_table 
 		deallocate cursor_table 
+	END TRY
+	BEGIN CATCH
+		set @mess='failure'
+		close cursor_table 
+		deallocate cursor_table
+	END CATCH
 	
+	BEGIN TRY
 		--客戶主檔
 		update cust set noa=@new_noa where noa=@old_noa
 		
@@ -34,11 +42,17 @@ begin
 		
 		--帳務設定
 		update custm set noa=@new_noa where noa=@old_noa
+		update custms set noa=@new_noa where noa=@old_noa
 		
 		--聯絡人
 		update conn set noa=@new_noa where noa=@old_noa
+	END TRY	
+	BEGIN CATCH
+		set @mess='failure'
+	END CATCH
 		
 		--會計科目
+	BEGIN TRY
 		declare cursor_table cursor for 
 		SELECT TABLE_NAME,COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
 		WHERE (COLUMN_NAME like 'acc1' or COLUMN_NAME like 'uacc%' or COLUMN_NAME like '%accc5%') 
@@ -60,19 +74,19 @@ begin
 		close cursor_table 
 		deallocate cursor_table 
 		
-		select 'success' mess
-		
 	END TRY
 	BEGIN CATCH
-		select 'failure' mess
+		set @mess='failure'
 		close cursor_table 
 		deallocate cursor_table
 	END CATCH
 end
 else 
 begin
-	select 'failure' mess
+	set @mess='failure'
 end
+
+select @mess mess
 ;
 ------------------------------------------------------------------------------------------------------------------------------------
 uccno_change:--uccno_change
