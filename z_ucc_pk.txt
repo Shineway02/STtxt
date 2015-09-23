@@ -352,14 +352,14 @@ z_ucc_pk01:--z_ucc_pk01
 	declare @t_style nvarchar(max) = case when '#non'=[7] then '' else [7] end
 	declare @t_waste nvarchar(max) = case when '#non'=[8] then '' else [8] end
 	
-	declare @t_bradius float = case when '#non'=[9] then 0 else cast([9] as float) end
-	declare @t_eradius float = case when '#non'=[10] then 9999999 else cast([10] as float) end
-	declare @t_bdime float = case when '#non'=[11] then 0 else cast([11] as float) end
-	declare @t_edime float = case when '#non'=[12] then 9999999 else cast([12] as float) end
-	declare @t_bwidth float = case when '#non'=[13] then 0 else cast([13] as float) end
-	declare @t_ewidth float = case when '#non'=[14] then 9999999 else cast([14] as float) end
-	declare @t_blengthb float = case when '#non'=[15] then 0 else cast([15] as float) end
-	declare @t_elengthb float = case when '#non'=[16] then 9999999 else cast([16] as float) end
+	declare @t_bval01 float = case when '#non'=[9] then 0 else cast([9] as float) end
+	declare @t_eval01 float = case when '#non'=[10] then 9999999 else cast([10] as float) end
+	declare @t_bval02 float = case when '#non'=[11] then 0 else cast([11] as float) end
+	declare @t_eval02 float = case when '#non'=[12] then 9999999 else cast([12] as float) end
+	declare @t_bval03 float = case when '#non'=[13] then 0 else cast([13] as float) end
+	declare @t_eval03 float = case when '#non'=[14] then 9999999 else cast([14] as float) end
+	declare @t_bval04 float = case when '#non'=[15] then 0 else cast([15] as float) end
+	declare @t_eval04 float = case when '#non'=[16] then 9999999 else cast([16] as float) end
 	
 	declare @t_bstoreno nvarchar(20) = case when '#non'=[17] then '' else [17] end
 	declare @t_estoreno nvarchar(20) = case when '#non'=[18] then char(255) else [18] end
@@ -377,8 +377,55 @@ z_ucc_pk01:--z_ucc_pk01
 	declare @t_style2 nvarchar(max) = case when '#non'=[30] then '' else [30] end
 	declare @t_bproductno3 nvarchar(max) = case when '#non'=[31] then '' else [31] end
 	declare @t_eproductno3 nvarchar(max) = case when '#non'=[32] then '' else [32] end
-	declare @t_exclude nvarchar(max) = case when '#non'=[33] then '' else [33] end
+	declare @t_option nvarchar(max) = case when '#non'=[33] then '' else [33] end
 	------------------------------------------------------------------------------------------------
+	declare @t_bradius float,@t_eradius float,@t_bdime float,@t_edime float
+		,@t_bwidth float,@t_ewidth float,@t_blengthb float,@t_elengthb float
+	if left(@t_kind,1)='A'
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bdime = @t_bval02
+		set @t_edime = @t_eval02
+		set @t_bwidth = @t_bval03
+		set @t_ewidth = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	else if left(@t_kind,1)='B'
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bwidth = @t_bval02
+		set @t_ewidth = @t_eval02
+		set @t_bdime = @t_bval03
+		set @t_edime = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	else if left(@t_kind,1)='C'
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bwidth = @t_bval02
+		set @t_ewidth = @t_eval02
+		set @t_bdime = @t_bval03
+		set @t_edime = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	else
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bwidth = @t_bval02
+		set @t_ewidth = @t_eval02
+		set @t_bdime = @t_bval03
+		set @t_edime = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	
 	IF OBJECT_ID('tempdb..#z_ucc_pk01')is not null
 	BEGIN
 		drop table #z_ucc_pk01
@@ -437,43 +484,45 @@ z_ucc_pk01:--z_ucc_pk01
 	)
 	set @t_waste = UPPER(@t_waste)
 	
-	insert into #z_ucc_pk01(gno,uno,datea,tablea,[action],accy,noa,noq
-		,productno,product,dime,width,lengthb,radius,spec,style
-		,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
-		,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
-		,sprice,sprice2)
-	select '1',uno,datea,tablea,[action],accy,noa,noq
-		,productno,product,dime,width,lengthb,radius,spec,style
-		,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
-		,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
-		,sprice,sprice2
-	from (select b.*, ISNULL( y.eweight, b.weight) eweight ,ISNULL( y.emount ,b.mount) emount,
-			case when ltrim(rtrim(isnull(y.cngstoreno,''))) = '' then b.storeno else y.cngstoreno end laststoreno
-		from uccy y
-		left join view_uccb b on y.uno=b.uno
-		where (len(isnull(b.waste,''))!=0 and b.tablea!='rc2s')
-			or (ISNULL( y.eweight, isnull(b.weight,0))>0 and ISNULL( y.emount ,isnull(b.mount,0))>0)) a
-	where ISNULL(a.datea,'') between @t_bdate and @t_edate
-	and ISNULL(a.dime,0) between @t_bdime and @t_edime
-	and ISNULL(a.width,0) between @t_bwidth and @t_ewidth
-	and ISNULL(a.lengthb,0) between @t_blengthb and @t_elengthb
-	and ISNULL(a.radius,0) between @t_bradius and @t_eradius
-	--and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno
-	and ISNULL(a.laststoreno,'') between @t_bstoreno and @t_estoreno
-	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
-	and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
-	and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
-	and (len(@t_style)=0 or charindex(','+a.style+',',','+@t_style+',')>0)
-	and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
-	and (len(@t_spec)=0 or isnull(a.class,'') = @t_spec)
-	--and (len(@t_style2)=0 or CHARINDEX(','+a.style+',',','+@t_style2+',')>0)
-	--and (len(@t_productno2)=0 or CHARINDEX(','+a.productno+',',','+@t_productno2+',')>0)
-	and ISNULL(a.productno,'') between @t_bproductno3 and @t_eproductno3
-	and (len(@t_exclude)=0 or (@t_exclude='H' and CHARINDEX('H',a.productno)=0))
-	update #z_ucc_pk01 set cstyle=b.product
-	from #z_ucc_pk01 a
-	left join style b on a.style=b.noa
-	
+	if CHARINDEX(',02,',','+@t_option+',')>0
+	begin
+		insert into #z_ucc_pk01(gno,uno,datea,tablea,[action],accy,noa,noq
+			,productno,product,dime,width,lengthb,radius,spec,style
+			,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
+			,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
+			,sprice,sprice2)
+		select '1',uno,datea,tablea,[action],accy,noa,noq
+			,productno,product,dime,width,lengthb,radius,spec,style
+			,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
+			,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
+			,sprice,sprice2
+		from (select b.*, ISNULL( y.eweight, b.weight) eweight ,ISNULL( y.emount ,b.mount) emount,
+				case when ltrim(rtrim(isnull(y.cngstoreno,''))) = '' then b.storeno else y.cngstoreno end laststoreno
+			from uccy y
+			left join view_uccb b on y.uno=b.uno
+			where (len(isnull(b.waste,''))!=0 and b.tablea!='rc2s')
+				or (ISNULL( y.eweight, isnull(b.weight,0))>0 and ISNULL( y.emount ,isnull(b.mount,0))>0)) a
+		where ISNULL(a.datea,'') between @t_bdate and @t_edate
+		and ISNULL(a.dime,0) between @t_bdime and @t_edime
+		and ISNULL(a.width,0) between @t_bwidth and @t_ewidth
+		and ISNULL(a.lengthb,0) between @t_blengthb and @t_elengthb
+		and ISNULL(a.radius,0) between @t_bradius and @t_eradius
+		--and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno
+		and ISNULL(a.laststoreno,'') between @t_bstoreno and @t_estoreno
+		and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
+		and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
+		and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
+		and (len(@t_style)=0 or charindex(','+a.style+',',','+@t_style+',')>0)
+		and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
+		and (len(@t_spec)=0 or isnull(a.class,'') = @t_spec)
+		--and (len(@t_style2)=0 or CHARINDEX(','+a.style+',',','+@t_style2+',')>0)
+		--and (len(@t_productno2)=0 or CHARINDEX(','+a.productno+',',','+@t_productno2+',')>0)
+		and ISNULL(a.productno,'') between @t_bproductno3 and @t_eproductno3
+		and (CHARINDEX(',01,',','+@t_option+',')=0 or (CHARINDEX(',01,',','+@t_option+',')>0 and CHARINDEX('H',a.productno)=0))
+		update #z_ucc_pk01 set cstyle=b.product
+		from #z_ucc_pk01 a
+		left join style b on a.style=b.noa
+	end
 	--寄庫
 	update #z_ucc_pk01 set custno=c.custno
 	from #z_ucc_pk01 a
@@ -487,6 +536,42 @@ z_ucc_pk01:--z_ucc_pk01
 	left join view_ordet b on a.uno=b.uno
 	left join view_orde c on b.accy=c.accy and b.noa=c.noa
 	where c.noa is not null
+	
+	if CHARINDEX(',03,',','+@t_option+',')>0
+	begin
+		--採購
+		insert into #z_ucc_pk01(gno,uno,datea,tablea,[action],accy,noa,noq
+			,productno,product,dime,width,lengthb,radius,spec,style
+			,class,typea,[source],hard,waste,mount,[weight],mweight,size,memo,zinc
+			,scolor,ucolor,unit,kind,itype,custno,ordeno,no2,eweight,emount,laststoreno
+			,sprice,sprice2)
+		select '1','*'+a.noa+'-'+a.no2,b.odate,'ordcs','採購作業',a.accy,a.noa,a.no2
+			,a.productno,a.product,a.dime,a.width,a.lengthb,a.radius,a.spec,a.style
+			,a.class,'' typea,a.[source],0 hard,0 waste,a.mount,a.[weight],0 mweight,a.size,a.memo,'' zinc
+			,a.scolor,a.ucolor,a.unit,a.kind,0 itype,'' custno,a.ordeno,a.no2,a.notv,a.mount,'' laststoreno
+			,a.price,a.price
+		from view_ordcs a
+		left join view_ordc b on a.accy=b.accy and a.noa=b.noa
+		where ISNULL(b.enda,0)=0
+		and ISNULL(a.enda,0)=0
+		and ISNULL(a.odate,'') between @t_bdate and @t_edate
+		and ISNULL(a.dime,0) between @t_bdime and @t_edime
+		and ISNULL(a.width,0) between @t_bwidth and @t_ewidth
+		and ISNULL(a.lengthb,0) between @t_blengthb and @t_elengthb
+		and ISNULL(a.radius,0) between @t_bradius and @t_eradius
+		--and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno
+		--and ISNULL(a.laststoreno,'') between @t_bstoreno and @t_estoreno
+		--and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
+		and (len(@t_kind)=0 or ISNULL(a.kind,'')=@t_kind)
+		--and (len(@t_itype)=0 or ISNULL(a.itype,'')=@t_itype)
+		and (len(@t_style)=0 or charindex(','+a.style+',',','+@t_style+',')>0)
+		--and (len(@t_waste)=0 or upper(a.waste) = @t_waste)
+		and (len(@t_spec)=0 or isnull(a.class,'') = @t_spec)
+		--and (len(@t_style2)=0 or CHARINDEX(','+a.style+',',','+@t_style2+',')>0)
+		--and (len(@t_productno2)=0 or CHARINDEX(','+a.productno+',',','+@t_productno2+',')>0)
+		and ISNULL(a.productno,'') between @t_bproductno3 and @t_eproductno3
+		 
+	end	
 	---------------------------------------------------------------------------
 	if LEN(@t_sort)=0
 	begin
@@ -534,7 +619,7 @@ z_ucc_pk01:--z_ucc_pk01
 		--	when 'inas' then 'inast'
 		--	when 'cuts' then 'cut' else '' end
 		--	+"?noa=\'"+a.noa+"\' and "+cast(ROW_NUMBER()over(order by a.gno,a.recno) as nvarchar)+"=$rr?"+a.accy ghref
-		,'z_unobd?$uno?' ghref
+		,case when left(uno,1)='*' then '' else 'z_unobd?$uno?' end ghref
 		,a.datea
 		,case when b.store is null then a.laststoreno else b.store end store
 		,a.[source]
