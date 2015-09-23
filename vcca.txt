@@ -76,7 +76,7 @@ batchvcca_rb:--batchvcca_rb
 	begin
 		--抓取可開立的發票
 		declare cursor_table cursor for
-		select a.noa,b.binvono,b.einvono from vccar a left join vccars b on a.noa=b.noa where (@t_datea between a.bdate and a.edate) order by a.noa,a.binvono
+		select a.noa,b.binvono,b.einvono from vccar a left join vccars b on a.noa=b.noa where (@t_datea between a.bdate and a.edate) and isnull(a.iselectric,0)=1 order by a.noa,a.binvono
 		open cursor_table
 		fetch next from cursor_table
 		into @vccarno,@bvccano,@evccano
