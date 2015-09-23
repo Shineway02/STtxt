@@ -209,7 +209,7 @@ insert into @tmp
 	select
 		'0',0,0,a.datea,a.noa,b.noq,
 		case when isnull(a.buyer,'') != '' then a.buyer else a.comp end,
-		case when isnull(a.buyerno,'') != '' then (case when isnull(a.serial,'') != '' then a.serial else d.serial end) else null end,
+		case when isnull(a.serial,'') != '' then a.serial else d.serial end,
 		case when isnull(a.buyerno,'') != '' then (case when isnull(a.address,'') != '' then a.address else d.addr_invo end) else null end,
 		a.chkno,a.vccno,c.zipcode,case when c.ordeno!='' then c.ordeno else REPLACE(a.memo,vccno,'') end,b.productno,b.product,b.mount,b.price,b.money,
 		case when a.taxtype='1' then '&#10004' else null end,
@@ -448,7 +448,7 @@ declare @t_exnoa nvarchar(20)
 set @t_bxnoa = case when '#non' = [2] then '' else [2] end
 set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
 -----------------------------------------------------------------------------------------------
-select '0' gno,noa,ordeno,invono
+select '0' gno,noa,ordeno,REPLACE(invono,',',',<br>') invono
 ,right('0000000000'+cast(total as nvarchar(30)),1) a1
 ,case when len(cast(total as nvarchar(30)))<2  then null else left(right('0000000000'+cast(total as nvarchar(30)),2),1) end a2
 ,case when len(cast(total as nvarchar(30)))<3  then null else left(right('0000000000'+cast(total as nvarchar(30)),3),1) end a3
