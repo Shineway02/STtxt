@@ -24,7 +24,7 @@ select '0',max(a.noa),max(a.mech),b.code,max(b.detail),
 		max(b.frame),sum(b.mount),max(b.way),max(b.bebottom),max(b.enbottom)
 		,max(b.datea1),max(b.datea2),max(b.worker)
 from modfixc a left join modfixcs b on a.noa=b.noa
-where a.noa=@t_noa
+where a.modnoa=@t_noa
 group by  b.code
 
 
@@ -45,9 +45,6 @@ set @t_bdate = case when '#non' = [2] then ''  else [2] end
 set @t_edate = case when '#non' = [3] then char(255) else [3] end
 ---------------------------------------------------------------------------------------------------
 declare @count float = (select count(distinct namea) from modeqs) 
-
-
-
 declare @date1 datetime 
 	set @date1= (select convert(datetime,replace(convert(nvarchar,(convert(float,left(@t_bdate ,3))+1911))+SUBSTRING(@t_bdate,4,20),'-',' ')))
 declare @date2 datetime = (select convert(datetime,replace(convert(nvarchar,(convert(float,left(@t_edate ,3))+1911))+SUBSTRING(@t_edate,4,20),'-',' ')))
@@ -133,15 +130,13 @@ if(@count > 0 )
 			INTO @mech,@tgg,@namea
 			WHILE @@FETCH_STATUS = 0
 			BEGIN	
-				
-				
-				
+							
 				set @cmd=(select max(c.spec)+' '+convert(nvarchar,sum(b.mount))
 						 +' '+max(a.mech)
 						 +' '+max(b.worker)
 				from modfixcs b left join modfixc a on a.noa=b.noa
-							left join model c on b.noa=c.noa
-				where @datea between left(b.datea1,9) and left(b.datea2,9)  and a.mech=@mech)
+							left join model c on  a.modnoa=c.noa
+				where @datea =a.datea  and a.mech=@mech)
 				
 				exec('update #result set a'+@l+' = '''+@cmd+ '''
 					  where datea='''+@datea+'''')
