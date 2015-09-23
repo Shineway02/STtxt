@@ -8,18 +8,23 @@
 
 	if @condition='0'
 	begin
-		select @accy = a.accy from view_get a where a.noa = @cubno
 		--刪除 GET
 		--CUB  GET  的單號一致
+		select @accy = a.accy from view_get a where a.noa = @cubno
 		if LEN(@accy)>0
 		begin
 			set @cmd=N'delete get'+@accy+N' where noa=@cubno delete gets'+@accy+N' where noa=@cubno'
 			execute sp_executesql @cmd,N'@cubno nvarchar(max)',@cubno=@cubno
 		end
+		--刪除 bccout
+		--CUB  BCCOUT  的單號一致
+		delete bccout where noa=@cubno
+		delete bccouts where noa=@cubno
 	end
 	else
 	begin
 		select @accy = a.accy from view_cub a where a.noa = @cubno
+		--新增 GET
 		if LEN(@accy)>0
 		begin
 			set @cmd='
@@ -31,6 +36,14 @@
 			from view_cub where accy=@accy and noa=@cubno' 
 			execute sp_executesql @cmd,N'@cubno nvarchar(max),@accy nvarchar(20)',@cubno=@cubno,@accy=@accy
 		end
+		--新增 bccout
+		insert into bccout(noa,datea,memo,partno,sno,sname)
+		select noa,datea,memo,'','',''
+		from view_cub where accy=@accy and noa=@cubno
+		
+		insert into bccouts(noa,noq,bccno,bccname,mount,memo)
+		select noa,noq,productno,product,[mount],memo
+		from view_cubt where accy=@accy and noa=@cubno
 	end;
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 cubstocubu:--cubstocubu

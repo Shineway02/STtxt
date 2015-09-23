@@ -33,20 +33,21 @@ declare @result table(
 
 insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+	   b.productno,case when b.model = '1' then '成型段' else '定徑段' end model
+	   ,b.wheel+b.number,b.bottom,b.mount,b.memo2,b.datea
 from model a left join models b on a.noa=b.noa
-where @t_noa=a.noa
+where (@t_noa=a.noa or isnull(@t_noa,'')='') and a.datea between @t_bdate and @t_edate
 
 insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
-select '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
+select '1',min(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
 from @result
 group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
 
 select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
-	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
+	   ,dbo.getComma(mount,0) mount,memo2 m2,model+memo memo,bottom,datea1 date2
 	   
 from @result
-order by noa,nob,gno
+order by noa,gno,nob
 ;
 
 
@@ -85,7 +86,8 @@ declare @result table(
 
 insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+	   b.productno, case when b.model = '1' then '成型段' else '定徑段' end model
+	   ,b.wheel+b.number,b.bottom,b.mount,b.memo2,b.datea
 from model a left join models b on a.noa=b.noa
 where a.datea between @t_bdate and @t_edate and
 	  (len(ISNULL(@t_noa,''))=0 or @t_noa=a.noa) and
@@ -93,15 +95,15 @@ where a.datea between @t_bdate and @t_edate and
 	  (len(isnull(@t_frame,''))=0 or @t_frame=a.frame)
 
 insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
-select '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
+select '1',min(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
 from @result
 group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
 
 select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
-	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
+	   ,dbo.getComma(mount,0) mount,memo2 m2,model+memo memo,bottom,datea1 date2
 	   
 from @result
-order by noa,nob,gno;
+order by noa,gno,nob;
 
 z_model_rs3:--z_model_rs3
 
@@ -138,9 +140,10 @@ declare @result table(
 
 insert @result
 select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo,b.datea
+	   b.productno, case when b.model = '1' then '成型段' else '定徑段' end model
+	   ,b.wheel+b.number,b.bottom,b.mount,b.memo,b.datea
 from model a left join models b on a.noa=b.noa
-where  @t_noa=a.noa
+where  (@t_noa=a.noa or isnull(@t_noa,'')='' )and a.datea between @t_bdate and @t_edate 
 
 insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
 select TOP 1 '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
@@ -148,14 +151,22 @@ from @result
 group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
 
 select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
-	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
+	   ,dbo.getComma(mount,0) mount,memo2 m2,model+memo memo,bottom,datea1 date2
 	   
 from @result
 order by gno;
 ------------------------------------------------------------------------------------------------------
 z_model_rs4:--z_model_rs4
-declare @t_frame nvarchar(10)
-set @t_frame =case when '#non' = [2] then '' else [2] end
+declare @t_noa nvarchar(20)
+declare @t_tgg nvarchar(50)
+declare @t_frame nvarchar(50)
+declare @t_bdate nvarchar(30)
+declare @t_edate nvarchar(30)
+set @t_noa = case when '#non' = [1] then '' else [1] end
+set @t_frame = case when '#non' = [2] then '' else [2] end
+set @t_tgg = case when '#non' = [3] then '' else [3] end
+set @t_bdate = case when '#non' = [4] then '' else [4] end
+set @t_edate = case when '#non' = [5] then '' else [5] end
 ----------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -217,7 +228,7 @@ declare @result table(
 )
 insert @result
 
-select distinct '1', a.noa,a.tube,a.heart,a.spec,b.model,b.wheel,
+select 1,a.noa,max(a.tube),max(a.heart),max(a.spec),max(b.model),max(b.wheel),
 isnull((select SUM(mount) from models c where number='F1T' and c.noa=a.noa),'') F1T,
 isnull((select SUM(mount) from models c where number='F1B' and c.noa=a.noa),'') F1B,
 isnull((select SUM(mount) from models c where number='F2T' and c.noa=a.noa),'') F2T,
@@ -266,10 +277,10 @@ isnull((select SUM(mount) from models c where number='TH2T' and c.noa=a.noa),'')
 isnull((select SUM(mount) from models c where number='TH2B' and c.noa=a.noa),'') TH2B,
 isnull((select SUM(mount) from models c where number='THG' and c.noa=a.noa),'') THG,
 (select SUM(mount) from models c where  c.noa=a.noa) total,
-a.frame
+max(a.frame)
 from model a left join models b on a.noa=b.noa
-where a.frame=@t_frame
-
+where a.frame=@t_frame or isnull(@t_frame,'')=''
+group by a.noa
 select *
 from @result;
 
@@ -307,15 +318,17 @@ declare @result table(
 )
 
 insert @result
-select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
-	   b.nob,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
+select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,case when a.usetype ='1' then '設備課' else '製造課'end
+	,a.saver,a.datea,
+	   b.productno,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
 from model a left join models b on a.noa=b.noa
-where a.frame=@t_frame
-
+where (a.frame=@t_frame or isnull(@t_frame,'')='')
+	  and a.datea between @t_bdate and @t_edate	
+insert @result(gno)
+select '1'
 
 select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
 	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
-	   
 from @result
-order by noa,nob,gno
+order by gno,noa,nob
 ;

@@ -1,0 +1,93 @@
+
+stkucc:--stkucc
+
+declare @uccekey nvarchar(50)='Y'--RC2KEY
+declare @datea nvarchar(10)=(select convert(nvarchar,year(getDATE())-1911)+'/'+
+ case when len(convert(nvarchar,month(getDATE())))<2 then +'0'+convert(nvarchar,month(getDATE()))
+ else convert(nvarchar,month(getDATE())) end +'/'+
+ case when len(convert(nvarchar,day(getDATE()))) < 2 then +'0'+convert(nvarchar,day(getDATE()))
+ else convert(nvarchar,day(getDATE())) end)
+declare @ucceno nvarchar(30)
+declare @accy nvarchar(5)=left(@datea,3)
+
+
+--取得當天最後一個入庫單號	
+select @ucceno=MAX(noa) from view_ucce where noa like @uccekey+REPLACE(@datea,'/','')+'%' 
+--新的入庫單號(後面號碼+1) 
+set @ucceno=@uccekey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@ucceno,'000'),3) as int)+1 as nvarchar(10)),3)	
+
+exec('insert ucce'+@accy+'(noa,datea,kind)	
+	  select '''+@ucceno+''' ,+'''+@datea+''',''1'' ')
+declare @noq nvarchar(10)='0'
+declare @storeno nvarchar(50)
+DECLARE my_cursor CURSOR FOR 
+select isnull(b.storeno,'') from ucc a left join stkucc(@datea,'','') b on a.noa =b.productno where   isnull(b.store,'') !=''  group by b.storeno 
+OPEN my_cursor
+FETCH NEXT FROM my_cursor 
+INTO @storeno
+WHILE @@FETCH_STATUS = 0
+BEGIN
+
+	
+  exec('insert ucces'+@accy+'(noa,noq,storeno,store,product,productno,mount,emount2,price)
+	  select '''+@ucceno+''',b.idno+'''+@noq+''',b.storeno,b.store,b.product,b.productno,b.mount,b.mount,0 
+	  from ucc a left join stkucc('''+@datea+''','''+@storeno+''','''') b on a.noa =b.productno
+	  where b.product is not null') 
+  set @noq= @noq+(select MAX(idno) 
+			  from ucc a left join stkucc(@datea,@storeno,'') b on a.noa =b.productno
+			 where b.product is not null)+1
+  fetch next from my_cursor 
+  into @storeno
+end 
+
+CLOSE my_cursor
+DEALLOCATE my_cursor;
+
+--------------------------------------------------------------------------------------------------------------------------------
+stkuca:--stkuca
+
+declare @uccekey nvarchar(50)='Y'--RC2KEY
+declare @datea nvarchar(10)=(select convert(nvarchar,year(getDATE())-1911)+'/'+
+ case when len(convert(nvarchar,month(getDATE())))<2 then +'0'+convert(nvarchar,month(getDATE()))
+ else convert(nvarchar,month(getDATE())) end +'/'+
+ case when len(convert(nvarchar,day(getDATE()))) < 2 then +'0'+convert(nvarchar,day(getDATE()))
+ else convert(nvarchar,day(getDATE())) end)
+declare @ucceno nvarchar(30)
+declare @accy nvarchar(5)=left(@datea,3)
+
+
+--取得當天最後一個入庫單號	
+select @ucceno=MAX(noa) from view_ucce where noa like @uccekey+REPLACE(@datea,'/','')+'%' 
+--新的入庫單號(後面號碼+1) 
+set @ucceno=@uccekey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@ucceno,'000'),3) as int)+1 as nvarchar(10)),3)	
+
+exec('insert ucce'+@accy+'(noa,datea,kind)	
+	  select '''+@ucceno+''' ,+'''+@datea+''',''1'' ')
+declare @noq nvarchar(10)='0'
+declare @storeno nvarchar(50)
+DECLARE my_cursor CURSOR FOR 
+select isnull(b.storeno,'') from uca a left join stkucc(@datea,'','') b on a.noa =b.productno where   isnull(b.store,'') !=''  group by b.storeno 
+OPEN my_cursor
+FETCH NEXT FROM my_cursor 
+INTO @storeno
+WHILE @@FETCH_STATUS = 0
+BEGIN
+
+	
+  exec('insert ucces'+@accy+'(noa,noq,storeno,store,product,productno,mount,emount2,price)
+	  select '''+@ucceno+''',b.idno+'''+@noq+''',b.storeno,b.store,b.product,b.productno,b.mount,b.mount,0 
+	  from ucc a left join stkucc('''+@datea+''','''+@storeno+''','''') b on a.noa =b.productno
+	  where b.product is not null') 
+  set @noq= @noq+(select MAX(idno) 
+			  from ucc a left join stkucc(@datea,@storeno,'') b on a.noa =b.productno
+			 where b.product is not null)+1
+  fetch next from my_cursor 
+  into @storeno
+end 
+
+CLOSE my_cursor
+DEALLOCATE my_cursor;
+
+
+
+

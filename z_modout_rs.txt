@@ -15,10 +15,10 @@ declare @result table(
 	memo nvarchar(max)
 )
 insert @result
-select '0',max(a.noa),max(a.machine),max(a.datea),MAX(b.detail)
+select '0',max(a.modnoa),max(a.machine),max(b.datea),MAX(b.detail)
 	  ,b.code,max(b.frame),sum(b.mount),max(b.memo)
 from modout a left join modouts b on a.noa=b.noa
-where a.noa=@t_noa
+where a.modnoa=@t_noa
 group by b.code
 
 select gno,noa,mech,datea,code,detail,frame,mount,memo
@@ -60,52 +60,55 @@ declare @nob nvarchar(30)
 
 
 DECLARE cursor_table CURSOR FOR 
-select nob from modfixs b left join modfix a on a.noa=b.noa where @t_noa=b.noa
+select nob from modfixs b left join modfix a on a.noa=b.noa where @t_noa=a.modnoa
 OPEN cursor_table
 FETCH NEXT FROM cursor_table
 INTO @nob
 WHILE @@FETCH_STATUS = 0
 BEGIN
    insert @result (noa,detail,type,weight,way,datea1,mount,mech)
-   select b.noa+b.code1,b.detail1,'入庫維修',b.weight1,
-   case when b.way1 =1 then'傳統車床(砂紙研磨)'
-			 when b.way1 =2 then'傳統車床(砂輪機研磨)'
-			 when b.way1 =3 then'CNC 車修'
-			 when b.way1 =4 then'不須車修或研磨'
-			 else '' end way ,a.datea,b.mount1,a.mech
+   select max(a.modnoa)+max(b.code1),max(b.detail1),'入庫維修',sum(b.weight1),
+   case when max(b.way1) =1 then'傳統車床(砂紙研磨)'
+			 when max(b.way1) =2 then'傳統車床(砂輪機研磨)'
+			 when max(b.way1) =3 then'CNC 車修'
+			 when max(b.way1) =4 then'不須車修或研磨'
+			 else '' end way ,max(a.datea),sum(b.mount1),max(a.mech)
    from modfixs b left join modfix a on a.noa=b.noa
    where @nob=b.nob
+  group by b.nob
   
    insert @result(noa,detail,type,bebottom,enbottom,
    way,datea1,datea2,mount,mech,worker,worktime)
-   select b.noa+b.code,b.detail,'維修',b.bebottom,b.enbottom,
-   case when b.way =1 then'傳統車床(砂紙研磨)'
-			 when b.way =2 then'傳統車床(砂輪機研磨)'
-			 when b.way =3 then'CNC 車修'
-			 when b.way =4 then'不須車修或研磨'
+   select max(a.modnoa)+max(b.code),max(b.detail),'維修',sum(b.bebottom),sum(b.enbottom),
+   case when max(b.way) =1 then'傳統車床(砂紙研磨)'
+			 when max(b.way) =2 then'傳統車床(砂輪機研磨)'
+			 when max(b.way) =3 then'CNC 車修'
+			 when max(b.way) =4 then'不須車修或研磨'
 			 else '' end way,
-  		replace(b.datea1,'-',' '),replace(b.datea2,'-',' '),
-		b.mount,a.mech,b.worker,
+  		replace(max(b.datea1),'-',' '),replace(max(b.datea2),'-',' '),
+		sum(b.mount),max(a.mech),max(b.worker),
 		  convert(float,DATEDIFF(MINUTE,
-		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea1,3))+1911))+SUBSTRING(b.datea1,4,20),'-',' ')),
-		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea2,3))+1911))+SUBSTRING(b.datea2,4,20),'-',' '))
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(max(b.datea1),3))+1911))+SUBSTRING(max(b.datea1),4,20),'-',' ')),
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(max(b.datea2),3))+1911))+SUBSTRING(max(b.datea2),4,20),'-',' '))
 		  ))/60
    from modfixcs  b left join modfixc a on a.noa=b.noa
    where @nob=b.nob
-  
+   group by b.nob
+   
    insert @result(noa,detail,type,enbottom,datea1,mount,mech)
-   select b.noa+b.code,b.detail,'領用出庫',(select enbottom from modfixcs c where b.nob=c.nob)
-		,a.datea,a.mount,a.machine
+   select max(a.modnoa)+max(b.code),max(b.detail),'領用出庫',(select sum(enbottom) from modfixcs c where b.nob=c.nob)
+		,max(a.datea),sum(a.mount),max(a.machine)
 	from modouts b left join modout a on a.noa=b.noa
 	where @nob=b.nob
-  
+   group by b.nob
   fetch next from cursor_table 
   into @nob
 end 
 
 CLOSE cursor_table
 DEALLOCATE cursor_table
-
+insert @result(gno)
+select '1'
 select '0' gno ,noa,detail,type,weight,bebottom,enbottom
 	,way,datea1,datea2,worktime,mount,mech,worker
 	,@b_noa bnoa,@b_tgg btgg,@b_datea bdatea
@@ -153,38 +156,39 @@ INTO @nob
 WHILE @@FETCH_STATUS = 0
 BEGIN
    insert @result (nob,detail,type,weight,way,datea1,mount,mech)
-   select b.nob,b.detail1,'入庫維修',b.weight1,
-   case when b.way1 =1 then'傳統車床(砂紙研磨)'
-			 when b.way1 =2 then'傳統車床(砂輪機研磨)'
-			 when b.way1 =3 then'CNC 車修'
-			 when b.way1 =4 then'不須車修或研磨'
-			 else '' end way ,a.datea,b.mount1,a.mech
+   select max(b.nob),max(b.detail1),'入庫維修',max(b.weight1),
+   case when max(b.way1) =1 then'傳統車床(砂紙研磨)'
+			 when max(b.way1) =2 then'傳統車床(砂輪機研磨)'
+			 when max(b.way1) =3 then'CNC 車修'
+			 when max(b.way1) =4 then'不須車修或研磨'
+			 else '' end way ,max(a.datea),sum(b.mount1),max(a.mech)
    from modfixs b left join modfix a on a.noa=b.noa
    where @nob=b.nob
-  
+   group by b.nob
+   
    insert @result(nob,detail,type,bebottom,enbottom,
    way,datea1,datea2,mount,mech,worker,worktime)
-   select b.nob,b.detail,'維修',b.bebottom,b.enbottom,
-   case when b.way =1 then'傳統車床(砂紙研磨)'
-			 when b.way =2 then'傳統車床(砂輪機研磨)'
-			 when b.way =3 then'CNC 車修'
-			 when b.way =4 then'不須車修或研磨'
+   select max(b.nob),max(b.detail),'維修',sum(b.bebottom),sum(b.enbottom),
+   case when max(b.way) =1 then'傳統車床(砂紙研磨)'
+			 when max(b.way) =2 then'傳統車床(砂輪機研磨)'
+			 when max(b.way) =3 then'CNC 車修'
+			 when max(b.way) =4 then'不須車修或研磨'
 			 else '' end way,
-  		replace(b.datea1,'-',' '),replace(b.datea2,'-',' '),
-		b.mount,a.mech,b.worker,
+  		replace(max(b.datea1),'-',' '),replace(max(b.datea2),'-',' '),
+		sum(b.mount),max(a.mech),max(b.worker),
 		  convert(float,DATEDIFF(MINUTE,
-		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea1,3))+1911))+SUBSTRING(b.datea1,4,20),'-',' ')),
-		  convert(datetime,replace(convert(nvarchar,(convert(float,left(b.datea2,3))+1911))+SUBSTRING(b.datea2,4,20),'-',' '))
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(max(b.datea1),3))+1911))+SUBSTRING(max(b.datea1),4,20),'-',' ')),
+		  convert(datetime,replace(convert(nvarchar,(convert(float,left(max(b.datea2),3))+1911))+SUBSTRING(max(b.datea2),4,20),'-',' '))
 		  ))/60
    from modfixcs  b left join modfixc a on a.noa=b.noa
    where @nob=b.nob
-  
+   group by b.nob
    insert @result(nob,detail,type,enbottom,datea1,mount,mech)
-   select b.nob,b.detail,'領用出庫',(select enbottom from modfixcs c where b.nob=c.nob)
-		,a.datea,a.mount,a.machine
+   select max(b.nob),max(b.detail),'領用出庫',(select sum(enbottom) from modfixcs c where b.nob=c.nob)
+		,max(a.datea),sum(a.mount),max(a.machine)
 	from modouts b left join modout a on a.noa=b.noa
 	where @nob=b.nob
-  
+  	group by b.nob
   fetch next from cursor_table 
   into @nob
 end 
@@ -224,15 +228,15 @@ declare @result table(
 )
 
 insert @result
-select MAX(b.worker) worker,b.noa+b.code noa,max(b.detail) detail,'維修',max(a.mech) mech,sum(d.weight1) weight,max(b.bebottom) betn
+select MAX(b.worker) worker,a.modnoa+b.code noa,max(b.detail) detail,'維修',max(a.mech) mech,sum(d.weight1) weight,max(b.bebottom) betn
 			,max(b.enbottom)ebtn,max(b.way) way,max(c.datea) datea1,max(b.datea1) datea2,max(b.datea2) datea3,sum(b.mount) mount,
 			max(a.datea) datea4
 from modfixcs b left join modfixc a on a.noa=b.noa
-				left join modfix c on a.noa=c.noa
+				left join modfix c on a.innoa=c.noa
 				left join modfixs d on b.nob=d.nob
 where a.datea between @t_bdate and @t_edate	 and
 	  (b.worker =@t_worker or isnull(@t_worker,'')='')
-group by b.noa+b.code
+group by a.modnoa+b.code
 
 select '0' gno ,worker man,noa,detail,type,mech,weight,betn,ebtn,
 		case when way =1 then'傳統車床(砂紙研磨)'
@@ -268,13 +272,13 @@ declare @result table(
 	worker nvarchar(30)
 )
 insert @result
-select max(a.noa),max(b.frame1),b.noa+b.code1,max(b.detail1),'入庫維修',max(a.mech),sum(b.weight1),sum(c.bebottom),sum(c.enbottom)
-		,max(b.way1),max(a.datea),sum(b.mount1),max(c.worker)
-from modfixs b left join modfix a on a.noa=b.noa
-			   left join modfixcs c on b.nob=c.nob
-where isnull(c.nob,'')='' and a.noa = @t_noa
-	  and(frame=@t_frame or ISNULL(@t_frame,'')='') 
-group by b.noa+b.code1
+select max(a.modnoa),max(c.frame),a.modnoa+c.code,max(c.detail),'入庫維修',max(a.mech),sum(b.weight1),sum(c.bebottom),sum(c.enbottom) 
+	,max(c.way),max(a.datea),sum(b.mount1),max(c.worker) 
+from modfixs b left join modfix a on a.noa=b.noa 
+	left join modfixcs c on b.nob=c.nob 
+where (isnull(c.datea1,'')='' or isnull(c.datea2,'')='') and a.modnoa = @t_noa 
+	and(c.frame=@t_frame or ISNULL(@t_frame,'')='') 
+group by a.modnoa+c.code
 
 
 select '0'gno,@t_noa noa,frame,detail,type,mech,dbo.getComma(weight,0)
@@ -706,7 +710,6 @@ z_modout_rs08:--z_modout_rs08
 	declare @t_noa nvarchar(30)
 	set @t_noa= case when '#non' = [1] then '' else [1] end
 ------------------------------------------------------------------------------------------------
-
 declare @tmp1 table(
 	mech1 nvarchar(50),
 	detail nvarchar(100),
@@ -726,7 +729,7 @@ from modfix a left join modfixs b on a.noa = b.noa
 			  left join modeq d on c.noa=d.noa
 			  left join modouts e on b.nob=e.nob
 where (left(b.code1,1)='F' or left(b.code1,2)='sg' or left(b.code1,2)='sq')
-	  and a.noa=@t_noa
+	  and a.modnoa=@t_noa
 --update @result
 declare @tmp2 table(
 	mech1 nvarchar(50),
@@ -747,9 +750,28 @@ from modfix a left join modfixs b on a.noa = b.noa
 			  left join modeq d on c.noa=d.noa
 			  left join modouts e on b.nob=e.nob
 where (left(b.code1,1)!='F' and left(b.code1,2)!='sg' and left(b.code1,2)!='sq')
-		and a.noa=@t_noa
-select '0' gno, a.mech1 mech1,a.detail+' '+b.detail detail
-	,a.noa noa,a.frame frm1,a.mount mount1,a.weight weight1
+		and a.modnoa=@t_noa
+declare @count float =(select count(*) from @tmp1)	
+if(@count < (select count(*) from @tmp2))
+	begin
+		set @count =  (select count(*) from @tmp2)
+	end
+declare @i float =1
+declare @tmp3 table(seq nvarchar(10))
+
+while(@i<@count)
+	begin
+		insert @tmp3(seq)
+		select @i
+		set @i=@i+1
+	end
+
+
+
+select '0' gno, case when isnull(a.mech1,'')='' then b.mech1 else a.mech1 end mech1,
+	a.detail det1,b.detail det2
+	,case when isnull(a.noa,'')='' then b.noa else a.noa end noa,a.frame frm1,a.mount mount1,a.weight weight1
 	,b.frame frm2,b.mount mount2,b.weight weight2,a.mech2 mech2,a.mode mode,a.memo memo
-from @tmp1 a left join @tmp2 b on a.seq=b.seq			  
+from @tmp3 c left join @tmp2 b on c.seq=b.seq	
+			 left join @tmp1 a on c.seq=b.seq			  
 ;		 
