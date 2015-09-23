@@ -352,14 +352,14 @@ z_ucc_pk01:--z_ucc_pk01
 	declare @t_style nvarchar(max) = case when '#non'=[7] then '' else [7] end
 	declare @t_waste nvarchar(max) = case when '#non'=[8] then '' else [8] end
 	
-	declare @t_bradius float = case when '#non'=[9] then 0 else cast([9] as float) end
-	declare @t_eradius float = case when '#non'=[10] then 9999999 else cast([10] as float) end
-	declare @t_bdime float = case when '#non'=[11] then 0 else cast([11] as float) end
-	declare @t_edime float = case when '#non'=[12] then 9999999 else cast([12] as float) end
-	declare @t_bwidth float = case when '#non'=[13] then 0 else cast([13] as float) end
-	declare @t_ewidth float = case when '#non'=[14] then 9999999 else cast([14] as float) end
-	declare @t_blengthb float = case when '#non'=[15] then 0 else cast([15] as float) end
-	declare @t_elengthb float = case when '#non'=[16] then 9999999 else cast([16] as float) end
+	declare @t_bval01 float = case when '#non'=[9] then 0 else cast([9] as float) end
+	declare @t_eval01 float = case when '#non'=[10] then 9999999 else cast([10] as float) end
+	declare @t_bval02 float = case when '#non'=[11] then 0 else cast([11] as float) end
+	declare @t_eval02 float = case when '#non'=[12] then 9999999 else cast([12] as float) end
+	declare @t_bval03 float = case when '#non'=[13] then 0 else cast([13] as float) end
+	declare @t_eval03 float = case when '#non'=[14] then 9999999 else cast([14] as float) end
+	declare @t_bval04 float = case when '#non'=[15] then 0 else cast([15] as float) end
+	declare @t_eval04 float = case when '#non'=[16] then 9999999 else cast([16] as float) end
 	
 	declare @t_bstoreno nvarchar(20) = case when '#non'=[17] then '' else [17] end
 	declare @t_estoreno nvarchar(20) = case when '#non'=[18] then char(255) else [18] end
@@ -379,6 +379,53 @@ z_ucc_pk01:--z_ucc_pk01
 	declare @t_eproductno3 nvarchar(max) = case when '#non'=[32] then '' else [32] end
 	declare @t_option nvarchar(max) = case when '#non'=[33] then '' else [33] end
 	------------------------------------------------------------------------------------------------
+	declare @t_bradius float,@t_eradius float,@t_bdime float,@t_edime float
+		,@t_bwidth float,@t_ewidth float,@t_blengthb float,@t_elengthb float
+	if left(@t_kind,1)='A'
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bdime = @t_bval02
+		set @t_edime = @t_eval02
+		set @t_bwidth = @t_bval03
+		set @t_ewidth = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	else if left(@t_kind,1)='B'
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bwidth = @t_bval02
+		set @t_ewidth = @t_eval02
+		set @t_bdime = @t_bval03
+		set @t_edime = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	else if left(@t_kind,1)='C'
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bwidth = @t_bval02
+		set @t_ewidth = @t_eval02
+		set @t_bdime = @t_bval03
+		set @t_edime = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	else
+	begin
+		set @t_bradius = @t_bval01
+		set @t_eradius = @t_eval01
+		set @t_bwidth = @t_bval02
+		set @t_ewidth = @t_eval02
+		set @t_bdime = @t_bval03
+		set @t_edime = @t_eval03
+		set @t_blengthb = @t_bval04
+		set @t_elengthb = @t_eval04
+	end
+	
 	IF OBJECT_ID('tempdb..#z_ucc_pk01')is not null
 	BEGIN
 		drop table #z_ucc_pk01
