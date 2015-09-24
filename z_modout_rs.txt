@@ -418,24 +418,24 @@ BEGIN
 	declare @otime1 float,@addtime1 float,@otime2 float,@addtime2 float
 
 	set @otime1=(select count(isovertime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea between  @t_bdate and @t_edate
 		  and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@otime1+''' where seq=13')		  
 	set @addtime1=(select count(isovertime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea <=  @t_bdate 
 		  and a.station = @mech)	  
 	exec('update #tmp set a'+@j+' ='''+@addtime1+''' where seq=14')  
 		  
 	set @otime2 =(select sum(addtime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea between @t_bdate and @t_edate
 			and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@otime2+''' where seq=15') 
 	
 	set @addtime2=(select sum(addtime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea <=  @t_bdate
 			and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@addtime2+''' where seq=16') 		
@@ -490,7 +490,6 @@ create table #tmp (
 	a9 nvarchar(100),
 	a10 nvarchar(100),
 	seq float
-	
 )
 declare @i float =0
 
@@ -511,15 +510,14 @@ FETCH NEXT FROM cursor_table
 INTO @mech,@num
 WHILE @@FETCH_STATUS = 0
 BEGIN
-
-	--成型段
-	
+	--成型段	
 	declare @sum1 float=(
 		select sum(c.mount)
 		from  modout b  left join modouts c on b.noa=c.noa
 		where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
 			and c.datea between @t_bdate and @t_edate  and b.machine = @mech)
 --	exec('update #tmp set a'+@j+' ='''+@sum1+''' where seq=1')
+
 	--定徑段
 	declare @sum2 float=(
 		select sum(c.mount)
@@ -593,24 +591,24 @@ BEGIN
 	declare @otime1 float,@addtime1 float,@otime2 float,@addtime2 float
 
 	set @otime1=(select count(isovertime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea between  @t_bdate and @t_edate
 		  and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@otime1+''' where seq=13')		  
 	set @addtime1=(select count(isovertime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea <=  @t_bdate 
 		  and a.station = @mech)	  
 	exec('update #tmp set a'+@j+' ='''+@addtime1+''' where seq=14')  
 		  
 	set @otime2 =(select sum(addtime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea between @t_bdate and @t_edate
 			and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@otime2+''' where seq=15') 
 	
 	set @addtime2=(select sum(addtime)
-	from view_cuws b left join view_cuw a on a.noa =b.noa
+	from modcuws b left join modcuw a on a.noa =b.noa
 	where isovertime=1 and a.datea <=  @t_bdate
 			and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@addtime2+''' where seq=16') 		
@@ -618,62 +616,62 @@ BEGIN
 	
 	declare @faulttime float =(
 	select sum(b.faulttime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@faulttime+''' where seq=17') 
 	
 	declare @faulttime1 float =(
 	select sum(b.faulttime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea <  @t_bdate  and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@faulttime1+''' where seq=18') 
 	
 	declare @delaytime float =(
 		select sum(b.delaytime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@delaytime+''' where seq=19') 
 	
 	declare @delaytime1 float =(
 		select sum(b.delaytime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea <=  @t_bdate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@delaytime1+''' where seq=20') 
 	
 	declare @waittime float=(
 	select sum(b.waittime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@waittime+''' where seq=21') 
 	
 	declare @waittime1 float=(
 	select sum(b.waittime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea <= @t_bdate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@waittime1+''' where seq=22') 
 	
 	
 	declare @waitfedtime float=(
 	select sum(b.waitfedtime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@waitfedtime+''' where seq=23') 
 	
 	declare @waitfedtime1 float=(
 	select sum(b.waitfedtime)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@waitfedtime1+''' where seq=24') 
 	
 	declare @lacksss float=(
 	select sum(b.lacksss)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@lacksss+''' where seq=25') 
 	
 	declare @lacksss1 float=(
 	select sum(b.lacksss)
-	from view_cuw a left join view_cuws b on a.noa=b.noa and a.accy=b.accy
+	from modcuw a left join modcuws b on a.noa=b.noa 
 	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
 	exec('update #tmp set a'+@j+' ='''+@lacksss1+''' where seq=26') 
 	
