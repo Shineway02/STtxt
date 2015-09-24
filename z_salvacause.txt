@@ -428,3 +428,44 @@ dbo.getComma(nextyeartime,1) nextyeartime,
 * 
 from @tmp order by partno,gno,jobno,sssno
 ;
+
+z_salvacause5:--z_salvacause5
+declare @t_xnoa nvarchar(10)
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bydate nvarchar(10)
+declare @t_eydate nvarchar(10)
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+set @t_xnoa = case when '#non' = [1] then '' else [1] end
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bydate = case when '#non'=[4] then '' else [4] end
+set @t_eydate = case when '#non'=[5] then char(255) else [5] end
+set @t_bsssno = case when '#non'=[6] then '' else [6] end
+set @t_esssno = case when '#non'=[7] then char(255) else [7] end
+------------------------------------------------------------------------------------------------------
+declare @result table(
+	gno nvarchar(1),
+	datea nvarchar(10),
+	daterange nvarchar(25),
+	hname nvarchar(50),
+	namea nvarchar(100),
+	part nvarchar(250),
+	hrused float,
+	memo nvarchar(200)
+)
+insert @result
+select '0',datea,bdate+'~'+edate dateb,hname,namea,part,hr_used,memo
+from salvacause
+
+where ((bdate between @t_bdate and @t_edate) or (edate between @t_bdate and @t_edate)) and
+	  sssno between @t_bsssno and @t_esssno
+insert @result(gno,hrused)
+select '1',	 sum(hrused)
+from @result
+
+select gno,datea,daterange dateb,hname,namea,part,hrused,memo
+from @result
+order by gno,datea,daterange
+;
