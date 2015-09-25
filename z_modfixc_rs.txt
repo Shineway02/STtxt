@@ -72,10 +72,10 @@ create table #result (datea nvarchar(50),
 					  seq float,
 					  gno nvarchar(1))
 
-
+--插入左方日期欄位
 while (@k <= @datecount)
 	begin
-	--	select dateadd(day,@j,@date1)
+		
 		exec('	declare  @day'+@j+' nvarchar(100)
 				set @day'+@j+' =
 				convert(nvarchar,year(dateadd(day,'+@k+','''+@date1+'''))-1911)
@@ -97,9 +97,7 @@ while (@k <= @datecount)
 	end	
 
 
-
-   
-
+--插入上方行機台
 declare @tmp table( namea nvarchar(100),mech nvarchar(50),tgg nvarchar(50),seq float)
 insert @tmp
 select  a.device,b.namea,b.tgg,ROW_NUMBER() over(order by datea) 
@@ -113,7 +111,8 @@ declare @mech nvarchar(50),
 insert #result(datea)
 select '000#000'
 if(@count > 0 )
-	begin				
+	begin
+	--依日期插入資料				
 		DECLARE my_cursor CURSOR FOR 
 		select datea from #result 
 		OPEN my_cursor
@@ -123,6 +122,7 @@ if(@count > 0 )
 		BEGIN
 			declare @l float =1
 			set @bmech=@mech+@tgg
+			--依機台插入資料
 			DECLARE cursor2 CURSOR FOR 
 			select mech,tgg,namea from @tmp order by mech
 			OPEN cursor2
