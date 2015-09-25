@@ -1,0 +1,106 @@
+z_vcc_pe01:--z_vcc_pe01
+declare @t_bmon nvarchar(10) = case when '#non' = [1] then '' else [1] end
+declare @t_emon nvarchar(10) = case when '#non' = [2] then char(255) else [2] end
+declare @t_bcustno nvarchar(20) = case when '#non' = [3] then '' else [3] end
+declare @t_ecustno nvarchar(20) = case when '#non' = [4] then char(255) else [4] end
+declare @t_btggno nvarchar(20) = case when '#non' = [5] then '' else [5] end
+declare @t_eggno nvarchar(20) = case when '#non' = [6] then char(255) else [6] end
+declare @t_type nvarchar(1) = case when '#non' = [8] then '' else [8] end
+
+declare @result table(
+	gno nvarchar(1),
+	type nvarchar,
+	datea nvarchar(10),
+	productno nvarchar(30),
+	comp nvarchar(20),
+	spec nvarchar(30),
+	product nvarchar(250),
+	size nvarchar(50),
+	mount float,
+	weight float,
+	price float,
+	money float)
+insert @result
+select '0',case when a.typea =1 then '出'  else '退'end,a.datea,b.custno,a.nick,b.spec,b.product,b.size,b.mount,b.weight,b.price
+,money
+from view_VCC a left join view_VCCs b on a.noa=b.noa and a.accy=b.accy
+where a.datea between @t_bmon+'/01' and @t_emon+'/31' and
+	  a.custno between @t_bcustno and @t_ecustno and
+	  (a.stype = @t_type or @t_type ='0')
+
+
+insert @result(gno,mount,weight,money,datea)
+select '1',SUM(mount),SUM(weight),SUM(money),left(datea,6)+'/99'
+from @result
+group by left(datea,6)
+
+
+insert @result(gno,mount,weight,money,datea)
+select '2',SUM(mount),SUM(weight),SUM(money),'999/99/99'
+from @result
+
+
+select gno,type,datea,productno,comp,spec,product,size,
+	   dbo.getComma(weight,0)weight,
+	   dbo.getComma(mount,0) mount,
+	   dbo.getComma(price,0) price,
+	   dbo.getComma(money,0) money
+
+from @result
+order by  datea,gno;
+
+
+z_vcc_pe02:--z_vcc_pe02
+declare @t_bmon nvarchar(10) = case when '#non' = [1] then '' else [1] end
+declare @t_emon nvarchar(10) = case when '#non' = [2] then char(255) else [2] end
+declare @t_bcustno nvarchar(20) = case when '#non' = [3] then '' else [3] end
+declare @t_ecustno nvarchar(20) = case when '#non' = [4] then char(255) else [4] end
+declare @t_btggno nvarchar(20) = case when '#non' = [5] then '' else [5] end
+declare @t_etggno nvarchar(20) = case when '#non' = [6] then char(255) else [6] end
+declare @t_type nvarchar(1) = case when '#non' = [7] then '' else [7] end
+
+declare @result table(
+	gno nvarchar(1),
+	type nvarchar,
+	datea nvarchar(10),
+	productno nvarchar(30),
+	comp nvarchar(20),
+	spec nvarchar(30),
+	product nvarchar(250),
+	size nvarchar(50),
+	mount float,
+	weight float,
+	price float,
+	money float)
+insert @result
+select '0',case when a.typea =1 then '進' else '退' end,a.datea,b.tggno,a.nick,b.spec,b.product,b.size,b.mount,b.weight,b.price
+,money
+from view_rc2 a left join view_rc2s b on a.noa=b.noa and a.accy=b.accy
+where a.datea between @t_bmon+'/01' and @t_emon+'/31' and
+	  a.tggno between @t_btggno and @t_etggno and
+	  (a.stype = @t_type or @t_type ='0')
+
+
+insert @result(gno,mount,weight,money,datea)
+select '1',SUM(mount),SUM(weight),SUM(money),left(datea,6)+'/99'
+from @result
+group by left(datea,6)
+
+
+insert @result(gno,mount,weight,money,datea)
+select '2',SUM(mount),SUM(weight),SUM(money),'999/99/99'
+from @result
+
+
+select gno,type,datea,productno,comp,spec,product,size,
+	   dbo.getComma(weight,0)weight,
+	   dbo.getComma(mount,0) mount,
+	   dbo.getComma(price,0) price,
+	   dbo.getComma(money,0) money
+
+from @result
+order by  datea,gno
+  
+;
+
+	  
