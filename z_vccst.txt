@@ -138,8 +138,8 @@ insert into @tmp
 		'0',b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
 		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy,b.coin
-	from view_vccs[1] a
-	left join view_vcc[1] b on a.noa = b.noa
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa = b.noa
 	left join cust c on b.custno = c.noa
 	left join cust e on b.custno = e.noa
 	left join cardeal f on b.carno = f.noa
@@ -152,18 +152,19 @@ insert into @tmp
 		(a.width between @t_bwidth and @t_ewidth) and
 		(a.dime between @t_bdime and @t_edime) and
 		(a.lengthb between @t_blengthb and @t_elengthb)
-insert into @tmp(gno,amount,aweight)
-	select '1',sum(amount),sum(aweight) from @tmp
-update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-update @tmp set csize = replace(csize,'~#$','''')
-select
-	gno,noa,datea,ordeno+'-'+noq ordeno,uno,ROW_NUMBER()over(order by datea desc,noa) idno,
-	product,pno,csize,spec,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
-	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,comp,carno2,qhref
-from @tmp order by gno,idno;
+	insert into @tmp(gno,amount,aweight)
+		select '1',sum(amount),sum(aweight) from @tmp
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	update @tmp set csize = replace(csize,'~#$','''')
+	select
+		gno,noa,datea,ordeno+'-'+noq ordeno,uno,ROW_NUMBER()over(order by datea desc,noa) idno,
+		product,pno,csize,spec
+		,dbo.getComma(aweight,-1) aweight
+		,dbo.getComma(amount,-1) amount
+		,isnull(coin+' ','')+dbo.getComma(aprice,-1)  aprice
+		,dbo.getComma(atotal,-1) atotal
+		,comp,carno2,qhref
+	from @tmp order by gno,idno;
 ----------********************************************************************----------
 z_vccst3:--z_vccst3
 declare @t_bdate nvarchar(10)
@@ -491,8 +492,8 @@ insert into @tmp
 		'0',b.salesno,b.sales,b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
 		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy,b.coin
-	from view_vccs[1] a
-	left join view_vcc[1] b on a.noa = b.noa
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa = b.noa
 	left join cust c on b.custno = c.noa
 	left join cust e on b.custno = e.noa
 	left join cardeal f on b.carno = f.noa
@@ -507,18 +508,19 @@ insert into @tmp
 		(a.lengthb between @t_blengthb and @t_elengthb) and
 		(b.salesno between @t_bsalesno and @t_esalesno)
 		
-insert into @tmp(gno,salesno,sales,amount,aweight)
-	select '1',salesno,sales,sum(amount),sum(aweight) from @tmp group by salesno,sales
-update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-update @tmp set csize = replace(csize,'~#$','''')
-select
-	gno,noa,datea,ordeno+'-'+noq ordeno,uno,ROW_NUMBER()over(partition by salesno,sales order by gno,datea desc,noa) idno,
-	product,pno,csize,spec,salesno,sales salesname,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
-	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,comp,carno2,qhref
-from @tmp order by salesno,sales,gno,datea desc,noa;
+	insert into @tmp(gno,salesno,sales,amount,aweight)
+		select '1',salesno,sales,sum(amount),sum(aweight) from @tmp group by salesno,sales
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	update @tmp set csize = replace(csize,'~#$','''')
+	select
+		gno,noa,datea,ordeno+'-'+noq ordeno,uno,ROW_NUMBER()over(partition by salesno,sales order by gno,datea desc,noa) idno,
+		product,pno,csize,spec,salesno,sales salesname
+		,dbo.getComma(aweight,-1) aweight
+		,dbo.getComma(amount,-1) amount
+		,isnull(coin+' ','')+dbo.getComma(aprice,-1)  aprice
+		,dbo.getComma(atotal,-1) atotal
+		,comp,carno2,qhref
+	from @tmp order by salesno,sales,gno,datea desc,noa;
 ----------********************************************************************----------
 z_vccst8:--z_vccst8
 declare @t_bdate nvarchar(10)
