@@ -221,7 +221,7 @@ z_umm14:--z_umm14
 	left join cust b on a.custno=b.noa
 	
 	select custno a01
-		,cust a02
+		,replace(cust,'~#$',char(39)) a02
 		,sales a03
 		,dbo.getComma(discount,0) a04
 		,* 
@@ -495,7 +495,7 @@ update a
 set comp=(select top 1 namea from (select namea from carOwner where noa=a.custno union select namea from sss where noa=a.custno)tmp) 
 from @tmp a where isnull(comp,'')=''
 
-select gno,cno,(select top 1 acomp from acomp where a.cno=noa) acomp,custno,comp,memo
+select gno,cno,(select top 1 acomp from acomp where a.cno=noa) acomp,custno,replace(comp,'~#$',char(39)) comp,memo
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),(case when coin!='' then 0 else 4 end),30)) money
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),(case when coin!='' then 0 else 4 end),30)) total
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),(case when coin!='' then 0 else 4 end),30)) payed
@@ -688,7 +688,7 @@ insert into @tmp
 select '4' gno,'','','999/99/99','','','','','',sum(money),sum(chgs),sum(paysales),'','','',0, '','','','','','' m
 from @tmp where gno='0'
 
-select gno,noa,noq,datea,cno,acc1,custno,comp,
+select gno,noa,noq,datea,cno,acc1,custno,replace(comp,'~#$',char(39)) comp,
 	case when len(typea)> 4 then REPLACE(typea,'銀行存款','') else typea end typea,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money,
 	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,chgs),1)),4,30)) chgs,
@@ -798,7 +798,7 @@ insert into @tmp
 --只保留一筆預收金額
 	update @tmp set opay=0 where noq>'001'
 
-select gno,noa,noq,datea,cno,typea,custno,comp,
+select gno,noa,noq,datea,cno,typea,custno,replace(comp,'~#$',char(39)) comp,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,money),1)),4,12)) money,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,chgs),1)),4,12)) chgs,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,paysales),1)),4,12)) paysales,
@@ -839,11 +839,11 @@ delete @tmp where bmoney=0 and opay=0 and opbalance=0 and unopay=0
 insert into @tmp
 select '1','','',sum(bmoney),sum(opay),sum(unopay),sum(opbalance) from @tmp
 
-select gno,custno,comp,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bmoney),1)),4,12)) bmoney,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,opay),1)),4,12)) opays,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unopay),1)),4,12)) unopay,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,bmoney+opay-unopay),1)),4,12)) opbalance
+select gno,custno,replace(comp,'~#$',char(39)) comp,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,bmoney),1)),4,30)) bmoney,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,opay),1)),4,30)) opays,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unopay),1)),4,30)) unopay,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,bmoney+opay-unopay),1)),4,30)) opbalance
 from @tmp order by gno,custno;
 --*******************************************************************************************
 z_vccj:--z_vccj
@@ -909,21 +909,21 @@ and a.datea between @t_bdate and @t_edate
 group by (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end)
 
 select
-	gno,custno,comp,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,vcc_money),1)),4,12)) vcc_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,vcc_tax),1)),4,12)) vcc_tax,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,vcc_weight),1)),4,12)) vcc_weight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,oinvoice_money),1)),4,12)) oinvoice_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,uninvoice_money),1)),4,12)) uninvoice_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,uninvoice_tax),1)),4,12)) uninvoice_tax,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,oinvoice_weight),1)),4,12)) oinvoice_weight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,uninvoice_weight),1)),4,12)) uninvoice_weight,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unsales_money),1)),4,12)) unsales_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unsales_tax),1)),4,12)) unsales_tax,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,dmoney),1)),4,12)) dmoney,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,cmoney),1)),4,12)) cmoney,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,acmoney),1)),4,12)) acmoney,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,unpay),1)),4,12)) unpay
+	gno,custno,replace(comp,'~#$',char(39)) comp,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,vcc_money),1)),4,30)) vcc_money,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,vcc_tax),1)),4,30)) vcc_tax,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,vcc_weight),1)),4,30)) vcc_weight,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,oinvoice_money),1)),4,30)) oinvoice_money,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,uninvoice_money),1)),4,30)) uninvoice_money,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,uninvoice_tax),1)),4,30)) uninvoice_tax,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,oinvoice_weight),1)),4,30)) oinvoice_weight,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,uninvoice_weight),1)),4,30)) uninvoice_weight,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unsales_money),1)),4,30)) unsales_money,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unsales_tax),1)),4,30)) unsales_tax,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,dmoney),1)),4,30)) dmoney,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,cmoney),1)),4,30)) cmoney,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,acmoney),1)),4,30)) acmoney,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),4,30)) unpay
 from @tmp;
 --*******************************************************************************************
 z_umm9:--z_umm9 ref:z_vcc4
@@ -1255,8 +1255,14 @@ set @t_showordetotal = case when '#non'=[28] then '0' else [28] end
 declare @t_project nvarchar(50)=case when '#non' = '[26]' then '' else '[26]' end
 -------------------------------------------------------------------------------------------------------------------------
 declare @coin nvarchar(20)
+declare @cmd nvarchar(max) 
+IF OBJECT_ID('tempdb..#result')is not null
+BEGIN
+	set @cmd = 'drop table #result'
+	EXECUTE sp_executesql @cmd
+END
 
-declare @result table(
+create table #result(
 	coin nvarchar(20),
 	gno nvarchar(1),
 	typea nvarchar(4),
@@ -1290,7 +1296,7 @@ declare @result table(
 
 if(@t_showunpay='0')
 begin
-	insert into @result
+	insert into #result
 		select @t_xcoin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
 			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
 		       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
@@ -1352,7 +1358,7 @@ begin
 end
 else
 begin
-	insert into @result
+	insert into #result
 	select @t_xcoin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
 			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
 		       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
@@ -1425,7 +1431,7 @@ begin
 		
 		if(@t_showunpay='0')
 		begin
-			insert into @result
+			insert into #result
 				select @coin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
 					   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
 				       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
@@ -1471,7 +1477,7 @@ begin
 		end
 		else
 		begin
-			insert into @result
+			insert into #result
 			select @coin,'0' gno, a.typea, a.noa noa, b.noq noq, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
 					   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit,
 				       b.mount, b.weight, b.price*coin.floata, b.total*coin.floata, 0 money, 0 back, 0 tax, 0 total1, 0 pay, 0 unpay, 0 total2, 0 pcount
@@ -1555,7 +1561,7 @@ set @t_total2 = 0
 set @t_pcount = 0
 
 --declare cursor_table cursor for
---select coin,gno,typea,custno,comp,mon,total from @result order by coin,custno
+--select coin,gno,typea,custno,comp,mon,total from #result order by coin,custno
 --open cursor_table
 --fetch next from cursor_table
 --into @coin,@gno,@typea,@custno,@comp,@mon,@total
@@ -1566,11 +1572,11 @@ set @t_pcount = 0
 --		if @t_custno != '#zzzz#zzzz' and @t_coin!='#zzzz#zzzz'
 --		begin
 --			set @t_total1 = @t_money - @t_back + @t_tax
---			insert into @result
+--			insert into #result
 --			select @t_coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo, '' tel,
 --			       '' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total,
 --				   @t_money, @t_back, @t_tax, @t_total1
---				   , isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=@t_custno)),0) --單據
+--				   , isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from #result where gno='0' and custno=@t_custno)),0) --單據
 --					+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 --					and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 --					and ub.custno=@t_custno)),0) --月結
@@ -1601,11 +1607,11 @@ set @t_pcount = 0
 --if @t_custno != '#zzzz#zzzz' and @t_coin!='#zzzz#zzzz'
 --begin
 --	set @t_total1 = @t_money - @t_back + @t_tax
---	insert into @result
+--	insert into #result
 --	select @t_coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, @t_custno, @t_comp comp, '' addr_invo, '' tel,
 --			'' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total,
 --			@t_money, @t_back, @t_tax, @t_total1
---			, isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=@t_custno)),0) --單據
+--			, isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from #result where gno='0' and custno=@t_custno)),0) --單據
 --			+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 --			and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 --			and ub.custno=@t_custno)),0) --月結
@@ -1613,30 +1619,30 @@ set @t_pcount = 0
 --			, 0 unpay, 0 total2, @t_pcount,'',''
 --end
 
-insert @result
+insert #result
 select coin,'1' gno, '' typea, '' noa, '' noq, '' datea, '' mon, custno, MAX(comp) comp, '' addr_invo, '' tel, '' productno, '' product, '' unit, 0 mount, 0 weight, 0 price, 0 total, 
 sum(case when typea in ('1','折') then total else 0 end), sum(case when typea = '2' then total else 0 end)
 ,SUM(case when typea = '稅' then total else 0 end) , 0
-, isnull((select sum(ub.paysale) from umms ub where exists (select noa from @result where ub.vccno=noa and gno='0' and custno=a.custno)),0) --單據 
+, isnull((select sum(ub.paysale) from umms ub where exists (select noa from #result where ub.vccno=noa and gno='0' and custno=a.custno)),0) --單據 
 +isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 and ub.custno=a.custno)),0) --月結 
-pay , 0 unpay, 0 total2, count(*),'',''  from @result a group by custno,coin
+pay , 0 unpay, 0 total2, count(*),'',''  from #result a group by custno,coin
 
-update @result set total1=money-back+tax where gno='1'
+update #result set total1=money-back+tax where gno='1'
 	
-update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
+update #result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 
 --104/05/07單據插入小計
 if(@t_showordetotal='1')
 begin
-	insert @result
+	insert #result
 	select coin,'2',CHAR(255),noa,CHAR(255),datea,mon,custno,MAX(comp),MAX(addr_invo),MAX(tel),'','',''
 	,null,null,null,SUM(total),null,null
 	,isnull((select sum(tax) from view_vcc where noa=a.noa),0)
 	+isnull((select sum(cb.tax) from view_vcc ca left join vcca cb on ca.invono=cb.noa where ca.noa=a.noa and (ca.taxtype='1' or ca.taxtype='5') and [21]!=3),0)
 	,null,null,null,null,null,MAX(salesno),MAX(saless)
-	from @result a where gno='0' and typea!='稅'
+	from #result a where gno='0' and typea!='稅'
 	group by coin,gno,noa,datea,mon,custno
 end
 --已收款
@@ -1644,30 +1650,30 @@ end
 --set pay=isnull((select SUM(paysale*coin.floata) from umms ub
 --						left join view_vcc va on ub.vccno=va.noa
 --						outer apply (select isnull((select top 1 floata from flors where coin=a.coin and va.datea <=edate order by edate desc,noa desc),1) floata) coin
---						where vccno in(select noa from @result where noa!='' and custno=a.custno)),0) --本期單據以沖金額 
+--						where vccno in(select noa from #result where noa!='' and custno=a.custno)),0) --本期單據以沖金額 
 --+isnull((select SUM(ub.paysale*coin.floata) from umms ub 
 --			left join view_vcc va on ub.vccno=va.noa
 --			outer apply (select isnull((select top 1 floata from flors where coin=a.coin and ub.mon <=edate order by edate desc,noa desc),1) floata) coin
 --			where charindex(a.custno+'-',ub.vccno)>0 
 --			and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' between @t_bdate and @t_edate 
 --			and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6) between @t_bmon and @t_emon),0) --找出月結客戶與稅的內容 
---from @result a 
+--from #result a 
 --where a.gno='1'
 
 --104/01/31
 --update a 
 --set pay= 
 --isnull((select sum(ub.paysale) from umms ub where ub.vccno=a.noa),0) 
---from @result a 
+--from #result a 
 --where a.gno='0' and noa!=''
 
 --update a 
 --set pay= 
---isnull((select sum(pay) from @result where custno=a.custno and gno='0'),0) --單據
+--isnull((select sum(pay) from #result where custno=a.custno and gno='0'),0) --單據
 --+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno
 --and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 --and ub.custno=a.custno)),0) --月結
---from @result a 
+--from #result a 
 --where a.gno='1' 
 
 ---begin 前期---------------------------------------------------------------------------------------------------
@@ -1920,49 +1926,49 @@ select @t_xcoin,'1',custno,salesno,SUM(money) from (
 
 --update a
 --	set unpay=isnull((select total1-pay from @tmp where custno=a.custno and coin=a.coin and gno='1'),0)
---from @result a where a.gno='1'
+--from #result a where a.gno='1'
 
---insert into @result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay)
+--insert into #result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay)
 --select coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,0,0,total1-pay+unpay from @tmp
---where custno not in (select custno from @result) and gno='1' and (total1-pay+unpay)!=0
+--where custno not in (select custno from #result) and gno='1' and (total1-pay+unpay)!=0
 
 update a 
 set unpay=isnull((select sum(total) from @tmp where custno=a.custno and coin=a.coin and gno='1'),0) 
-from @result a where a.gno='1' 
+from #result a where a.gno='1' 
 
---insert into @result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
+--insert into #result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
 --select coin,gno,'','','','',a.custno,b.comp,a.salesno,c.namea,0,0,total from @tmp a 
 --left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa
---where custno not in (select custno from @result) and gno='1' and total!=0 
+--where custno not in (select custno from #result) and gno='1' and total!=0 
 
-insert into @result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
+insert into #result (coin,gno,noa,noq,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
 select coin,gno,'','','','',a.custno,b.comp,'','',0,0,sum(total) from @tmp a 
 left join cust b on a.custno=b.noa 
-where custno not in (select custno from @result) and gno='1' and total!=0 
+where custno not in (select custno from #result) and gno='1' and total!=0 
 group by coin,gno,a.custno,b.comp
 
-update @result
+update #result
 set salesno=(select top 1 (case when salesno2!='' then salesno2 else salesno end) from view_vcc order by datea desc )
 ,saless=(select top 1 (case when salesno2!='' then sales2 else sales end) from view_vcc order by datea desc )
 where salesno=''
 
-update @result
+update #result
 	set total2=total1+unpay-pay
 where gno='1'
 
 --當本期區間內沒有未收就不顯示
 if(@t_showunpay='1')
-delete @result where custno in (select custno from @result where gno='1' and total2=0)
+delete #result where custno in (select custno from #result where gno='1' and total2=0)
 
 if(@t_xcoin='ALL')
 begin
-	update @result set coin='' where coin=@t_xcoin
+	update #result set coin='' where coin=@t_xcoin
 	update @tmp set coin='' where coin=@t_xcoin
 end
 
 select
-	gno,typea,noa,noq,datea,mon,custno,comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
-	,(select top 1 saless from @result where custno=a.custno and saless!='' order by datea desc)saless
+	gno,typea,noa,noq,datea,mon,custno,replace(comp,'~#$',char(39)) comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
+	,(select top 1 saless from #result where custno=a.custno and saless!='' order by datea desc)saless
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
@@ -1975,7 +1981,14 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unpay),1)),(case when coin!='' then 0 else 4 end),30)) unpay
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total2),1)),(case when coin!='' then 0 else 4 end),30)) total2
 	,pcount,case when coin!='' then '_'+coin else '' end coin 
-from @result a order by custno,coin,case when gno='2' then '0' else gno end,mon,datea,noa,noq;
+from #result a order by custno,coin,case when gno='2' then '0' else gno end,mon,datea,noa,noq
+
+IF OBJECT_ID('tempdb..#result')is not null
+BEGIN
+	set @cmd = 'drop table #result'
+	EXECUTE sp_executesql @cmd
+END
+;
 --**************************************************************************************************
 z_umm11:--z_umm11
 declare @t_pageline int = 16   --------一頁幾行
@@ -2281,7 +2294,7 @@ set comp=(select top 1 nick from ((select nick from cust where noa=custno union 
 insert into @tmp
 select '1'gno,'','',salesno,'',sum(money),sum(total),sum(payed) from @tmp group by salesno
 
-select gno,custno,comp,salesno saleno,namea sales
+select gno,custno,replace(comp,'~#$',char(39)) comp,salesno saleno,namea sales
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,payed),1)),4,30)) payed
@@ -2311,8 +2324,15 @@ set @t_esalesno = case when '#non'=[16] then char(255) else [16] end
 set @t_showunpay = case when '#non'='#non' then '0' else '#non' end
 set @t_bcusttype = case when '#non'=[23] then '' else [23] end
 set @t_ecusttype = case when '#non'=[24] then char(255) else [24] end
+-------------------------------------------------------------------------------------------------------------
+declare @cmd nvarchar(max) 
+IF OBJECT_ID('tempdb..#result')is not null
+BEGIN
+	set @cmd = 'drop table #result'
+	EXECUTE sp_executesql @cmd
+END
 
-declare @result table(
+create table #result(
 	gno nvarchar(10),
 	idno int identity(0,1),
 	pageno int,
@@ -2344,7 +2364,7 @@ declare @result table(
 
 if(@t_showunpay='0')
 begin
-	insert into @result
+	insert into #result
 		select '0' gno,0 pageno,0 totpage,0 orderno, a.typea, a.noa noa,isnull(a.invono,'') invoiceno, a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
 			   (case when isnull(a.custno2,'')!='' then isnull(a.custno2,'') else a.custno end) custno, '', '','','',
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1,payed,unpay, 0 total2
@@ -2391,7 +2411,7 @@ begin
 end
 else
 begin
-	insert into @result
+	insert into #result
 	select '0' gno,0 pageno,0 totpage,0 orderno, a.typea, a.noa noa,isnull(a.invono,''), a.datea datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) mon,
 			   (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) custno, '', '','', '',
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1,payed,unpay, 0 total2
@@ -2438,15 +2458,15 @@ begin
 		order by custno,gno,mon,datea,noa
 end
 
-delete @result where custno not in (select distinct noa from cust where isnull(typea,'') between @t_bcusttype and @t_ecusttype)
+delete #result where custno not in (select distinct noa from cust where isnull(typea,'') between @t_bcusttype and @t_ecusttype)
 
 update a 
-set tax=isnull((select sum(tax) tax from @result where noa=a.noa and (typea='稅')),0)
+set tax=isnull((select sum(tax) tax from #result where noa=a.noa and (typea='稅')),0)
 ,comp=isnull(c.comp,''),addr_invo=isnull(c.addr_invo,''),serial=isnull(c.serial,''),tel=isnull(c.tel,'') 
-from @result a left join cust c on a.custno = c.noa 
+from #result a left join cust c on a.custno = c.noa 
 where isnull(a.noa,'')!='' and (a.typea!='稅')
 
-delete @result where (typea='稅') and isnull(noa,'')!=''
+delete #result where (typea='稅') and isnull(noa,'')!=''
 
 declare @gno nvarchar(10)
 declare @typea nvarchar(20)
@@ -2484,7 +2504,7 @@ set @t_pay = 0
 set @t_unpay = 0
 set @t_total2 = 0
 --declare cursor_table cursor for
---	select gno,typea,custno,comp,addr_invo,serial,tel,mon,total,tax from @result where gno='0'
+--	select gno,typea,custno,comp,addr_invo,serial,tel,mon,total,tax from #result where gno='0'
 --open cursor_table
 --fetch next from cursor_table
 --into @gno,@typea,@custno,@comp,@addr_invo,@serial,@tel,@mon,@total,@tax
@@ -2495,10 +2515,10 @@ set @t_total2 = 0
 --		if @t_custno != '#zzzz#zzzz'
 --		begin
 --			set @t_total1 = @t_money - @t_back + @t_tax
---			insert into @result
+--			insert into #result
 --			select '1' gno,0 pageno,0 totpage,0 orderno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, @t_custno, @t_comp comp, @t_addr_invo addr_invo,@t_serial serial, @t_tel tel,
 --			       0 total, @t_money, @t_back, @t_tax, @t_total1
---			       , isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=@t_custno)),0) --單據
+--			       , isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from #result where gno='0' and custno=@t_custno)),0) --單據
 --					+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 --					and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 --					and ub.custno=@t_custno)),0) --月結 
@@ -2528,10 +2548,10 @@ set @t_total2 = 0
 --if @t_custno != '#zzzz#zzzz'
 --begin
 --	set @t_total1 = @t_money - @t_back + @t_tax
---	insert into @result
+--	insert into #result
 --		select '1' gno,0 pageno,0 totpage,0 orderno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, @t_custno, @t_comp comp,@t_addr_invo addr_invo,@t_serial serial, @t_tel tel,
 --				 0 total,@t_money, @t_back, @t_tax, @t_total1
---				 , isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=@t_custno)),0) --單據
+--				 , isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from #result where gno='0' and custno=@t_custno)),0) --單據
 --				+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 --				and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 --				and ub.custno=@t_custno)),0) --月結 
@@ -2539,30 +2559,30 @@ set @t_total2 = 0
 --				, 0 unpay, 0 total2,'','',''
 --end
 	
-insert @result
+insert #result
 select '1' gno,0 pageno,0 totpage,0 orderno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, custno, MAX(comp) comp
 		,MAX(addr_invo) addr_invo,MAX(serial) serial, MAX(tel) tel,0 total
 		,SUM(case when typea = '1' then total else 0 end), sum(case when typea = '2' then total else 0 end)
 		--,SUM(case when typea = '稅' then total else 0 end),0
 		,sum(tax),0
-		,isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from @result where gno='0' and custno=a.custno)),0) --單據
+		,isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from #result where gno='0' and custno=a.custno)),0) --單據
 		+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 		and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 		and ub.custno=a.custno)),0) --月結 
-		pay, 0 unpay, 0 total2,'','',''  from @result a group by custno
+		pay, 0 unpay, 0 total2,'','',''  from #result a group by custno
 		
-	update @result set total1=money-back+tax where gno='1'
+	update #result set total1=money-back+tax where gno='1'
 	
-update @result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
+update #result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 
 --已收款
 --update a
---	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from @result where noa!='' and custno=a.custno)),0) --本期單據以沖金額
+--	set pay=isnull((select SUM(paysale) from umms where vccno in(select noa from #result where noa!='' and custno=a.custno)),0) --本期單據以沖金額
 --	+isnull((select SUM(ub.paysale) from umm ua left join umms ub on ua.noa=ub.noa
 --				where charindex(a.custno+'-',ub.vccno)>0
 --				and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6)+'/01' between @t_bdate and @t_edate
 --				and SUBSTRING(vccno,CHARINDEX('-',vccno)+1,6) between @t_bmon and @t_emon),0) --找出月結客戶與稅的內容
---from @result a where a.gno='1'
+--from #result a where a.gno='1'
 
 
 ---begin 前期---------------------------------------------------------------------------------------------------
@@ -2758,48 +2778,48 @@ select '1',custno,salesno,SUM(money) from (
 
 --update a
 --	set unpay=isnull((select total1-pay from @tmp where custno=a.custno and gno='1'),0)
---from @result a where a.gno='1'
+--from #result a where a.gno='1'
 
---insert into @result (gno,noa,typea,datea,mon,custno,comp,addr_invo,serial,tel,salesno,saless,total1,pay,unpay,form)
+--insert into #result (gno,noa,typea,datea,mon,custno,comp,addr_invo,serial,tel,salesno,saless,total1,pay,unpay,form)
 --select gno,noa,typea,datea,mon,custno,comp,addr_invo,serial,tel,salesno,saless,0,0,total1-pay+unpay,'' from @tmp
---where custno not in (select distinct custno from @result) and gno='1' and (total1-pay+unpay)!=0
+--where custno not in (select distinct custno from #result) and gno='1' and (total1-pay+unpay)!=0
 
 update a 
 set unpay=isnull((select sum(total) from @tmp where custno=a.custno and gno='1'),0) 
-from @result a where a.gno='1' 
+from #result a where a.gno='1' 
 
-insert into @result (gno,noa,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
+insert into #result (gno,noa,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
 select gno,'','','',a.custno,b.comp,a.salesno,c.namea,0,0,total from @tmp a 
 left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa
-where custno not in (select custno from @result) and gno='1' and total!=0 
+where custno not in (select custno from #result) and gno='1' and total!=0 
 
 
-update @result set total1=total,total2=total+tax where gno='0'
-update @result set total2=total1+unpay-pay where gno='1'
+update #result set total1=total,total2=total+tax where gno='0'
+update #result set total2=total1+unpay-pay where gno='1'
 
---update @result set total1=total1-pay 
+--update #result set total1=total1-pay 
 --,money=case when pay>=(isnull(money,0)-isnull(back,0)) then 0 else isnull(money,0)-isnull(back,0)-isnull(pay,0) end 
 --,tax=case when pay>=isnull(money,0)-isnull(back,0) then isnull(tax,0)-(isnull(pay,0)-isnull(money,0)+isnull(back,0)) else isnull(tax,0) end 
 --where gno='1' 
 
 --當本期區間內沒有未收就不顯示
 if(@t_showunpay='1')
-	delete @result where custno in (select distinct custno from @result where gno='1' and total2=0)
+	delete #result where custno in (select distinct custno from #result where gno='1' and total2=0)
 --插入前期帳款
---insert @result(gno,typea,noa,mon,datea,total1,tax,total2,unpay,form,custno,comp,addr_invo,serial,tel,salesno,saless)
+--insert #result(gno,typea,noa,mon,datea,total1,tax,total2,unpay,form,custno,comp,addr_invo,serial,tel,salesno,saless)
 --select '0','出','前期帳款',@t_bmon,@t_bdate,0,0,0,total1-pay,'vcc',custno,comp,addr_invo,serial,tel,salesno,saless
---from @tmp where gno='1' and custno in (select custno from @result group by custno)
+--from @tmp where gno='1' and custno in (select custno from #result group by custno)
 
-insert @result(gno,typea,noa,mon,datea,total1,tax,total2,unpay,form,custno,comp,addr_invo,serial,tel,salesno,saless) 
+insert #result(gno,typea,noa,mon,datea,total1,tax,total2,unpay,form,custno,comp,addr_invo,serial,tel,salesno,saless) 
 select '0','出','前期帳款',@t_bmon,@t_bdate,0,0,0,total,'vcc',custno,b.comp,addr_invo,serial,b.tel,a.salesno,c.namea
-from @tmp a left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa where gno='1' and custno in (select custno from @result group by custno) 
+from @tmp a left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa where gno='1' and custno in (select custno from #result group by custno) 
 
 
 --預收
 update a
 set pay=isnull((select SUM( opay - unopay) total from umm where custno=a.custno),0)
-from @result a where gno='1'
-update @result set gno='3' where gno='1'
+from #result a where gno='1'
+update #result set gno='3' where gno='1'
 ----------------------------------------------------
 declare @pageCount int = 12 --一頁含合計共幾行
 declare @totalLineCount int = 5 --合計有幾行
@@ -2810,7 +2830,7 @@ declare @nowOrder int = 0
 declare @thisPageno int = 0
 set @t_custno = '#zzzz#zzzz'
 declare cursor_table cursor for
-	select idno,gno,custno from @result where gno != '3' order by custno,datea
+	select idno,gno,custno from #result where gno != '3' order by custno,datea
 open cursor_table
 fetch next from cursor_table
 into @idno,@gno,@custno
@@ -2841,7 +2861,7 @@ begin
 			end
 		end
 	end
-	update @result set orderno=@nowOrder,pageno=@thisPageno where idno=@idno
+	update #result set orderno=@nowOrder,pageno=@thisPageno where idno=@idno
 	fetch next from cursor_table
 	into @idno,@gno,@custno
 end
@@ -2849,45 +2869,45 @@ close cursor_table
 deallocate cursor_table
 update a
 	set totpage=b.maxpageno
-from @result a
-outer apply(select max(pageno) maxpageno from @result where a.custno=custno) b
+from #result a
+outer apply(select max(pageno) maxpageno from #result where a.custno=custno) b
 update a
 	set orderno=case when b.maxorderno>=@pageCount then 1 else b.maxorderno+1 end,
 		 pageno=case when b.maxorderno>=@pageCount then a.totpage+1 else a.totpage end,
 		 totpage=case when b.maxorderno>=@pageCount then a.totpage+1 else a.totpage end
-from @result a
-outer apply(select max(orderno) maxorderno from @result where a.custno=custno and (a.totpage=pageno)) b
+from #result a
+outer apply(select max(orderno) maxorderno from #result where a.custno=custno and (a.totpage=pageno)) b
 where a.gno='3'
 declare @totpage int = 0
 declare cursor_table cursor for
-	select idno,custno,totpage from @result where gno = '3' order by custno
+	select idno,custno,totpage from #result where gno = '3' order by custno
 open cursor_table
 fetch next from cursor_table
 into @idno,@custno,@totpage
 while(@@FETCH_STATUS <> -1)
 begin
-	declare @t_maxOrderno int = (select max(orderno) from @result where (custno=@custno) and (totpage=@totpage))
+	declare @t_maxOrderno int = (select max(orderno) from #result where (custno=@custno) and (totpage=@totpage))
 	if(@t_maxOrderno>(@pageCount-@totalLineCount))
 	begin
-		update @result set pageno=@totpage+1,totpage=@totpage+1 where (custno=@custno) and (pageno=@totpage) and ((orderno>@t_maxOrderno) or pageno=0)
+		update #result set pageno=@totpage+1,totpage=@totpage+1 where (custno=@custno) and (pageno=@totpage) and ((orderno>@t_maxOrderno) or pageno=0)
 	end
-	declare @thisOrder int = (select top 1 orderno from @result where (custno=@custno) and (gno='3'))
-	declare @allLine int = (select sum(case when gno='0' then 1 when gno='3' then @totalLineCount end) from @result where custno=@custno)
+	declare @thisOrder int = (select top 1 orderno from #result where (custno=@custno) and (gno='3'))
+	declare @allLine int = (select sum(case when gno='0' then 1 when gno='3' then @totalLineCount end) from #result where custno=@custno)
 	while((@allLine % @pageCount) != 0)
 	begin
-		insert into @result(gno,orderno,pageno,totpage,typea,noa,invoiceno,datea,mon,custno,comp,addr_invo,serial,tel,salesno,saless,form)
+		insert into #result(gno,orderno,pageno,totpage,typea,noa,invoiceno,datea,mon,custno,comp,addr_invo,serial,tel,salesno,saless,form)
 			select
 				'1',@thisOrder orderno,pageno,totpage,'' typea,'' noa,'' invoiceno,'' datea,'' mon,custno,comp,addr_invo,serial,tel,salesno,saless,'Empty' + cast(@thisOrder as nvarchar)
-			from @result where idno=@idno
+			from #result where idno=@idno
 		set @thisOrder = @thisOrder+1
 		if(@thisOrder > @pageCount)
 		begin
 			set @thisOrder = 1
-			update @result set pageno=pageno+1 where custno=@custno and gno='3'
+			update #result set pageno=pageno+1 where custno=@custno and gno='3'
 		end
 		set @allLine = @allLine+1
 	end
-	update @result set orderno=@thisOrder where custno=@custno and gno='3'
+	update #result set orderno=@thisOrder where custno=@custno and gno='3'
 	fetch next from cursor_table
 	into @idno,@custno,@totpage
 end
@@ -2895,18 +2915,18 @@ close cursor_table
 deallocate cursor_table
 update a
 	set totpage = b.maxpageno
-from @result a
-outer apply(select max(pageno) maxpageno from @result where a.custno=custno) b
-insert into @result(gno,orderno,pageno,totpage,custno)
+from #result a
+outer apply(select max(pageno) maxpageno from #result where a.custno=custno) b
+insert into #result(gno,orderno,pageno,totpage,custno)
 	select
 		'2',max(orderno)+1,pageno,totpage,custno
-	from @result
+	from #result
 	where pageno != totpage
 	group by custno,pageno,totpage
 
 select
-	gno,idno,orderno,pageno,totpage,typea,noa,invoiceno,datea,mon,custno,comp,addr_invo,serial,tel
-	,(select top 1 saless from @result where custno=a.custno and saless!='' order by datea desc) saless
+	gno,idno,orderno,pageno,totpage,typea,noa,invoiceno,datea,mon,custno,replace(comp,'~#$',char(39)) comp,addr_invo,serial,tel
+	,(select top 1 saless from #result where custno=a.custno and saless!='' order by datea desc) saless
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,money),1)),4,30)) money
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,back),1)),4,30)) back
@@ -2915,8 +2935,15 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pay),1)),4,30)) pay
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and typea!='稅' and gno='0' then -1 else 1 end)*unpay),1)),4,30)) unpay
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and typea!='稅' and gno='0' then -1 else 1 end)*total2),1)),4,30)) total2
-	,(select count(*) from @result where (gno='0') and (custno=a.custno)) pcount
-from @result a order by custno,totpage,pageno,orderno,mon,datea,case when noa='前期帳款' then '0' else noa end,idno;
+	,(select count(*) from #result where (gno='0') and (custno=a.custno)) pcount
+from #result a order by custno,totpage,pageno,orderno,mon,datea,case when noa='前期帳款' then '0' else noa end,idno
+
+IF OBJECT_ID('tempdb..#result')is not null
+BEGIN
+	set @cmd = 'drop table #result'
+	EXECUTE sp_executesql @cmd
+END
+;
 
 --********************************************************************************************
 z_umm16:--z_umm16
