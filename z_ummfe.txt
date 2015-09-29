@@ -403,7 +403,10 @@ z_ummfe04:--z_ummfe04
 		,dbo.getComma(discount,0) a04
 		,* 
 	from @tmp order by gno,custno;
-
+	
+	
+	
+--*******************************************************************************
 z_ummfe03:--z_ummfe03
 	SET QUOTED_IDENTIFIER OFF
 
@@ -414,6 +417,9 @@ z_ummfe03:--z_ummfe03
 	declare @t_emon nvarchar(20) = case when '#non' = [7] then CHAR(255) else [7] end	
 	declare @t_bdate nvarchar(20) = case when '#non' = [9] then '' else [9] end
 	declare @t_edate nvarchar(20) = case when '#non' = [10] then CHAR(255) else [10] end
+	declare @t_worker nvarchar(20) = case when '#non' = '[14]' then '' else '[14]' end
+	declare @t_bzdate nvarchar(20) = case when '#non' = [15] then '' else [15] end
+	declare @t_ezdate nvarchar(20) = case when '#non' = [16] then CHAR(255) else [16] end
 	declare @date date 
 	declare @t_bbmon nvarchar(20)
 	begin try
@@ -450,6 +456,7 @@ z_ummfe03:--z_ummfe03
 		total float,
 		xx int,
 		vccCount int,
+		weight nvarchar(50),
 	
 		datea nvarchar(10),
 		typea nvarchar(10),
@@ -462,6 +469,7 @@ z_ummfe03:--z_ummfe03
 		unit nvarchar(20),
 		mount float,
 		price float,
+	--	money float,
 		moneys float,
 		
 		udate nvarchar(20),  --收款日期
@@ -490,6 +498,7 @@ z_ummfe03:--z_ummfe03
 	where (len(@t_cno)=0 or a.cno=@t_cno)
 	and case when len(ISNULL(a.custno2,''))>0 then a.custno2 else isnull(a.custno,'') end between @t_bcustno and @t_ecustno
 	and a.mon between @t_bmon and @t_emon
+	and a.datea between @t_bzdate and @t_ezdate
 	--------------------------------------------------------------------------------------------
 	insert into #z_ummfe03(gno,pno,cno,coin,custno
 		,datea,typea,tablea,accy,noa,tax,xx)
@@ -504,7 +513,7 @@ z_ummfe03:--z_ummfe03
 	begin
 		insert into #z_ummfe03(gno,pno,cno,coin,custno
 			,udate,acc1,acc2,checkno,bankno,bank,umoney,indate)
-		select '4',4,isnull(a.cno,''),'',isnull(a.custno,'')
+		select '12',12,isnull(a.cno,''),'',isnull(a.custno,'')
 			,a.datea,b.acc1,b.acc2,b.checkno,b.checkno,b.bank,b.[money],b.indate
 		from umm a
 		left join umms b on a.noa=b.noa
@@ -514,66 +523,66 @@ z_ummfe03:--z_ummfe03
 	end
 
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '3',3,cno,coin,custno 
+	select '11',11,cno,coin,custno 
 	from #z_ummfe03
-	where gno='4'
+	where gno='12'
 	group by cno,coin,custno
 	
+	--收款小計
 	insert into #z_ummfe03(gno,pno,cno,coin,custno,umoney)
-	select '5',5,isnull(cno,''),coin,isnull(custno,''),sum([umoney])
+	select '13',13,isnull(cno,''),coin,isnull(custno,''),sum([umoney])
 	from #z_ummfe03
-	where gno='4'
+	where gno='12'
 	group by cno,coin,custno
 	--------------------------------------------------------------------------------------------			
 	--頁尾小計
 	--出貨金額：
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '8',8,cno,coin,custno 
-	from #z_ummfe03
+	select '3',3,cno,coin,custno
+	from #z_ummfe03 
 	group by cno,coin,custno
 	
 	--退貨金額：
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '9',9,cno,coin,custno 
+	select '4',4,cno,coin,custno 
 	from #z_ummfe03
 	group by cno,coin,custno
 	
 	--稅    額：
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '10',10,cno,coin,custno 
+	select '5',5,cno,coin,custno 
 	from #z_ummfe03
-	group by cno,coin,custno	
-		
+	group by cno,coin,custno
+	
 	--本期應收：
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '11',11,cno,coin,custno 
+	select '6',6,cno,coin,custno 
 	from #z_ummfe03
-	group by cno,coin,custno	
-		
+	group by cno,coin,custno
+	
 	--已收金額：
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '12',12,cno,coin,custno 
+	select '7',7,cno,coin,custno 
 	from #z_ummfe03
-	group by cno,coin,custno	
-		
+	group by cno,coin,custno
+	
 	--前期未收：
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '13',13,cno,coin,custno 
+	select '8',8,cno,coin,custno 
 	from #z_ummfe03
-	group by cno,coin,custno	
+	group by cno,coin,custno
 	
 	--呆帳
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '14',14,cno,coin,custno 
-	from #z_ummfe03
-	group by cno,coin,custno
-		
-	--應收總計：	
-	insert into #z_ummfe03(gno,pno,cno,coin,custno)
-	select '15',15,cno,coin,custno 
+	select '9',9,cno,coin,custno 
 	from #z_ummfe03
 	group by cno,coin,custno
 	
+	--應收總計：	
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
+	select '10',10,cno,coin,custno 
+	from #z_ummfe03
+	group by cno,coin,custno
 	--------------------------------------------------------------------------------------------
 	update #z_ummfe03 set sale=b.sale,bksale=b.bksale,taxsale=b.taxsale
 	from #z_ummfe03 a
@@ -632,6 +641,15 @@ z_ummfe03:--z_ummfe03
 	left join (select cno,coin,custno,SUM(vcccount)nn
 		from #z_ummfe03 group by cno,coin,custno)b
 	on a.cno=b.cno and a.coin=b.coin and a.custno=b.custno
+	
+	update #z_ummfe03 set weight=b.wei
+	from #z_ummfe03 a
+	left join (select cno,coin,custno,SUM(ISNULL(mount,0))wei
+		from #z_ummfe03 where UPPER(unit) = 'KG' group by cno,coin,custno)b
+	on a.cno=b.cno and a.coin=b.coin and a.custno=b.custno
+	
+	update #z_ummfe03 set weight = case when weight > 0 then '重量合計：'+dbo.getComma(weight,-1)+"KG" else '' end where gno = '3'
+
 	-----------------------------------------------------------------------------------------------
 	declare @t_pageline int = 12 -- 一頁幾行
 	declare @cno nvarchar(20)
@@ -653,13 +671,13 @@ z_ummfe03:--z_ummfe03
 		begin
 			if @m = 1
 			begin
-				insert into #z_ummfe03(gno,pno,cno,coin,custno)values('6',6,@cno,@coin,@custno)
+				insert into #z_ummfe03(gno,pno,cno,coin,custno)values('14',14,@cno,@coin,@custno)
 				set @m = @m+1
 				set @n = @n+1
 			end
 			if @n%@t_pageline!=0
 			begin
-				insert into #z_ummfe03(gno,pno,cno,coin,custno)values('7',7,@cno,@coin,@custno)
+				insert into #z_ummfe03(gno,pno,cno,coin,custno)values('15',15,@cno,@coin,@custno)
 				set @n = @n+1
 			end
 		end
@@ -669,21 +687,28 @@ z_ummfe03:--z_ummfe03
 	end
 	close cursor_table
 	deallocate cursor_table
+	
+	insert into #z_ummfe03(gno,pno,cno,coin,custno)
+	select '16',16,cno,coin,custno 
+	from #z_ummfe03
+	group by cno,coin,custno
 	-------------------------------------------------------------------------------------------------------
 	
 	select vccCount nn
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.acomp +'</a>' tacomp
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.comp +'</a>' tcomp
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.addr_home +'</a>' taddr
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+b.acomp +'</a>' tacomp
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+c.comp +'</a>' tcomp
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+c.addr_comp +'</a>' taddr
 		,case when xx=1 then a.typea else '' end b01
 		,case when xx=1 then a.datea else '' end b02
 		,case when xx=1 then a.noa else '' end b03
 		,case when xx=1 then dbo.getComma(a.[money],0) else '' end b04 
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(a.product,'~#$',char(39)) +'</a>' b05
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.unit +'</a>' b06
-		,dbo.getComma(a.[mount],0) b07
-		,dbo.getComma(a.[price],2) b08
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+replace(a.product,'~#$',char(39)) +'</a>' b05
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+a.unit +'</a>' b06
+		,dbo.getComma(a.[mount],2) b07
+		,dbo.getComma(a.[price],3) b08
+		,dbo.getComma(a.[moneys],0) b10
 		,dbo.getComma(a.[tax],0) b09
+		
 		
 		,dbo.getComma(isnull(a.[sale],0),0) c01
 		,dbo.getComma(isnull(a.[bksale],0),0) c02
@@ -695,19 +720,25 @@ z_ummfe03:--z_ummfe03
 		,dbo.getComma(isnull(a.[total],0),0) c08
 		
 		,a.udate d01
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.acc2+'</a>' d02
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.checkno+'</a>' d03
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.bank+'</a>' d04
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+a.acc2+'</a>' d02
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+a.checkno+'</a>' d03
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+a.bank+'</a>' d04
 		,a.indate d05
 		,dbo.getComma(isnull(a.[umoney],0),0) d06
 		
 		,a.* 
+		
+		,case when LEN(@t_bzdate)=0 and @t_ezdate=CHAR(255) then '帳款月份：'+@t_bmon +'~'+@t_emon else '帳款日期：'+@t_bzdate+'~'+@t_ezdate  end b2emon
+		,@t_bdate +'~'+@t_edate b2edate,c.tel tel,@t_worker worker
 	from #z_ummfe03 a 
 	left join acomp b on a.cno=b.noa
 	left join cust c on a.custno = c.noa
 	order by a.custno,a.cno,a.coin,a.pno,a.recno
 	drop table #z_ummfe03;
+	
+	
 
+--*******************************************************************************
 z_ummfe02:--z_ummfe02
 	SET QUOTED_IDENTIFIER OFF
 
@@ -836,7 +867,6 @@ z_ummfe02:--z_ummfe02
 	from @tmpa a
 	left join cust b on a.custno=b.noa
 	order by gno,custno;
-	
 	
 	
 	
