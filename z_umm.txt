@@ -1880,11 +1880,11 @@ end
 --from @tmp a where a.gno='1'
 
 declare @tmp table( 
-coin nvarchar(20), 
-gno nvarchar(1), 
-custno nvarchar(50), 
-total decimal(18,0), 
-salesno nvarchar(30)
+	coin nvarchar(20), 
+	gno nvarchar(1), 
+	custno nvarchar(50), 
+	total decimal(18,0), 
+	salesno nvarchar(30)
 ) 
 
 insert into @tmp (coin,gno,custno,salesno,total)
@@ -1920,7 +1920,10 @@ select @t_xcoin,'1',custno,salesno,SUM(money) from (
 	--cara
 	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
 	--and len(@t_paytype)=0
-)tmp where (custno between @t_bcustno and @t_ecustno ) and (salesno between @t_bsalesno and @t_esalesno) group by custno,salesno
+)tmp --where (custno between @t_bcustno and @t_ecustno ) and (salesno between @t_bsalesno and @t_esalesno) 
+group by custno,salesno
+
+delete @tmp  where (custno not between @t_bcustno and @t_ecustno ) and (salesno not between @t_bsalesno and @t_esalesno) 
 
 -----end 前期----------------------------------------------------------------------------------
 
@@ -2734,11 +2737,11 @@ update #result set typea = (case typea when '1' then '出' else '退' end) where
 --from @tmp a where a.gno='1'
 
 declare @tmp table( 
-coin nvarchar(20), 
-gno nvarchar(1), 
-custno nvarchar(50), 
-total decimal(18,0), 
-salesno nvarchar(30)
+	coin nvarchar(20), 
+	gno nvarchar(1), 
+	custno nvarchar(50), 
+	total decimal(18,0), 
+	salesno nvarchar(30)
 ) 
 
 insert into @tmp (gno,custno,salesno,total)
@@ -2771,8 +2774,10 @@ select '1',custno,salesno,SUM(money) from (
 	--cara
 	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
 	--and len(@t_paytype)=0
-)tmp where (custno between @t_bcustno and @t_ecustno ) and (salesno between @t_bsalesno and @t_esalesno) group by custno,salesno
+)tmp --where (custno between @t_bcustno and @t_ecustno ) and (salesno between @t_bsalesno and @t_esalesno) 
+group by custno,salesno
 
+delete @tmp where (custno not between @t_bcustno and @t_ecustno ) and (salesno not between @t_bsalesno and @t_esalesno) 
 
 -----end 前期----------------------------------------------------------------------------------
 
@@ -2830,7 +2835,7 @@ declare @nowOrder int = 0
 declare @thisPageno int = 0
 set @t_custno = '#zzzz#zzzz'
 declare cursor_table cursor for
-	select idno,gno,custno from #result where gno != '3' order by custno,datea
+	select idno,gno,custno from #result where gno != '3' order by custno,datea,case when noa='前期帳款' then '' else noa end
 open cursor_table
 fetch next from cursor_table
 into @idno,@gno,@custno
@@ -3598,11 +3603,11 @@ end
 --from @tmp a where a.gno='1'
 
 declare @tmp table( 
-coin nvarchar(20), 
-gno nvarchar(1), 
-custno nvarchar(50), 
-total decimal(18,0), 
-salesno nvarchar(30)
+	coin nvarchar(20), 
+	gno nvarchar(1), 
+	custno nvarchar(50), 
+	total decimal(18,0), 
+	salesno nvarchar(30)
 ) 
 
 insert into @tmp (coin,gno,custno,salesno,total)
@@ -3638,7 +3643,10 @@ select @t_xcoin,'1',custno,salesno,SUM(money) from (
 	--cara
 	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
 	--and len(@t_paytype)=0
-)tmp where (custno between @t_bcustno and @t_ecustno ) and (salesno between @t_bsalesno and @t_esalesno) group by custno,salesno
+)tmp --where (custno between @t_bcustno and @t_ecustno ) and (salesno between @t_bsalesno and @t_esalesno) 
+group by custno,salesno
+
+delete @tmp  where (custno not between @t_bcustno and @t_ecustno ) and (salesno not between @t_bsalesno and @t_esalesno) 
 
 -----end 前期----------------------------------------------------------------------------------
 
