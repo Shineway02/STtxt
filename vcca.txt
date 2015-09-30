@@ -166,7 +166,8 @@ batchvcca_rb:--batchvcca_rb
 		,round(a.total/@t_vccacount,0),round(a.total/@t_vccacount,0),@t_datea
 		from view_ordes a , @vcca b where a.noa=@t_ordeno
 		
-		set @x_vccano=stuff((select ','+vccano from @vcca for xml path('')),1,1,'') 
+		--set @x_vccano=stuff((select ','+vccano from @vcca for xml path('')),1,1,'') 
+		set @x_vccano=isnull(stuff((select ','+noa from vcca where trdno=@t_ordeno FOR XML PATH('')),1,1,''),'')
 		
 		exec("update vcc"+@t_vccaccy+" set invono='"+@x_vccano+"' where noa='"+@t_vccno+"'")
 		
@@ -177,4 +178,20 @@ batchvcca_rb:--batchvcca_rb
 	end
 	
 	select @t_err err
+;
+--************************************************************************************
+changeorde_rb:--changeorde_rb
+	declare @vccano nvarchar(max) = [1]	
+	--------------------------------------------------------------------------------------------------------
+	SET QUOTED_IDENTIFIER OFF
+	declare @typea nvarchar(max)=isnull((select [type] from vcca where noa=@vccano),'')
+	declare @taxtype nvarchar(max)=isnull((select taxtype from vcca where noa=@vccano),'')
+	declare @ordeno nvarchar(max)=isnull((select trdno from vcca where noa=@vccano),'')
+	declare @accy nvarchar(max)=isnull((select accy from view_orde where noa=@ordeno),'')
+	declare @kind nvarchar(max)=isnull((select kind from view_orde where noa=@ordeno),'')
+	
+	if(@typea='E' and @taxtype='6' and  (select count(*) from view_orde where noa=@ordeno and charindex(@vccano,ordbno)>0 )>0 )
+	begin
+		exec("update orde"+@accy+" set kind='作廢' where noa='"+@ordeno+"' ")
+	end
 ;
