@@ -1,0 +1,941 @@
+z_ordepi5:--z_ordepi5
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
+	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	declare @t_bproductno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+	declare @t_eproductno nvarchar(30) = case when '#non'=[11] then char(255) else [11] end
+	declare @t_sort nvarchar(30) = case when '#non'=[16] then '' else [16] end
+	declare @t_bradius float = cast(case when '#non'=[26] then '0' else [26] end as float)
+	declare @t_eradius float = cast(case when '#non'=[27] then '99999' else [27] end as float)
+	declare @t_bwidth float = cast(case when '#non'=[28] then '0' else [28] end as float)
+	declare @t_ewidth float = cast(case when '#non'=[29] then '99999' else [29] end as float)
+	declare @t_bdime float = cast(case when '#non'=[30] then '0' else [30] end as float)
+	declare @t_edime float = cast(case when '#non'=[31] then '99999' else [31] end as float)
+	declare @t_blength float = cast(case when '#non'=[32] then '0' else [32] end as float)
+	declare @t_elength float = cast(case when '#non'=[33] then '99999' else [33] end as float)
+	set @t_sort = upper(@t_sort)
+	-----------------------------------------------------------------------------------------
+	IF OBJECT_ID('tempdb..#z_ordepi5_a')is not null
+	BEGIN
+		drop table  #z_ordepi5_a
+	END
+	create table #z_ordepi5_a(
+		ordeaccy nvarchar(20),
+		ordeno nvarchar(20),
+		ordeno2 nvarchar(10),
+		
+		custno nvarchar(20),
+		datea nvarchar(10),
+		style nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(40),
+		spec nvarchar(max),
+		tspec nvarchar(max),
+		classa nvarchar(20),
+		size nvarchar(max),
+		dime float,
+		width float,
+		lengthb float,
+		radius float,
+		mount float,
+		[weight] float,
+		price float,
+		memo nvarchar(20),
+		notv float,
+		tmount float,
+		tweight float,
+		
+		csize nvarchar(max),
+		notmount float,
+		notweight float
+	)
+	
+	insert into #z_ordepi5_a(ordeaccy,ordeno,ordeno2
+		,custno,datea,style,productno,product,spec,tspec,classa,size
+		,dime,width,lengthb,radius,mount,[weight],price,memo
+		,notv)
+	select b.accy,b.noa,b.no2
+		,a.custno,b.datea,b.style,b.productno,b.product,b.spec
+		,REPLACE(REPLACE(Upper(b.spec),'STK-','SS'),'STK','SS')
+		,b.classa,b.size
+		,b.dime,b.width,b.lengthb,b.radius,b.mount,b.[weight],b.price,b.memo
+		,b.notv
+	from view_orde a
+	left join view_ordes b on a.accy=b.accy and a.noa=b.noa
+	where isnull(b.enda,0)!=1 and isnull(a.enda,0)!=1
+	and a.kind='B2'
+	order by productno,radius,width,dime,lengthb
+	
+	update #z_ordepi5_a set tmount = ISNULL(a.tmount,0)+b.mount,tweight = ISNULL(a.tweight,0)+b.weight
+	from #z_ordepi5_a a
+	outer apply(select SUM(mount) mount,SUM(weight) weight from view_vccs where ordeno=a.ordeno and no2=a.ordeno2) b
+	------------------------------------------------------------------------------------------------------
+	delete #z_ordepi5_a where not( ISNULL(tmount,0)<ISNULL(mount,0) and ISNULL(tweight,0)<ISNULL(weight,0))
+	update #z_ordepi5_a set csize = dbo.csize('B2',dime,width,lengthb,radius)
+		,notmount = ISNULL(mount,0)-ISNULL(tmount,0)
+		,notweight = ISNULL(weight,0)-ISNULL(tweight,0)
+	
+	
+	-------------------------------------------------------------------------------------------------------
+	IF OBJECT_ID('tempdb..#z_ordepi5_b')is not null
+	BEGIN
+		drop table  #z_ordepi5_b
+	END
+	create table #z_ordepi5_b(
+		uno nvarchar(30),
+		productno nvarchar(20),
+		style nvarchar(20),
+		product nvarchar(20),
+		spec nvarchar(40),
+		tspec nvarchar(40),
+		size nvarchar(max),
+		dime float,
+		width float,
+		lengthb float,
+		radius float,
+		mount float,
+		weight float
+	)
+	
+	----------------------------------------------------------------------------------------------------
+	insert into #z_ordepi5_b(uno,mount,weight)
+	select uno,SUM(mount),SUM(weight)
+	from(
+		select b.uno,b.mount,b.weight 
+		from view_rc2 a
+		left join view_rc2s b on a.accy=b.accy and a.noa=b.noa 
+		left join view_uccb c on b.uno=c.uno
+		where c.style between '1' and '3'
+		union all
+		select b.uno,b.mount,b.weight 
+		from view_ina a
+		left join view_inas b on a.accy=b.accy and a.noa=b.noa 
+		left join view_uccb c on b.uno=c.uno
+		where c.style between '1' and '3'
+		union all
+		select b.bno,b.mount,b.weight 
+		from view_ina a
+		left join view_cuts b on a.accy=b.accy and a.noa=b.noa 
+		left join view_uccb c on b.bno=c.uno
+		where c.style between '1' and '3'
+		union all
+		select b.uno,b.mount,b.weight
+		from view_cub a
+		left join view_cubu b on a.accy=b.accy and a.noa=b.noa 
+		left join view_uccb c on b.uno=c.uno
+		where c.style between '1' and '3'
+		----------------------------------------------------------------------------------------
+		union all
+		select b.uno,case when a.typea='1' then 1 else -1 end *-1*b.mount
+			,case when a.typea='1' then 1 else -1 end *-1*b.weight
+		from view_vcc a
+		left join view_vccs b on a.accy=b.accy and a.noa=b.noa 
+		left join view_uccb c on b.uno=c.uno
+		where c.style between '1' and '3'
+		union all
+		select b.uno,-1*b.gmount,-1*b.gweight
+		from view_get a
+		left join view_gets b on a.accy=b.accy and a.noa=b.noa 
+		left join view_uccb c on b.uno=c.uno
+		where c.style between '1' and '3'
+		union all
+		select a.uno,-1*a.gmount,-1*a.gweight
+		from view_cut a
+		left join view_uccb b on a.uno=b.uno
+		where b.style between '1' and '3'
+		union all
+		select b.uno,-1*b.gmount,-1*b.gweight
+		from view_cub a
+		left join view_cubt b on a.accy=b.accy and a.noa=b.noa 
+		left join view_uccb c on b.uno=c.uno
+		where c.style between '1' and '3')a
+	group by uno
+
+	--製成品
+	delete #z_ordepi5_b
+	from #z_ordepi5_b a
+	left join view_cubu b on a.uno=b.uno
+	left join view_cub c on b.accy=c.accy and b.noa=c.noa 
+	where c.typea!='4'
+	--買賣
+	delete #z_ordepi5_b
+	from #z_ordepi5_b a
+	left join view_uccb b on a.uno=b.uno
+	where b.itype!='1'
+	
+	update #z_ordepi5_b set productno=b.productno,product=b.product,style=b.style
+		,spec=b.spec,tspec=REPLACE(REPLACE(Upper(b.spec),'STK-','SS'),'STK','SS')
+		,size=dbo.csize('B2',b.dime,b.width,b.lengthb,b.radius)
+		,dime=b.dime,width=b.width,lengthb=b.lengthb,radius=b.radius
+	from #z_ordepi5_b a
+	left join view_uccb b on a.uno=b.uno
+	----------------------------------------------------------------------------
+	--**************************************************************************
+	----------------------------------------------------------------------------
+	declare @tmpb table(
+		gno nvarchar(20),
+		pno nvarchar(20),
+		recno int,
+		ordeaccy nvarchar(10),
+		ordeno nvarchar(20),
+		ordeno2 nvarchar(10),
+		datea nvarchar(10),
+		custno nvarchar(20),
+		nick nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(40),
+		spec nvarchar(40),
+		classa nvarchar(20),
+		size nvarchar(max),
+		price float,
+		weight float,
+		mount float,
+		notmount float,
+		stkmount float,
+		notweight float,
+		memo nvarchar(max)
+	)
+	set @cmd = ''
+	--custno@依客戶,sizea@依尺寸,dime@依厚度
+	if @t_sort = 'CUSTNO'
+	begin	
+		set @cmd = 
+		" select '1','1', ROW_NUMBER()over(order by a.custno,a.productno,a.style,a.radius,a.width,a.dime,a.lengthb)"+
+		" 	,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick"+
+		" 	,a.productno,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight"+
+		" 	,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end "+
+		" from #z_ordepi5_a a"+
+		" left join cust b on a.custno=b.noa"+
+		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordepi5_b"+
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.custno,a.productno,a.tspec,a.style,a.radius,a.width,a.dime,a.lengthb"
+	end
+	if @t_sort = 'SIZEA'
+	begin	
+		set @cmd = 
+		" select '1','1', ROW_NUMBER()over(order by a.productno,a.style,a.radius,a.width,a.dime,a.lengthb)"+
+		" 	,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick"+
+		" 	,a.productno,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight"+
+		" 	,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end "+
+		" from #z_ordepi5_a a"+
+		" left join cust b on a.custno=b.noa"+
+		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordepi5_b"+
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.productno,a.tspec,a.style,a.radius,a.width,a.dime,a.lengthb"	
+	end
+	if @t_sort = 'DIME'
+	begin	
+		set @cmd = 
+		" select '1','1', ROW_NUMBER()over(order by a.dime,a.productno,a.style,a.radius,a.width,a.lengthb)"+
+		" 	,a.ordeaccy,a.ordeno,a.ordeno2,a.datea,a.custno,b.nick"+
+		" 	,a.productno,a.product,a.spec,a.classa,a.csize,a.price,a.weight,a.mount,a.notmount,c.mount,a.notweight"+
+		" 	,case when a.size!=a.csize then a.size+'<br>('+a.csize+')'else a.csize end "+
+		" from #z_ordepi5_a a"+
+		" left join cust b on a.custno=b.noa"+
+		" outer apply(select SUM(ISNULL(mount,0)) mount from #z_ordepi5_b"+
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and size=a.csize and mount>0 and weight>0) c"+
+		" order by a.dime,a.productno,a.tspec,a.style,a.radius,a.width,a.lengthb"	
+	end
+	insert into @tmpb(gno,pno,recno,ordeaccy,ordeno,ordeno2,datea,custno,nick
+		,productno,product,spec,classa,size,price,weight,mount,notmount,stkmount,notweight
+		,memo)
+	execute sp_executesql @cmd
+	
+	declare @n int = 0
+	select @n = COUNT(1) from @tmpb
+	if @t_sort = 'CUSTNO'
+	begin	
+		set @cmd = 
+		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.tspec,a.size)+@n"+
+		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
+		" 	,a.size"+
+		" from (select productno,style,product,spec,tspec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordepi5_b where mount>0 and weight>0 group by productno,style,product,spec,tspec,size) a"+
+		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordepi5_a"+
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and csize=a.size)b"
+	end
+	if @t_sort = 'SIZEA'
+	begin	 
+		set @cmd = 
+		" select '2','2',ROW_NUMBER()over(order by a.productno,a.style,a.product,a.tspec,a.size)+@n"+
+		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
+		" 	,a.size"+
+		" from (select productno,style,product,spec,tspec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordepi5_b where mount>0 and weight>0 group by productno,style,product,spec,tspec,size) a"+
+		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordepi5_a"+
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and csize=a.size)b"
+	end
+	if @t_sort = 'DIME'
+	begin	
+		set @cmd = 
+		" select '2','2',ROW_NUMBER()over(order by a.dime,a.productno,a.style,a.product,a.tspec,a.size)+@n"+
+		" 	,a.productno,a.product,a.spec,a.size,isnull(a.mount,0)-ISNULL(b.notmount,0)"+
+		" 	,a.size"+
+		" from (select dime,productno,style,product,spec,tspec,size,SUM(ISNULL(mount,0)) mount,SUM(ISNULL(weight,0)) weight"+
+		" 	from #z_ordepi5_b where mount>0 and weight>0 group by dime,productno,style,product,spec,tspec,size) a"+
+		" outer apply(select SUM(ISNULL(notmount,0)) notmount from #z_ordepi5_a"+
+		" 	where productno=a.productno and style=a.style and tspec=a.tspec and csize=a.size)b"
+	end
+	insert into @tmpb(gno,pno,recno,productno,product,spec,size,stkmount,memo)
+	execute sp_executesql @cmd,N'@n int',@n=@n	
+	delete @tmpb
+	where pno='1' and not(datea between @t_bodate and @t_eodate
+		and custno between @t_bcustno and @t_ecustno
+		and productno between @t_bproductno and @t_eproductno)
+	
+	delete @tmpb
+	where pno='2' and not(productno between @t_bproductno and @t_eproductno)
+	--------------------------------------------------------------------------------
+	set @n = 0
+	select @n = COUNT(1) from @tmpb
+	insert into @tmpb(gno,pno,recno,productno,product,memo,notmount,notweight)
+	select '3','3',ROW_NUMBER()over(order by productno)+@n
+		,productno,product,memo,sum(isnull(notmount,0)),sum(isnull(notweight,0))
+	from @tmpb where pno='1' group by productno,product,memo
+	
+	drop table  #z_ordepi5_a
+	drop table  #z_ordepi5_b
+	select a.* 
+	,ROW_NUMBER()over(order by a.recno) a01
+	,a.ordeno a02
+	,a.ordeno2 a03
+	,a.datea a04
+	,a.custno a05
+	,a.nick a06
+	,a.product a07
+	,a.spec a08
+	,a.classa a09
+	,a.memo a10
+	,a.price a11
+	,a.weight a12
+	,a.mount a13
+	,a.notmount a14
+	,a.stkmount a15
+	,round(a.notweight,3) a16 
+	,'ordest?left(noa,'+CAST(len(a.ordeno) as nvarchar)+')=$a02?'+a.ordeaccy ghref
+	 from @tmpb a
+	 left join view_ordes b on a.ordeaccy=b.accy and a.ordeno=b.noa and a.ordeno2=b.no2
+	 where b.noa is null
+	 or( b.dime between @t_bdime and @t_edime
+		and b.width between @t_bwidth and @t_ewidth
+		and b.lengthb between @t_blength and @t_elength
+		and b.radius between @t_bradius and @t_eradius
+	 )
+	 order by a.recno;
+
+z_ordepi1:--z_ordepi1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+declare @t_stktype nvarchar(15)
+declare @t_bradius float
+declare @t_eradius float
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_stktype = case when '#non'=[17] then '' else [17] end
+set @t_bradius = case when '#non'=[18] then 0.00 else cast([18] as float) end
+set @t_eradius = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+set @t_bwidth = case when '#non'=[20] then 0.00 else cast([20] as float)end
+set @t_ewidth = case when '#non'=[21] then 9999.99 else cast([21] as float) end
+set @t_bdime = case when '#non'=[22] then 0.000 else cast([22] as float) end
+set @t_edime = case when '#non'=[23] then 999.990 else cast([23] as float) end
+set @t_blengthb = case when '#non'=[24] then 0.0 else cast([24] as float) end
+set @t_elengthb = case when '#non'=[25] then 99999.9 else cast([25] as float) end
+
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+
+set @t_stktype = upper(@t_stktype)
+declare @swapTmp1 int = 0
+declare @swapTmp2 int = 0
+if(left(@t_stktype,1) != 'B' and left(@t_stktype,1) != '')
+begin
+	set @swapTmp1 = @t_bwidth
+	set @swapTmp2 = @t_ewidth
+	set @t_bwidth = @t_bdime
+	set @t_ewidth = @t_edime
+	set @t_bdime = @swapTmp1
+	set @t_edime = @swapTmp2	
+end
+
+declare @tmp table(
+	gno nvarchar(1),
+	odate nvarchar(10),
+	e nvarchar(10),
+	noa nvarchar(35),
+	no2 nvarchar(10),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	productno nvarchar(30),
+	products nvarchar(90),
+	spec nvarchar(max),
+	csize nvarchar(max),
+	dime float,
+	unit nvarchar(12),
+	mount float,
+	weight float,
+	price float,
+	total float,
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
+		a.custno,c.nick,b.productno,b.product,b.spec,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		b.dime,b.unit,b.mount,b.weight,b.price,b.total,'ordest'+a.accy
+	from view_orde a
+	left join view_ordes b on a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+		and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) 
+	      and (len(@t_enda)=0 or (@t_enda='1' and (ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1)) or (@t_enda='0' and ISNULL(a.enda,0)=0 and ISNULL(b.enda,0)=0)  )
+	      and (b.radius between @t_bradius and @t_eradius) and (b.width between @t_bwidth and @t_ewidth) and
+		  (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) and
+		  (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
+	order by a.odate,a.noa,b.no2
+update @tmp set csize = replace(csize,'~#$','''')
+insert into @tmp(gno,odate,mount,weight,total)
+	select '1',left(odate,6),sum(mount),sum(weight),sum(total) from @tmp where gno='0' group by left(odate,6)
+insert into @tmp(gno,odate,mount,weight,total)
+	select '2',char(255),sum(mount),sum(weight),sum(total) from @tmp where gno='0'
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+insert into @tmp(gno,odate,productno,products,spec,csize,mount,weight,total)
+	select
+		'3',char(255),productno,products,spec,csize,sum(mount),sum(weight),sum(total)
+	from @tmp
+	where gno='0'
+	group by productno,products,spec,csize
+select
+	gno,odate,e,noa,no2,custno,comp,productno,products,spec,csize,dime,unit,mount,weight,price,total,
+	row_number()over(partition by left(odate,6) order by left(odate,6),gno) idno,qhref
+from @tmp order by left(odate,6),gno,odate,noa,productno,products,spec,csize;
+--*****************************************************************************************
+z_ordepi2a:--z_ordepi2a
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	declare @tmp table(
+		gno nvarchar(1),
+		noa nvarchar(30),
+		custno nvarchar(30),
+		comp nvarchar(90),
+		no2 nvarchar(10),
+		datea nvarchar(10),
+		productno nvarchar(30),
+		products nvarchar(90),
+		csize nvarchar(max),
+		unit nvarchar(12),
+		weight float,
+		mount float,
+		notv float,
+		price float,
+		nototal float,
+		e nvarchar(10),
+		qhref nvarchar(max)
+	)
+	insert into @tmp
+		select
+			'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
+			(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+			b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
+		from view_orde a
+		left join view_ordes b on a.accy=b.accy and a.noa = b.noa
+		left join cust c on a.custno = c.noa
+		where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+			and (a.odate between @t_bodate and @t_eodate) 
+			and (a.custno between @t_bcustno and @t_ecustno) 
+			and (a.salesno between @t_bsalesno and @t_esalesno)
+			and (b.productno between @t_bproductno and @t_eproductno) 
+			and (len(@t_stype)=0 or @t_stype=a.stype) and
+			  (len(@t_trantype)=0 or @t_trantype=a.trantype) 
+				and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
+			and (len(@t_enda)=0 or (@t_enda='1' and (ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1)) or (@t_enda='0' and ISNULL(a.enda,0)=0 and ISNULL(b.enda,0)=0)) 
+	update @tmp set csize = replace(csize,'~#$','''')
+	insert into @tmp(gno,custno,comp,weight,mount,notv,nototal)
+		select '1',custno,comp,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by custno,comp
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	-----------------------------------------------------------------------------------------------------
+	declare @dlabel nvarchar(max) = ''
+	declare @dvalue nvarchar(max) = ''
+	if len(@t_bdate)>0
+	begin
+		set @dlabel = '交貨日期：'
+		set @dvalue = @t_bdate + ' ～ ' + @t_edate
+	end
+	else
+	begin
+		set @dlabel = '訂貨日期：'
+		set @dvalue = @t_bodate + ' ～ ' + @t_eodate
+	end
+	
+	select @dlabel aaa,@dvalue bbb
+		,gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
+		row_number()over(partition by custno,comp order by custno,comp,gno,noa) idno
+	from @tmp order by custno,comp,gno,noa;
+--****************************************************************************************************
+z_ordepi2b:--z_ordepi2b
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	productno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	unit nvarchar(12),
+	weight float,
+	mount float,
+	notv float,
+	price float,
+	nototal float,
+	e nvarchar(10),
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
+	from view_orde a
+		left join view_ordes b on a.accy=b.accy and a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+			and (a.odate between @t_bodate and @t_eodate)  
+			and (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
+	      and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
+	      and (len(@t_enda)=0 or (@t_enda='1' and (ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1)) or (@t_enda='0' and ISNULL(a.enda,0)=0 and ISNULL(b.enda,0)=0)) 
+update @tmp set csize = replace(csize,'~#$','''')
+insert into @tmp(gno,productno,products,weight,mount,notv,nototal)
+	select '1',productno,products,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by productno,products
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+-----------------------------------------------------------------------------------------------------
+	declare @dlabel nvarchar(max) = ''
+	declare @dvalue nvarchar(max) = ''
+	if len(@t_bdate)>0
+	begin
+		set @dlabel = '交貨日期：'
+		set @dvalue = @t_bdate + ' ～ ' + @t_edate
+	end
+	else
+	begin
+		set @dlabel = '訂貨日期：'
+		set @dvalue = @t_bodate + ' ～ ' + @t_eodate
+	end
+	
+	select @dlabel aaa,@dvalue bbb
+	,gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
+	row_number()over(partition by productno,products order by productno,products,gno,noa) idno
+from @tmp order by productno,products,gno,noa;
+--****************************************************************************************************
+z_ordepi2c:--z_ordepi2c
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bsalesno nvarchar(20)
+declare @t_esalesno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_stype nvarchar(20)
+declare @t_trantype nvarchar(20)
+declare @t_cancel nvarchar(1)
+declare @t_enda nvarchar(1)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_stype = case when '#non'=[12] then '' else [12] end
+set @t_trantype = case when '#non'=[13] then '' else [13] end
+set @t_cancel = case when '#non'=[14] then '' else [14] end
+set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	custno nvarchar(30),
+	comp nvarchar(90),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	productno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	unit nvarchar(12),
+	weight float,
+	mount float,
+	notv float,
+	price float,
+	nototal float,
+	e nvarchar(10),
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',a.noa,a.custno,c.nick,b.no2,b.datea,b.productno,b.product,
+		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		b.unit,b.weight,b.mount,b.notv,b.price,(b.notv*b.price),(case b.enda when '1' then 'Y' else 'N' end),'ordest'+a.accy
+	from view_orde a
+		left join view_ordes b on a.accy=b.accy and a.noa = b.noa
+	left join cust c on a.custno = c.noa
+	where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+			and (a.odate between @t_bodate and @t_eodate) 
+		and (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) 
+	      and (len(@t_cancel)=0 or @t_cancel=isnull(b.cancel,'0') or (@t_cancel='0' and len(isnull(b.cancel,''))=0))
+	      and (len(@t_enda)=0 or (@t_enda='1' and (ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1)) or (@t_enda='0' and ISNULL(a.enda,0)=0 and ISNULL(b.enda,0)=0)) 
+update @tmp set csize = replace(csize,'~#$','''')
+insert into @tmp(gno,noa,weight,mount,notv,nototal)
+	select '1',noa,sum(weight),sum(mount),sum(notv),sum(nototal) from @tmp group by noa
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+-----------------------------------------------------------------------------------------------------
+	declare @dlabel nvarchar(max) = ''
+	declare @dvalue nvarchar(max) = ''
+	if len(@t_bdate)>0
+	begin
+		set @dlabel = '交貨日期：'
+		set @dvalue = @t_bdate + ' ～ ' + @t_edate
+	end
+	else
+	begin
+		set @dlabel = '訂貨日期：'
+		set @dvalue = @t_bodate + ' ～ ' + @t_eodate
+	end
+	
+	select @dlabel aaa,@dvalue bbb
+	,gno,noa,custno,comp,no2,datea,productno,products,csize,unit,weight,mount,notv,price,nototal,e,qhref,
+	row_number()over(partition by noa order by noa,gno,no2) idno
+from @tmp order by noa,gno,no2;
+--****************************************************************************************************
+z_ordepi3:--z_ordepi3
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_sort nvarchar(30)
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_sort = case when '#non'=[16] then '' else [16] end
+set @t_sort = upper(@t_sort)
+declare @tmp table(
+	gno nvarchar(1),
+	orderby int,
+	ordeno nvarchar(30),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	custno nvarchar(30),
+	custnick nvarchar(50),
+	style nvarchar(20),
+	productno nvarchar(30),
+	products nvarchar(90),
+	sizea nvarchar(90),
+	spec nvarchar(90),
+	class nvarchar(50),
+	dime float,
+	price float,
+	weight float,
+	mount float,
+	notv float,
+	nweightv float,
+	stkmount float,
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select 
+		'0',0,b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
+		dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) sizea,a.spec,a.class,a.dime,
+		a.price,a.weight,a.mount,a.notv,0,0,'ordest'+a.accy
+	from view_ordes a
+	left join view_orde b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	left join style d on a.style = d.noa
+	where (a.notv>0) and (b.odate between @t_bodate and @t_eodate) and
+		(b.custno between @t_bcustno and @t_ecustno) and 
+		(a.productno between @t_bproductno and @t_eproductno) 
+		and (b.kind='B2') and (a.enda = '0') and (b.enda='0')
+	order by b.custno,a.product,b.noa,b.odate,b.datea
+update @tmp set sizea = replace(sizea,'~#$','''')
+update @tmp set nweightv = round((weight/mount)*notv,0)
+insert into @tmp(gno,style,productno,sizea,mount,weight,notv) -------這裡的notv是庫存數量
+	select
+		'2',a.style,a.productno,a.sizea,sum(a.notv),sum(a.nweightv),isnull(b.emount,0)
+	from @tmp a
+	left join (
+		select 
+			h.csize,h.style,h.productno,sum(h.emount) emount,sum(h.eweight) eweight
+		from (
+			select
+				(case when ltrim(rtrim(a.size)) = '' then 
+					dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
+				else ltrim(rtrim(a.size)) end) csize,b.product style,a.productno,
+				emount,eweight
+			from view_uccc a
+			left join style b on a.style=b.noa
+			left join view_cub c on a.tablea='cubu' and a.noa=c.noa
+			where (a.kind ='B2') and ((a.tablea != 'cubu') or ((a.tablea = 'cubu') and c.typea = 4))
+		) h
+		group by h.csize,h.style,h.productno
+	) b on (a.sizea = b.csize) and (a.style = b.style) and (a.productno = b.productno)
+	where gno='0' group by a.style,a.productno,a.sizea,isnull(b.emount,0),isnull(b.eweight,0)
+update a
+	set stkmount = b.notv
+from @tmp a
+outer apply(select top 1 notv from @tmp where (a.sizea=sizea) and (a.productno=productno) and (gno='2')) b	
+
+insert into @tmp(gno,weight,mount,notv,nweightv,stkmount)
+	select '1',sum(weight),sum(mount),sum(notv),sum(nweightv),sum(stkmount) from @tmp where gno='0'
+
+insert into @tmp(gno,orderby,style,spec,productno,products,sizea,stkmount)
+	select
+		'0',ROW_NUMBER()over(order by a.product,a.spec,a.radius,a.dime,a.lengthb,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius))+50,
+		a.style,a.spec,a.productno,a.product,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius),
+		sum(a.emount)
+	from view_uccc a
+	where kind='B2'
+	group by a.style,a.spec,a.productno,a.product,a.radius,a.dime,a.lengthb,dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
+update a
+	set stkmount = isnull(stkmount,0)-isnull(b.mount,0)
+from @tmp a
+outer apply(
+	select
+		sum(ordes.notv) mount
+	from view_orde orde
+	left join view_ordes ordes on ordes.noa=orde.noa
+	where (ordes.enda='0') and (orde.enda='0') and (orde.kind='B2') and 
+		  (a.style=ordes.style) and (a.spec=ordes.spec) and (ordes.productno=a.productno) and 
+		  (a.sizea=dbo.csize(orde.kind,ordes.dime,ordes.width,ordes.lengthb,ordes.radius))
+) b
+where (a.gno='0') and (orderby>50)
+delete @tmp where (gno='0') and (orderby>50) and (stkmount=0)
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
+update a
+	set sizea = c.size + '<br>(' + a.sizea + ')'
+from @tmp a
+outer apply(select top 1 size from view_ordes b where (a.ordeno=b.noa) and (a.no2=b.no2)) c
+where ((isnull(a.ordeno,'')!='') and (isnull(a.no2,'')!='') and (isnull(c.size,'') != '') and (isnull(c.size,'') != a.sizea))
+
+if(@t_sort = 'CUSTNO')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,
+		ROW_NUMBER()over(order by gno,orderby,custno) idno
+	from @tmp order by gno,orderby,custno
+else if(@t_sort = 'SIZEA')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,
+		ROW_NUMBER()over(order by gno,orderby,sizea) idno
+	from @tmp order by gno,orderby,sizea
+else if(@t_sort = 'DIME')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,
+		ROW_NUMBER()over(order by gno,orderby,dime,sizea) idno
+	from @tmp order by gno,orderby,dime,sizea
+else
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,
+		mount,notv,nweightv,qhref,stkmount,
+		ROW_NUMBER()over(order by gno,orderby,ordeno,datea,products) idno
+	from @tmp order by gno,orderby,ordeno,datea,products;
+--****************************************************************************************************
+z_ordepi4:--z_ordepi4
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @t_sort nvarchar(30)
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+set @t_sort = case when '#non'=[16] then '' else [16] end
+set @t_sort = upper(@t_sort)
+declare @tmp table(
+	gno nvarchar(1),
+	ordeno nvarchar(30),
+	no2 nvarchar(10),
+	datea nvarchar(10),
+	custno nvarchar(30),
+	custnick nvarchar(50),
+	style nvarchar(20),
+	productno nvarchar(30),
+	products nvarchar(90),
+	sizea nvarchar(90),
+	spec nvarchar(90),
+	class nvarchar(50),
+	dime float,
+	price float,
+	weight float,
+	mount float,
+	notv float,
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select 
+		'0',b.noa,a.no2,a.datea,b.custno,c.nick,d.product,a.productno,a.product,
+		(case when ltrim(rtrim(isnull(a.size,'')))='' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end) sizea,
+		a.spec,a.class,a.dime,
+		a.price,a.weight,a.mount,a.notv,'ordest'+a.accy
+	from view_ordes a
+	left join view_orde b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	left join style d on a.style = d.noa
+	where (a.notv>0) and (b.odate between @t_bodate and @t_eodate) and
+		(b.custno between @t_bcustno and @t_ecustno) and 
+		(a.productno between @t_bproductno and @t_eproductno)
+		and (b.kind !='B2') and (a.enda = '0') and (b.enda='0')
+	order by b.custno,a.product,b.noa,b.odate,b.datea
+update @tmp set sizea = replace(sizea,'~#$','''')
+insert into @tmp(gno,style,productno,sizea,weight,notv) -------這裡的notv是庫存重量
+	select
+		'1',a.style,a.productno,a.sizea,sum(a.notv),isnull(b.eweight,0)
+	from @tmp a
+	left join (
+		select 
+			h.csize,h.style,h.productno,sum(h.emount) emount,sum(h.eweight) eweight
+		from (
+			select
+				(case when ltrim(rtrim(a.size)) = '' then 
+					dbo.csize(a.kind,a.dime,a.width,a.lengthb,a.radius)
+				else ltrim(rtrim(a.size)) end) csize,b.product style,a.productno,
+				emount,eweight
+			from view_uccc a
+			left join style b on a.style=b.noa
+			where a.kind !='B2'
+		) h
+		group by h.csize,h.style,h.productno
+	) b on (a.sizea = b.csize) and (a.style = b.style) and (a.productno = b.productno)
+	where gno='0' group by a.style,a.productno,a.sizea,isnull(b.eweight,0)
+insert into @tmp(gno,weight,mount,notv)
+	select '2',sum(weight),sum(mount),sum(notv) from @tmp where gno='0'
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
+
+if(@t_sort = 'CUSTNO')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,qhref,
+		ROW_NUMBER()over(order by gno,custno) idno
+	from @tmp order by gno,custno
+else if(@t_sort = 'SIZEA')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,qhref,
+		ROW_NUMBER()over(order by gno,sizea) idno
+	from @tmp order by gno,sizea
+else if(@t_sort = 'DIME')
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,qhref,
+		ROW_NUMBER()over(order by gno,dime,sizea) idno
+	from @tmp order by gno,dime,sizea
+else
+	select
+		gno,ordeno,no2,datea,custno,custnick,style,productno,products,sizea,spec,class,price,weight,mount,notv,qhref,
+		ROW_NUMBER()over(order by gno,ordeno,datea,products) idno
+	from @tmp order by gno,ordeno,datea,products;
+--****************************************************************************************************
