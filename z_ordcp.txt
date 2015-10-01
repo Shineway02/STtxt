@@ -36,8 +36,8 @@ declare @tmp table(
 insert into @tmp
 select
 	'0',ROW_NUMBER()over(partition by a.noa order by a.noa),1	,0,
-	a.noa,a.odate,a.kind,a.tggno,c.comp,a.tel,a.fax,a.addr,a.addr2,a.trantype,a.trandate,a.paytype,a.memo,a.money,a.tax,a.total,
-	b.productno,b.product,b.unit,b.mount,b.price,b.total,b.memo
+	a.noa,a.odate,a.kind,a.tggno,c.comp,a.tel,a.fax,a.addr,a.addr2,a.trantype,a.trandate,a.paytype,replace(a.memo,'chr(10)','<BR>'),a.money,a.tax,a.total,
+	b.productno,b.product,b.unit,b.mount,b.price,b.total,replace(b.memo,'chr(10)','<BR>')
 from view_ordc[1] a
 left join view_ordcs[1] b on a.noa = b.noa
 left join tgg c on a.tggno = c.noa
@@ -99,10 +99,15 @@ begin
 			set @orderno = @orderno +1
 		end
 	end
-	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,b_mount,b_total,a_money,a_tax,a_total)
-		select '1',(@t_pageline+1),pageno,a_noa,a_tggno,a_tggs,sum(b_mount),sum(b_total),max(a_money),max(a_tax),max(a_total) from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_tggno,a_tggs
-	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,a_memo) 
-		select '2',(@t_pageline+2),pageno,a_noa,a_tggno,a_tggs,a_memo from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_tggno,a_tggs,a_memo
+	
+	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,b_mount,b_total,a_money,a_tax,a_total,a_memo,a_addr_a) 
+	select '1',(@t_pageline+1),pageno,a_noa,a_tggno,a_tggs,sum(b_mount),sum(b_total),max(a_money),max(a_tax),max(a_total),MAX(a_memo),MAX(a_addr_a)
+	from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_tggno,a_tggs
+	
+	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,a_memo,a_addr_a) 
+	select '2',(@t_pageline+2),pageno,a_noa,a_tggno,a_tggs,MAX(a_memo),MAX(a_addr_a)
+	from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_tggno,a_tggs
+		
 	fetch next from cursor_table
 	into @a_noa,@orderno,@pageno,@idno,@a_count
 end
