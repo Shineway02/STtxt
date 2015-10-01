@@ -1,4 +1,4 @@
-z_vccst1:--z_vccst1
+z_vccpi1:--z_vccpi1
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bpno nvarchar(35)
@@ -54,7 +54,7 @@ insert into @tmp
 		'0',b.noa,b.datea,e.nick,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
 		a.spec,a.mount,a.weight,a.price,a.total,f.nick,b.tranmoney,
-		case when b.trantype = '自取' and b.carno != '' then (case when b.carno = '' then e.nick else b.carno end) else b.carno end,'vccst'+a.accy
+		case when b.trantype = '自取' and b.carno != '' then (case when b.carno = '' then e.nick else b.carno end) else b.carno end,'vccpi'+a.accy
 		,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
@@ -84,7 +84,7 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,car,tranmoney,memo,qhref
 from @tmp order by gno,idno;
 ----------********************************************************************----------
-z_vccst2:--z_vccst2
+z_vccpi2:--z_vccpi2
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bpno nvarchar(35)
@@ -137,7 +137,7 @@ insert into @tmp
 	select
 		'0',b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy,b.coin
+		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccpi'+a.accy,b.coin
 	from view_vccs a
 	left join view_vcc b on a.accy=b.accy and a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -166,7 +166,7 @@ insert into @tmp
 		,comp,carno2,qhref
 	from @tmp order by gno,idno;
 ----------********************************************************************----------
-z_vccst3:--z_vccst3
+z_vccpi3:--z_vccpi3
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bpno nvarchar(35)
@@ -217,7 +217,7 @@ insert into @tmp
 	select
 		'0',b.noa,b.kind,b.datea,c.nick,a.product,a.productno,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.price,a.mount,a.weight,'vccst'+a.accy,b.coin
+		a.spec,a.price,a.mount,a.weight,'vccpi'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -244,7 +244,7 @@ select
 	pno,product,csize,spec,qhref
 from @tmp order by datea desc,idno;
 ----------********************************************************************----------
-z_vccst4:--z_vccst4
+z_vccpi4:--z_vccpi4
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bpno nvarchar(35)
@@ -291,7 +291,7 @@ insert into @tmp
 	select
 		'0',b.noa,b.kind,c.nick,a.product,a.productno,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.price,a.mount,a.weight,b.datea,'vccst'+a.accy,b.coin
+		a.spec,a.price,a.mount,a.weight,b.datea,'vccpi'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -316,7 +316,7 @@ select
 	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice
 from @tmp order by datea,idno;
 ----------********************************************************************----------
-z_vccst5:--z_vccst5
+z_vccpi5:--z_vccpi5
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
 	
@@ -365,7 +365,7 @@ z_vccst5:--z_vccst5
 	left join cust b on a.custno=b.noa
 	order by case when gno='2' then 'z' else '1' end,total desc;
 ----------********************************************************************----------
-z_vccst6:--z_vccst6
+z_vccpi6:--z_vccpi6
 declare @t_bdatea nvarchar(10)
 declare @t_edatea nvarchar(10)
 declare @t_xspec nvarchar(30)
@@ -409,7 +409,7 @@ insert into @tmp
 	select
 		'0',b.noa,b.datea,b.kind,c.source,a.productno,a.product,a.spec,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.mount,a.weight,a.price,isnull(d.nick,b.comp),'vccst'+a.accy,b.coin
+		a.mount,a.weight,a.price,isnull(d.nick,b.comp),'vccpi'+a.accy,b.coin
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join uccb c on a.uno = c.noa
@@ -432,7 +432,7 @@ select
 	cust,qhref
 from @tmp order by idno;
 ----------********************************************************************----------
-z_vccst7:--z_vccst7
+z_vccpi7:--z_vccpi7
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bpno nvarchar(35)
@@ -491,7 +491,7 @@ insert into @tmp
 	select
 		'0',b.salesno,b.sales,b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccst'+a.accy,b.coin
+		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccpi'+a.accy,b.coin
 	from view_vccs a
 	left join view_vcc b on a.accy=b.accy and a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -522,7 +522,7 @@ insert into @tmp
 		,comp,carno2,qhref
 	from @tmp order by salesno,sales,gno,datea desc,noa;
 ----------********************************************************************----------
-z_vccst8:--z_vccst8
+z_vccpi8:--z_vccpi8
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bpno nvarchar(35)
@@ -578,7 +578,7 @@ insert into @tmp
 		case when charindex(left(a.uno,1),'XYZ') > 0 then '' else
 			case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end
 		end csize,
-		a.spec,sum(a.weight),sum(a.mount),e.nick,'vccst'
+		a.spec,sum(a.weight),sum(a.mount),e.nick,'vccpi'
 	from view_vccs[1] a
 	left join view_vcc[1] b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -609,7 +609,7 @@ select
 	comp
 from @tmp order by salesno,sales,datea desc,gno;
 ----------********************************************************************----------
-z_vccst9:--z_vccst9
+z_vccpi9:--z_vccpi9
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bpno nvarchar(35)
@@ -657,7 +657,7 @@ insert into @tmp
 	select
 		'0',a.uno,a.product,a.productno,b.kind,
 		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
-		a.spec,a.weight,a.mount,b.custno,c.nick,'vccst',a.price,b.price,b.coin
+		a.spec,a.weight,a.mount,b.custno,c.nick,'vccpi',a.price,b.price,b.coin
 	from view_vccs a
 	left join view_vcc b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
@@ -685,7 +685,7 @@ select
 	comp
 from @tmp order by custno,comp,gno;
 ----------********************************************************************----------
-z_vccst10:--z_vccst10
+z_vccpi10:--z_vccpi10
 declare @t_pageline int = 16   --------一頁幾行
 declare @t_bcustno nvarchar(35)
 declare @t_ecustno nvarchar(35)
