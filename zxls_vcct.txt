@@ -11,6 +11,7 @@ END
 create table #z_vcctrb(
 	isexist int,
 	noa nvarchar(50),
+	ishave bit, --檢查發票號碼
 	
 	typea nvarchar(50),
 	kind nvarchar(50),
@@ -19,6 +20,7 @@ create table #z_vcctrb(
 	datea nvarchar(50),
 	mon nvarchar(50), 
 	serial nvarchar(50),
+	istrue bit, --驗證統一編號
 	isasset bit,
 	isself bit,
 	money float,
@@ -50,6 +52,7 @@ declare @q nvarchar(max)
 
 declare @isexist int
 declare	@noa nvarchar(50)
+declare @ishave bit
 declare	@typea nvarchar(50)	
 declare	@kind nvarchar(50)
 declare	@cno nvarchar(50)
@@ -57,6 +60,7 @@ declare	@acomp nvarchar(50)
 declare	@datea nvarchar(50)
 declare	@mon nvarchar(50)
 declare	@serial nvarchar(50)
+declare	@istrue bit
 declare	@isasset bit
 declare	@isself bit
 declare	@money float
@@ -68,6 +72,13 @@ declare	@dutymemo nvarchar(50)
 declare	@book nvarchar(50)
 declare	@sono nvarchar(50)
 
+declare @sumnum nvarchar(50)='12121241'
+declare @str nvarchar(50)
+declare @sum int
+declare @z int
+declare @bdate nvarchar(10)
+declare @edate nvarchar(10)
+
 declare cursor_table cursor for
 select noa,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q from ztmpxls where f like '%[a-zA-Z0-9]%'
 open cursor_table
@@ -75,19 +86,52 @@ fetch next from cursor_table
 into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q
 while(@@FETCH_STATUS <> -1)
 begin
-	
 	set @typea = case when @a = '進' then '1' else '2' end
 	set @kind = @b
-	set @cno = @c
+	set @cno = case when LEN(@c)=0 then 'A' else @c end
 	set @acomp = (select acomp from acomp where noa = @cno)
 	set @datea = @d
 	set @mon = @e
-	set @serial = @g
+	set @serial = RIGHT('00000000'+@g,8)
+	--驗證統一編號
+	set @sum = 0
+	set @z   = 1
+	while(@z <= 8)
+	begin
+		set @str = RIGHT('00'+CAST(CAST(SUBSTRING(@serial,@z,1)as int)*CAST(SUBSTRING(@sumnum,@z,1)as int) as nvarchar(5)),2) 
+		set @sum = @sum + CAST(SUBSTRING(@str,1,1)as int)+CAST(SUBSTRING(@str,2,1)as int)
+		set @z = @z + 1
+	end
+
+	if(@sum %10 = 0)
+	begin
+		set @istrue = 1
+	end
+	else
+	begin
+		if(SUBSTRING(@serial,7,1)=7)
+		begin
+			set @sum = (@sum+1)
+			if(@sum %10 = 0)
+				set @istrue = 1
+			else	
+				set @istrue = 0
+		end
+		else	
+			set @istrue = 0
+	end
+	
 	set @isasset = CAST(@h as bit)
 	set @isself = CAST(@i as bit)
-	set @money = CAST(@j as float)
-	set @taxtype = @k
-	set @tax = CAST(@l as float)
+	set @money = case when @k='9' then CAST(@m as float) else CAST(@j as float) end
+	--"0@,1@應稅,6@作廢,2@零稅率,3@內含,4@免稅,5@自訂"
+	set @taxtype = case when @k = '1' then '1'
+						when @k = '2' then '2'
+						when @k = '3' then '4'
+						when @k = '9' then '3'
+						when @k = 'D' then '0'
+						when @k = 'F' then '6' end
+	set @tax = case when @k='9' then 0 else CAST(@l as float) end
 	set @total = CAST(@m as float)
 	set @mount = CAST(@n as float)
 	set @dutymemo = @o
@@ -97,14 +141,33 @@ begin
 	set @noa = @f
 	set @isexist = case when (LEN(ISNULL((select noa from vcct where noa = @noa),''))=0) then 0 else 1 end
 	
+	select @bdate=a.bdate,@edate=a.edate from 
+	vccar a
+	left join vccars b on a.noa = b.noa
+	where @noa between b.binvono and b.einvono
+
+if(@datea>@bdate and @datea<@edate)
+	set @ishave = 1
+else
+	set @ishave = 0
+	
 	insert into #z_vcctrb
-	select @isexist,@noa,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono
+	select @isexist,@noa,@ishave,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@istrue,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono
 
 	fetch next from cursor_table
 	into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q
 end
 close cursor_table
 deallocate cursor_table
+
+select * from #z_vcctrb
+
+select '發票號碼' noa,'統一編號' serial,'錯誤訊息' err
+union all
+select noa,serial,case when ishave = 0 and istrue = 1 then '發票號碼錯誤'
+					   when ishave = 1 and istrue = 0 then '統一編號錯誤'
+					   when ishave = 0 and istrue = 0 then '統一編號、發票號碼錯誤' end
+from #z_vcctrb where istrue = 0 or ishave = 0 
 
 --寫入vcct
 declare cursor_table cursor for
