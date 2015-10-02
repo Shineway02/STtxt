@@ -21,11 +21,11 @@ declare @tmp table(
 	genmon float,
 	material nvarchar(50),
 	product nvarchar(max),
-	form float,
+	form nvarchar(50),
 	namea nvarchar(30),
 	tggs nvarchar(30), 
 	spec nvarchar(30),
-	hpower float,
+	hpower nvarchar(50),
 	mount float,
 	datea nvarchar(30), 
 	memo nvarchar(max)
@@ -40,7 +40,7 @@ where(a.noa between @t_bnoa and @t_enoa)
 insert into @tmp(gno,rec,noa)
 select DISTINCT '1',1,noa from @tmp
 
-declare @i int = 1
+/*declare @i int = 1
 declare @pagestr nvarchar(30) = '正本：財會聯,影本1：製造聯,影本2：設備聯'
 while(@i < 3)
 begin
@@ -53,6 +53,6 @@ end
 
 update @tmp set device = case when rec = 1 then dbo.split(@pagestr,',',0) 
 							  when rec = 2 then dbo.split(@pagestr,',',1)
-							  when rec = 3 then dbo.split(@pagestr,',',2) end where gno = '1'							  
+							  when rec = 3 then dbo.split(@pagestr,',',2) end where gno = '1'*/						  
 							  			
 select *,genmon gmon from @tmp order by noa,rec,gno;

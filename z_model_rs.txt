@@ -116,7 +116,7 @@ set @t_noa = case when '#non' = [1] then '' else [1] end
 set @t_frame = case when '#non' = [2] then '' else [2] end
 set @t_tgg = case when '#non' = [3] then '' else [3] end
 set @t_bdate = case when '#non' = [4] then '' else [4] end
-set @t_edate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [5] then char(255) else [5] end
 -------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -145,16 +145,16 @@ select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
 from model a left join models b on a.noa=b.noa
 where  (@t_noa=a.noa or isnull(@t_noa,'')='' )and a.datea between @t_bdate and @t_edate 
 
-insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
-select TOP 1 '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
+insert @result (gno,noa,mount)
+select '1',noa,SUM(mount)
 from @result
-group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
+group by noa
 
 select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
 	   ,dbo.getComma(mount,0) mount,memo2 m2,model+memo memo,bottom,datea1 date2
 	   
 from @result
-order by gno;
+order by noa,gno;
 ------------------------------------------------------------------------------------------------------
 z_model_rs4:--z_model_rs4
 declare @t_noa nvarchar(20)
@@ -297,38 +297,10 @@ set @t_tgg = case when '#non' = [3] then '' else [3] end
 set @t_bdate = case when '#non' = [4] then '' else [4] end
 set @t_edate = case when '#non' = [5] then '' else [5] end
 -------------------------------------------------------------------------------------------------------
-declare @result table(
-	gno nvarchar(1),
-	noa nvarchar(30),
-	tgg nvarchar(50),
-	tube nvarchar(50),
-	heart float,
-	spec nvarchar(50),
-	frame nvarchar(3),
-	usetype nvarchar(20),
-	saver nvarchar(30),
-	datea nvarchar(20),
-	nob nvarchar(25),
-	model nvarchar(50),
-	memo nvarchar(30),
-	bottom float,
-	mount float,
-	memo2 nvarchar(max),
-	datea1 nvarchar(30)
-)
-
-insert @result
-select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,case when a.usetype ='1' then '設備課' else '製造課'end
-	,a.saver,a.datea,
-	   b.productno,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
-from model a left join models b on a.noa=b.noa
-where (a.frame=@t_frame or isnull(@t_frame,'')='')
-	  and a.datea between @t_bdate and @t_edate	
-insert @result(gno)
-select '1'
-
-select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
-	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
-from @result
-order by gno,noa,nob
-;
+select '0' gno,a.frame,a.noa,a.spec,SUM(b.mount) mount,a.usetype,a.datea
+from model a
+left join models b on a.noa = b.noa
+where	(lEN(@t_noa)=0 or a.noa=@t_noa) and 
+		(lEN(@t_frame)=0 or a.frame=@t_frame) and 
+		(a.datea between @t_bdate and @t_edate)
+group by a.frame,a.noa,a.spec,a.usetype,a.datea;
