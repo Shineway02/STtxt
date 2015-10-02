@@ -1,0 +1,856 @@
+z_vccpi1:--z_vccpi1
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bpno nvarchar(35)
+declare @t_epno nvarchar(35)
+declare @t_bcust nvarchar(10)
+declare @t_ecust nvarchar(10)
+declare @t_stype nvarchar(20)
+declare @t_bradius float
+declare @t_eradius float
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bpno = case when '#non'=[6] then '' else [6] end
+set @t_epno = case when '#non'=[7] then char(255) else [7] end
+set @t_bcust = case when '#non'=[8] then '' else [8] end
+set @t_ecust = case when '#non'=[9] then char(255) else [9] end
+set @t_stype = case when '#non'=[10] then '' else [10] end
+set @t_bradius = case when '#non'=[13] then 0.00 else cast([13] as float) end
+set @t_eradius = case when '#non'=[14] then 9999.99 else cast([14] as float) end
+set @t_bwidth = case when '#non'=[15] then 0.00 else cast([15] as float)end
+set @t_ewidth = case when '#non'=[16] then 9999.99 else cast([16] as float) end
+set @t_bdime = case when '#non'=[17] then 0.000 else cast([17] as float) end
+set @t_edime = case when '#non'=[18] then 999.990 else cast([18] as float) end
+set @t_blengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_elengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(35),
+	datea nvarchar(10),
+	comp nvarchar(90),
+	product nvarchar(90),
+	productno nvarchar(35),
+	akind nvarchar(15),
+	csize nvarchar(max),
+	spec nvarchar(max),
+	amount float,
+	aweight float,
+	aprice float,
+	atotal float,
+	car nvarchar(90),
+	tranmoney float,
+	memo nvarchar(50),
+	qhref nvarchar(max),
+	coin nvarchar(50)
+)
+insert into @tmp
+	select
+		'0',b.noa,b.datea,e.nick,a.product,a.productno,b.kind,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.spec,a.mount,a.weight,a.price,a.total,f.nick,b.tranmoney,
+		case when b.trantype = '自取' and b.carno != '' then (case when b.carno = '' then e.nick else b.carno end) else b.carno end,'vccpi'+a.accy
+		,b.coin
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	left join cust e on b.custno = e.noa
+	left join cardeal f on b.carno = f.noa
+	where
+	((b.kind = 'B2') and (b.typea = '1')) and 
+	(b.datea between @t_bdate and @t_edate) and
+	(a.productno between @t_bpno and @t_epno) and
+	(b.custno between @t_bcust and @t_ecust) and
+	((len(@t_stype) = 0) or (b.stype=@t_stype)) and 
+	(a.radius between @t_bradius and @t_eradius) and
+	(a.width between @t_bwidth and @t_ewidth) and
+	(a.dime between @t_bdime and @t_edime) and
+	(a.lengthb between @t_blengthb and @t_elengthb)
+insert into @tmp(gno,amount,aweight)
+	select '1',sum(amount),sum(aweight) from @tmp
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+update @tmp set csize = replace(csize,'~#$','''')
+select
+	gno,noa,comp,datea,ROW_NUMBER()over(order by datea desc,noa) idno,
+	product,productno pno,csize,spec,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,atotal),1)),4,12)) atotal,car,tranmoney,memo,qhref
+from @tmp order by gno,idno;
+----------********************************************************************----------
+z_vccpi2:--z_vccpi2
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bpno nvarchar(35)
+declare @t_epno nvarchar(35)
+declare @t_bcust nvarchar(10)
+declare @t_ecust nvarchar(10)
+declare @t_stype nvarchar(20)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bpno = case when '#non'=[6] then '' else [6] end
+set @t_epno = case when '#non'=[7] then char(255) else [7] end
+set @t_bcust = case when '#non'=[8] then '' else [8] end
+set @t_ecust = case when '#non'=[9] then char(255) else [9] end
+set @t_stype = case when '#non'=[10] then '' else [10] end
+set @t_bdime = case when '#non'=[15] then 0.000 else cast([15] as float) end
+set @t_edime = case when '#non'=[16] then 999.990 else cast([16] as float) end
+set @t_bwidth = case when '#non'=[17] then 0.00 else cast([17] as float)end
+set @t_ewidth = case when '#non'=[18] then 9999.99 else cast([18] as float) end
+set @t_blengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_elengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(35),
+	datea nvarchar(10),
+	ordeno nvarchar(50),
+	noq nvarchar(10),
+	uno nvarchar(35),
+	product nvarchar(50),
+	pno nvarchar(35),
+	akind nvarchar(15),
+	csize nvarchar(max),
+	spec nvarchar(max),
+	style nvarchar(20),
+	aweight float,
+	amount float,
+	aprice float,
+	atotal float,
+	comp nvarchar(90),
+	carno2 nvarchar(20),
+	qhref nvarchar(max),
+	coin nvarchar(50)
+)
+insert into @tmp
+	select
+		'0',b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccpi'+a.accy,b.coin
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	left join cust e on b.custno = e.noa
+	left join cardeal f on b.carno = f.noa
+	where
+		((b.kind = 'A1' or b.kind = 'A4') and (b.typea = '1')) and 
+		(b.datea between @t_bdate and @t_edate) and
+		(a.productno between @t_bpno and @t_epno) and
+		(b.custno between @t_bcust and @t_ecust) and
+		((len(@t_stype) = 0) or (b.stype=@t_stype)) and 
+		(a.width between @t_bwidth and @t_ewidth) and
+		(a.dime between @t_bdime and @t_edime) and
+		(a.lengthb between @t_blengthb and @t_elengthb)
+	insert into @tmp(gno,amount,aweight)
+		select '1',sum(amount),sum(aweight) from @tmp
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	update @tmp set csize = replace(csize,'~#$','''')
+	select
+		gno,noa,datea,ordeno+'-'+noq ordeno,uno,ROW_NUMBER()over(order by datea desc,noa) idno,
+		product,pno,csize,spec
+		,dbo.getComma(aweight,-1) aweight
+		,dbo.getComma(amount,-1) amount
+		,isnull(coin+' ','')+dbo.getComma(aprice,-1)  aprice
+		,dbo.getComma(atotal,-1) atotal
+		,comp,carno2,qhref
+	from @tmp order by gno,idno;
+----------********************************************************************----------
+z_vccpi3:--z_vccpi3
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bpno nvarchar(35)
+declare @t_epno nvarchar(35)
+declare @t_bcust nvarchar(10)
+declare @t_ecust nvarchar(10)
+declare @t_stype nvarchar(20)
+declare @t_bradius float
+declare @t_eradius float
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bpno = case when '#non'=[6] then '' else [6] end
+set @t_epno = case when '#non'=[7] then char(255) else [7] end
+set @t_bcust = case when '#non'=[8] then '' else [8] end
+set @t_ecust = case when '#non'=[9] then char(255) else [9] end
+set @t_stype = case when '#non'=[10] then '' else [10] end
+set @t_bradius = case when '#non'=[13] then 0.00 else cast([13] as float) end
+set @t_eradius = case when '#non'=[14] then 9999.99 else cast([14] as float) end
+set @t_bwidth = case when '#non'=[15] then 0.00 else cast([15] as float)end
+set @t_ewidth = case when '#non'=[16] then 9999.99 else cast([16] as float) end
+set @t_bdime = case when '#non'=[17] then 0.000 else cast([17] as float) end
+set @t_edime = case when '#non'=[18] then 999.990 else cast([18] as float) end
+set @t_blengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_elengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	kind nvarchar(15),
+	datea nvarchar(10),
+	cust nvarchar(90),
+	product nvarchar(90),
+	pno nvarchar(35),
+	csize nvarchar(max),
+	spec nvarchar(max),
+	aprice float,
+	amount float,
+	aweight float,
+	qhref nvarchar(max),
+	coin nvarchar(50)
+)
+insert into @tmp
+	select
+		'0',b.noa,b.kind,b.datea,c.nick,a.product,a.productno,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.spec,a.price,a.mount,a.weight,'vccpi'+a.accy,b.coin
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	where (b.datea between @t_bdate and @t_edate) and
+		((b.kind = 'B2') and(b.typea = '1')) and
+		(b.datea between @t_bdate and @t_edate) and
+		(a.productno between @t_bpno and @t_epno) and
+		(b.custno between @t_bcust and @t_ecust) and
+		((len(@t_stype) = 0) or (b.stype=@t_stype)) and 
+		(a.radius between @t_bradius and @t_eradius) and
+		(a.width between @t_bwidth and @t_ewidth) and
+		(a.dime between @t_bdime and @t_edime) and
+		(a.lengthb between @t_blengthb and @t_elengthb)
+	order by b.datea desc
+insert into @tmp(gno,datea,amount,aweight)
+	select '1',datea,sum(amount),sum(aweight) from @tmp group by datea
+update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+select
+	gno,noa,datea,cust,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	amount,aweight,row_number()over(partition by datea order by datea desc,gno) idno,
+	pno,product,csize,spec,qhref
+from @tmp order by datea desc,idno;
+----------********************************************************************----------
+z_vccpi4:--z_vccpi4
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bpno nvarchar(35)
+declare @t_epno nvarchar(35)
+declare @t_bcust nvarchar(10)
+declare @t_ecust nvarchar(10)
+declare @t_stype nvarchar(20)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bpno = case when '#non'=[6] then '' else [6] end
+set @t_epno = case when '#non'=[7] then char(255) else [7] end
+set @t_bcust = case when '#non'=[8] then '' else [8] end
+set @t_ecust = case when '#non'=[9] then char(255) else [9] end
+set @t_stype = case when '#non'=[10] then '' else [10] end
+set @t_bdime = case when '#non'=[15] then 0.000 else cast([15] as float) end
+set @t_edime = case when '#non'=[16] then 999.990 else cast([16] as float) end
+set @t_bwidth = case when '#non'=[17] then 0.00 else cast([17] as float)end
+set @t_ewidth = case when '#non'=[18] then 9999.99 else cast([18] as float) end
+set @t_blengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_elengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	kind nvarchar(15),
+	cust nvarchar(90),
+	product nvarchar(90),
+	pno nvarchar(35),
+	csize nvarchar(max),
+	spec nvarchar(max),
+	aprice float,
+	amount float,
+	aweight float,
+	datea nvarchar(10),
+	qhref nvarchar(max),
+	coin nvarchar(50)
+)
+insert into @tmp
+	select
+		'0',b.noa,b.kind,c.nick,a.product,a.productno,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.spec,a.price,a.mount,a.weight,b.datea,'vccpi'+a.accy,b.coin
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	where (b.datea between @t_bdate and @t_edate) and
+		((b.kind = 'A1' or b.kind = 'A4') and (b.typea = '1')) and 
+		(b.datea between @t_bdate and @t_edate) and
+		(a.productno between @t_bpno and @t_epno) and
+		(b.custno between @t_bcust and @t_ecust) and
+		((len(@t_stype) = 0) or (b.stype=@t_stype)) and 
+		(a.width between @t_bwidth and @t_ewidth) and
+		(a.dime between @t_bdime and @t_edime) and
+		(a.lengthb between @t_blengthb and @t_elengthb)
+	order by b.datea desc
+insert into @tmp(gno,datea,amount,aweight)
+	select '1',datea,sum(amount),sum(aweight) from @tmp group by datea
+update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+
+select
+	gno,noa,cust,amount,aweight,datea,row_number()over(partition by datea order by datea desc,gno) idno,
+	product,pno,csize,spec,qhref,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice
+from @tmp order by datea,idno;
+----------********************************************************************----------
+z_vccpi5:--z_vccpi5
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then char(255) else [3] end
+	-----------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(10),
+		custno nvarchar(20),
+		[weight] float,
+		[money] float,
+		tax float,
+		total float,
+		rate decimal(10,2)
+	)
+	
+	insert into @tmp(gno,custno,[weight],[money],tax)
+	select '1',custno,SUM(ISNULL([weight],0)),SUM(ISNULL([money],0)),SUM(ISNULL([tax],0))
+	from view_vcc
+	where datea between @t_bdate and @t_edate 
+	group by custno
+	
+	update @tmp set tax = ISNULL(a.tax,0)+ISNULL(b.tax,0)
+	from @tmp a
+	left join vcca b on a.custno=b.custno and b.datea between @t_bdate and @t_edate 
+	update @tmp set total = ISNULL([money],0)+ISNULL([tax],0)
+	-------------------------------------------------------------------------------------------------
+	declare @total float
+	select @total = SUM(ISNULL(total,0)) from @tmp 
+	update @tmp set rate = case when @total =0 then 0 else round(total/@total*100,2) end
+	
+	select a.*, b.nick nick
+	,reverse(substring(reverse(convert(nvarchar(20),CONVERT(money,a.[weight]),1)),4,17)) a1
+	,reverse(substring(reverse(convert(nvarchar(20),CONVERT(money,a.[money]),1)),4,17)) a2
+	,reverse(substring(reverse(convert(nvarchar(20),CONVERT(money,a.[tax]),1)),4,17)) a3
+	,reverse(substring(reverse(convert(nvarchar(20),CONVERT(money,a.[total]),1)),4,17)) a4
+	from(
+		select ROW_NUMBER()over(order by total desc) rr,* 
+		from @tmp
+		union all
+		select 0,'2','',SUM(ISNULL([weight],0)),SUM(ISNULL([money],0)),SUM(ISNULL([tax],0)),SUM(ISNULL([total],0)),0 from @tmp
+		) a
+	left join cust b on a.custno=b.noa
+	order by case when gno='2' then 'z' else '1' end,total desc;
+----------********************************************************************----------
+z_vccpi6:--z_vccpi6
+declare @t_bdatea nvarchar(10)
+declare @t_edatea nvarchar(10)
+declare @t_xspec nvarchar(30)
+declare @t_bcustno nvarchar(10)
+declare @t_ecustno nvarchar(10)
+declare @t_bxdime float
+declare @t_exdime float
+declare @t_bxwidth float
+declare @t_exwidth float
+declare @t_bxlengthb float
+declare @t_exlengthb float
+set @t_bdatea = case when '#non'=[2] then '' else [2] end
+set @t_edatea = case when '#non'=[3] then char(255) else [3] end
+set @t_xspec = case when '#non'=[12] then '' else [12] end
+set @t_bcustno = case when '#non'=[8] then '' else [8] end
+set @t_ecustno = case when '#non'=[9] then char(255) else [9] end
+set @t_bxdime = case when '#non'=[15] then 0.000 else cast([15] as float) end
+set @t_exdime = case when '#non'=[16] then 999.990 else cast([16] as float) end
+set @t_bxwidth = case when '#non'=[17] then 0.00 else cast([17] as float)end
+set @t_exwidth = case when '#non'=[18] then 9999.99 else cast([18] as float) end
+set @t_bxlengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_exlengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+declare @tmp table(
+	gno nvarchar(1),
+	noa nvarchar(30),
+	datea nvarchar(10),
+	kind nvarchar(15),
+	source nvarchar(15),
+	pno nvarchar(35),
+	product nvarchar(90),
+	spec nvarchar(max),
+	csize nvarchar(max),
+	mount float,
+	weight float,
+	price float,
+	cust nvarchar(50),
+	qhref nvarchar(max),
+	coin nvarchar(50)
+)
+insert into @tmp
+	select
+		'0',b.noa,b.datea,b.kind,c.source,a.productno,a.product,a.spec,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.mount,a.weight,a.price,isnull(d.nick,b.comp),'vccpi'+a.accy,b.coin
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	left join uccb c on a.uno = c.noa
+	left join cust d on b.custno = d.noa
+	where 1=1 and
+	(b.datea between @t_bdatea and @t_edatea) and
+	(len(@t_xspec) = 0 or a.spec = @t_xspec) and
+	(b.custno between @t_bcustno and @t_ecustno) and
+	(a.dime between @t_bxdime and @t_exdime) and
+	(a.width between @t_bxwidth and @t_exwidth) and
+	(a.lengthb between @t_bxlengthb and @t_exlengthb)
+insert into @tmp(gno,mount,weight)
+	select '1',sum(mount),sum(weight) from @tmp
+update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+update @tmp set csize = replace(csize,'~#$','''')
+select
+	gno,noa,datea,source,pno,product,spec,ROW_NUMBER()over(order by gno,datea desc) idno,csize,
+	mount,weight,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
+	cust,qhref
+from @tmp order by idno;
+----------********************************************************************----------
+z_vccpi7:--z_vccpi7
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bpno nvarchar(35)
+declare @t_epno nvarchar(35)
+declare @t_bcust nvarchar(10)
+declare @t_ecust nvarchar(10)
+declare @t_stype nvarchar(20)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+declare @t_bsalesno nvarchar(10)
+declare @t_esalesno nvarchar(10)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bpno = case when '#non'=[6] then '' else [6] end
+set @t_epno = case when '#non'=[7] then char(255) else [7] end
+set @t_bcust = case when '#non'=[8] then '' else [8] end
+set @t_ecust = case when '#non'=[9] then char(255) else [9] end
+set @t_stype = case when '#non'=[10] then '' else [10] end
+set @t_bdime = case when '#non'=[15] then 0.000 else cast([15] as float) end
+set @t_edime = case when '#non'=[16] then 999.990 else cast([16] as float) end
+set @t_bwidth = case when '#non'=[17] then 0.00 else cast([17] as float)end
+set @t_ewidth = case when '#non'=[18] then 9999.99 else cast([18] as float) end
+set @t_blengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_elengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+set @t_bsalesno = case when '#non'=[21] then '' else [21] end
+set @t_esalesno = case when '#non'=[22] then char(255) else [22] end
+declare @tmp table(
+	gno nvarchar(1),
+	salesno nvarchar(35),
+	sales nvarchar(90),
+	noa nvarchar(35),
+	datea nvarchar(10),
+	ordeno nvarchar(50),
+	noq nvarchar(10),
+	uno nvarchar(35),
+	product nvarchar(50),
+	pno nvarchar(35),
+	akind nvarchar(15),
+	csize nvarchar(max),
+	spec nvarchar(max),
+	style nvarchar(20),
+	aweight float,
+	amount float,
+	aprice float,
+	atotal float,
+	comp nvarchar(90),
+	carno2 nvarchar(20),
+	qhref nvarchar(max),
+	coin nvarchar(50)
+)
+insert into @tmp
+	select
+		'0',b.salesno,b.sales,b.noa,b.datea,a.ordeno,a.no2,a.uno,a.product,a.productno,b.kind,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.spec,a.style,a.weight,a.mount,a.price,(a.price * a.theory),e.nick,b.carno,'vccpi'+a.accy,b.coin
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	left join cust e on b.custno = e.noa
+	left join cardeal f on b.carno = f.noa
+	where
+		(/*(b.kind = 'A1' or b.kind = 'A4') and */(b.typea = '1')) and 
+		(b.datea between @t_bdate and @t_edate) and
+		(a.productno between @t_bpno and @t_epno) and
+		(b.custno between @t_bcust and @t_ecust) and
+		((len(@t_stype) = 0) or (b.stype=@t_stype)) and 
+		(a.width between @t_bwidth and @t_ewidth) and
+		(a.dime between @t_bdime and @t_edime) and
+		(a.lengthb between @t_blengthb and @t_elengthb) and
+		(b.salesno between @t_bsalesno and @t_esalesno)
+		
+	insert into @tmp(gno,salesno,sales,amount,aweight)
+		select '1',salesno,sales,sum(amount),sum(aweight) from @tmp group by salesno,sales
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	update @tmp set csize = replace(csize,'~#$','''')
+	select
+		gno,noa,datea,ordeno+'-'+noq ordeno,uno,ROW_NUMBER()over(partition by salesno,sales order by gno,datea desc,noa) idno,
+		product,pno,csize,spec,salesno,sales salesname
+		,dbo.getComma(aweight,-1) aweight
+		,dbo.getComma(amount,-1) amount
+		,isnull(coin+' ','')+dbo.getComma(aprice,-1)  aprice
+		,dbo.getComma(atotal,-1) atotal
+		,comp,carno2,qhref
+	from @tmp order by salesno,sales,gno,datea desc,noa;
+----------********************************************************************----------
+z_vccpi8:--z_vccpi8
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bpno nvarchar(35)
+declare @t_epno nvarchar(35)
+declare @t_bcust nvarchar(10)
+declare @t_ecust nvarchar(10)
+declare @t_stype nvarchar(20)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+declare @t_bsalesno nvarchar(10)
+declare @t_esalesno nvarchar(10)
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bpno = case when '#non'=[6] then '' else [6] end
+set @t_epno = case when '#non'=[7] then char(255) else [7] end
+set @t_bcust = case when '#non'=[8] then '' else [8] end
+set @t_ecust = case when '#non'=[9] then char(255) else [9] end
+set @t_stype = case when '#non'=[10] then '' else [10] end
+set @t_bdime = case when '#non'=[15] then 0.000 else cast([15] as float) end
+set @t_edime = case when '#non'=[16] then 999.990 else cast([16] as float) end
+set @t_bwidth = case when '#non'=[17] then 0.00 else cast([17] as float)end
+set @t_ewidth = case when '#non'=[18] then 9999.99 else cast([18] as float) end
+set @t_blengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_elengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+set @t_bsalesno = case when '#non'=[21] then '' else [21] end
+set @t_esalesno = case when '#non'=[22] then char(255) else [22] end
+declare @tmp table(
+	gno nvarchar(1),
+	salesno nvarchar(35),
+	sales nvarchar(90),
+	datea nvarchar(10),
+	uno nvarchar(35),
+	product nvarchar(50),
+	pno nvarchar(35),
+	akind nvarchar(15),
+	csize nvarchar(max),
+	spec nvarchar(max),
+	aweight float,
+	amount float,
+	comp nvarchar(90),
+	qhref nvarchar(max)
+)
+insert into @tmp
+	select
+		'0',b.salesno,b.sales,left(b.datea,6),a.uno,
+		case when charindex(left(a.uno,1),'XYZ') > 0 then '廢料' else a.product end product,
+		case when charindex(left(a.uno,1),'XYZ') > 0 then '' else a.productno end productno,
+		b.kind,
+		case when charindex(left(a.uno,1),'XYZ') > 0 then '' else
+			case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end
+		end csize,
+		a.spec,sum(a.weight),sum(a.mount),e.nick,'vccpi'
+	from view_vccs[1] a
+	left join view_vcc[1] b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	left join cust e on b.custno = e.noa
+	where
+		(/*(b.kind = 'A1' or b.kind = 'A4') and */(b.typea = '1')) and 
+		(b.datea between @t_bdate and @t_edate) and
+		(a.productno between @t_bpno and @t_epno) and
+		(b.custno between @t_bcust and @t_ecust) and
+		((len(@t_stype) = 0) or (b.stype=@t_stype)) and 
+		(a.width between @t_bwidth and @t_ewidth) and
+		(a.dime between @t_bdime and @t_edime) and
+		(a.lengthb between @t_blengthb and @t_elengthb) and
+		(b.salesno between @t_bsalesno and @t_esalesno) and
+		(len(ltrim(rtrim(a.uno)))>0)
+	group by b.salesno,b.sales,left(b.datea,6),a.uno,a.product,a.productno,a.size,b.kind,a.dime,a.width,a.lengthb,a.radius,
+				a.spec,e.nick
+insert into @tmp(gno,salesno,sales,datea,amount,aweight)
+	select '1',salesno,sales,datea,sum(amount),sum(aweight) from @tmp where gno='0' group by salesno,sales,datea
+insert into @tmp(gno,salesno,sales,amount,aweight)
+	select '2',salesno,sales,sum(amount),sum(aweight) from @tmp where gno='1' group by salesno,sales
+update @tmp set csize = replace(csize,'~#$','''')
+select
+	gno,datea,uno,ROW_NUMBER()over(partition by salesno,sales,datea order by datea desc,gno) idno,
+	product,pno,csize,spec,salesno,sales salesname,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
+	comp
+from @tmp order by salesno,sales,datea desc,gno;
+----------********************************************************************----------
+z_vccpi9:--z_vccpi9
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @t_bpno nvarchar(35)
+declare @t_epno nvarchar(35)
+declare @t_bcust nvarchar(10)
+declare @t_ecust nvarchar(10)
+declare @t_stype nvarchar(20)
+declare @t_bwidth float
+declare @t_ewidth float
+declare @t_bdime float
+declare @t_edime float
+declare @t_blengthb float
+declare @t_elengthb float
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bpno = case when '#non'=[6] then '' else [6] end
+set @t_epno = case when '#non'=[7] then char(255) else [7] end
+set @t_bcust = case when '#non'=[8] then '' else [8] end
+set @t_ecust = case when '#non'=[9] then char(255) else [9] end
+set @t_stype = case when '#non'=[10] then '' else [10] end
+set @t_bdime = case when '#non'=[15] then 0.000 else cast([15] as float) end
+set @t_edime = case when '#non'=[16] then 999.990 else cast([16] as float) end
+set @t_bwidth = case when '#non'=[17] then 0.00 else cast([17] as float)end
+set @t_ewidth = case when '#non'=[18] then 9999.99 else cast([18] as float) end
+set @t_blengthb = case when '#non'=[19] then 0.0 else cast([19] as float) end
+set @t_elengthb = case when '#non'=[20] then 99999.9 else cast([20] as float) end
+declare @tmp table(
+	gno nvarchar(1),
+	uno nvarchar(50),
+	product nvarchar(max),
+	pno nvarchar(90),
+	akind nvarchar(15),
+	csize nvarchar(max),
+	spec nvarchar(max),
+	aweight float,
+	amount float,
+	custno nvarchar(35),
+	comp nvarchar(max),
+	qhref nvarchar(max),
+	aprice float,
+	tranprice float,
+	coin nvarchar(50)
+)
+insert into @tmp
+	select
+		'0',a.uno,a.product,a.productno,b.kind,
+		case when ltrim(rtrim(a.size)) = '' then dbo.csize(b.kind,a.dime,a.width,a.lengthb,a.radius) else a.size end,
+		a.spec,a.weight,a.mount,b.custno,c.nick,'vccpi',a.price,b.price,b.coin
+	from view_vccs a
+	left join view_vcc b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	where
+		(/*(b.kind = 'A1' or b.kind = 'A4') and */(b.typea = '1')) and 
+		(b.datea between @t_bdate and @t_edate) and
+		(a.productno between @t_bpno and @t_epno) and
+		(b.custno between @t_bcust and @t_ecust) and
+		((len(@t_stype) = 0) or (b.stype=@t_stype)) and 
+		(a.width between @t_bwidth and @t_ewidth) and
+		(a.dime between @t_bdime and @t_edime) and
+		(a.lengthb between @t_blengthb and @t_elengthb)
+insert into @tmp(gno,custno,comp,amount,aweight)
+	select '1',custno,comp,sum(amount),sum(aweight) from @tmp where gno='0' group by custno,comp
+insert into @tmp(gno,custno,comp,amount,aweight)
+	select '2',char(255),char(255),sum(amount),sum(aweight) from @tmp where gno='1'
+update @tmp set csize = replace(csize,'~#$','''')
+select
+	gno,uno,ROW_NUMBER()over(partition by custno,comp order by custno,comp,gno) idno,
+	product,pno,csize,spec,custno,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(aprice)),1)),4,12))+'.'+cast(floor((aprice*1000)-(floor(aprice)*1000)) as nvarchar) aprice,
+	tranprice,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,aweight),1)),4,12)) aweight,
+	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,amount),1)),4,12)) amount,
+	comp
+from @tmp order by custno,comp,gno;
+----------********************************************************************----------
+z_vccpi10:--z_vccpi10
+declare @t_pageline int = 16   --------一頁幾行
+declare @t_bcustno nvarchar(35)
+declare @t_ecustno nvarchar(35)
+declare @t_bmon nvarchar(20)
+declare @t_emon nvarchar(20)
+set @t_bmon = case when '#non'=[4] then '' else [4] end
+set @t_emon = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[8] then '' else [8] end
+set @t_ecustno = case when '#non'=[9] then char(255) else [9] end
+declare @tmp table(
+	gno nvarchar(1),
+	idno int identity(0,1),
+	orderno int,
+	pageno int,
+	typea nvarchar(10),
+	custno nvarchar(35),
+	custs nvarchar(90),
+	zipcode nvarchar(90),
+	addr nvarchar(max),
+	tel nvarchar(max),
+	datea nvarchar(20),
+	noa nvarchar(30),
+	pno nvarchar(30),
+	products nvarchar(90),
+	csize nvarchar(max),
+	b_mount float,
+	b_price float,
+	b_money float,
+	b_tax float,
+	b_total float,
+	a_total float,
+	t_total1 float,
+	t_total2 float,
+	t_total3 float,
+	t_total4 float,
+	t_total5 float,
+	t_total6 float,
+	t_total7 float,
+	t_total8 float,
+	t_total9 float,
+	coin nvarchar(50)
+)
+
+insert into @tmp
+	select
+		 '0',ROW_NUMBER()over(partition by a.custno,a.comp,c.zip_home,c.addr_home order by a.custno,a.comp,c.zip_home,c.addr_home),1,
+		 (case a.typea when '1' then '出' when '2' then '退' end),a.custno,a.comp,c.zip_home,c.addr_home,a.tel,right(a.datea,5),a.noa,
+		 b.productno,b.product,
+		 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
+		 b.mount,b.price,b.total,a.tax,0,a.total,0,0,0,isnull((isnull(d.total,0)+isnull(d.tax,0)),0),0,0,0,0,0,a.coin
+	from view_vcc[1] a
+	left join view_vccs[1] b on (a.noa = b.noa)
+	left join cust c on a.custno = c.noa
+	left join vccbs d on a.invono = d.invono
+	left join vccb e on (d.noa = e.noa) and (e.typea = '2'/*銷貨折讓*/)
+	where (a.custno between @t_bcustno and @t_ecustno) and (a.mon between @t_bmon and @t_emon)
+	
+update @tmp set datea = isnull(typea,'') + isnull(datea,'')
+
+declare @a_count int
+declare @idno int
+declare @k int = 0 ----差幾頁
+declare @pageCount int
+declare @orderno int
+declare @pageno int
+declare @custno nvarchar(30)
+declare @custs nvarchar(90)
+declare @zipcode nvarchar(20)
+declare @addr nvarchar(max)
+declare @tel nvarchar(90)
+declare cursor_table cursor for
+	select custno,custs,count(*),max(orderno) from @tmp group by custno,custs
+open cursor_table
+fetch next from cursor_table
+into @custno,@custs,@a_count,@orderno
+while(@@FETCH_STATUS <> -1)
+begin		
+	if(@a_count > @t_pageline)
+	begin
+		set @k = CEILING((cast(@a_count as float)/@t_pageline))
+		while(@k > 0)
+		begin
+			update @tmp set pageno = @k where orderno > ((@k-1)*@t_pageline) and orderno <= (@k*@t_pageline)
+			set @k -=1
+		end
+	end
+	fetch next from cursor_table
+	into @custno,@custs,@a_count,@orderno
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set orderno = orderno-((pageno-1)*@t_pageline)
+
+declare @noa nvarchar(30)
+declare @b_tax float
+declare @t_total4 float
+declare @b_total float
+---------整理BBM資料--------------------------------------------------------------
+declare cursor_table cursor for
+	select distinct noa,idno,b_tax,t_total4,a_total from @tmp order by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@idno,@b_tax,@t_total4,@b_total
+while(@@FETCH_STATUS <> -1)
+begin	
+	update @tmp set b_tax = 0 where noa = @noa
+	update @tmp set b_tax = @b_tax where (noa = @noa) and (idno = @idno)
+	update @tmp set b_total = 0 where noa = @noa
+	update @tmp set b_total = @b_total where (noa = @noa) and (idno = @idno)
+	update @tmp set t_total4 = 0 where noa = @noa
+	update @tmp set t_total4 = @t_total4 where (noa = @noa) and (idno = @idno)
+	fetch next from cursor_table
+	into @noa,@idno,@b_tax,@t_total4,@b_total
+end
+close cursor_table
+deallocate cursor_table
+------------------------------------------------------------------------------
+declare cursor_table cursor for
+	select distinct custno,max(custs),max(zipcode),max(addr),max(tel),max(orderno),pageno,min(idno),count(*) from @tmp group by custno,custs,zipcode,addr,tel,pageno
+open cursor_table
+fetch next from cursor_table
+into @custno,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count
+while(@@FETCH_STATUS <> -1)
+begin		
+	set @k = @t_pageline -(@a_count%@t_pageline)
+	set @pageCount = @a_count/@t_pageline
+	if(@k < @t_pageline and (@pageCount =0))
+	begin
+		while(@k > 0)
+		begin
+			insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel)
+				select '0',(@orderno+1),@pageno,@custno,@custs,@zipcode,@addr,@tel from @tmp where idno = @idno
+			set @k = @k-1
+			set @orderno = @orderno +1
+		end
+	end
+	insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel,t_total1,t_total2,t_total4)
+		select '1',(@t_pageline+1),pageno,@custno,@custs,@zipcode,@addr,@tel,sum(b_money),sum(b_tax),sum(t_total4) from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and (pageno=@pageno) group by custno,custs,zipcode,addr,pageno
+	insert into @tmp(gno,orderno,pageno,custno,custs,zipcode,addr,tel) 
+		select '2',(@t_pageline+2),pageno,@custno,@custs,@zipcode,@addr,@tel from @tmp where gno=0 and (isnull(custno,'')=isnull(@custno,'')) and (isnull(custs,'')=isnull(@custs,'')) and (isnull(zipcode,'')=isnull(@zipcode,''))  and (isnull(addr,'')=isnull(@addr,'')) and pageno=@pageno group by pageno
+	fetch next from cursor_table
+	into @custno,@custs,@zipcode,@addr,@tel,@orderno,@pageno,@idno,@a_count
+end
+close cursor_table
+deallocate cursor_table
+update @tmp set t_total3 = isnull((isnull(t_total1,0) + isnull(t_total2,0)),0) where gno = '1'
+update @tmp set t_total6 = isnull((isnull(t_total3,0) - isnull(t_total4,0) - isnull(t_total5,0)),0) where gno = '1'
+update @tmp set t_total9 = isnull((isnull(t_total6,0) + isnull(t_total8,0) - isnull(t_total7,0)),0) where gno = '1'
+update @tmp set t_total9 = 0 where gno = '1' and (t_total9 <=0)
+update @tmp set csize = replace(csize,'~#$','''')
+select
+	gno,idno,orderno,pageno,typea,custno,custs,zipcode,addr,tel,datea a1,left(noa,7) noa,pno,products a2,csize,
+	b_mount,
+	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+LEFT(CAST((cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar)) as NVARCHAR) + REPLICATE('0', 3), 3) b_price,
+	b_money,
+	(case when b_tax = 0 then null else b_tax end) b_tax,
+	(case when b_total = 0 then null else b_total end) b_total, 
+	isnull(t_total1,0) t_total1,
+	isnull(t_total2,0) t_total2,
+	isnull(t_total3,0) t_total3,
+	isnull(t_total4,0) t_total4,
+	isnull(t_total5,0) t_total5,
+	isnull(t_total6,0) t_total6,
+	isnull(t_total7,0) t_total7,
+	isnull(t_total8,0) t_total8,
+	isnull(t_total9,0) t_total9
+from @tmp order by custno,custs,zipcode,addr,pageno,gno,orderno;
+----------********************************************************************----------
