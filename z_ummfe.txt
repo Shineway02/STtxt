@@ -5,7 +5,7 @@ z_ummfe06:--z_ummfe06
 	declare @t_mon nvarchar(20) = case when '#non' = [11] then '' else [11] end
 	declare @t_option nvarchar(max) = case when '#non' = [12] then '' else [12] end
 	----------------------------------------------------------------------------------------
-	declare @bbmon nvarchar(20)
+		declare @bbmon nvarchar(20)
 	begin try
 		set @bbmon =  left(dbo.AD2ChineseEraName(dateadd(MM,-2,dbo.ChineseEraName2AD(@t_mon+'/01'))),6)
 	end try
@@ -601,11 +601,11 @@ z_ummfe03:--z_ummfe03
 	group by cno,coin,custno
 	
 	--收款小計
-	insert into #z_ummfe03(gno,pno,cno,coin,custno,umoney)
+	/*insert into #z_ummfe03(gno,pno,cno,coin,custno,umoney)
 	select '13',13,isnull(cno,''),coin,isnull(custno,''),sum([umoney])
 	from #z_ummfe03
 	where gno='12'
-	group by cno,coin,custno
+	group by cno,coin,custno*/
 	--------------------------------------------------------------------------------------------			
 	--頁尾小計
 	--出貨金額：
@@ -730,7 +730,7 @@ z_ummfe03:--z_ummfe03
 	declare @n int
 	declare @m int
 	
-	declare cursor_table cursor for
+	/*declare cursor_table cursor for
 	select cno,custno,coin,count(1) from #z_ummfe03 group by cno,custno,coin
 	open cursor_table
 	fetch next from cursor_table
@@ -758,7 +758,7 @@ z_ummfe03:--z_ummfe03
 		into @cno,@custno,@coin,@n
 	end
 	close cursor_table
-	deallocate cursor_table
+	deallocate cursor_table*/
 	
 	insert into #z_ummfe03(gno,pno,cno,coin,custno)
 	select '16',16,cno,coin,custno 
@@ -813,12 +813,16 @@ z_ummfe03:--z_ummfe03
 --*******************************************************************************
 z_ummfe02:--z_ummfe02
 	SET QUOTED_IDENTIFIER OFF
-
+	
 	declare @t_cno nvarchar(20) = case when '#non' = [1] then '' else [1] end
 	declare @t_bcustno nvarchar(20) = case when '#non' = [2] then '' else [2] end
-	declare @t_ecustno nvarchar(20) =case when '#non' = [3] then CHAR(255) else [3] end
+	declare @t_ecustno nvarchar(20) = case when '#non' = [3] then CHAR(255) else [3] end
 	declare @t_bmon nvarchar(20) = case when '#non' = [6] then '' else [6] end
 	declare @t_emon nvarchar(20) = case when '#non' = [7] then CHAR(255) else [7] end
+	declare @t_bsssno nvarchar(20) = case when '#non' = [17] then '' else [17] end
+	declare @t_esssno nvarchar(20) = case when '#non' = [18] then CHAR(255) else [18] end
+	declare @t_option nvarchar(max) = case when '#non' = [19] then '' else [19] end
+	--------------------------------------------------------------------
 	declare @date date 
 	declare @t_bbmon nvarchar(20)
 	begin try
@@ -836,6 +840,7 @@ z_ummfe02:--z_ummfe02
 	declare @tmp table(
 		cno nvarchar(20),
 		custno nvarchar(20),
+		salesno nvarchar(20),
 		mon nvarchar(20),
 		coin nvarchar(20),
 		sale float,
@@ -846,8 +851,8 @@ z_ummfe02:--z_ummfe02
 		unpay2 float,--前期未收
 		unpay3 float--呆帳(超過2個月,即3個月前)
 	)
-	insert into @tmp(cno,custno,mon,coin,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
-	select cno,a.noa,mon,coin
+	insert into @tmp(cno,custno,salesno,mon,coin,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
+	select a.cno,a.noa,b.salesno,a.mon,a.coin
 		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.sale else 0 end
 		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.tax else 0 end
 		,case when ISNULL(a.mon,'') between @t_bmon and @t_emon then a.totsale else 0 end
@@ -856,10 +861,11 @@ z_ummfe02:--z_ummfe02
 		,case when ISNULL(a.mon,'') between @t_bbmon and @t_bmon and ISNULL(a.mon,'')!=@t_bmon then a.unpay else 0 end
 		,case when ISNULL(a.mon,'') < @t_bbmon then a.unpay else 0 end
 	from cust_2s a
+	left join cust b on a.noa = b.noa
 	where (len(@t_cno)=0 or a.cno=@t_cno) 
 	and ISNULL(a.noa,'') between @t_bcustno and @t_ecustno
 	and ((ISNULL(a.mon,'')  between @t_bmon and @t_emon and isnull(totsale,0) !=0) 
-		or (ISNULL(a.mon,'') < @t_bmon and isnull(a.unpay,0) !=0 ))
+	or  (ISNULL(a.mon,'') < @t_bmon and isnull(a.unpay,0) !=0 ))
 	-----------------------------------------------------------------------------------------------------
 	declare @cno nvarchar(20)
 	declare @custno nvarchar(20)
@@ -883,11 +889,22 @@ z_ummfe02:--z_ummfe02
 		total float,
 		memo nvarchar(max)
 	)
-	insert into @tmpa(gno,cno,custno,coin,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
-	select '1',cno,custno,coin,SUM(isnull([sale],0)),SUM(isnull([tax],0))
-		,SUM(isnull([totsale],0)),SUM(isnull([pay],0)) 
-		,SUM(isnull([unpay1],0)),SUM(isnull([unpay2],0)),SUM(isnull([unpay3],0))
-	from @tmp group by cno,custno,coin
+	if(CHARINDEX('依業務',@t_option) > 0)
+	begin
+		insert into @tmpa(gno,custno,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
+		select '1',salesno,SUM(isnull([sale],0)),SUM(isnull([tax],0))
+			,SUM(isnull([totsale],0)),SUM(isnull([pay],0)) 
+			,SUM(isnull([unpay1],0)),SUM(isnull([unpay2],0)),SUM(isnull([unpay3],0))
+		from @tmp group by salesno
+	end
+	else
+	begin
+		insert into @tmpa(gno,custno,sale,tax,totsale,pay,unpay1,unpay2,unpay3)
+		select '1',custno,SUM(isnull([sale],0)),SUM(isnull([tax],0))
+			,SUM(isnull([totsale],0)),SUM(isnull([pay],0)) 
+			,SUM(isnull([unpay1],0)),SUM(isnull([unpay2],0)),SUM(isnull([unpay3],0))
+		from @tmp group by custno
+	end
 	
 	declare cursor_table cursor for
 	select cno,custno,coin from @tmpa
@@ -929,13 +946,15 @@ z_ummfe02:--z_ummfe02
 	
 	update @tmpa set total = unpay1+unpay2+unpay3
 	
-	select b.nick nick
+	select 
+		case when CHARINDEX('依業務',@t_option) > 0 then b.sales else b.nick end nick
 		,dbo.getComma(a.unpay3,0) aa1
 		,dbo.getComma(a.sale,0) aa2
 		,dbo.getComma(a.tax,0) aa3
 		,dbo.getComma(a.pay,0) aa4
 		,dbo.getComma(a.total,0) aa5
-		,a.* 
+		,a.*
+		,@t_bmon+'~'+@t_emon b2emon
 	from @tmpa a
 	left join cust b on a.custno=b.noa
 	order by gno,custno;
