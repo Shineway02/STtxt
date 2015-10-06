@@ -765,6 +765,9 @@ z_ummfe03:--z_ummfe03
 	from #z_ummfe03
 	group by cno,coin,custno
 	-------------------------------------------------------------------------------------------------------
+	set @t_emon = case when @t_emon = CHAR(255) then '' else @t_emon end
+	set @t_edate = case when @t_edate = CHAR(255) then '' else @t_edate end
+	set @t_ezdate = case when @t_ezdate = CHAR(255) then '' else @t_ezdate end
 	
 	select vccCount nn
 		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+b.acomp +'</a>' tacomp
@@ -801,7 +804,7 @@ z_ummfe03:--z_ummfe03
 		,a.* 
 		
 		,case when LEN(@t_bzdate)=0 and @t_ezdate=CHAR(255) then '帳款月份：'+@t_bmon +'~'+@t_emon else '帳款日期：'+@t_bzdate+'~'+@t_ezdate  end b2emon
-		,@t_bdate +'~'+@t_edate b2edate,c.tel tel,@t_worker worker
+		,@t_bdate +'~'+ @t_edate b2edate,c.tel tel,@t_worker worker
 	from #z_ummfe03 a 
 	left join acomp b on a.cno=b.noa
 	left join cust c on a.custno = c.noa
@@ -945,6 +948,8 @@ z_ummfe02:--z_ummfe02
 	from @tmpa
 	
 	update @tmpa set total = unpay1+unpay2+unpay3
+	
+	set @t_emon = case when @t_emon = CHAR(255) then '' else @t_emon end
 	
 	select 
 		case when CHARINDEX('依業務',@t_option) > 0 then b.sales else b.nick end nick
@@ -1095,6 +1100,8 @@ where gno = '2'
 group by custno
 
 update @result set datea = '',opay = null,mopay = null where rec > 1
+
+set @t_edate = case when @t_edate = CHAR(255) then '' else @t_edate end
 
 select 
 	@t_bdate+'~'+@t_edate b2edate,*,
