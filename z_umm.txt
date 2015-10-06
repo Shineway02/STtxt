@@ -2796,8 +2796,8 @@ from #result a where a.gno='1'
 insert into #result (gno,noa,datea,mon,custno,comp,salesno,saless,total1,pay,unpay) 
 select gno,'','','',a.custno,b.comp,a.salesno,c.namea,0,0,total from @tmp a 
 left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa
-where custno not in (select custno from #result) and gno='1' and total!=0 
-
+--where custno not in (select custno from #result) and gno='1' and total!=0 
+where  not exists (select custno from #result where custno=a.custno) and gno='1' and total!=0
 
 update #result set total1=total,total2=total+tax where gno='0'
 update #result set total2=total1+unpay-pay where gno='1'
@@ -2809,16 +2809,19 @@ update #result set total2=total1+unpay-pay where gno='1'
 
 --當本期區間內沒有未收就不顯示
 if(@t_showunpay='1')
-	delete #result where custno in (select distinct custno from #result where gno='1' and total2=0)
+	delete a from #result a where exists (select distinct custno from #result where custno=a.custno and gno='1' and total2=0) 
+	--delete #result where custno in (select distinct custno from #result where gno='1' and total2=0)
 --插入前期帳款
 --insert #result(gno,typea,noa,mon,datea,total1,tax,total2,unpay,form,custno,comp,addr_invo,serial,tel,salesno,saless)
 --select '0','出','前期帳款',@t_bmon,@t_bdate,0,0,0,total1-pay,'vcc',custno,comp,addr_invo,serial,tel,salesno,saless
 --from @tmp where gno='1' and custno in (select custno from #result group by custno)
 
 insert #result(gno,typea,noa,mon,datea,total1,tax,total2,unpay,form,custno,comp,addr_invo,serial,tel,salesno,saless) 
-select '0','出','前期帳款',@t_bmon,@t_bdate,0,0,0,total,'vcc',custno,b.comp,addr_invo,serial,b.tel,a.salesno,c.namea
-from @tmp a left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa where gno='1' and custno in (select custno from #result group by custno) 
-
+select '0','出','前期帳款'+(case when (select count(*) from @tmp where custno=a.custno)>1 then '-'+a.salesno else '' end)
+,@t_bmon,@t_bdate,0,0,0,total,'vcc',custno,b.comp,addr_invo,serial,b.tel,a.salesno,c.namea
+from @tmp a left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa where gno='1'
+and exists (select custno from #result where custno=a.custno group by custno)  
+--and custno in (select custno from #result group by custno) 
 
 --預收
 update a
@@ -2849,21 +2852,14 @@ begin
 	end
 	else
 	begin
-		if(@gno='3')
+		if(@nowOrder = (@pageCount))
 		begin
-			select 1
+			set @nowOrder = 1
+			set @thisPageno = @thisPageno+1
 		end
 		else
 		begin
-			if(@nowOrder = (@pageCount))
-			begin
-				set @nowOrder = 1
-				set @thisPageno = @thisPageno+1
-			end
-			else
-			begin
-				set @nowOrder = @nowOrder+1
-			end
+			set @nowOrder = @nowOrder+1
 		end
 	end
 	update #result set orderno=@nowOrder,pageno=@thisPageno where idno=@idno
@@ -2872,10 +2868,12 @@ begin
 end
 close cursor_table
 deallocate cursor_table
+
 update a
 	set totpage=b.maxpageno
 from #result a
 outer apply(select max(pageno) maxpageno from #result where a.custno=custno) b
+
 update a
 	set orderno=case when b.maxorderno>=@pageCount then 1 else b.maxorderno+1 end,
 		 pageno=case when b.maxorderno>=@pageCount then a.totpage+1 else a.totpage end,
@@ -2883,6 +2881,7 @@ update a
 from #result a
 outer apply(select max(orderno) maxorderno from #result where a.custno=custno and (a.totpage=pageno)) b
 where a.gno='3'
+
 declare @totpage int = 0
 declare cursor_table cursor for
 	select idno,custno,totpage from #result where gno = '3' order by custno
@@ -2918,10 +2917,12 @@ begin
 end
 close cursor_table
 deallocate cursor_table
+
 update a
 	set totpage = b.maxpageno
 from #result a
 outer apply(select max(pageno) maxpageno from #result where a.custno=custno) b
+
 insert into #result(gno,orderno,pageno,totpage,custno)
 	select
 		'2',max(orderno)+1,pageno,totpage,custno
