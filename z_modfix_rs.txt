@@ -50,7 +50,7 @@ declare @tmp2 table(
 	detail nvarchar(50),
 	frame nvarchar(50),
 	mount nvarchar(50),
-	way nvarchar(50),
+	way nvarchar(30),
 	weight nvarchar(50),
 	seq int
 )
@@ -72,17 +72,7 @@ if((select count(*) from @tmp1)  < (select count(*) from @tmp2) )
 	end
 		
 			
-select a.gno,a.code,a.detail,a.frame,a.mount,
-		case when a.way =1 then'傳統車床(砂紙研磨)'
-			 when a.way =2 then'傳統車床(砂輪機研磨)'
-			 when a.way =3 then'CNC 車修'
-			 when a.way =4 then'不須車修或研磨'
-			 else '' end way, dbo.getComma(a.weight,0) weight
-			,b.code bcode,b.detail bdetail,b.frame bframe,b.mount bmount,
-		case when b.way =1 then'傳統車床(砂紙研磨)'
-			 when b.way =2 then'傳統車床(砂輪機研磨)'
-			 when b.way =3 then'CNC 車修'
-			 when b.way =4 then'不須車修或研磨'	end bway,dbo.getComma(b.weight,0) bwe
-			,@t_noa noa,@t_datea datea,@t_mech mech
-from @tmp1 a left join @tmp2 b on a.seq=b.seq
-;
+select a.gno,a.code,a.detail,a.frame,a.mount,a.way,a.way,dbo.getComma(a.weight,0) weight,
+	   b.code bcode,b.detail bdetail,b.frame bframe,b.mount bmount,b.way bway,dbo.getComma(b.weight,0) bwe,
+	   @t_noa noa,@t_datea datea,@t_mech mech
+from @tmp1 a left join @tmp2 b on a.seq=b.seq;

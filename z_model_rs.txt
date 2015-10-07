@@ -116,10 +116,11 @@ set @t_noa = case when '#non' = [1] then '' else [1] end
 set @t_frame = case when '#non' = [2] then '' else [2] end
 set @t_tgg = case when '#non' = [3] then '' else [3] end
 set @t_bdate = case when '#non' = [4] then '' else [4] end
-set @t_edate = case when '#non' = [5] then '' else [5] end
+set @t_edate = case when '#non' = [5] then char(255) else [5] end
 -------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
+	rec int,
 	noa nvarchar(30),
 	tgg nvarchar(50),
 	tube nvarchar(50),
@@ -139,22 +140,76 @@ declare @result table(
 )
 
 insert @result
-select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
+select '0',ROW_NUMBER()over(partition by a.noa order by a.noa),a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,a.usetype,a.saver,a.datea,
 	   b.productno, case when b.model = '1' then '成型段' else '定徑段' end model
 	   ,b.wheel+b.number,b.bottom,b.mount,b.memo,b.datea
 from model a left join models b on a.noa=b.noa
 where  (@t_noa=a.noa or isnull(@t_noa,'')='' )and a.datea between @t_bdate and @t_edate 
 
-insert @result (gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea)
-select TOP 1 '1',max(noa),tgg,tube,heart,spec,frame,usetype,saver,DATEA
-from @result
-group by tgg,tube,heart,spec,frame,usetype,saver,DATEA
+--補滿行數
+declare @noa nvarchar(30)
+declare @cnt int
+declare @max int
+declare @i int
 
-select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
-	   ,dbo.getComma(mount,0) mount,memo2 m2,model+memo memo,bottom,datea1 date2
-	   
-from @result
-order by gno;
+declare cursor_table cursor for 
+select noa from @result group by noa
+open cursor_table 
+fetch next from cursor_table 
+into @noa
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @result where gno = '0' and noa = @noa)
+	set @max = (select MAX(rec) from @result where gno = '0' and noa = @noa)
+	set @i = 0
+	while(@i < 35-@cnt%35)
+	begin
+		insert into @result(gno,rec,noa)
+		select '0',@max+1,@noa
+		
+		set @max = @max + 1
+		set @i = @i + 1
+	end
+	fetch next from cursor_table 
+	into @noa
+end 
+close cursor_table 
+deallocate cursor_table
+
+--小計&合計
+declare @xnoa nvarchar(30)
+declare @rec int
+
+declare cursor_table cursor for 
+select rec,noa from @result where gno = '0'
+open cursor_table 
+fetch next from cursor_table 
+into @rec,@noa
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @max = (select MAX(rec) from @result where gno = '0' and noa = @noa)
+	if(@rec%35=0 and @rec!=@max)
+	begin
+		insert into @result(gno,rec,noa,mount)
+		select '1',@rec,@noa,SUM(ISNULL(mount,0))
+		from @result
+		where (gno='0') and (noa = @noa) and (rec between @rec-34 and @rec)
+	end
+	
+	fetch next from cursor_table 
+	into @rec,@noa
+end 
+close cursor_table 
+deallocate cursor_table
+
+insert @result (gno,rec,noa,mount)
+select '2',MAX(rec),noa,SUM(mount)
+from @result where gno = '0'
+group by noa
+
+select gno,rec,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype,
+	   dbo.getComma(mount,0) mount,memo2 m2,model+memo memo,bottom,datea1 date2
+from @result order by noa,rec,gno;
 ------------------------------------------------------------------------------------------------------
 z_model_rs4:--z_model_rs4
 declare @t_noa nvarchar(20)
@@ -297,38 +352,10 @@ set @t_tgg = case when '#non' = [3] then '' else [3] end
 set @t_bdate = case when '#non' = [4] then '' else [4] end
 set @t_edate = case when '#non' = [5] then '' else [5] end
 -------------------------------------------------------------------------------------------------------
-declare @result table(
-	gno nvarchar(1),
-	noa nvarchar(30),
-	tgg nvarchar(50),
-	tube nvarchar(50),
-	heart float,
-	spec nvarchar(50),
-	frame nvarchar(3),
-	usetype nvarchar(20),
-	saver nvarchar(30),
-	datea nvarchar(20),
-	nob nvarchar(25),
-	model nvarchar(50),
-	memo nvarchar(30),
-	bottom float,
-	mount float,
-	memo2 nvarchar(max),
-	datea1 nvarchar(30)
-)
-
-insert @result
-select '0',a.noa,a.tgg,a.tube,a.heart,a.spec,a.frame,case when a.usetype ='1' then '設備課' else '製造課'end
-	,a.saver,a.datea,
-	   b.productno,b.model,b.memo,b.bottom,b.mount,b.memo2,b.datea
-from model a left join models b on a.noa=b.noa
-where (a.frame=@t_frame or isnull(@t_frame,'')='')
-	  and a.datea between @t_bdate and @t_edate	
-insert @result(gno)
-select '1'
-
-select gno,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype
-	   ,dbo.getComma(mount,0) mount,memo2 m2,memo,bottom,datea1 date2
-from @result
-order by gno,noa,nob
-;
+select '0' gno,a.frame,a.noa,a.spec,SUM(b.mount) mount,a.usetype,a.datea
+from model a
+left join models b on a.noa = b.noa
+where	(lEN(@t_noa)=0 or a.noa=@t_noa) and 
+		(lEN(@t_frame)=0 or a.frame=@t_frame) and 
+		(a.datea between @t_bdate and @t_edate)
+group by a.frame,a.noa,a.spec,a.usetype,a.datea;

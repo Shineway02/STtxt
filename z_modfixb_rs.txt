@@ -112,7 +112,7 @@ update @tmp set way = case when CHARINDEX('委外',way)>0 then '&#9745委外<br>
 insert into @tmp(gno,rec,noa)
 select DISTINCT '1',1,noa from @tmp
 
-declare @i int = 1
+/*declare @i int = 1
 declare @pagestr nvarchar(50) = '第一聯<br>：<br>申請聯,第二聯<br>：<br>財會聯,第三聯<br>：<br>維修聯'
 while(@i < 3)
 begin
@@ -127,7 +127,7 @@ end
 
 update @tmp set pageword = case when rec = 1 then dbo.split(@pagestr,',',0) 
 								when rec = 2 then dbo.split(@pagestr,',',1)
-								when rec = 3 then dbo.split(@pagestr,',',2) end
+								when rec = 3 then dbo.split(@pagestr,',',2) end*/
 								
 select *,deviceno dno from @tmp order by noa,rec,gno;
 
@@ -175,7 +175,7 @@ update @tmp set tgg1 = case when CHARINDEX('委外',way) > 0 then tgg1 else null
 insert into @tmp(gno,rec,noa)
 select DISTINCT '1',1,noa from @tmp
 
-declare @i int = 1
+/*declare @i int = 1
 declare @pagestr nvarchar(30) = '正本：財會聯,影本1：製造聯,影本2：設備聯'
 while(@i < 3)
 begin
@@ -188,7 +188,7 @@ end
 
 update @tmp set tgg = case when rec = 1 then dbo.split(@pagestr,',',0) 
 							  when rec = 2 then dbo.split(@pagestr,',',1)
-							  when rec = 3 then dbo.split(@pagestr,',',2) end where gno = '1'	
+							  when rec = 3 then dbo.split(@pagestr,',',2) end where gno = '1'*/
 
 select *,dbo.getComma(money1,0)mny1,dbo.getComma(money2,0)mny2 from @tmp order by noa,rec,gno;
 

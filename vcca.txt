@@ -161,9 +161,9 @@ batchvcca_rb:--batchvcca_rb
 		+(SIN(cast(SUBSTRING(a.vccano,6,2) as int))*cast(SUBSTRING(a.vccano,8,3) as int)*100) as int)as nvarchar(10)),6)
 		from @vcca a outer apply (select * from view_orde where noa=@t_ordeno) b
 		
-		insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea)
+		insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea,ordeno,no2)
 		select b.vccano,a.no2,a.custno,a.productno,a.product,a.unit,1
-		,round(a.total/@t_vccacount,0),round(a.total/@t_vccacount,0),@t_datea
+		,round(a.total/@t_vccacount,0),round(a.total/@t_vccacount,0),@t_datea,a.noa,a.no2
 		from view_ordes a , @vcca b where a.noa=@t_ordeno
 		
 		--set @x_vccano=stuff((select ','+vccano from @vcca for xml path('')),1,1,'') 
