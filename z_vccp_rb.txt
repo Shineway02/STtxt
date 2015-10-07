@@ -1,4 +1,7 @@
 z_vccp_rb01:--z_vccp_rb01
+
+SET QUOTED_IDENTIFIER OFF
+
 declare @t_bxnoa nvarchar(20)
 declare @t_exnoa nvarchar(20)
 declare @t_pageline int = 35   --------一頁幾行
@@ -144,6 +147,8 @@ from @tmp a
 
 --發票(a_invo)長度調整
 update @tmp set a_invo = case when LEN(a_invo)>88 then SUBSTRING(a_invo,1,88)+'<br>'+SUBSTRING(a_invo,89,LEN(a_invo)) else a_invo end
+update @tmp set b_products = REPLACE(b_products,'<','&#60')
+update @tmp set b_products = REPLACE(b_products,'>','&#62')
 
 select
 	gno,a_noa,a_typea,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_sale2s,a_invo,a_title,a_trantype,a_paytype,a_cardeal,a_ordeno
@@ -208,7 +213,8 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0',0,0,a.datea,a.noa,b.noq,
-		a.buyer--104/10/06只顯示買受人若買受人為空不以銷貨客戶替代顯示--case when isnull(a.buyer,'') != '' then a.buyer else a.comp end,
+		a.buyer,--104/10/06彩虹只顯示買受人若買受人為空不以銷貨客戶替代顯示
+				--case when isnull(a.buyer,'') != '' then a.buyer else a.comp end,
 		case when isnull(a.serial,'') != '' then a.serial else d.serial end,
 		case when isnull(a.buyerno,'') != '' then (case when isnull(a.address,'') != '' then a.address else d.addr_invo end) else null end,
 		a.chkno,a.vccno,c.zipcode,case when c.ordeno!='' then c.ordeno else REPLACE(a.memo,vccno,'') end,b.productno,b.product,b.mount,b.price,b.money,
