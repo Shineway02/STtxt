@@ -97,8 +97,9 @@ z_unobd05:--z_unobd05 批號履歷
 			begin
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
 					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
-				select 0,@rank-1,uno,tablea,accy,noa,noq,datea 
-					,mount,[weight],null,null,null,null,productno,product,size,memo
+				select case when tablea='cubu' or tablea='cubt' or tablea='cuts' then 0 else 1 end
+					,@rank-1,uno,tablea,accy,noa,noq,datea 
+					,mount,[weight],null,null,sprice,sprice2,productno,product,size,memo
 				from view_uccb where uno=@uno and not(tablea='cubt' and accy=@accy and noa=@noa and noq=@noq)
 			end
 			else 
