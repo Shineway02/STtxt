@@ -1,3 +1,321 @@
+z_unobd05:--z_unobd05 批號履歷
+	SET QUOTED_IDENTIFIER OFF 
+	declare @t_uno nvarchar(50)= case when '#non' = [2] then '#non' else [2] end
+	set @t_uno = rtrim(ltrim(@t_uno))
+	declare @t_cubtype nvarchar(max) = case when '#non' = '[3]' then '' else '[3]' end
+	---------------------------------------------------------------------------------------
+	declare @history table(
+		sel int identity(1,1),
+		rr int,
+		ischk bit,
+		[rank] int,
+		uno nvarchar(30),
+		tablea nvarchar(20),
+		[action] nvarchar(20),
+		accy nvarchar(10),
+		noa nvarchar(20),
+		noq nvarchar(10),
+		datea nvarchar(20),
+		custno nvarchar(20),
+		comp nvarchar(50),
+		
+		mount01 float,--入庫數量
+		weight01 float,--入庫重量
+		mount02 float,--領料數量
+		weight02 float,--領料重量
+		
+		sprice float,--成本單價
+		sprice2 float,--進貨單價
+		
+		productno nvarchar(max),
+		product nvarchar(max),
+		size nvarchar(max),
+		
+		memo nvarchar(max),
+		ghref nvarchar(max)
+	)	
+	insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+		,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+	select 0,0,uno,case when tablea='cubt' then 'cubt_in' when tablea='cubu' then 'cubu_in' else tablea end
+		,accy,noa,noq,datea 
+		,mount,[weight],null,null,sprice,sprice2,productno,product,size,memo
+		from view_uccb where uno=@t_uno
+	
+	declare @sel int
+	declare @rank int
+	declare @uno nvarchar(30)
+	declare @tablea nvarchar(20)
+	declare @accy nvarchar(10)
+	declare @noa nvarchar(20)
+	declare @noq nvarchar(10)
+	declare @datea nvarchar(10)	
+	
+	while exists(select * from @history where ischk=0)
+	begin
+		--往回找
+		declare cursor_table cursor for
+		select sel,[rank],uno,tablea,accy,noa,noq from @history where ischk=0
+		open cursor_table
+		fetch next from cursor_table
+		into @sel,@rank,@uno,@tablea,@accy,@noa,@noq
+		while(@@FETCH_STATUS <> -1)
+		begin
+			update @history set ischk=1 where sel=@sel
+			
+			if @tablea='cuts'
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 0,@rank-1,uno,'cut',accy,noa,'',datea 
+				,null,null,gmount,gweight,null,null,productno,product,null,memo
+				from view_cut where accy=@accy and noa=@noa
+			end
+			--製管入庫
+			else if @tablea='cubu_in'
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 0,@rank-1,uno,'cubt_get',a.accy,a.noa,a.noq,b.datea 
+					,null,null,a.gmount,a.gweight,null,null,a.productno,a.product,a.size,a.memo
+				from view_cubt a
+				left join view_cub b on a.accy=b.accy and a.noa=b.noa
+				where a.accy=@accy and a.noa=@noa and a.noq=@noq
+			end
+			--派令入庫 找母批號
+			else if @tablea='cubt_in'
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 0,@rank-1,a.uno,'cubt_get',a.accy,a.noa,a.noq,b.datea 
+					,null,null,a.gmount,a.gweight,null,null,a.productno,a.product,a.size,a.memo
+				from view_cubt a
+				left join view_cub b on a.accy=b.accy and a.noa=b.noa
+				where a.accy=@accy and a.noa=@noa and a.noq=@noq
+			end
+			--派令領料 找從哪入庫的
+			else if @tablea='cubt_get'
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select case when tablea='cubu' or tablea='cubt' or tablea='cuts' then 0 else 1 end
+					,@rank-1,uno,tablea,accy,noa,noq,datea 
+					,mount,[weight],null,null,sprice,sprice2,productno,product,size,memo
+				from view_uccb where uno=@uno and not(tablea='cubt' and accy=@accy and noa=@noa and noq=@noq)
+			end
+			else 
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select case when tablea='cubu' or tablea='cubt' or tablea='cuts' then 0 else 1 end
+				,@rank-1,uno
+				,case when tablea='cubt' then 'cubt_in' when tablea='cubu' then 'cubu_in' else tablea end
+				,accy,noa,noq,datea 
+				,mount,[weight],null,null,sprice,sprice2,productno,product,size,memo
+				from view_uccb where uno=@uno and uno!=@t_uno
+			end
+
+			fetch next from cursor_table
+			into @sel,@rank,@uno,@tablea,@accy,@noa,@noq
+		end
+		close cursor_table
+		deallocate cursor_table
+		--往下找
+		update @history set ischk=0 where [rank]=0
+		
+		declare cursor_table cursor for
+		select sel,[rank],uno,tablea,accy,noa,noq from @history where ischk=0
+		open cursor_table
+		fetch next from cursor_table
+		into @sel,@rank,@uno,@tablea,@accy,@noa,@noq
+		while(@@FETCH_STATUS <> -1)
+		begin
+			update @history set ischk=1 where sel=@sel
+			--出貨
+			if exists(select * from view_vccs where uno=@uno)
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 1,@rank+1,a.uno,'vccs',a.accy,a.noa,a.noq,b.datea 
+					,null,null,a.mount,a.[weight],null,null,a.productno,a.product,a.size,a.memo
+				from view_vccs a
+				left join view_vcc b on a.accy=b.accy and a.noa=b.noa
+				where a.uno=@uno
+			end
+			--領料
+			if exists(select * from view_gets where uno=@uno)
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 1,@rank+1,a.uno,'gets',a.accy,a.noa,a.noq,b.datea 
+					,null,null,a.gmount,a.[gweight],null,null,a.productno,a.product,a.size,a.memo
+				from view_gets a
+				left join view_get b on a.accy=b.accy and a.noa=b.noa
+				where uno=@uno
+			end
+			--裁剪
+			if exists(select * from view_cut where uno=@uno)
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 1,@rank+1,a.uno,'cut',a.accy,a.noa,'',a.datea 
+					,null,null,a.gmount,a.[gweight],null,null,a.productno,a.product,'',a.memo
+				from view_cut a where uno=@uno
+				
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 0,@rank+1,a.bno,'cuts',a.accy,a.noa,a.noq,b.datea 
+					,a.mount,a.[weight],null,null,a.sprice,a.sprice2,a.productno,a.product,a.size,a.memo
+				from view_cuts a 
+				left join view_cut b on a.accy=b.accy and a.noa=b.noa
+				where b.uno=@uno
+			end
+			--派令
+			if exists(select * from view_cubt where uno=@uno)
+			begin
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 1,@rank+1,a.uno,'cubt_get',a.accy,a.noa,a.noq,b.datea 
+					,null,null,a.gmount,a.gweight,null,null,a.productno,a.product,a.size,a.memo
+				from view_cubt a 
+				left join view_cub b on a.accy=b.accy and a.noa=b.noa
+				where a.uno=@uno
+				--cubt
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 0,@rank+1,a.bno,'cubt_in',a.accy,a.noa,a.noq,b.datea 
+					,a.mount,a.[weight],null,null,null,null,a.productno,a.product,a.size,a.memo
+				from view_cubt a 
+				left join view_cub b on a.accy=b.accy and a.noa=b.noa
+				where a.uno=@uno
+				and len(ISNULL(a.bno,''))>0
+				--cubu
+				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
+					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+				select 0,@rank+1,a.uno,'cubu_in',a.accy,a.noa,a.noq,b.datea 
+					,a.mount,a.[weight],null,null,a.sprice,a.sprice2,a.productno,a.product,a.size,a.memo
+				from view_cubu a 
+				left join view_cub b on a.accy=b.accy and a.noa=b.noa
+				where exists(select * from view_cubt where noa=b.noa and uno=@uno and groupa=a.groupa)
+			end
+			
+			fetch next from cursor_table
+			into @sel,@rank,@uno,@tablea,@accy,@noa,@noq
+		end
+		close cursor_table
+		deallocate cursor_table
+	end
+	--------------------------------------------------------------------------------------------------------------
+	--CUST  TGG
+	update @history set custno=b.tggno,comp=c.nick
+	from @history a
+	left join view_rc2 b on a.accy=b.accy and a.noa=b.noa
+	left join tgg c on b.tggno=c.noa
+	where a.tablea='rc2s'
+	
+	update @history set custno=b.tggno,comp=c.nick
+	from @history a
+	left join view_ina b on a.accy=b.accy and a.noa=b.noa
+	left join tgg c on b.tggno=c.noa
+	where a.tablea='inas'
+	
+	update @history set custno=b.custno,comp=c.nick
+	from @history a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on b.custno=c.noa
+	where a.tablea='vccs'
+	
+	update @history set custno=b.custno,comp=c.nick
+	from @history a
+	left join view_get b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on b.custno=c.noa
+	where a.tablea='gets'
+	
+	update @history set custno=b.custno,comp=c.nick
+	from @history a
+	left join view_cuts b on a.accy=b.accy and a.noa=b.noa and a.noq=b.noq
+	left join cust c on b.custno=c.noa
+	where a.tablea='cuts'
+	
+	update @history set custno=b.custno,comp=c.nick
+	from @history a
+	left join view_cut b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on b.custno=c.noa
+	where a.tablea='cut'
+	
+	update @history set custno=b.custno,comp=c.nick
+	from @history a
+	left join view_cubt b on a.accy=b.accy and a.noa=b.noa and a.noq=b.noq
+	left join cust c on b.custno=c.noa
+	where a.tablea='cubt_in'
+	--------------------------------------------------------------------------------------------------------------
+	update @history set rr=b.rr
+	from @history a
+	left join (select sel,ROW_NUMBER()over(order by [rank],datea) rr from @history) b on a.sel=b.sel
+	
+	update @history set 
+		[action]=case when tablea='rc2s' then '進貨'
+			 when tablea='inas' then '入庫'
+			 when tablea='cut' then '裁剪領料'
+			 when tablea='cuts' then '裁剪入庫'
+			 when tablea='vccs' then '出貨'
+			 when tablea='gets' then '領料'
+			 when tablea='cubt_get' then '派令領料'
+			 when tablea='cubt_in' then '派令入庫'
+			 when tablea='cubu_in' and exists(select noa from view_cubs where accy=accy and noa=noa and ordc=1) then '包裝入庫'
+			 when tablea='cut' and exists(select noa from view_cubs where accy=accy and noa=noa and ordc=1) then '製管入庫'
+			 else tablea end
+ 
+	update @history set 		 
+		ghref=case when tablea='rc2s' then "rc2_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='inas' then "inast?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='cut' then "cut?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='cuts' then "cut?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='vccs' then "vcc_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='gets' then "getst?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='cubt_get' then "cub_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='cubt_in' then "cub_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='cubu_in' then "cubpi?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 else tablea end
+		,memo=REPLACE(memo,'~#$',"'")
+		,product=REPLACE(product,'~#$',"'")
+	select a.* 
+		,'1' gno
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@t_uno+'</a>' b01--批號 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.product+'</a>' b02--品名
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.size+'</a>' b03--尺寸
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.spec+'</a>' b04--材質
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.unit+'</a>' b05--單位
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(c.lengthb,-1)+'</a>' b06--長度
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.class+'</a>' b07--等級
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.datea+'</a>' b08--入庫日
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+e.store+'</a>' b09--存放廠
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(c.hard,-1)+'</a>' b10--硬度
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(c.mount,-1)+'</a>' b11--期初數量
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(c.[weight],-1)+'</a>' b12--期初重量
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(d.emount,-1)+'</a>' b13--餘料數
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(d.eweight,-1)+'</a>' b14--餘料重
+		
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.[action]+'</a>' a01--類別
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.noa+'</a>' a02--單據編號
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.datea+'</a>' a03--日期
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.comp+'</a>' a04--公司名稱
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.mount01,-1)+'</a>' a05--入庫數量
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.weight01,-1)+'</a>' a06--入庫重量
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.mount02,-1)+'</a>' a07--領料數量
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.weight02,-1)+'</a>' a08--領料重量
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice,-1)+'</a>' a09--成本單價
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice2,-1)+'</a>' a10--進貨單價
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.uno+'</a>' a11--批號
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo+'</a>' a12--備註
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' a13--品名
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(a.size,''))=0 then b.size else a.size end+'</a>' a14--規格
+	from @history a
+	left join view_uccb b on a.uno=b.uno
+	left join view_uccb c on c.uno=@t_uno
+	left join view_uccc d on d.uno=@t_uno
+	left join store e on c.storeno=e.noa
+	order by a.[rank],a.datea;
+
 z_unobd01:--z_unobd01          z_uno1
 declare @t_uno nvarchar(50)
 set @t_uno = case when '#non' = [2] then '#non' else [2] end
