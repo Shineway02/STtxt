@@ -1057,8 +1057,8 @@ z_uccfe1:--z_uccfe1
 	declare @tmpa table(
 		productno nvarchar(30),
 		storeno nvarchar(30),
-		mount float,
-		[weight] float
+		mount decimal(18, 4),
+		[weight] decimal(18, 4)
 	)
 	insert into @tmpa
 	execute dbo.stkucc2 @t_enddate,@t_bstoreno,@t_estoreno,@t_bproductno,@t_eproductno 
@@ -1078,9 +1078,9 @@ z_uccfe1:--z_uccfe1
 		productno nvarchar(30),
 		product nvarchar(100),
 		unit nvarchar(20),
-		mount float,
-		[weight] float,
-		price float,
+		mount decimal(18, 4),
+		[weight] decimal(18, 4),
+		price decimal(18, 4),
 		[money] float
 	)
 	insert into #z_uccfe1(gno,recno,storeno,productno,mount,[weight])
@@ -1090,7 +1090,6 @@ z_uccfe1:--z_uccfe1
 	where not(mount=0 and [weight]=0)
 	and productno between @t_bproductno and @t_eproductno
 	and storeno between @t_bstoreno and @t_estoreno
-	
 	
 	update #z_uccfe1 set product=ISNULL(b.product,''),unit=UPPER(ISNULL(b.unit,'')),store=ISNULL(c.store,'')
 	from #z_uccfe1 a
@@ -1121,14 +1120,14 @@ z_uccfe1:--z_uccfe1
 	select '2',0,productno,product,unit,sum(mount),sum([weight]),price,sum(isnull([money],0))
 	from #z_uccfe1
 	where gno = '1' 
-	and (mount!=0 and [weight]!=0)
+	and (mount!=0 or [weight]!=0)
 	group by productno,product,unit,price
 	
 	insert into #z_uccfe1(gno,recno,productno,mount,[weight],[money])
 	select '3',0,CHAR(255),sum(mount),sum([weight]),sum(isnull([money],0))
 	from #z_uccfe1
 	where gno = '1' 
-	and (mount!=0 and [weight]!=0)
+	and (mount!=0 or [weight]!=0)
 	---------------------------------------------------------------------------------------------
 	if len(@t_option01)=0
 		delete #z_uccfe1 where gno='1'
@@ -1147,9 +1146,9 @@ z_uccfe1:--z_uccfe1
 		productno nvarchar(30),
 		product nvarchar(100),
 		unit nvarchar(20),
-		mount float,
-		[weight] float,
-		price float,
+		mount decimal(18, 4),
+		[weight] decimal(18, 4),
+		price decimal(18, 4),
 		[money] float,
 		carton float
 	)
