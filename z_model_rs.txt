@@ -1,12 +1,14 @@
 z_model_rs1:--z_model_rs1
 
-declare @t_noa nvarchar(20)
 declare @t_bdate nvarchar(30)
 declare @t_edate nvarchar(30)
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
 
-set @t_noa = case when '#non' = [1] then '' else [1] end
-set @t_bdate = case when '#non' = [4] then '' else [4] end
-set @t_edate = case when '#non' = [5] then char(255) else [5] end
+set @t_bdate = case when '#non' = [1] then '' else [1] end
+set @t_edate = case when '#non' = [2] then char(255) else [2] end
+set @t_bnoa = case when '#non' = [3] then '' else [3] end
+set @t_enoa = case when '#non' = [4] then char(255) else [4] end
 -------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -38,7 +40,7 @@ select
 	b.wheel+b.number,b.bottom,b.mount,b.memo2,b.datea
 from model a 
 left join models b on a.noa=b.noa
-where (@t_noa=a.noa or isnull(@t_noa,'')='') and a.datea between @t_bdate and @t_edate
+where (a.datea between @t_bdate and @t_edate) and (a.noa between @t_bnoa and @t_enoa)
 
 
 --補滿行數
@@ -81,13 +83,15 @@ order by noa,rec;
 --*****************************************************************************************************
 z_model_rs2:--z_model_rs2
 
-declare @t_frame nvarchar(50)
 declare @t_bdate nvarchar(30)
 declare @t_edate nvarchar(30)
+declare @t_bframe nvarchar(50)
+declare @t_eframe nvarchar(50)
 
-set @t_frame = case when '#non' = [2] then '' else [2] end
-set @t_bdate = case when '#non' = [4] then '' else [4] end
-set @t_edate = case when '#non' = [5] then char(255) else [5] end
+set @t_bdate = case when '#non' = [1] then '' else [1] end
+set @t_edate = case when '#non' = [2] then char(255) else [2] end
+set @t_bframe = case when '#non' = [5] then '' else [5] end
+set @t_eframe = case when '#non' = [6] then char(255) else [6] end
 -------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -112,7 +116,7 @@ select
 	b.wheel+b.number,b.bottom,a.tgg,a.datea,b.mount,b.memo2
 from model a
 left join models b on a.noa=b.noa
-where (a.datea between @t_bdate and @t_edate) and (len(@t_frame)=0 or @t_frame=a.frame)
+where (a.datea between @t_bdate and @t_edate) and (a.frame between @t_bframe and @t_eframe)
 
 --補滿行數
 declare @frame nvarchar(30)
@@ -152,16 +156,15 @@ select * from @result order by frame,rec,gno;
 --*****************************************************************************************************
 z_model_rs3:--z_model_rs3
 
-declare @t_noa nvarchar(20)
-declare @t_tgg nvarchar(50)
-declare @t_frame nvarchar(50)
 declare @t_bdate nvarchar(30)
 declare @t_edate nvarchar(30)
-set @t_noa = case when '#non' = [1] then '' else [1] end
-set @t_frame = case when '#non' = [2] then '' else [2] end
-set @t_tgg = case when '#non' = [3] then '' else [3] end
-set @t_bdate = case when '#non' = [4] then '' else [4] end
-set @t_edate = case when '#non' = [5] then char(255) else [5] end
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+
+set @t_bdate = case when '#non' = [1] then '' else [1] end
+set @t_edate = case when '#non' = [2] then char(255) else [2] end
+set @t_bnoa = case when '#non' = [3] then '' else [3] end
+set @t_enoa = case when '#non' = [4] then char(255) else [4] end
 -------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -189,7 +192,7 @@ select '0',ROW_NUMBER()over(partition by a.noa order by a.noa),a.noa,a.tgg,a.tub
 	   b.productno, case when b.model = '1' then '成型段' else '定徑段' end model
 	   ,b.wheel+b.number,b.bottom,b.mount,b.memo,b.datea
 from model a left join models b on a.noa=b.noa
-where  (@t_noa=a.noa or isnull(@t_noa,'')='' )and a.datea between @t_bdate and @t_edate 
+where (a.datea between @t_bdate and @t_edate) and (a.noa between @t_bnoa and @t_enoa)
 
 --補滿行數
 declare @noa nvarchar(30)
@@ -207,7 +210,7 @@ begin
 	set @cnt = (select COUNT(*) from @result where gno = '0' and noa = @noa)
 	set @max = (select MAX(rec) from @result where gno = '0' and noa = @noa)
 	set @i = 0
-	while(@i < 35-@cnt%35)
+	while(@i < 25-@cnt%25)
 	begin
 		insert into @result(gno,rec,noa)
 		select '0',@max+1,@noa
@@ -233,12 +236,12 @@ into @rec,@noa
 while(@@FETCH_STATUS <> -1) 
 begin
 	set @max = (select MAX(rec) from @result where gno = '0' and noa = @noa)
-	if(@rec%35=0 and @rec!=@max)
+	if(@rec%25=0 and @rec!=@max)
 	begin
 		insert into @result(gno,rec,noa,mount)
 		select '1',@rec,@noa,SUM(ISNULL(mount,0))
 		from @result
-		where (gno='0') and (noa = @noa) and (rec between @rec-34 and @rec)
+		where (gno='0') and (noa = @noa) and (rec between @rec-24 and @rec)
 	end
 	
 	fetch next from cursor_table 
@@ -253,20 +256,19 @@ from @result where gno = '0'
 group by noa
 
 select gno,rec,noa,tgg,tube,heart,spec,frame,usetype,saver,datea,nob,model,usetype,
-	   dbo.getComma(mount,0) mount,memo2 m2,model+memo memo,bottom,datea1 date2
+	   dbo.getComma(mount,0) mount,memo2 m2,memo memo,bottom,datea1 date2
 from @result order by noa,rec,gno;
 --*****************************************************************************************************
 z_model_rs4:--z_model_rs4
-declare @t_noa nvarchar(20)
-declare @t_tgg nvarchar(50)
-declare @t_frame nvarchar(50)
-declare @t_bdate nvarchar(30)
-declare @t_edate nvarchar(30)
-set @t_noa = case when '#non' = [1] then '' else [1] end
-set @t_frame = case when '#non' = [2] then '' else [2] end
-set @t_tgg = case when '#non' = [3] then '' else [3] end
-set @t_bdate = case when '#non' = [4] then '' else [4] end
-set @t_edate = case when '#non' = [5] then '' else [5] end
+declare @t_bframe nvarchar(50)
+declare @t_eframe nvarchar(50)
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+
+set @t_bnoa = case when '#non' = [3] then '' else [3] end
+set @t_enoa = case when '#non' = [4] then char(255) else [4] end
+set @t_bframe = case when '#non' = [5] then '' else [5] end
+set @t_eframe = case when '#non' = [6] then char(255) else [6] end
 ---------------------------------------------------------------------------------------------------------
 declare @result table(
 	gno nvarchar(1),
@@ -379,28 +381,93 @@ isnull((select SUM(mount) from models c where number='THG' and c.noa=a.noa),'') 
 (select SUM(mount) from models c where  c.noa=a.noa) total,
 max(a.frame)
 from model a left join models b on a.noa=b.noa
-where a.frame=@t_frame or isnull(@t_frame,'')=''
+where (a.noa between @t_bnoa and @t_enoa) and (a.frame between @t_bframe and @t_eframe) 
 group by a.noa
 select *
 from @result;
 --*****************************************************************************************************
 z_model_rs5:--z_model_rs5
 
-declare @t_noa nvarchar(20)
-declare @t_tgg nvarchar(50)
-declare @t_frame nvarchar(50)
 declare @t_bdate nvarchar(30)
 declare @t_edate nvarchar(30)
-set @t_noa = case when '#non' = [1] then '' else [1] end
-set @t_frame = case when '#non' = [2] then '' else [2] end
-set @t_tgg = case when '#non' = [3] then '' else [3] end
-set @t_bdate = case when '#non' = [4] then '' else [4] end
-set @t_edate = case when '#non' = [5] then '' else [5] end
+declare @t_bframe nvarchar(50)
+declare @t_eframe nvarchar(50)
+declare @t_bnoa nvarchar(20)
+declare @t_enoa nvarchar(20)
+
+set @t_bdate = case when '#non' = [1] then '' else [1] end
+set @t_edate = case when '#non' = [2] then char(255) else [2] end
+set @t_bnoa = case when '#non' = [3] then '' else [3] end
+set @t_enoa = case when '#non' = [4] then char(255) else [4] end
+set @t_bframe = case when '#non' = [5] then '' else [5] end
+set @t_eframe = case when '#non' = [6] then char(255) else [6] end
 -------------------------------------------------------------------------------------------------------
-select '0' gno,a.frame,a.noa,a.spec,SUM(b.mount) mount,a.usetype,a.datea
+declare @tmp table(
+	gno nvarchar(1),
+	rec int,
+	frame nvarchar(50),
+	noa nvarchar(20),
+	spec nvarchar(50),
+	mount float,
+	usetype nvarchar(20),
+	datea nvarchar(10)
+)
+insert into @tmp
+select 
+	'0',ROW_NUMBER()over (order by a.noa),a.frame,a.noa,a.spec,b.mount,
+	case when a.usetype = '1' then '設備課' else '製造課' end,
+	a.datea
 from model a
 left join models b on a.noa = b.noa
-where	(lEN(@t_noa)=0 or a.noa=@t_noa) and 
-		(lEN(@t_frame)=0 or a.frame=@t_frame) and 
-		(a.datea between @t_bdate and @t_edate)
-group by a.frame,a.noa,a.spec,a.usetype,a.datea;
+where (a.datea between @t_bdate and @t_edate) and (a.noa between @t_bnoa and @t_enoa) and (a.frame between @t_bframe and @t_eframe)
+
+--補滿行數
+declare @noa nvarchar(30)
+declare @cnt int
+declare @max int
+declare @i int
+
+
+set @cnt = (select COUNT(*) from @tmp where gno = '0')
+set @max = (select MAX(rec) from @tmp where gno = '0')
+set @i = 0
+while(@i < 25-@cnt%25)
+begin
+	insert into @tmp(gno,rec,noa)
+	select '0',@max+1,@noa
+		
+	set @max = @max + 1
+	set @i = @i + 1
+end
+
+--小計&合計
+declare @xnoa nvarchar(30)
+declare @rec int
+
+declare cursor_table cursor for 
+select rec from @tmp where gno = '0'
+open cursor_table 
+fetch next from cursor_table 
+into @rec
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @max = (select MAX(rec) from @tmp where gno = '0')
+	if(@rec%25=0 and @rec!=@max)
+	begin
+		insert into @tmp(gno,rec,mount)
+		select '1',@rec,SUM(ISNULL(mount,0))
+		from @tmp
+		where (gno='0') and (rec between @rec-24 and @rec)
+	end
+	
+	fetch next from cursor_table 
+	into @rec
+end 
+close cursor_table 
+deallocate cursor_table
+
+insert @tmp(gno,rec,mount)
+select '2',MAX(rec),SUM(mount)
+from @tmp where gno = '0'
+
+select * from @tmp order by rec,gno;
