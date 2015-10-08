@@ -1121,14 +1121,14 @@ z_uccfe1:--z_uccfe1
 	select '2',0,productno,product,unit,sum(mount),sum([weight]),price,sum(isnull([money],0))
 	from #z_uccfe1
 	where gno = '1' 
-	and (mount>0 and [weight]>0)
+	and (mount!=0 and [weight]!=0)
 	group by productno,product,unit,price
 	
 	insert into #z_uccfe1(gno,recno,productno,mount,[weight],[money])
 	select '3',0,CHAR(255),sum(mount),sum([weight]),sum(isnull([money],0))
 	from #z_uccfe1
 	where gno = '1' 
-	and (mount>0 and [weight]>0)
+	and (mount!=0 and [weight]!=0)
 	---------------------------------------------------------------------------------------------
 	if len(@t_option01)=0
 		delete #z_uccfe1 where gno='1'
