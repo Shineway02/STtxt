@@ -612,6 +612,21 @@ set @t_bcustno = case when '#non' = [5] then '' else [5] end
 set @t_ecustno = case when '#non' = [6] then CHAR(255) else [6] end
 set @t_acckey = case when '#non' = [30] then '' else [30] end
 
+declare @tmpa table( 
+	acc2 nvarchar(100)
+)
+declare @t_key nvarchar(MAX) =@t_acckey
+
+while(CHARINDEX(',',@t_key)>0)
+begin
+	insert @tmpa
+	select replace(LEFT(@t_key,CHARINDEX(',',@t_key)-1),' ','')
+	
+	set @t_key=SUBSTRING(@t_key,CHARINDEX(',',@t_key)+1,LEN(@t_key))
+end
+insert @tmpa
+select replace(@t_key,' ','')
+
 declare @tmp table(
 	gno nvarchar(1),
 	noa nvarchar(30),
@@ -648,7 +663,7 @@ where (LEN(@t_cno) = 0 or a.cno = @t_cno) and
 	(LEN(@t_part) = 0 or b.partno = @t_part) and
 	(a.datea between @t_bdate and @t_edate)
 	and (a.custno between @t_bcustno and @t_ecustno)
-	and (len(@t_acckey)=0 or charindex(replace(@t_acckey,' ',''),replace(b.acc2,' ',''))>0)
+	and (len(@t_acckey)=0 or exists (select * from @tmpa where charindex(acc2,replace(b.acc2,' ',''))>0)) 
 
 update a
 set a.custno=(select MAX(custno) from @tmp where noa=a.noa)
