@@ -1,78 +1,86 @@
 z_modfix_rs01:--z_modfix_rs01
-	SET QUOTED_IDENTIFIER OFF
-	declare @t_noa nvarchar(30)
-	set @t_noa= case when '#non' = [1] then '' else [1] end
-------------------------------------------------------------------------------------------------
-declare @t_mech nvarchar(100) =(select max(a.mech) from modfix a left join modfixs b on a.noa=b.noa where a.modnoa=@t_noa )
-declare @t_datea nvarchar(100) =(select max(a.datea) from modfix a left join modfixs b on a.noa=b.noa where a.modnoa=@t_noa )
 
+SET QUOTED_IDENTIFIER OFF
+
+declare @t_bmodnoa nvarchar(30)
+declare @t_emodnoa nvarchar(30)
+	
+set @t_bmodnoa= case when '#non' = [1] then '' else [1] end
+set @t_emodnoa= case when '#non' = [2] then CHAR(255) else [2] end
+------------------------------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
-	code nvarchar(50),
-	detail nvarchar(50),
-	frame nvarchar(50),
-	mount nvarchar(50),
-	way nvarchar(50),
-	weight nvarchar(50),
-	noa nvarchar(50),
-	mech  nvarchar(50),
-	datea nvarchar(50)
+	rec int,
+	modnoa nvarchar(50),
+	mechno nvarchar(50),
+	datea nvarchar(30),
+	code nvarchar(30),
+	detail nvarchar(30),
+	frame nvarchar(30),
+	mount float,
+	way nvarchar(30), 
+	weight float
 )
-insert @tmp
-select 0,code1,MAX(detail1),max(frame1),sum(mount1),max(way1),sum(weight1),MAX(a.noa),MAX(a.mech),MAX(a.datea)
-from modfix a left join modfixs b on a.noa=b.noa
-where a.modnoa=@t_noa
-group by code1
---成型段
-declare @tmp1 table(
-	gno nvarchar(1),
-	code nvarchar(50),
-	detail nvarchar(50),
-	frame nvarchar(50),
-	mount nvarchar(50),
-	way nvarchar(50),
-	weight nvarchar(50),
-	seq int,
-	noa nvarchar(50),
-	mech  nvarchar(50),
-	datea nvarchar(50)
-)
-insert @tmp1
-select 0,code,detail,frame,mount,way,weight,ROW_NUMBER() over (order by code),noa,mech,datea
-from @tmp
-where left(code,1)='F' or left(code,2)='sg' or left(code,2)='sq'
+insert into @tmp
+select
+	case when CHARINDEX('成型段',b.detail1)>0 then '0' else '1' end,
+	ROW_NUMBER()over(partition by a.modnoa,LEFT(b.detail1,3) order by b.code1),
+	a.modnoa,a.mechno,a.datea,b.code1,b.detail1,b.frame1,b.mount1,b.way1,b.weight1
+from modfix a
+left join modfixs b on a.noa = b.noa
+where (a.modnoa between @t_bmodnoa and @t_emodnoa)
 
 
---定徑段
-declare @tmp2 table(
-	gno nvarchar(1),
-	code nvarchar(50),
-	detail nvarchar(50),
-	frame nvarchar(50),
-	mount nvarchar(50),
-	way nvarchar(30),
-	weight nvarchar(50),
-	seq int
-)
-insert @tmp2
-select 0,code,detail,frame,mount,way,weight,ROW_NUMBER() over (order by code)
-from @tmp
-where left(code,1)!='f' and left(code,2)!='sg' and left(code,2)!='sq'
-		
-if((select count(*) from @tmp1)  < (select count(*) from @tmp2) )
+declare @modnoa nvarchar(50)
+declare @cnt int
+declare @max int
+declare @i   int
+
+declare cursor_table cursor for 
+select modnoa from @tmp group by modnoa
+open cursor_table 
+fetch next from cursor_table 
+into @modnoa
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @tmp where gno = '0' and modnoa = @modnoa)
+	set @max = (select MAX(rec) from @tmp where gno = '0' and modnoa = @modnoa)
+	set @i = 0
+	while(@i < 25-@cnt%25)
 	begin
-		declare @div float = ((select count(*) from @tmp2)-(select count(*) from @tmp1)) 
-		declare @i float=1
-		while(@i<=@div)
-			begin
-				insert @tmp1(gno,seq)
-				select 0,@i
-				set @i=@i+1
-			end
-	end
+		insert into @tmp(gno,rec,modnoa)
+		select '0',@max+1,@modnoa
 		
-			
-select a.gno,a.code,a.detail,a.frame,a.mount,a.way,a.way,dbo.getComma(a.weight,0) weight,
-	   b.code bcode,b.detail bdetail,b.frame bframe,b.mount bmount,b.way bway,dbo.getComma(b.weight,0) bwe,
-	   @t_noa noa,@t_datea datea,@t_mech mech
-from @tmp1 a left join @tmp2 b on a.seq=b.seq;
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+	
+	
+	set @cnt = (select COUNT(*) from @tmp where gno = '1' and modnoa = @modnoa)
+	set @max = (select MAX(rec) from @tmp where gno = '1' and modnoa = @modnoa)
+	set @i = 0
+	while(@i < 25-@cnt%25)
+	begin
+		insert into @tmp(gno,rec,modnoa)
+		select '1',@max+1,@modnoa
+		
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+
+	
+	fetch next from cursor_table 
+	into @modnoa
+end 
+close cursor_table 
+deallocate cursor_table 
+
+select 
+	a.modnoa,a.mechno,a.datea,
+	a.code code1,a.detail detail1,a.frame frame1,a.mount mount1,a.way way1,a.weight weight1,
+	b.code code2,b.detail detail2,b.frame frame2,b.mount mount2,b.way way2,b.weight weight1
+from(select * from @tmp where gno = '0')a
+left join(select * from @tmp where gno = '1')b on a.modnoa=b.modnoa and a.rec=b.rec
+
+
+order by a.modnoa,a.rec;
