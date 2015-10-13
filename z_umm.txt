@@ -2402,7 +2402,8 @@ create table #result(
 	salesno nvarchar(30),
 	saless nvarchar(30),
 	form nvarchar(90),
-	memo nvarchar(max)
+	memo nvarchar(max),--104/10
+	fax nvarchar(90)--104/10
 )
 
 --if(@t_showunpay='0')
@@ -2414,7 +2415,7 @@ begin
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1,payed,unpay, 0 total2
 		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
 				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
-		       ,'vcc',''
+		       ,'vcc','',''
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
@@ -2432,7 +2433,7 @@ begin
 			   0 total, 0 money, 0 back, (case when a.typea!='1' then -1 else 1 end) *a.tax tax, 0 total1, 0 pay, 0 unpay, 0 total2
 			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
 				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
-			   ,'vcc',''
+			   ,'vcc','',''
 		from view_vcc a
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
@@ -2444,7 +2445,7 @@ begin
 		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, a.vccno,a.noa, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
 			   a.custno, '' comp, '' addr_invo,'' serial, '' tel,
 			   0 total, 0 money, 0 back, a.tax, 0 total1, 0 pay, 0 unpay, 0 total2,c.salesno,c.sales
-			   ,'vcca',''
+			   ,'vcca','',''
 		from vcca a left join cust c on a.custno=c.noa
 		where a.tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
 				(a.datea between @t_bdate and @t_edate)and
@@ -2462,7 +2463,7 @@ begin
 		       sum(b.total) total, 0 money, 0 back, 0 tax, 0 total1,payed,unpay, 0 total2
 		       ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
 				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
-		       ,'vcc',''
+		       ,'vcc','',''
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
@@ -2480,7 +2481,7 @@ begin
 			   0 total, 0 money, 0 back, (case when a.typea!='1' then -1 else 1 end) *a.tax tax, 0 total1, 0 pay, 0 unpay, 0 total2
 			   ,(case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) salesno 
 				,(case when isnull(a.salesno2,'')!='' then a.sales2 when isnull(a.salesno,'')!='' then a.sales else c.sales end)sales 
-			   ,'vcc',''
+			   ,'vcc','',''
 		from view_vcc a
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
@@ -2492,7 +2493,7 @@ begin
 		select '0' gno,0 pageno,0 totpage,0 orderno, '稅' typea, a.vccno,a.noa, a.datea, (case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end),
 			   a.custno, '' comp, '' addr_invo,'' serial, '' tel,
 			   0 total, 0 money, 0 back, a.tax, 0 total1, 0 pay, 0 unpay, 0 total2,c.salesno,c.sales
-			   ,'vcca',''
+			   ,'vcca','',''
 		from vcca a 
 		left join cust c on  a.custno = c.noa
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
@@ -2559,7 +2560,7 @@ select '1' gno,0 pageno,0 totpage,0 orderno, '' typea, '' noa,'' invoiceno, '' d
 		+isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
 		and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 		and ub.custno=a.custno)),0) --月結 
-		pay, 0 unpay, 0 total2,'','','',''  from #result a group by custno
+		pay, 0 unpay, 0 total2,'','','','',''  from #result a group by custno
 		
 update #result set total1=money-back+tax where gno='1'
 	
@@ -2786,7 +2787,12 @@ insert into #result(gno,orderno,pageno,totpage,custno)
 	where pageno != totpage
 	group by custno,pageno,totpage
 
-
+update #result set fax=b.fax
+		from #result a
+		left join (
+			select noa,fax
+			from cust
+		)b on a.custno=b.noa 
 
 select
 	gno,idno,orderno,pageno,totpage,typea,noa,invoiceno,datea,mon,custno,replace(comp,'~#$',char(39)) comp,addr_invo,serial,tel
@@ -2800,8 +2806,9 @@ select
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and typea!='稅' and gno='0' then -1 else 1 end)*unpay),1)),4,30)) unpay
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,(case when typea !='出' and typea!='稅' and gno='0' then -1 else 1 end)*total2),1)),4,30)) total2
 	,(select count(*) from #result where (gno='0') and (custno=a.custno)) pcount
-	,memo
+	,memo,fax
 from #result a
+
 order by custno,totpage,pageno,orderno,mon,datea,case when noa='前期帳款' then '0' else noa end,idno
 
 
