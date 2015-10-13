@@ -1591,6 +1591,28 @@ z_uccstk01:--z_uccstk01
 	end
 	close cursor_table
 	deallocate cursor_table
+	
+	--cubt
+	declare cursor_table cursor for
+	SELECT TABLE_NAME 
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'cubt[0-9][0-9][0-9]%' 
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd = "update "+@tablea+" set sprice=b.sprice
+		from "+@tablea+" a
+		left join view_uccb b on a.uno=b.uno 
+		where len(isnull(a.bno,''))>0"
+		execute sp_executesql @cmd
+		
+		fetch next from cursor_table
+		into @tablea
+	end
+	close cursor_table
+	deallocate cursor_table
 	----------------------------------------------------------------------------------
 	--↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑成本單價↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
 	--==============================================================================--
