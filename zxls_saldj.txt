@@ -108,7 +108,7 @@ begin
 		
 		update a
 		set memo=memo+
-		case when clockout<@t_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@t_gowork then @t_offwork else btime end) and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
+		case when clockout<@t_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@t_gowork2 then @t_offwork2 else btime end) and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
 		from #bbs a
 		where isnull(a.clockout,'')!=''
 		
