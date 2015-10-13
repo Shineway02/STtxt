@@ -1479,12 +1479,13 @@ z_uccstk01:--z_uccstk01
 			else
 			begin
 				select @isprice=0,@bweight=0,@bmoney=0,@weight2=0
-				select @isprice=isprice,@bweight=[weight],@bmoney=[money],@bmoney2=ROUND([weight]*ISNULL(price2,0),0) from #z_uccstk where uno=@buno
+				--select @isprice=isprice,@bweight=[weight],@bmoney=[money],@bmoney2=ROUND([weight]*ISNULL(price2,0),0) from #z_uccstk where uno=@buno
+				select @isprice=isprice,@bweight=@gweight,@bmoney=ROUND(@gweight*ISNULL(price,0),0),@bmoney2=ROUND(@gweight*ISNULL(price2,0),0) from #z_uccstk where uno=@buno
 				select @weight2=SUM(ISNULL([weight],0)) from #z_uccstk where noa=@noa and tablea='cuts'
 				if(@isprice=1 and ISNULL(@weight2,0)>0)
 				begin
-					set @money = @tranmoney + case when @bweight=0 then 0 else round(@bmoney*@weight/@weight2,0)end
-					set @money2 = case when @bweight=0 then 0 else round(@bmoney2*@weight/@weight2,0)end
+					set @money = @tranmoney + case when @weight2=0 then 0 else round(@bmoney*@weight/@weight2,0)end
+					set @money2 = case when @weight2=0 then 0 else round(@bmoney2*@weight/@weight2,0)end
 					set @price = case when @weight=0 then 0 else @money/@weight end
 					set @price2 = case when @weight=0 then 0 else @money2/@weight end
 					update #z_uccstk set isprice=1,price=@price+ISNULL(cutprice,0)+ISNULL(price,0),price2=@price2,[money]=@money+(ISNULL(cutprice,0)+ISNULL(price,0))*[weight],money2=@money2,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
