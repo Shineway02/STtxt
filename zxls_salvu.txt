@@ -132,7 +132,7 @@ begin
 	else
 	begin
 		update #bbs
-		set w100=round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)
+		set w133=round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)
 		-(case when round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
 		,memo='假日加班'
 		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!=''
@@ -193,7 +193,7 @@ begin
 	else
 	begin
 		update #bbs
-		set w100=round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)
+		set w133=round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)
 		-(case when round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
 		,memo='假日加班'
 		where charindex('現場',stype)>0
@@ -279,7 +279,7 @@ begin
 		else
 		begin
 			update a
-			set w100=round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)
 			-(case when round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
 			,memo='假日加班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('辦公室',b.typea)>0
@@ -349,7 +349,7 @@ begin
 		else
 		begin
 			update a
-			set w100=round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)
 			-(case when round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
 			,memo='假日加班'
 			from salpresents a left join sss b on a.sssno=b.noa
