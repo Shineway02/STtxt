@@ -89,7 +89,8 @@ z_acx02:--z_acx02
 	where b.noa is not null and b.datea < @t_bdate
 	and b.typea='1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx02(tablea,uno,productno,style,binas,binasm)
 	select 'inas',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -97,7 +98,8 @@ z_acx02:--z_acx02
 	left join view_ina b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx02(tablea,uno,productno,style,bcuts,bcutsm)
 	select 'cuts',isnull(a.bno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -105,7 +107,8 @@ z_acx02:--z_acx02
 	left join view_cut b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.bno,''))>0
-	and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.bno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx02(tablea,uno,productno,style,bcubu,bcubum,bcubuz,bcubumz)
 	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,'')
@@ -117,7 +120,8 @@ z_acx02:--z_acx02
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	----------------------------------------------------------------------------------------------
 	--出
 	declare @uno nvarchar(50)
@@ -134,7 +138,8 @@ z_acx02:--z_acx02
 	where b.noa is not null and b.datea < @t_bdate
 	and b.typea = '1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -157,7 +162,8 @@ z_acx02:--z_acx02
 	left join view_get b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -180,7 +186,8 @@ z_acx02:--z_acx02
 	left join view_uccb b on a.uno=b.uno
 	where a.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -207,7 +214,8 @@ z_acx02:--z_acx02
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -234,7 +242,8 @@ z_acx02:--z_acx02
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and b.typea='1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx02(tablea,uno,productno,style,inas,inasm)
 	select 'inas',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -242,7 +251,8 @@ z_acx02:--z_acx02
 	left join view_ina b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx02(tablea,uno,productno,style,cuts,cutsm)
 	select 'cuts',isnull(a.bno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -250,7 +260,8 @@ z_acx02:--z_acx02
 	left join view_cut b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.bno,''))>0
-	and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.bno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx02(tablea,uno,productno,style,cubu,cubum,cubuz,cubumz)
 	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,'')
@@ -263,7 +274,8 @@ z_acx02:--z_acx02
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	----------------------------------------------------------------------------------------------
 	--出
 	declare cursor_table cursor for
@@ -273,7 +285,8 @@ z_acx02:--z_acx02
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and b.typea = '1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -296,7 +309,8 @@ z_acx02:--z_acx02
 	left join view_get b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -319,7 +333,8 @@ z_acx02:--z_acx02
 	left join view_uccb b on a.uno=b.uno
 	where a.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -346,7 +361,8 @@ z_acx02:--z_acx02
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -363,6 +379,11 @@ z_acx02:--z_acx02
 	close cursor_table
 	deallocate cursor_table
 	---------------------------------------------------------------------------------------------
+	delete #z_acx02
+	from #z_acx02 a
+	left join view_uccb b on a.uno=b.uno
+	where not (len(@t_itype)=0 or CHARINDEX(','+b.itype+',',','+@t_itype+',')>0)
+	
 	update #z_acx02 set bweight = isnull(brc2s,0)+isnull(binas,0)+isnull(bcuts,0)+isnull(bcubu,0)+isnull(bcubuz,0)
 		-isnull(bvccs,0)-isnull(bgets,0)-isnull(bcut,0)-isnull(bcubt,0)-isnull(bcubtz,0)
 		,bmount = isnull(brc2sm,0)+isnull(binasm,0)+isnull(bcutsm,0)+isnull(bcubum,0)+isnull(bcubumz,0)
@@ -641,7 +662,8 @@ z_acx01:--z_acx01
 	where b.noa is not null and b.datea < @t_bdate
 	and b.typea='1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx(tablea,uno,productno,style,binas,binasm)
 	select 'inas',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -649,7 +671,8 @@ z_acx01:--z_acx01
 	left join view_ina b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx(tablea,uno,productno,style,bcuts,bcutsm)
 	select 'cuts',isnull(a.bno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -657,7 +680,8 @@ z_acx01:--z_acx01
 	left join view_cut b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.bno,''))>0
-	and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.bno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx(tablea,uno,productno,style,bcubu,bcubum,bcubuz,bcubumz)
 	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,'')
@@ -669,7 +693,8 @@ z_acx01:--z_acx01
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	----------------------------------------------------------------------------------------------
 	--出
 	declare @uno nvarchar(50)
@@ -686,7 +711,8 @@ z_acx01:--z_acx01
 	where b.noa is not null and b.datea < @t_bdate
 	and b.typea = '1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -709,7 +735,8 @@ z_acx01:--z_acx01
 	left join view_get b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -732,7 +759,8 @@ z_acx01:--z_acx01
 	left join view_uccb b on a.uno=b.uno
 	where a.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -759,7 +787,8 @@ z_acx01:--z_acx01
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea < @t_bdate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -786,7 +815,8 @@ z_acx01:--z_acx01
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and b.typea='1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx(tablea,uno,productno,style,inas,inasm)
 	select 'inas',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -794,7 +824,8 @@ z_acx01:--z_acx01
 	left join view_ina b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx(tablea,uno,productno,style,cuts,cutsm)
 	select 'cuts',isnull(a.bno,''),isnull(a.productno,''),isnull(a.style,''),ISNULL(a.weight,0),ISNULL(a.mount,0)
@@ -802,7 +833,8 @@ z_acx01:--z_acx01
 	left join view_cut b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.bno,''))>0
-	and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.bno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.bno,''),1)) between 'X' and 'Z'
 	
 	insert into #z_acx(tablea,uno,productno,style,cubu,cubum,cubuz,cubumz)
 	select 'cubu',isnull(a.uno,''),isnull(a.productno,''),isnull(a.style,'')
@@ -815,7 +847,8 @@ z_acx01:--z_acx01
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and case when len(isnull(a.datea,''))=0 then b.datea else a.datea end between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	----------------------------------------------------------------------------------------------
 	--出
 	declare cursor_table cursor for
@@ -825,7 +858,8 @@ z_acx01:--z_acx01
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and b.typea = '1'
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -848,7 +882,8 @@ z_acx01:--z_acx01
 	left join view_get b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -871,7 +906,8 @@ z_acx01:--z_acx01
 	left join view_uccb b on a.uno=b.uno
 	where a.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -898,7 +934,8 @@ z_acx01:--z_acx01
 	left join view_cub b on a.accy=b.accy and a.noa=b.noa
 	where b.noa is not null and b.datea between @t_bdate and @t_edate
 	and len(ISNULL(a.uno,''))>0
-	and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	--and upper(left(isnull(a.uno,''),1)) between '0' and '9'
+	and not upper(left(isnull(a.uno,''),1)) between 'X' and 'Z'
 	group by isnull(a.uno,'')
 	open cursor_table
 	fetch next from cursor_table
@@ -915,6 +952,11 @@ z_acx01:--z_acx01
 	close cursor_table
 	deallocate cursor_table
 	---------------------------------------------------------------------------------------------
+	delete #z_acx
+	from #z_acx a
+	left join view_uccb b on a.uno=b.uno
+	where not (len(@t_itype)=0 or CHARINDEX(','+b.itype+',',','+@t_itype+',')>0)
+	
 	update #z_acx set bweight = isnull(brc2s,0)+isnull(binas,0)+isnull(bcuts,0)+isnull(bcubu,0)+isnull(bcubuz,0)
 		-isnull(bvccs,0)-isnull(bgets,0)-isnull(bcut,0)-isnull(bcubt,0)-isnull(bcubtz,0)
 		,bmount = isnull(brc2sm,0)+isnull(binasm,0)+isnull(bcutsm,0)+isnull(bcubum,0)+isnull(bcubumz,0)
@@ -1479,12 +1521,13 @@ z_uccstk01:--z_uccstk01
 			else
 			begin
 				select @isprice=0,@bweight=0,@bmoney=0,@weight2=0
-				select @isprice=isprice,@bweight=[weight],@bmoney=[money],@bmoney2=ROUND([weight]*ISNULL(price2,0),0) from #z_uccstk where uno=@buno
+				--select @isprice=isprice,@bweight=[weight],@bmoney=[money],@bmoney2=ROUND([weight]*ISNULL(price2,0),0) from #z_uccstk where uno=@buno
+				select @isprice=isprice,@bweight=@gweight,@bmoney=ROUND(@gweight*ISNULL(price,0),0),@bmoney2=ROUND(@gweight*ISNULL(price2,0),0) from #z_uccstk where uno=@buno
 				select @weight2=SUM(ISNULL([weight],0)) from #z_uccstk where noa=@noa and tablea='cuts'
 				if(@isprice=1 and ISNULL(@weight2,0)>0)
 				begin
-					set @money = @tranmoney + case when @bweight=0 then 0 else round(@bmoney*@weight/@weight2,0)end
-					set @money2 = case when @bweight=0 then 0 else round(@bmoney2*@weight/@weight2,0)end
+					set @money = @tranmoney + case when @weight2=0 then 0 else round(@bmoney*@weight/@weight2,0)end
+					set @money2 = case when @weight2=0 then 0 else round(@bmoney2*@weight/@weight2,0)end
 					set @price = case when @weight=0 then 0 else @money/@weight end
 					set @price2 = case when @weight=0 then 0 else @money2/@weight end
 					update #z_uccstk set isprice=1,price=@price+ISNULL(cutprice,0)+ISNULL(price,0),price2=@price2,[money]=@money+(ISNULL(cutprice,0)+ISNULL(price,0))*[weight],money2=@money2,memo='' where tablea=@tablea and accy=@accy and noa=@noa and noq=@noq
@@ -1587,6 +1630,28 @@ z_uccstk01:--z_uccstk01
 		
 		fetch next from cursor_table
 		into @tablea,@accy,@noa,@noq,@price,@price2
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	--cubt
+	declare cursor_table cursor for
+	SELECT TABLE_NAME 
+	FROM INFORMATION_SCHEMA.TABLES 
+	where TABLE_NAME like 'cubt[0-9][0-9][0-9]%' 
+	open cursor_table
+	fetch next from cursor_table
+	into @tablea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @cmd = "update "+@tablea+" set sprice=b.sprice
+		from "+@tablea+" a
+		left join view_uccb b on a.uno=b.uno 
+		where len(isnull(a.bno,''))>0"
+		execute sp_executesql @cmd
+		
+		fetch next from cursor_table
+		into @tablea
 	end
 	close cursor_table
 	deallocate cursor_table
