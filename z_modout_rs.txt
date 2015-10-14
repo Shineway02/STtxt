@@ -1,35 +1,73 @@
 z_modout_rs01:--z_modout_rs01
-	SET QUOTED_IDENTIFIER OFF
-	declare @t_noa nvarchar(30)
-	set @t_noa= case when '#non' = [1] then '' else [1] end
-------------------------------------------------------------------------------------------------
-declare @result table(
+
+SET QUOTED_IDENTIFIER OFF
+
+declare @t_bnoa nvarchar(30)
+declare @t_enoa nvarchar(30)
+
+set @t_bnoa= case when '#non' = [1] then '' else [1] end
+set @t_enoa= case when '#non' = [2] then char(255) else [2] end
+-----------------------------------------------------------------------------
+declare @tmp table(
 	gno nvarchar(1),
-	noa nvarchar(50),
+	rec int,
+	modnoa nvarchar(50),
 	mech nvarchar(50),
 	datea nvarchar(50),
-	detail nvarchar(50),
 	code nvarchar(50),
-	frame nvarchar(50),
-	mount float,
-	memo nvarchar(max)
+	detail nvarchar(50),
+	frame nvarchar(10),
+	mount float
 )
-insert @result
-select '0',max(a.modnoa),max(a.mech),max(b.datea),MAX(b.detail)
-	  ,b.code,max(b.frame),sum(b.mount),max(b.memo)
-from modout a left join modouts b on a.noa=b.noa
-where a.modnoa=@t_noa
-group by b.code
 
-select gno,noa,mech,datea,code,detail,frame,mount,memo
-from @result
-;
+insert into @tmp
+select '0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.modnoa,a.mech,a.datea,b.code,b.detail,MAX(b.frame),SUM(b.mount) from modout a
+left join modouts b on a.noa = b.noa
+where(a.modnoa between @t_bnoa and @t_enoa)
+group by a.modnoa,a.mech,a.datea,b.code,b.detail
 
+declare @modnoa nvarchar(50)
+declare @cnt  int
+declare @max  int
+declare @i    int
+
+declare cursor_table cursor for 
+select modnoa from @tmp group by modnoa
+open cursor_table 
+fetch next from cursor_table 
+into @modnoa
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @tmp where modnoa = @modnoa)
+	set @max = (select MAX(rec) from @tmp where modnoa = @modnoa)
+	set @i = 0
+	while(@i < 25-@cnt%25)
+	begin
+		insert into @tmp(gno,rec,modnoa)
+		select '0',@max+1,@modnoa
+			
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+	
+	fetch next from cursor_table 
+	into @modnoa
+end 
+close cursor_table 
+deallocate cursor_table
+
+select * from @tmp order by modnoa,rec;
+--**************************************************************************
 z_modout_rs02:--z_modout_rs02
-SET QUOTED_IDENTIFIER OFF
-declare @t_noa nvarchar(30)
-set @t_noa= case when '#non' = [1] then '' else [1] end
----------------------------------------------------------------------------------------------------
+
+SET QUOTED_IDENTIFIER OFF.
+
+declare @t_bnoa nvarchar(30)
+declare @t_enoa nvarchar(30)
+
+set @t_bnoa= case when '#non' = [1] then '' else [1] end
+set @t_enoa= case when '#non' = [2] then char(255) else [2] end
+-----------------------------------------------------------------------------
 declare @b_noa nvarchar(30)=(select noa from model where noa=@t_noa)
 declare @b_tgg nvarchar(30)=(select tgg from model where noa=@t_noa)
 declare @b_datea nvarchar(30)=(select datea from model where noa=@t_noa)
