@@ -130,9 +130,6 @@ update @tmp set pageword = case when rec = 1 then dbo.split(@pagestr,',',0)
 								when rec = 3 then dbo.split(@pagestr,',',2) end*/
 								
 select *,deviceno dno from @tmp order by noa,rec,gno;
-
-
-
 --*******************************************************************************
 z_modfixb_rs02:--z_modfixb_rs02
 
@@ -166,14 +163,43 @@ select '0',1,a.noa,a.tgg,a.years,a.saver,b.datea,c.product+'*'+CAST(c.mount as n
 from modeq a
 left join modfixb b on a.noa = b.deviceno
 left join modfixbs c on b.noa = c.noa
-where(a.noa between @t_bdno and @t_edno)
+where(a.noa between @t_bdno and @t_edno) and
+	 exists (select * from modfixb  where noa = b.noa)
 
 update @tmp set tgg1 = case when CHARINDEX('委外',way) > 0 then tgg1 else null end,
 				money1 = case when CHARINDEX('委外',way) > 0 then money1 else null end,
 				worker1 = case when CHARINDEX('委外',way) > 0 then worker1 else null end			
 
-insert into @tmp(gno,rec,noa)
-select DISTINCT '1',1,noa from @tmp
+--補空白行(25行)
+declare @noa nvarchar(50)
+declare @cnt  int
+declare @max  int
+declare @i    int
+
+declare cursor_table cursor for 
+select noa from @tmp group by noa
+open cursor_table 
+fetch next from cursor_table 
+into @noa
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @tmp where noa = @noa)
+	set @max = (select MAX(rec) from @tmp where noa = @noa)
+	set @i = 0
+	while(@i < 25-@cnt%25)
+	begin
+		insert into @tmp(gno,rec,noa)
+		select '1',@max+1,@noa
+			
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+	
+	fetch next from cursor_table 
+	into @noa
+end 
+close cursor_table 
+deallocate cursor_table
 
 /*declare @i int = 1
 declare @pagestr nvarchar(30) = '正本：財會聯,影本1：製造聯,影本2：設備聯'
@@ -191,9 +217,6 @@ update @tmp set tgg = case when rec = 1 then dbo.split(@pagestr,',',0)
 							  when rec = 3 then dbo.split(@pagestr,',',2) end where gno = '1'*/
 
 select *,dbo.getComma(money1,0)mny1,dbo.getComma(money2,0)mny2 from @tmp order by noa,rec,gno;
-
-
-
 --*******************************************************************************
 z_modfixb_rs03:--z_modfixb_rs03
 
@@ -231,12 +254,12 @@ declare @mod int
 declare @max int
 declare @i int 
 
---補滿最後一頁不足30行
-set @mod = (select MAX(rec) from @tmp) % 30
+--補滿最後一頁不足25行
+set @mod = (select MAX(rec) from @tmp) % 25
 set @max = (select MAX(rec) from @tmp)
 set @i = 1
 
-while(@i <= 30-@mod)
+while(@i <= 25-@mod)
 begin
 	insert into @tmp(gno,rec)
 	select '0',@max+@i
@@ -245,13 +268,13 @@ begin
 end
 
 --每30行換頁
-set @div = (select MAX(rec) from @tmp) / 30
+set @div = (select MAX(rec) from @tmp) / 25
 set @i = 1
 
 while(@i <= @div)
 begin
 	insert into @tmp(gno,rec)
-	select '1',30*@i
+	select '1',25*@i
 			
 	set @i = @i + 1
 end
