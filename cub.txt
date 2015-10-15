@@ -226,40 +226,107 @@ cubnouno_vu:--cubnouno_vu
 SET QUOTED_IDENTIFIER OFF
 declare @accy nvarchar(MAX) = [1]
 declare @uno nvarchar(MAX) = [2]
+declare @mechno nvarchar(max) = case when '#non'=[3] then '' else [3] end
+declare @userno nvarchar(max) = [4]
+declare @namea nvarchar(max) = [5]
+declare @cmd nvarchar(max) = ''
 
 set @uno=REPLACE(@uno,'#',',')
 
-declare @unotable table(
+IF OBJECT_ID('tempdb..#unotable')is not null
+BEGIN
+	set @cmd = 'drop table #unotable'
+	EXECUTE sp_executesql @cmd
+END
+
+create table #unotable(
 	accy nvarchar(10),
 	uno nvarchar(50),
-	noa nvarchar(50)
+	noa nvarchar(50),
+	mount decimal(18, 2),
+	weight decimal(18, 2),
 )
-insert @unotable
-select  b.accy,a.n,b.noa
-from dbo.fnSplit(@uno) a left join view_uccb b on b.uno=a.n and tablea='cubu'
+
+insert #unotable
+select  b.accy,a.n,b.noa,0,0
+from dbo.fnSplit(@uno) a 
+outer apply (select top 1 * from view_cubs where uno=a.n) b
+
+--刪除找不到生產入庫單的批號
+delete #unotable where isnull(noa,'')=''
+
+--更新剩餘數量和重量
+update a
+set mount=isnull((select sum(mount) from view_cubs where uno=a.uno),0)
+-isnull((select sum(mount) from view_vcct where uno=a.uno),0)
+,weight=isnull((select sum(weight) from view_cubs where uno=a.uno),0)
+-isnull((select sum(weight) from view_vcct where uno=a.uno),0)
+from #unotable a
+
+--刪除已領料完畢的批號
+delete #unotable where mount<=0 and weight<=0 
 
 declare @xaccy nvarchar(MAX)
 declare @xuno nvarchar(MAX)
 declare @xnoa nvarchar(MAX)
 declare @nowdate nvarchar(30) --今天日期
-set @nowdate=replace(CONVERT (VARCHAR(10), GETDATE(),20 ),'-','/')
+set @nowdate=replace(CONVERT (VARCHAR(20), GETDATE(),20 ),'-','/')
 
-declare cursor_table cursor for 
-select accy,uno,noa from @unotable where noa!=''
-open cursor_table 
-fetch next from cursor_table 
-into @xaccy,@xuno,@xnoa
-while(@@FETCH_STATUS <> -1) 
-begin 
+--104/10/14 改為 新增加工單做領料(負數)
 
-	EXEC(" update cubu"+@xaccy+" set uno='' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
-	EXEC(" update cubs"+@xaccy+" set uno='',date3='"+@nowdate+"' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
+--declare cursor_table cursor for 
+--select accy,uno,noa from #unotable
+--open cursor_table 
+--fetch next from cursor_table 
+--into @xaccy,@xuno,@xnoa
+--while(@@FETCH_STATUS <> -1) 
+--begin 
+--	EXEC(" update cubs"+@xaccy+" set uno='',date3='"+@nowdate+"' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
+--	fetch next from cursor_table 
+--	into @xaccy,@xuno,@xnoa
+--end 
+--close cursor_table 
+--deallocate cursor_table 
+
+--select * from #unotable
+
+declare @datea nvarchar(30)
+set @datea=left(@nowdate,10)
+declare @mech nvarchar(max) = isnull((select mech from mech where noa=@mechno),'')
+declare @cubno nvarchar(100) --新加工單號
+set @cubno=isnull((select MAX(noa) from view_cub where noa like 'M'+replace(@datea,'/','')+'%' ),'')
+set @cubno='M'+REPLACE(@datea,'/','')+right('000'+cast(cast(right(@cubno,3) as int) +1 as nvarchar(50)),3)
+
+--產生cub
+if((select count(*) from #unotable )>0)
+begin
+	--bbm
+	exec("
+		insert cub"+@accy+" (noa,datea,mechno,mech,memo,worker,kind)
+		select '"+@cubno+"','"+@datea+"','"+@mechno+"','"+@mech+"','條碼領料','"+@namea+"','"+@nowdate+"' 
+	")
+		
+	--bbs
+	exec("
+		insert cubs"+@accy+" (noa,noq,mount,weight,uno,date2)
+		select '"+@cubno+"',right('000'+cast(ROW_NUMBER()over (order by uno) as nvarchar(10)),3),
+		case when mount>0 then -1*mount else 0 end ,case when weight>0 then -1*weight else 0 end,uno,'"+@datea+"' 
+		from #unotable 
+	")
 	
-	fetch next from cursor_table 
-	into @xaccy,@xuno,@xnoa
-end 
-close cursor_table 
-deallocate cursor_table 
+	insert dno (tablea,noa,usera)
+	select 'cub',@cubno,@userno
+end
+else
+begin
+	set @cubno=''
+end
 
-select * from @unotable where noa!=''
+select @cubno cubno
+
+IF OBJECT_ID('tempdb..#unotable')is not null
+BEGIN
+	set @cmd = 'drop table #unotable'
+	EXECUTE sp_executesql @cmd
+END
 ;
