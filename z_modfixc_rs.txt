@@ -2,11 +2,11 @@ z_modfixc_rs01:--z_modfixc_rs01
 
 SET QUOTED_IDENTIFIER OFF
 	
-declare @t_bnoa nvarchar(30)
-declare @t_enoa nvarchar(30)
+declare @t_bmodnoa nvarchar(30)
+declare @t_emodnoa nvarchar(30)
 
-set @t_bnoa= case when '#non' = [1] then '' else [1] end
-set @t_enoa= case when '#non' = [2] then CHAR(255) else [2] end
+set @t_bmodnoa= case when '#non' = [1] then '' else [1] end
+set @t_emodnoa= case when '#non' = [2] then CHAR(255) else [2] end
 ---------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -30,7 +30,7 @@ select
 	MIN(REPLACE(b.datea1,'-',' ')),MAX(REPLACE(b.datea2,'-',' ')),b.worker
 from modfixc a
 left join modfixcs b on a.noa = b.noa
-where(a.modnoa between @t_bnoa and @t_enoa)
+where(a.modnoa between @t_bmodnoa and @t_emodnoa)
 group by  a.modnoa,a.mech,b.code,b.detail,b.frame,b.way,b.worker
 
 declare @modnoa nvarchar(50)

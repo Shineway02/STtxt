@@ -2,11 +2,11 @@ z_modout_rs01:--z_modout_rs01
 
 SET QUOTED_IDENTIFIER OFF
 
-declare @t_bnoa nvarchar(30)
-declare @t_enoa nvarchar(30)
+declare @t_bmodnoa nvarchar(30)
+declare @t_emodnoa nvarchar(30)
 
-set @t_bnoa= case when '#non' = [1] then '' else [1] end
-set @t_enoa= case when '#non' = [2] then char(255) else [2] end
+set @t_bmodnoa= case when '#non' = [1] then '' else [1] end
+set @t_emodnoa= case when '#non' = [2] then char(255) else [2] end
 -----------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -21,10 +21,10 @@ declare @tmp table(
 )
 
 insert into @tmp
-select '0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.modnoa,a.mech,a.datea,b.code,b.detail,MAX(b.frame),SUM(b.mount) from modout a
+select '0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.modnoa,a.mech,a.datea,b.code,b.detail,b.frame,SUM(b.mount) from modout a
 left join modouts b on a.noa = b.noa
-where(a.modnoa between @t_bnoa and @t_enoa)
-group by a.modnoa,a.mech,a.datea,b.code,b.detail
+where(a.modnoa between @t_bmodnoa and @t_emodnoa)
+group by a.modnoa,a.mech,a.datea,b.code,b.detail,b.frame
 
 declare @modnoa nvarchar(50)
 declare @cnt  int
@@ -76,7 +76,7 @@ declare @tmp table(
 	datea nvarchar(50),
 	usetype nvarchar(50),
 	frame nvarchar(50),
-	code nvarchar(10),
+	code nvarchar(50),
 	detail nvarchar(50),
 	class nvarchar(10),
 	weight float,
@@ -123,19 +123,19 @@ begin
 	end	
 	
 	insert into @tmp(gno,rec,noa,code,detail,class,weight,way,datea1,mount,mech)
-	select '1',@rec,@noa,@code,b.detail1,'入庫維修',SUM(b.weight1),MAX(b.way1),a.datea,SUM(b.mount1),a.mech 
+	select '1',@rec,@noa,@code,b.detail1,'入庫維修',SUM(b.weight1),b.way1,a.datea,SUM(b.mount1),a.mech 
 	from modfix a
 	left join modfixs b on a.noa = b.noa
 	where(a.modnoa = @noa and b.code1 = @code)
-	group by a.datea,a.mech,b.detail1
+	group by b.way1,a.datea,a.mech,b.detail1
 	set @rec = @rec + 1
 	
 	insert into @tmp(gno,rec,noa,code,detail,class,bebottom,enbottom,way,datea1,datea2,mount,mech,worker)
-	select '2',@rec,@noa,@code,b.detail,'維修',MIN(b.bebottom),MIN(b.enbottom),MAX(b.way),MIN(b.datea1),MAX(b.datea2),SUM(b.mount),a.mech,MAX(b.worker)
+	select '2',@rec,@noa,@code,b.detail,'維修',MIN(b.bebottom),MIN(b.enbottom),b.way,MIN(b.datea1),MAX(b.datea2),SUM(b.mount),a.mech,b.worker
 	from modfixc a
 	left join modfixcs b on a.noa = b.noa
 	where(a.modnoa = @noa and b.code = @code)
-	group by a.mech,b.detail
+	group by b.detail,b.way,a.mech,b.worker
 	set @rec = @rec + 1
 	
 	insert into @tmp(gno,rec,noa,code,detail,class,enbottom,datea1,mount,mech)
@@ -160,10 +160,11 @@ update @tmp set times =
 where gno = '2'
 
 update @tmp set code = noa + code
-update @tmp set datea1 = datea1+'(入庫日期)' where gno = '1'
-update @tmp set datea1 = REPLACE(datea1,'-',' ')+'(完成起時間)' ,datea2 = REPLACE(datea2,'-',' ')+'(完成訖時間)'where gno = '2'
-update @tmp set datea1 = datea1+'(出庫日期)' where gno = '3'
+update @tmp set datea1 = datea1+'<br>(入庫日期)' where gno = '1'
+update @tmp set datea1 = dbo.split(datea1,'-',0)+'<br>'+dbo.split(datea1,'-',1)+'<br>(完成起時間)' ,datea2 = dbo.split(datea2,'-',0)+'<br>'+dbo.split(datea2,'-',1)+'<br>(完成訖時間)'where gno = '2'
+update @tmp set datea1 = datea1+'<br>(出庫日期)' where gno = '3'
 
+--補空白行(25行)
 declare @cnt  int
 declare @max  int
 declare @i    int
@@ -196,187 +197,286 @@ deallocate cursor_table
 select * from @tmp order by noa,rec;
 --**************************************************************************
 z_modout_rs03:--z_modout_rs03
-SET QUOTED_IDENTIFIER OFF
-declare @t_nob nvarchar(30)
-set @t_nob= case when '#non' = [2] then '' else [2] end
-----------------------------------------------------------------------------
---declare @b_nob nvarchar(30)=(select b.productno from model a left join models b on a.noa=b.noa where  b.productno like @t_nob+'%')
---表頭資料
-declare @b_tgg nvarchar(30)=(select max(a.tgg) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
-declare @b_datea nvarchar(30)=(select max(a.datea) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
-declare @b_mount nvarchar(30)=(select max(a.mount) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
-declare @b_usetype nvarchar(30)=(select max(a.usetype) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
-declare @b_frame nvarchar(30)=(select max(a.frame) from model a left join models b on a.noa=b.noa where b.productno like @t_nob+'%')
 
-declare @result table(
+SET QUOTED_IDENTIFIER OFF
+
+declare @t_bnob nvarchar(30)
+declare @t_enob nvarchar(30)
+
+set @t_bnob= case when '#non' = [3] then '' else [3] end
+set @t_enob= case when '#non' = [4] then char(255) else [4] end
+----------------------------------------------------------------------------
+declare @tmp table(
 	gno nvarchar(1),
-	nob nvarchar(30),
-	detail nvarchar(100),
-	type nvarchar(30),
+	rec int,
+	noa nvarchar(50),
+	tgg nvarchar(50),
+	datea nvarchar(50),
+	usetype nvarchar(50),
+	frame nvarchar(50),
+	nob nvarchar(50),
+	detail nvarchar(50),
+	class nvarchar(10),
 	weight float,
 	bebottom float,
 	enbottom float,
-	way nvarchar(50),
-	datea1 nvarchar(20),
-	datea2 nvarchar(20),
-	worktime float,
+	way nvarchar(30),
+	datea1 nvarchar(50),
+	datea2 nvarchar(50),
+	times float,
 	mount float,
-	mech nvarchar(30),
-	worker nvarchar(30)
-
+	mech  nvarchar(50),
+	worker  nvarchar(10)
 )
+insert into @tmp(gno,rec,noa,tgg,datea,usetype,frame,nob)
+select 
+	'0',ROW_NUMBER()over(partition by c.nob order by c.nob),a.noa,a.tgg,a.datea,
+	case when a.usetype='1' then '設備課' else '製造課' end,a.frame,c.nob
+from model a
+left join models b on a.noa = b.noa
+left join modfixs  c on b.productno = c.nob
+left join modfixcs  d on b.productno = d.nob
+left join modfixcs  e on b.productno = e.nob
+where (c.nob between @t_bnob and @t_enob)and
+	  exists (select * from modfixs  where nob = b.productno)and
+	  exists (select * from modfixcs where nob = b.productno)and
+	  exists (select * from modouts  where nob = b.productno)
 
-declare @nob nvarchar(30)
+declare @rec int
+declare @noa nvarchar(50)
+declare @nob nvarchar(50)
+declare @xnob nvarchar(50) = 'xxxxxx'
+declare @code nvarchar(50)
 
+declare cursor_table cursor for 
+select noa,nob from @tmp where gno = '0'
+open cursor_table 
+fetch next from cursor_table 
+into @noa,@nob
+while(@@FETCH_STATUS <> -1) 
+begin
+	if(@nob != @xnob)
+	begin
+		set @rec = 2
+		set @xnob = @nob
+	end	
+	
+	insert into @tmp(gno,rec,noa,nob,detail,class,weight,way,datea1,mount,mech)
+	select '1',@rec,@noa,@nob,b.detail1,'入庫維修',b.weight1,b.way1,a.datea,b.mount1,a.mech 
+	from modfix a
+	left join modfixs b on a.noa = b.noa
+	where(b.nob = @nob)
+	set @rec = @rec + 1
+	
+	insert into @tmp(gno,rec,noa,nob,detail,class,bebottom,enbottom,way,datea1,datea2,mount,mech,worker)
+	select '2',@rec,@noa,@nob,b.detail,'維修',b.bebottom,b.enbottom,b.way,b.datea1,b.datea2,b.mount,a.mech,b.worker
+	from modfixc a
+	left join modfixcs b on a.noa = b.noa
+	where(b.nob = @nob)
+	set @rec = @rec + 1
+	
+	insert into @tmp(gno,rec,noa,nob,detail,class,enbottom,datea1,mount,mech)
+	select '3',@rec,@noa,@nob,b.detail,'領用出庫',c.enbottom,a.datea,b.mount,a.mech
+	from modout a
+	left join modouts b on a.noa = b.noa
+	left join modfixcs c on b.nob = c.nob
+	where(b.nob = @nob)
+	set @rec = @rec + 1
+	
 
-DECLARE cursor_table CURSOR FOR 
-select nob from modfixs b left join modfix a on a.noa=b.noa where b.nob like @t_nob+'%'
-OPEN cursor_table
-FETCH NEXT FROM cursor_table
-INTO @nob
-WHILE @@FETCH_STATUS = 0
-BEGIN
---插入入庫維修資料
-   insert @result (nob,detail,type,weight,way,datea1,mount,mech)
-   select max(b.nob),max(b.detail1),'入庫維修',max(b.weight1),b.way1,max(a.datea),sum(b.mount1),max(a.mech)
-   from modfixs b left join modfix a on a.noa=b.noa
-   where @nob=b.nob
-   group by b.nob
---插入維修資料   
-   insert @result(nob,detail,type,bebottom,enbottom,
-   way,datea1,datea2,mount,mech,worker,worktime)
-   select max(b.nob),max(b.detail),'維修',sum(b.bebottom),sum(b.enbottom),
-   case when max(b.way) =1 then'傳統車床(砂紙研磨)'
-			 when max(b.way) =2 then'傳統車床(砂輪機研磨)'
-			 when max(b.way) =3 then'CNC 車修'
-			 when max(b.way) =4 then'不須車修或研磨'
-			 else '' end way,
-  			 replace(max(b.datea1),'-',' '),replace(max(b.datea2),'-',' '),
-			 sum(b.mount),max(a.mech),max(b.worker),
-		  	 convert(float,DATEDIFF(MINUTE,
-		  	 convert(datetime,replace(convert(nvarchar,(convert(float,left(max(b.datea1),3))+1911))+SUBSTRING(max(b.datea1),4,20),'-',' ')),
-		  	 convert(datetime,replace(convert(nvarchar,(convert(float,left(max(b.datea2),3))+1911))+SUBSTRING(max(b.datea2),4,20),'-',' '))
-		  	 ))/60
-   from modfixcs  b left join modfixc a on a.noa=b.noa
-   where @nob=b.nob
-   group by b.nob
---插入領用出庫資料
-   insert @result(nob,detail,type,enbottom,datea1,mount,mech)
-   select max(b.nob),max(b.detail),'領用出庫',(select sum(enbottom) from modfixcs c where b.nob=c.nob)
-		,max(a.datea),sum(a.mount),max(a.mech)
-	from modouts b left join modout a on a.noa=b.noa
-	where @nob=b.nob
-  	group by b.nob
-  fetch next from cursor_table 
-  into @nob
+	fetch next from cursor_table 
+	into @noa,@nob
 end 
+close cursor_table 
+deallocate cursor_table 
 
-CLOSE cursor_table
-DEALLOCATE cursor_table
 
-select '0' gno ,nob,detail,type,weight,bebottom,enbottom
-		,way,datea1,datea2,worktime,mount,mech,worker
-		,@t_nob bnoa,@b_tgg btgg,@b_datea bdatea
-		,@b_mount bmount,@b_usetype buse,@b_frame bframe
-from @result;
+update @tmp set times =
+	ROUND((DATEDIFF(minute,CAST(dbo.ChineseEraName2AD(dbo.split(datea1,'-','0'))as nvarchar(20))+' '+dbo.split(datea1,'-','1') ,CAST(dbo.ChineseEraName2AD(dbo.split(datea2,'-','0'))as nvarchar(20))+' '+dbo.split(datea2,'-','1')))/60.0,1)
+where gno = '2'
 
+update @tmp set datea1 = datea1+'<br>(入庫日期)' where gno = '1'
+update @tmp set datea1 = dbo.split(datea1,'-',0)+'<br>'+dbo.split(datea1,'-',1)+'<br>(完成起時間)' ,datea2 = dbo.split(datea2,'-',0)+'<br>'+dbo.split(datea2,'-',1)+'<br>(完成訖時間)'where gno = '2'
+update @tmp set datea1 = datea1+'<br>(出庫日期)' where gno = '3'
+
+--補空白行(25行)
+declare @cnt  int
+declare @max  int
+declare @i    int
+
+declare cursor_table cursor for 
+select nob from @tmp group by nob
+open cursor_table 
+fetch next from cursor_table 
+into @nob
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @tmp where nob = @nob)
+	set @max = (select MAX(rec) from @tmp where nob = @nob)
+	set @i = 0
+	while(@i < 25-@cnt%25)
+	begin
+		insert into @tmp(gno,rec,nob)
+		select '4',@max+1,@nob
+			
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+	
+	fetch next from cursor_table 
+	into @nob
+end 
+close cursor_table 
+deallocate cursor_table
+
+select * from  @tmp order by nob,rec;
+--**************************************************************************
 z_modout_rs04:--z_modout_rs04
 
 declare @t_bdate nvarchar(20)
 declare @t_edate nvarchar(20)
 declare @t_worker nvarchar(100)
-set @t_bdate = case when '#non' = [3] then ''  else [3] end
-set @t_edate = case when '#non' = [4] then char(255) else [4] end
-set @t_worker = case when '#non' = [5] then '' else [5] end
-declare @result table(
-	worker nvarchar(100),
-	noa nvarchar(30),
-	detail nvarchar(50),
-	type nvarchar(20),
-	mech nvarchar(30),
-	weight float,
-	betn float,
-	ebtn float,
-	way float,
-	datea1 nvarchar(20),
-	datea2 nvarchar(20),
-	datea3 nvarchar(20),
-	mount float,
-	datea4 nvarchar(20)
-)
 
-insert @result
-select MAX(b.worker) worker,a.modnoa+b.code noa,max(b.detail) detail,'維修',max(a.mech) mech,sum(d.weight1) weight,max(b.bebottom) betn
-	  ,max(b.enbottom)ebtn,max(b.way) way,max(c.datea) datea1,max(b.datea1) datea2,max(b.datea2) datea3,sum(b.mount) mount,
-	   max(a.datea) datea4
-from modfixcs b left join modfixc a on a.noa=b.noa
-				left join modfix c on a.innoa=c.noa
-				left join modfixs d on b.nob=d.nob
-where a.datea between @t_bdate and @t_edate	 and
-	  (b.worker =@t_worker or isnull(@t_worker,'')='')
-group by a.modnoa+b.code
-
-select '0' gno ,worker man,noa,detail,type,mech,weight,betn,ebtn,
-		case when way =1 then'傳統車床(砂紙研磨)'
-			 when way =2 then'傳統車床(砂輪機研磨)'
-			 when way =3 then'CNC 車修'
-			 when way =4 then'不須車修或研磨'
-			 else '' end way
-		,datea1 dtt1,
-		datea2+case when isnull(datea2,'')='' then '' else '~' end
-		+datea3 dtt2, mount,datea4 dtt4 
-from @result;
-
-z_modout_rs05:--z_modout_rs05
-
-declare @t_noa nvarchar(20)
-declare @t_frame nvarchar(100)
-set @t_noa= case when '#non' = [1] then '' else [1] end
-set @t_frame = case when '#non' = [6] then '' else [6] end
--------------------------------------------------------------------------------------------------
-declare @result table(
+set @t_bdate = case when '#non' = [5] then ''  else [5] end
+set @t_edate = case when '#non' = [6] then char(255) else [6] end
+set @t_worker = case when '#non' = [7] then '' else [7] end
+----------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(1),
+	rec int,
+	datea nvarchar(20),
+	worker nvarchar(50),
 	noa nvarchar(50),
-	frame float,
-	nob nvarchar(30),
 	detail nvarchar(50),
-	type nvarchar(50),
+	class nvarchar(50),
 	mech nvarchar(50),
 	weight float,
-	betm float,
-	ebtm float,
-	way float,
-	datea nvarchar(20),
-	mount float,
-	worker nvarchar(30)
+	bebottom float,
+	enbottom float,
+	way nvarchar(30),
+	b2edate nvarchar(50),
+	mount float
+	
 )
-insert @result
-select max(a.modnoa),max(c.frame),a.modnoa+c.code,max(c.detail),'入庫維修',max(a.mech),sum(b.weight1),sum(c.bebottom),sum(c.enbottom) 
-	,max(c.way),max(a.datea),sum(b.mount1),max(c.worker) 
-from modfixs b left join modfix a on a.noa=b.noa 
-	left join modfixcs c on b.nob=c.nob 
-where (isnull(c.datea1,'')='' or isnull(c.datea2,'')='') and a.modnoa = @t_noa 
-	and(c.frame=@t_frame or ISNULL(@t_frame,'')='') 
-group by a.modnoa+c.code
+insert into @tmp
+select 
+	'1',ROW_NUMBER()over(partition by a.datea order by b.worker),a.datea,b.worker,a.modnoa+b.code,
+	b.detail,'維修',a.mech,SUM(c.weight1),MIN(b.bebottom),MIN(b.enbottom),b.way,MIN(b.datea1)+'~'+MAX(b.datea2),SUM(b.mount)
+from modfixc a
+left join modfixcs b on a.noa = b.noa
+left join modfixs  c on b.nob = c.nob
+where(a.datea between @t_bdate and @t_edate) and (@t_worker = '' or b.worker = @t_worker)
+group by a.datea,b.worker,a.modnoa+b.code,b.detail,a.mech,b.way
 
+--補空白行(25行)
+declare @datea  nvarchar(50)
+declare @cnt  int
+declare @max  int
+declare @i    int
 
-select '0'gno,@t_noa noa,frame,detail,type,mech,dbo.getComma(weight,0)
-	   ,betm,ebtm,weight,noa nob
-	   ,case when way =1 then'傳統車床(砂紙研磨)'
-			 when way =2 then'傳統車床(砂輪機研磨)'
-			 when way =3 then'CNC 車修'
-			 when way =4 then'不須車修或研磨'
-			 else '' end way
-		,datea dtt1,mount,worker man
-from @result;
+declare cursor_table cursor for 
+select datea from @tmp group by datea
+open cursor_table 
+fetch next from cursor_table 
+into @datea
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @tmp where datea = @datea)
+	set @max = (select MAX(rec) from @tmp where datea = @datea)
+	set @i = 0
+	while(@i < 25-@cnt%25)
+	begin
+		insert into @tmp(gno,rec,datea)
+		select '2',@max+1,@datea
+			
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+	
+	fetch next from cursor_table 
+	into @datea
+end 
+close cursor_table 
+deallocate cursor_table
 
-------------------------------------------------------------------------------------------------------
+select * from @tmp order by datea,rec;
+--**************************************************************************
+z_modout_rs05:--z_modout_rs05
+
+declare @t_bmodnoa nvarchar(50)
+declare @t_emodnoa nvarchar(50)
+declare @t_bframe nvarchar(50)
+declare @t_eframe nvarchar(50)
+
+set @t_bmodnoa= case when '#non' = [1] then '' else [1] end
+set @t_emodnoa= case when '#non' = [2] then char(255) else [2] end
+set @t_bframe = case when '#non' = [8] then '' else [8] end
+set @t_eframe = case when '#non' = [9] then char(255) else [9] end
+----------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(1),
+	rec int,
+	modnoa nvarchar(50),
+	frame nvarchar(30),
+	noa nvarchar(50),
+	detail nvarchar(50),
+	class nvarchar(50),
+	mech nvarchar(50),
+	weight float,
+	way nvarchar(30),
+	mount float
+	
+)
+insert into @tmp
+select 
+	'1',ROW_NUMBER()over(partition by a.modnoa order by a.modnoa+b.code1),a.modnoa,b.frame1,a.modnoa+b.code1,
+	b.detail1,'入庫維修',a.mech,SUM(b.weight1),b.way1,SUM(b.mount1)
+from modfix a
+left join modfixs b on a.noa = b.noa
+where(a.modnoa between @t_bmodnoa and @t_emodnoa) and (b.frame1 between @t_bframe and @t_eframe) and
+	 not exists (select * from modfixcs where nob = b.nob)
+group by a.modnoa,b.frame1,a.modnoa+b.code1,b.detail1,a.mech,b.way1
+
+--補空白行(25行)
+declare @modnoa  nvarchar(50)
+declare @cnt  int
+declare @max  int
+declare @i    int
+
+declare cursor_table cursor for 
+select modnoa from @tmp group by modnoa
+open cursor_table 
+fetch next from cursor_table 
+into @modnoa
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @tmp where modnoa = @modnoa)
+	set @max = (select MAX(rec) from @tmp where modnoa = @modnoa)
+	set @i = 0
+	while(@i < 25-@cnt%25)
+	begin
+		insert into @tmp(gno,rec,modnoa)
+		select '2',@max+1,@modnoa
+			
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+	
+	fetch next from cursor_table 
+	into @modnoa
+end 
+close cursor_table 
+deallocate cursor_table
+
+select * from @tmp order by modnoa,rec;
+--**************************************************************************
 z_modout_rs06:--z_modout_rs06
 
 declare @t_bdate nvarchar(100) 
 declare @t_edate nvarchar(100) 
-set @t_bdate = case when '#non' = [3] then ''  else [3] end
-set @t_edate = case when '#non' = [4] then char(255) else [4] end
-------------------------------------------------------------------------------------------------------
+set @t_bdate = case when '#non' = [5] then ''  else [5] end
+set @t_edate = case when '#non' = [6] then char(255) else [6] end
+----------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
 	BEGIN
 		drop table #tmp
@@ -553,15 +653,92 @@ DEALLOCATE cursor_table
  from #tmp 
  drop table #tmp
  ;
- 
-----------------------------------------------------------------------------------------------------
+ --**************************************************************************
 z_modout_rs07:--z_modout_rs07
+
+SET QUOTED_IDENTIFIER OFF
+
+declare @t_bmodnoa nvarchar(50)
+declare @t_emodnoa nvarchar(50)
+
+set @t_bmodnoa = case when '#non' = [1] then '' else [1] end
+set @t_emodnoa = case when '#non' = [2] then char(255) else [2] end
+----------------------------------------------------------------------------
+declare @tmp1 table(
+	mech1 nvarchar(50),
+	detail nvarchar(100),
+	noa nvarchar(30),
+	frame nvarchar(30),
+	mount float,
+	weight float,
+	mech2 nvarchar(50),
+	mode nvarchar(30),
+	memo nvarchar(max),
+	seq float
+)
+--成型段
+insert @tmp1(mech1,detail,noa,frame,mount,weight,mech2,memo,seq)
+select d.device,b.detail1,b.noa,b.frame1,b.mount1,b.weight1,c.namea,e.memo,ROW_NUMBER() over(order by c.namea)
+from modfix a left join modfixs b on a.noa = b.noa
+			  left join modeqs c on a.mech = namea
+			  left join modeq d on c.noa=d.noa
+			  left join modouts e on b.nob=e.nob
+where (left(b.code1,1)='F' or left(b.code1,2)='sg' or left(b.code1,2)='sq')
+	  and (a.modnoa between @t_bmodnoa and @t_emodnoa)
+--update @result
+declare @tmp2 table(
+	mech1 nvarchar(50),
+	detail nvarchar(100),
+	noa nvarchar(30),
+	frame nvarchar(30),
+	mount float,
+	weight float,
+	mech2 nvarchar(50),
+	mode nvarchar(30),
+	memo nvarchar(max),
+	seq float
+)
+--定俓段
+insert @tmp2(mech1,detail,noa,frame,mount,weight,mech2,seq)
+select d.device,b.detail1,b.noa,b.frame1,b.mount1,b.weight1,c.namea,ROW_NUMBER()over(order by c.namea)
+from modfix a left join modfixs b on a.noa = b.noa
+			  left join modeqs c on a.mech = namea
+			  left join modeq d on c.noa=d.noa
+			  left join modouts e on b.nob=e.nob
+where (left(b.code1,1)!='F' and left(b.code1,2)!='sg' and left(b.code1,2)!='sq')
+		and (a.modnoa between @t_bmodnoa and @t_emodnoa)
+declare @count float =(select count(*) from @tmp1)	
+if(@count < (select count(*) from @tmp2))
+	begin
+		set @count =  (select count(*) from @tmp2)
+	end
+declare @i float =1
+declare @tmp3 table(seq nvarchar(10))
+
+while(@i<@count)
+	begin
+		insert @tmp3(seq)
+		select @i
+		set @i=@i+1
+	end
+
+
+
+select '0' gno, case when isnull(a.mech1,'')='' then b.mech1 else a.mech1 end mech1,
+	a.detail det1,b.detail det2
+	,case when isnull(a.noa,'')='' then b.noa else a.noa end noa,a.frame frm1,a.mount mount1,a.weight weight1
+	,b.frame frm2,b.mount mount2,b.weight weight2,a.mech2 mech2,a.mode mode,a.memo memo
+from @tmp3 c left join @tmp2 b on c.seq=b.seq	
+			 left join @tmp1 a on c.seq=b.seq			  
+;	
+--**************************************************************************
+z_modout_rs08:--z_modout_rs08
 
 declare @t_bdate nvarchar(100) 
 declare @t_edate nvarchar(100) 
-set @t_bdate = case when '#non' = [3] then ''  else [3] end
-set @t_edate = case when '#non' = [4] then char(255) else [4] end
----------------------------------------------------------------------------------------------------
+set @t_bdate = case when '#non' = [5] then ''  else [5] end
+set @t_edate = case when '#non' = [6] then char(255) else [6] end
+-----------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
 	BEGIN
 		drop table #tmp
@@ -757,76 +934,4 @@ DEALLOCATE cursor_table
  from #tmp 
  where seq-6 >=0
  drop table #tmp;
- 
-z_modout_rs08:--z_modout_rs08
-	SET QUOTED_IDENTIFIER OFF
-	declare @t_noa nvarchar(30)
-	set @t_noa= case when '#non' = [1] then '' else [1] end
-------------------------------------------------------------------------------------------------
-declare @tmp1 table(
-	mech1 nvarchar(50),
-	detail nvarchar(100),
-	noa nvarchar(30),
-	frame nvarchar(30),
-	mount float,
-	weight float,
-	mech2 nvarchar(50),
-	mode nvarchar(30),
-	memo nvarchar(max),
-	seq float
-)
---成型段
-insert @tmp1(mech1,detail,noa,frame,mount,weight,mech2,memo,seq)
-select d.device,b.detail1,b.noa,b.frame1,b.mount1,b.weight1,c.namea,e.memo,ROW_NUMBER() over(order by c.namea)
-from modfix a left join modfixs b on a.noa = b.noa
-			  left join modeqs c on a.mech = namea
-			  left join modeq d on c.noa=d.noa
-			  left join modouts e on b.nob=e.nob
-where (left(b.code1,1)='F' or left(b.code1,2)='sg' or left(b.code1,2)='sq')
-	  and a.modnoa=@t_noa
---update @result
-declare @tmp2 table(
-	mech1 nvarchar(50),
-	detail nvarchar(100),
-	noa nvarchar(30),
-	frame nvarchar(30),
-	mount float,
-	weight float,
-	mech2 nvarchar(50),
-	mode nvarchar(30),
-	memo nvarchar(max),
-	seq float
-)
---定俓段
-insert @tmp2(mech1,detail,noa,frame,mount,weight,mech2,seq)
-select d.device,b.detail1,b.noa,b.frame1,b.mount1,b.weight1,c.namea,ROW_NUMBER()over(order by c.namea)
-from modfix a left join modfixs b on a.noa = b.noa
-			  left join modeqs c on a.mech = namea
-			  left join modeq d on c.noa=d.noa
-			  left join modouts e on b.nob=e.nob
-where (left(b.code1,1)!='F' and left(b.code1,2)!='sg' and left(b.code1,2)!='sq')
-		and a.modnoa=@t_noa
-declare @count float =(select count(*) from @tmp1)	
-if(@count < (select count(*) from @tmp2))
-	begin
-		set @count =  (select count(*) from @tmp2)
-	end
-declare @i float =1
-declare @tmp3 table(seq nvarchar(10))
-
-while(@i<@count)
-	begin
-		insert @tmp3(seq)
-		select @i
-		set @i=@i+1
-	end
-
-
-
-select '0' gno, case when isnull(a.mech1,'')='' then b.mech1 else a.mech1 end mech1,
-	a.detail det1,b.detail det2
-	,case when isnull(a.noa,'')='' then b.noa else a.noa end noa,a.frame frm1,a.mount mount1,a.weight weight1
-	,b.frame frm2,b.mount mount2,b.weight weight2,a.mech2 mech2,a.mode mode,a.memo memo
-from @tmp3 c left join @tmp2 b on c.seq=b.seq	
-			 left join @tmp1 a on c.seq=b.seq			  
-;		 
+	 

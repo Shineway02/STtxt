@@ -37,8 +37,36 @@ from modeq a
 left join modeqs b on a.noa = b.noa
 where(a.noa between @t_bnoa and @t_enoa)
 
-insert into @tmp(gno,rec,noa)
-select DISTINCT '1',1,noa from @tmp
+declare @noa nvarchar(50)
+declare @cnt  int
+declare @max  int
+declare @i    int
+
+--補空白行(25行)
+declare cursor_table cursor for 
+select noa from @tmp group by noa
+open cursor_table 
+fetch next from cursor_table 
+into @noa
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @cnt = (select COUNT(*) from @tmp where noa = @noa)
+	set @max = (select MAX(rec) from @tmp where noa = @noa)
+	set @i = 0
+	while(@i < 25-@cnt%25)
+	begin
+		insert into @tmp(gno,rec,noa)
+		select '1',@max+1,@noa
+			
+		set @max = @max + 1
+		set @i   = @i   + 1
+	end
+	
+	fetch next from cursor_table 
+	into @noa
+end 
+close cursor_table 
+deallocate cursor_table
 
 /*declare @i int = 1
 declare @pagestr nvarchar(30) = '正本：財會聯,影本1：製造聯,影本2：設備聯'
