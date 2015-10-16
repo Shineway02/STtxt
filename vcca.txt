@@ -9,7 +9,7 @@ getvccadate:--getvccadate 檢查日期
 	insert into @tmpa(datea)values(isnull(@datea,''))
 	select * from @tmpa
 	;
-
+----------------------------------------------------------------------------------------------------------------------------------------
 batchvcca_rb:--batchvcca_rb
 	declare @t_ordeno nvarchar(50) = [1]
 	declare @t_total nvarchar(50) = [2]
@@ -26,6 +26,7 @@ batchvcca_rb:--batchvcca_rb
 	declare @t_vccno nvarchar(50)
 	declare @t_vccaccy nvarchar(50)
 	declare @x_vccano nvarchar(MAX)
+	declare @t_cno nvarchar(50)
 	--------------------------------------------------------------------------------------------------------
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_vccacount int,@vccacount int
@@ -33,6 +34,7 @@ batchvcca_rb:--batchvcca_rb
 	set @vccacount= cast(@t_total as int)/cast(@t_money as int)
 	set @t_vccno=isnull((select vccno from view_orde where noa=@t_ordeno ),'')
 	set @t_vccaccy=isnull((select accy from view_vcc where noa=@t_vccno),'')
+	set @t_cno=isnull((select cno from view_orde where noa=@t_ordeno ),'')
 	
 	--現在日期
 	if(len(@t_datea)=0)
@@ -76,7 +78,9 @@ batchvcca_rb:--batchvcca_rb
 	begin
 		--抓取可開立的發票
 		declare cursor_table cursor for
-		select a.noa,b.binvono,b.einvono from vccar a left join vccars b on a.noa=b.noa where (@t_datea between a.bdate and a.edate) and isnull(a.iselectric,0)=1 order by a.noa,a.binvono
+		select a.noa,b.binvono,b.einvono from vccar a left join vccars b on a.noa=b.noa 
+		where (@t_datea between a.bdate and a.edate) and isnull(a.iselectric,0)=1 and a.cno=@t_cno
+		order by a.noa,a.binvono
 		open cursor_table
 		fetch next from cursor_table
 		into @vccarno,@bvccano,@evccano
@@ -194,4 +198,56 @@ changeorde_rb:--changeorde_rb
 	begin
 		exec("update orde"+@accy+" set kind='作廢' where noa='"+@ordeno+"' ")
 	end
+;
+--*************************************************************************************
+getvccano_rb:--getvccano_rb
+	declare @t_cno nvarchar(50) = [1]
+	declare @t_datea nvarchar(50) = [2]
+	declare @t_err nvarchar(200)=''
+	--------------------------------------------------------------------------------------------------------
+	SET QUOTED_IDENTIFIER OFF
+			
+	--可開立發票
+	declare @cvcca table(
+		noa nvarchar(20),
+		vccano nvarchar(20)
+	)
+
+	declare @vccarno nvarchar(20)
+	declare @bvccano nvarchar(20)
+	declare @evccano nvarchar(20)
+	declare @xvccano nvarchar(20)
+	
+	--抓取可開立的發票
+	declare cursor_table cursor for
+	select a.noa,b.binvono,b.einvono from vccar a left join vccars b on a.noa=b.noa 
+	where (@t_datea between a.bdate and a.edate) and isnull(a.iselectric,0)=1 order by a.noa,a.binvono
+	open cursor_table
+	fetch next from cursor_table
+	into @vccarno,@bvccano,@evccano
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @xvccano=@bvccano
+		while (@xvccano<=@evccano and (@xvccano between @bvccano and @evccano))
+		begin
+			if((select count(*) from vcca where noa=@xvccano)=0)
+			begin
+				insert @cvcca
+				select @vccarno,@xvccano
+			end
+			set @xvccano=LEFT(@xvccano,2)
+			+RIGHT('00000000'+cast(cast(RIGHT(@xvccano,8) as int)+1 as nvarchar(10)),8)
+		end
+			fetch next from cursor_table
+		into @vccarno,@bvccano,@evccano
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	if((select count(*) from @cvcca)=0) 
+	begin
+		set @t_err='當期無可用發票'
+	end
+	
+	select @t_err err,(select top 1 vccano from @cvcca order by vccano) vccano
 ;
