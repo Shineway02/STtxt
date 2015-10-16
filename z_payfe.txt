@@ -50,17 +50,18 @@ z_payfe03:--z_payfe03
 		unit nvarchar(20),
 		mount float,
 		price float,
+		weight float,
 		moneys float		
 	)
 	--只顯示本期有進貨的
 	insert into @tmp(gno,pno,recno,cno,coin,tggno
-		,datea,typea,tablea,accy,noa,[money],tax,product,unit,mount,price,moneys,rc2Count,xx)
-	select '1',1,ROW_NUMBER()over(partition by a.cno,a.coin,a.tggno order by a.noa,b.noq)
+		,datea,typea,tablea,accy,noa,[money],tax,product,unit,mount,price,weight,moneys,rc2Count,xx)
+	select '1',1,ROW_NUMBER()over(partition by a.cno,a.coin,a.tggno,a.noa order by a.noa,b.noq)
 		,isnull(a.cno,''),isnull(a.coin,''),isnull(a.tggno,'')
 		,a.datea,case when a.typea='1' then '進' else '退' end,'rc2fe',a.accy,a.noa
 		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then a.[money] else 0 end
 		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then a.[tax] else 0 end
-		,b.product,b.unit,b.mount,b.price,b.total
+		,b.product,b.unit,b.mount,b.price,b.weight,b.total
 		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then 1 else 0 end
 		,case when ROW_NUMBER()over(partition by a.accy,a.noa order by b.noq)=1 then 1 else 0 end
 	from view_rc2 a
@@ -226,20 +227,23 @@ z_payfe03:--z_payfe03
 	close cursor_table
 	deallocate cursor_table
 	-------------------------------------------------------------------------------------------------------
-	
+	delete @tmp where gno ='2' or gno = '3' or gno = '4'
+	update @tmp set gno = 3 where recno > 1
 	select rc2Count nn
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.acomp +'</a>' tacomp
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.comp +'</a>' tcomp
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+c.addr_home +'</a>' taddr
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+b.acomp +'</a>' tacomp
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+c.comp +'</a>' tcomp
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+c.addr_home +'</a>' taddr
 		,case when xx=1 then a.typea else '' end b01
 		,case when xx=1 then a.datea else '' end b02
 		,case when xx=1 then a.noa else '' end b03
 		,case when xx=1 then dbo.getComma(a.[money],0) else '' end b04 
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' b05
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.unit +'</a>' b06
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+a.product+'</a>' b05
+		,'<a style="font-family:'+ "'Times New Roman','新細明體', serif"+char(59)+'">'+a.unit +'</a>' b06
 		,dbo.getComma(a.[mount],0) b07
 		,dbo.getComma(a.[moneys],0) b08
 		,dbo.getComma(a.[tax],0) b09
+		,dbo.getComma(a.[price],0) b10
+		,dbo.getComma(a.weight,0) b11
 		
 		,dbo.getComma(isnull(a.[sale],0),0) c01
 		,dbo.getComma(isnull(a.[bksale],0),0) c02
@@ -253,8 +257,8 @@ z_payfe03:--z_payfe03
 	from @tmp a 
 	left join acomp b on a.cno=b.noa
 	left join tgg c on a.tggno = c.noa
-	order by a.tggno,a.cno,a.coin,a.pno,a.recno;
-
+	order by a.tggno,a.cno,a.coin,a.pno,a.noa,a.recno;
+	
 z_payfe02:--z_payfe02
 	SET QUOTED_IDENTIFIER OFF
 
