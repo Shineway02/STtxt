@@ -53,15 +53,15 @@ declare @date nvarchar(10)
 declare @cnt int --#result當前資料數
 declare @rec int = 0 --#result資料區隔
 
-set @t_bdate = dbo.ChineseEraName2AD(@t_bdate)
-set @t_edate = dbo.ChineseEraName2AD(@t_edate)
+set @t_bdate = REPLACE(dbo.ChineseEraName2AD(@t_bdate),'-','/')
+set @t_edate = REPLACE(dbo.ChineseEraName2AD(@t_edate),'-','/')
 set @bdate = @t_bdate
 
-while(@bdate <= @t_edate) --日期判斷(星期一:@bdate星期五:@edate)
+while(@bdate <= @t_edate) --日期判斷(星期一:@bdate星期日:@edate)
 begin
 	set @weekday = (DATEPART(WeekDay,@bdate)-1)
 	set @bdate = CONVERT(char, DATEADD(DAY, 1-@weekday, @bdate), 111)
-	set @edate = CONVERT(char, DATEADD(DAY, 4, @bdate), 111)
+	set @edate = CONVERT(char, DATEADD(DAY, 6, @bdate), 111)
 	set @bdate = dbo.AD2ChineseEraName(@bdate)
 	set @edate = dbo.AD2ChineseEraName(@edate)
 	set @cnt = (select COUNT(*) from #tmp where (datea between @bdate and @edate))
@@ -72,12 +72,12 @@ begin
 		set @icmd = "insert into #result (gno,rec,datea"
 		set @hcmd = "select '0',"+CAST(@rec as nvarchar(5))+",''"
 		set @scmd = "select '1',"+CAST(@rec as nvarchar(5))+",datea"
-		set @pcmd = "select '2',"+CAST(@rec as nvarchar(5))+",''"
+		set @pcmd = "select '3',"+CAST(@rec as nvarchar(5))+",''"
 		
 		declare @device  nvarchar(50)
 		declare @bdevice nvarchar(50)
 		declare @edevice nvarchar(50)
-		declare @rno int = 0 --#result欄位位置
+		declare @rno int = 0 --紀錄#result欄位device1~7
 		
 		declare cursor_table cursor for 
 		select DISTINCT top 7 device from #tmp where (datea between @bdate and @edate) order by device
@@ -91,10 +91,6 @@ begin
 			set @hcmd = @hcmd+",'"+@device+"'"
 			set @scmd = @scmd+",(select memo from #tmp a where a.datea=b.datea and a.device='"+@device+"')"
 			set @pcmd = @pcmd+",''"
-			
-			--前7筆資料最大最小設備
-			set @bdevice = (select MIN(a.device) from (select DISTINCT top 7 device from #tmp where (datea between @bdate and @edate) order by device) a)	
-			set @edevice = (select MAX(a.device) from (select DISTINCT top 7 device from #tmp where (datea between @bdate and @edate) order by device) a)	
 
 			fetch next from cursor_table 
 			into @device
@@ -111,16 +107,18 @@ begin
 		set @pcmd = @icmd+") "+@pcmd
 		execute sp_executesql @pcmd
 		
-		--刪除前7筆資料		
+		--前7筆資料最大最小設備
+		set @bdevice = (select MIN(a.device) from (select DISTINCT top 7 device from #tmp where (datea between @bdate and @edate) order by device) a)	
+		set @edevice = (select MAX(a.device) from (select DISTINCT top 7 device from #tmp where (datea between @bdate and @edate) order by device) a)	
+		--刪除前7筆資料
 		delete #tmp where (device between @bdevice and @edevice) and (datea between @bdate and @edate)
 		
 		set @cnt = (select COUNT(*) from #tmp where (datea between @bdate and @edate))
 	end
-	
 	set @bdate = CONVERT(char, DATEADD(DAY, 7, dbo.ChineseEraName2AD(@bdate)), 111)
 end
 
---補空白行(5行)
+--補空白行(7行)
 declare @maxi  int
 declare @maxj  int
 declare @i     int = 1
@@ -133,10 +131,10 @@ begin
 	set @cnt  = (select COUNT(*) from #result where gno = '1' and rec = @i)
 	set @maxj = (select MAX(rec) from #result where gno = '1' and rec = @i)
 	set @j = 0
-	while(@j < 5-@cnt%5)
+	while(@j < 7-@cnt%7)
 	begin
 		insert into #result(gno,rec,datea)
-		select '1',@i,'zzzzzzzzz'
+		select '2',@i,'zzzzzzzzz'
 			
 		set @j = @j + 1
 	end
