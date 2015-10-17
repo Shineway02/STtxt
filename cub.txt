@@ -243,25 +243,37 @@ create table #unotable(
 	accy nvarchar(10),
 	uno nvarchar(50),
 	noa nvarchar(50),
+	noq nvarchar(50),
+	custno nvarchar(50),
+	comp nvarchar(100),
+	product nvarchar(50),
+	ucolor nvarchar(50),
+	spec nvarchar(50),
+	size nvarchar(50),
+	lengthb float,
+	class nvarchar(50),
+	hmount decimal(18, 2),
 	mount decimal(18, 2),
 	weight decimal(18, 2),
+	ordeno nvarchar(50),
+	no2 nvarchar(50)
 )
 
 insert #unotable
-select  b.accy,a.n,b.noa,0,0
-from dbo.fnSplit(@uno) a 
-outer apply (select top 1 * from view_cubs where uno=a.n) b
+select  b.accy,a.n,b.noa,b.noq,b.custno,b.comp,b.product,b.ucolor,b.spec,b.size,b.lengthb
+,b.class,b.hmount,b.mount,b.weight,b.ordeno,b.no2
+from dbo.fnSplit(@uno) a left join view_cubs b on uno=a.n and (b.mount>=0 or b.weight>=0)
 
 --刪除找不到生產入庫單的批號
 delete #unotable where isnull(noa,'')=''
 
 --更新剩餘數量和重量
 update a
-set mount=isnull((select sum(mount) from view_cubs where uno=a.uno),0)
--isnull((select sum(mount) from view_vcct where uno=a.uno),0)
-,weight=isnull((select sum(weight) from view_cubs where uno=a.uno),0)
--isnull((select sum(weight) from view_vcct where uno=a.uno),0)
+set mount=isnull(b.mount,0)-ISNULL(c.mount,0)
+,weight=isnull(b.weight,0)-ISNULL(c.weight,0)
 from #unotable a
+outer apply (select SUM(mount)mount,SUM(weight)weight from view_cubs where uno=a.uno and product=a.product and ucolor=a.ucolor and spec=a.spec and size=a.size and lengthb=a.lengthb and class=a.class)b
+outer apply (select SUM(mount)mount,SUM(weight)weight from view_vcct where uno=a.uno and product=a.product and ucolor=a.ucolor and spec=a.spec and size=a.size and lengthb=a.lengthb and class=a.class)c
 
 --刪除已領料完畢的批號
 delete #unotable where mount<=0 and weight<=0 
@@ -273,22 +285,6 @@ declare @nowdate nvarchar(30) --今天日期
 set @nowdate=replace(CONVERT (VARCHAR(20), GETDATE(),20 ),'-','/')
 
 --104/10/14 改為 新增加工單做領料(負數)
-
---declare cursor_table cursor for 
---select accy,uno,noa from #unotable
---open cursor_table 
---fetch next from cursor_table 
---into @xaccy,@xuno,@xnoa
---while(@@FETCH_STATUS <> -1) 
---begin 
---	EXEC(" update cubs"+@xaccy+" set uno='',date3='"+@nowdate+"' where noa='"+@xnoa+"' and uno='"+@xuno+"' ")
---	fetch next from cursor_table 
---	into @xaccy,@xuno,@xnoa
---end 
---close cursor_table 
---deallocate cursor_table 
-
---select * from #unotable
 
 declare @datea nvarchar(30)
 set @datea=left(@nowdate,10)
@@ -308,9 +304,12 @@ begin
 		
 	--bbs
 	exec("
-		insert cubs"+@accy+" (noa,noq,mount,weight,uno,date2)
-		select '"+@cubno+"',right('000'+cast(ROW_NUMBER()over (order by uno) as nvarchar(10)),3),
-		case when mount>0 then -1*mount else 0 end ,case when weight>0 then -1*weight else 0 end,uno,'"+@datea+"' 
+		insert cubs"+@accy+" (noa,noq,productno2,product2,custno,comp,product,ucolor,spec,size,lengthb,class
+		,hmount,mount,weight,uno,date2,ordeno,no2)
+		select '"+@cubno+"',right('000'+cast(ROW_NUMBER()over (order by uno,noa,noq) as nvarchar(10)),3)
+		,noa,noq,custno,comp,product,ucolor,spec,size,lengthb,class
+		,case when hmount>0 then -1*hmount else 0 end,case when mount>0 then -1*mount else 0 end ,case when weight>0 then -1*weight else 0 end
+		,uno,'"+@datea+"',ordeno,no2
 		from #unotable 
 	")
 	
