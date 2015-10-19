@@ -981,7 +981,7 @@ declare @tmp table(
 	noa nvarchar(30),
 	datea nvarchar(10),
 	custno nvarchar(25),
-	comp nvarchar(25),
+	comp nvarchar(90),
 	opay float,--預收
 	mopay float--預收餘額
 )
@@ -997,7 +997,6 @@ insert into @tmp(gno,custno,mopay)
 select '1',custno,0
 from umm
 where EXISTS (select * from umms where (datea between @t_bdate and @t_edate) and (custno between @t_bcustno and @t_ecustno))
-	  and (datea between @t_bdate and @t_edate) and (custno between @t_bcustno and @t_ecustno)
 group by custno
 
 update @tmp set opay = ISNULL(b.opay,0) 
@@ -1056,7 +1055,7 @@ declare @result table(
 	gno nvarchar(1),
 	rec int,
 	custno nvarchar(25),
-	comp nvarchar(25),
+	comp nvarchar(90),
 	noa nvarchar(25),
 	datea nvarchar(10),
 	

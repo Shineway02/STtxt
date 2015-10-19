@@ -1,4 +1,4 @@
-﻿zxls_vcct:--zxls_vcct
+﻿zxls_vcct:--zxls_vcct 
 ----------------------------------------------------
 SET QUOTED_IDENTIFIER OFF
 declare @cmd nvarchar(max)
@@ -30,7 +30,8 @@ create table #z_vcctrb(
 	mount float,
 	dutymemo nvarchar(50),
 	book nvarchar(50),
-	sono nvarchar(50)
+	sono nvarchar(50),
+	memo nvarchar(max)
 )
 declare @a nvarchar(max)
 declare @b nvarchar(max)
@@ -49,6 +50,7 @@ declare @n nvarchar(max)
 declare @o nvarchar(max)
 declare @p nvarchar(max)
 declare @q nvarchar(max)
+declare @r nvarchar(max)
 
 declare @isexist int
 declare	@noa nvarchar(50)
@@ -71,6 +73,7 @@ declare	@mount float
 declare	@dutymemo nvarchar(50)
 declare	@book nvarchar(50)
 declare	@sono nvarchar(50)
+declare	@memo nvarchar(50)
 
 declare @sumnum nvarchar(50)='12121241'
 declare @str nvarchar(50)
@@ -80,10 +83,10 @@ declare @bdate nvarchar(10)
 declare @edate nvarchar(10)
 
 declare cursor_table cursor for
-select noa,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q from ztmpxls where f like '%[a-zA-Z0-9]%'
+select noa,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r from ztmpxls where f like '%[a-zA-Z0-9]%'
 open cursor_table
 fetch next from cursor_table
-into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q
+into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q,@r
 while(@@FETCH_STATUS <> -1)
 begin
 	set @typea = case when @a = '進' then '1' else '2' end
@@ -93,7 +96,8 @@ begin
 	set @datea = @d
 	set @mon = @e
 	set @serial = RIGHT('00000000'+@g,8)
-	--驗證統一編號
+	
+	--驗證統一編號是否正確
 	set @sum = 0
 	set @z   = 1
 	while(@z <= 8)
@@ -123,7 +127,8 @@ begin
 	
 	set @isasset = CAST(@h as bit)
 	set @isself = CAST(@i as bit)
-	set @money = case when @k='9' then CAST(@m as float) else CAST(@j as float) end
+	set @money = case when @k='9' then CAST(REPLACE(@m,',','') as float) else CAST(REPLACE(@j,',','') as float) end
+	
 	--"0@,1@應稅,6@作廢,2@零稅率,3@內含,4@免稅,5@自訂"
 	set @taxtype = case when @k = '1' then '1'
 						when @k = '2' then '2'
@@ -131,12 +136,13 @@ begin
 						when @k = '9' then '3'
 						when @k = 'D' then '0'
 						when @k = 'F' then '6' end
-	set @tax = case when @k='9' then 0 else CAST(@l as float) end
-	set @total = CAST(@m as float)
-	set @mount = CAST(@n as float)
+	set @tax = case when @k='9' then 0 else CAST(REPLACE(@l,',','') as float) end
+	set @total = CAST(REPLACE(@m,',','') as float)
+	set @mount = CAST(REPLACE(@n,',','') as float)
 	set @dutymemo = @o
 	set @book = @p
 	set @sono = @q
+	set @memo = @r
 	
 	set @noa = @f
 	set @isexist = case when (LEN(ISNULL((select noa from vcct where noa = @noa),''))=0) then 0 else 1 end
@@ -145,22 +151,21 @@ begin
 	vccar a
 	left join vccars b on a.noa = b.noa
 	where @noa between b.binvono and b.einvono
-
-if(@datea>@bdate and @datea<@edate)
-	set @ishave = 1
-else
-	set @ishave = 0
+	
+	--判斷是否存在此發票號碼
+	if(@datea>@bdate and @datea<@edate)
+		set @ishave = 1
+	else
+		set @ishave = 0
 	
 	insert into #z_vcctrb
-	select @isexist,@noa,@ishave,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@istrue,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono
+	select @isexist,@noa,@ishave,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@istrue,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono,@memo
 
 	fetch next from cursor_table
-	into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q
+	into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q,@r
 end
 close cursor_table
 deallocate cursor_table
-
-select * from #z_vcctrb
 
 select '發票號碼' noa,'統一編號' serial,'錯誤訊息' err
 union all
@@ -177,13 +182,14 @@ fetch next from cursor_table
 into @isexist,@noa
 while(@@FETCH_STATUS <> -1)
 begin
+	--刪除已存在noa
 	if(@isexist = 1)
 	begin
 		delete vcct where noa = @noa
 	end
 	
-	insert into vcct(typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono)
-	select typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono from #z_vcctrb where noa = @noa 
+	insert into vcct(typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo)
+	select typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo from #z_vcctrb where noa = @noa 
 	
 	fetch next from cursor_table
 	into @isexist,@noa
