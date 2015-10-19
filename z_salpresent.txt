@@ -7,6 +7,7 @@ set @t_bdate = case when '#non' = [1] then '' else [1] end
 set @t_edate = case when '#non' = [2] then CHAR(255) else [2] end 
 set @t_bsssno = case when '#non' = [4] then '' else [4] end
 set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
+declare @r_len int=[14]
 
 declare @tmp table(
 		gno nvarchar(1),
@@ -27,19 +28,36 @@ declare @tmp table(
 declare @day1 float=0
 declare @datea nvarchar(MAX)=@t_bdate
 declare @t_weekday nvarchar(10)--星期
-while (@datea<=@t_edate)
+if(@r_len!=4)
 begin
-	set @datea=cast(cast(left(@datea,3) as int)+1911 as nvarchar(10))
-		+RIGHT(@datea,6)
-	set @t_weekday=DATEPART(WEEKDAY, @datea)-1
-	
-	if((@t_weekday!=6 and @t_weekday!=0
-		and (right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)+RIGHT(@datea,6)) not in (select noa from holiday where isnull(iswork,0)=0)
-		)or (right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)+RIGHT(@datea,6)) in (select noa from holiday where isnull(iswork,0)=1) )
-		set @day1=@day1+1
+	while (@datea<=@t_edate)
+	begin
+		set @datea=cast(cast(left(@datea,3) as int)+1911 as nvarchar(10))
+			+RIGHT(@datea,6)
+		set @t_weekday=DATEPART(WEEKDAY, @datea)-1
 		
-	set @datea= CONVERT (VARCHAR(7), DATEADD(d, DATEDIFF(d,0,@datea)+1,0),12 )+0890000
-	set @datea=left(@datea,3)+'/'+substring(@datea,4,2)+'/'+right(@datea,2)
+		if((@t_weekday!=6 and @t_weekday!=0
+			and (right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)+RIGHT(@datea,6)) not in (select noa from holiday where isnull(iswork,0)=0)
+			)or (right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)+RIGHT(@datea,6)) in (select noa from holiday where isnull(iswork,0)=1) )
+			set @day1=@day1+1
+			
+		set @datea= CONVERT (VARCHAR(7), DATEADD(d, DATEDIFF(d,0,@datea)+1,0),12 )+0890000
+		set @datea=left(@datea,3)+'/'+substring(@datea,4,2)+'/'+right(@datea,2)
+	end
+end
+else
+begin
+	while (@datea<=@t_edate)
+	begin
+		set @t_weekday=DATEPART(WEEKDAY, @datea)-1
+		
+		if((@t_weekday!=6 and @t_weekday!=0
+			and @datea not in (select noa from holiday where isnull(iswork,0)=0)
+			)or @datea in (select noa from holiday where isnull(iswork,0)=1) )
+			set @day1=@day1+1
+			
+		set @datea= replace(CONVERT (VARCHAR(10), DATEADD(d, DATEDIFF(d,0,@datea)+1,0),20 ),'-','/')
+	end
 end
 
 insert into @tmp 
