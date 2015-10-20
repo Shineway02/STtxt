@@ -27,13 +27,56 @@
 		--新增 GET
 		if LEN(@accy)>0
 		begin
-			set @cmd='
-			insert into gets'+@accy+'(noa,noq,uno,[weight])
-			select noa,noq,uno,gweight 
-			from view_cubs where accy=@accy and noa=@cubno and len(uno)>0
-			insert into get'+@accy+N'(noa,typea,datea,memo)
-			select noa,"領料單",datea,"生產作業轉來"
-			from view_cub where accy=@accy and noa=@cubno' 
+			IF OBJECT_ID('tempdb..#cub2get')is not null
+			BEGIN
+				drop table #cub2get
+			END
+	
+			create table #cub2get(
+				sel int identity(1,1),
+				noa nvarchar(20),
+				noq nvarchar(10),
+				uno nvarchar(30),
+				[weight] float
+			)
+			declare @uno nvarchar(30)
+			declare @weight float
+			declare @uno2 nvarchar(30)
+			declare @weight2 float
+			declare @uno3 nvarchar(30)
+			declare @weight3 float
+			declare @uno4 nvarchar(30)
+			declare @weight4 float
+			
+			declare cursor_table cursor for
+			select uno,[weight],uno2,lengthb2,uno3,w06,uno4,w08
+			from view_cubs where accy=@accy and noa=@cubno
+			open cursor_table
+			fetch next from cursor_table
+			into @uno,@weight,@uno2,@weight2,@uno3,@weight3,@uno4,@weight4
+			while(@@FETCH_STATUS <> -1)
+			begin
+				if LEN(@uno)>0
+					insert into #cub2get(uno,[weight])values(@uno,@weight)
+				if LEN(@uno2)>0
+					insert into #cub2get(uno,[weight])values(@uno2,@weight2)
+				if LEN(@uno3)>0
+					insert into #cub2get(uno,[weight])values(@uno3,@weight3)
+				if LEN(@uno4)>0
+					insert into #cub2get(uno,[weight])values(@uno4,@weight4)
+				fetch next from cursor_table
+				into @uno,@weight,@uno2,@weight2,@uno3,@weight3,@uno4,@weight4
+			end
+			close cursor_table
+			deallocate cursor_table
+			
+			update #cub2get set noa=@cubno,noq=right('000'+CAST(sel as nvarchar),3)
+		
+			set @cmd="insert into gets"+@accy+"(noa,noq,uno,[weight],mount)
+			select @cubno,noq,uno,[weight],0 from #cub2get
+			insert into get"+@accy+"(noa,typea,datea,memo)
+			select noa,'領料單',datea,'生產作業轉來'
+			from view_cub where accy=@accy and noa=@cubno" 
 			execute sp_executesql @cmd,N'@cubno nvarchar(max),@accy nvarchar(20)',@cubno=@cubno,@accy=@accy
 		end
 		--新增 bccout
