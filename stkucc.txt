@@ -2,18 +2,19 @@
 stkucc:--stkucc
 
 declare @uccekey nvarchar(50)='Y'--RC2KEY
-declare @datea nvarchar(10)=(select convert(nvarchar,year(getDATE())-1911)+'/'+
+declare @datea nvarchar(10)=[1]
+/*(select convert(nvarchar,year(getDATE())-1911)+'/'+
  case when len(convert(nvarchar,month(getDATE())))<2 then +'0'+convert(nvarchar,month(getDATE()))
  else convert(nvarchar,month(getDATE())) end +'/'+
  case when len(convert(nvarchar,day(getDATE()))) < 2 then +'0'+convert(nvarchar,day(getDATE()))
- else convert(nvarchar,day(getDATE())) end)
+ else convert(nvarchar,day(getDATE())) end)*/
 declare @ucceno nvarchar(30)
 declare @accy nvarchar(5)=left(@datea,3)
 
 
---取得當天最後一個入庫單號	
+--嚙踝蕭o嚙踝蕭捖怮嚙瑾嚙諉入嚙緩嚙賣號	
 select @ucceno=MAX(noa) from view_ucce where noa like @uccekey+REPLACE(@datea,'/','')+'%' 
---新的入庫單號(後面號碼+1) 
+--嚙編嚙踝蕭嚙皚嚙緩嚙賣號(嚙賦面嚙踝蕭嚙碼+1) 
 set @ucceno=@uccekey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@ucceno,'000'),3) as int)+1 as nvarchar(10)),3)	
 
 exec('insert ucce'+@accy+'(noa,datea,kind)	
@@ -47,18 +48,19 @@ DEALLOCATE my_cursor;
 stkuca:--stkuca
 
 declare @uccekey nvarchar(50)='Y'--RC2KEY
-declare @datea nvarchar(10)=(select convert(nvarchar,year(getDATE())-1911)+'/'+
+declare @datea nvarchar(10)=[1]
+/*(select convert(nvarchar,year(getDATE())-1911)+'/'+
  case when len(convert(nvarchar,month(getDATE())))<2 then +'0'+convert(nvarchar,month(getDATE()))
  else convert(nvarchar,month(getDATE())) end +'/'+
  case when len(convert(nvarchar,day(getDATE()))) < 2 then +'0'+convert(nvarchar,day(getDATE()))
- else convert(nvarchar,day(getDATE())) end)
+ else convert(nvarchar,day(getDATE())) end)*/
 declare @ucceno nvarchar(30)
 declare @accy nvarchar(5)=left(@datea,3)
 
 
---取得當天最後一個入庫單號	
+--嚙踝蕭o嚙踝蕭捖怮嚙瑾嚙諉入嚙緩嚙賣號	
 select @ucceno=MAX(noa) from view_ucce where noa like @uccekey+REPLACE(@datea,'/','')+'%' 
---新的入庫單號(後面號碼+1) 
+--嚙編嚙踝蕭嚙皚嚙緩嚙賣號(嚙賦面嚙踝蕭嚙碼+1) 
 set @ucceno=@uccekey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@ucceno,'000'),3) as int)+1 as nvarchar(10)),3)	
 
 exec('insert ucce'+@accy+'(noa,datea,kind)	
