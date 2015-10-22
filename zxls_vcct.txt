@@ -151,13 +151,20 @@ begin
 	vccar a
 	left join vccars b on a.noa = b.noa
 	where @noa between b.binvono and b.einvono
-	
+	print @bdate+' '+@edate
+	print @noa+' '+@datea
 	--判斷是否存在此發票號碼
-	if(@datea>@bdate and @datea<@edate)
+	if((@datea>=@bdate and @datea<=@edate))
 		set @ishave = 1
 	else
 		set @ishave = 0
-	
+
+	if (@typea = '1')
+	begin
+		set @ishave = 1
+		set @istrue = 1
+	end	
+		
 	insert into #z_vcctrb
 	select @isexist,@noa,@ishave,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@istrue,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono,@memo
 
