@@ -6,361 +6,188 @@ declare @t_mwage float = case when '#non'=[3] then 1 else [3] end
 declare @t_bwage float= case when '#non'=[4] then 1  else [4] end
 declare @t_rage float= case when '#non'=[5] then 1  else [5] end
 declare @t_rwage float= case when '#non'=[6] then 0 else [6] end
---declare @t_type float= case when '#non'=[7] then 0 else [7] end 
 declare @r_len nvarchar(10)='[22]'  
 ---------------------------------------------------------------------------------
-declare @a1 nvarchar(max)set @a1 = '0'+@t_mwage 
-declare @con float(10) 
---set @con =(CONVERT(float,@t_bage)-CONVERT(float,@t_mage))/CONVERT(float,@t_rage) 
-set @con =(@t_bwage-@t_mwage)/@t_rwage 
-declare @i float set @i=0 
---declare @a2 float = convert(float,@t_mage) 
-declare @a2 float = convert(float,@t_mwage) 
---declare @a3 float = convert(float,@t_rage) 
-declare @a3 float = convert(float,@t_rwage) 
-while(@i<@con) 
-	begin 
-		if( @a2+ @t_rwage <10 ) 
-		begin 
-			set @a2= @a2+@a3 
-			set @a1=+@a1+'~0'+convert(nvarchar,@a2) 
-		end 
-	else 
-	begin 
-		set @a2= @a2+@a3 
-		set @a1=@a1+'~'+convert(nvarchar,@a2)+'' 
-	end 
-		set @i=@i+1 
-	end 
+SET QUOTED_IDENTIFIER OFF
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
 
-declare @tmp table( 
-	gno nvarchar(2), 
-	noa nvarchar(10), 
-	namea nvarchar(max), 
-	outdate nvarchar(max), 
-	indate nvarchar(max), 
-	birthday nvarchar(max), 
-	workage int, 
-	age int, 
-	agerange nvarchar (20), 
-	agecount int, 
-	wagerange nvarchar (20), 
-	wagecount int, 
-	a1 nvarchar(10) ,a2 nvarchar(10), 
-	a3 nvarchar(10),a4 nvarchar(10), 
-	a5 nvarchar(10),a6 nvarchar(10), 
-	a7 nvarchar(10),a8 nvarchar(10), 
-	a10 nvarchar(10),a9 nvarchar(10), 
-	a11 nvarchar(10),a12 nvarchar(10), 
-	a13 nvarchar(10),a14 nvarchar(10), 
-	a15 nvarchar(10),a16 nvarchar(10), 
-	ac1 int ,ac2 int, 
-	ac3 int,ac4 int, 
-	ac5 int,ac6 int, 
-	ac7 int,ac8 int, 
-	ac10 int,ac9 int, 
-	ac11 int,ac12 int 
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+   drop table #tmpa
+END
+
+IF OBJECT_ID('tempdb..#tmpb')is not null
+BEGIN
+   drop table #tmpb
+END
+
+if(@t_rwage<=0)
+	set @t_rwage=1
+if(@t_rage<=0)	
+	set @t_rage=1
+
+--員工年齡與年資
+create table #tmp(
+	noa nvarchar(50),
+	age int,
+	years float
 ) 
 
-declare @c1 nvarchar(10) =case when len(rtrim(substring(rtrim(@a1),1,4)))<=4 then '0'+ substring(rtrim(@a1),1,4) else substring(rtrim(@a1),1,4) end 
-declare @c2 nvarchar(10) = substring(rtrim(@a1),3,5) 
-declare @c3 nvarchar(10) = substring(rtrim(@a1),6,5) 
-declare @c4 nvarchar(10) = substring(rtrim(@a1),9,5) 
-declare @c5 nvarchar(10) = substring(rtrim(@a1),12,5) 
-declare @c6 nvarchar(10) =substring(rtrim(@a1),15,5) 
-declare @c7 nvarchar(10) = substring(rtrim(@a1),18,5) 
-declare @c8 nvarchar(10) = substring(rtrim(@a1),21,5) 
-declare @c9 nvarchar(10) = substring(rtrim(@a1),24,5) 
-declare @c10 nvarchar(10) = substring(rtrim(@a1),27,5) 
-declare @c11 nvarchar(10) = substring(rtrim(@a1),30,5) 
-declare @c12 nvarchar(10) = substring(rtrim(@a1),33,5) 
-insert into @tmp(gno,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12 ) 
+if(@r_len!='4')
+begin
+	insert into #tmp 
+	select noa
+			,case when len(birthday)=0 then null else convert(float,year(getdate()))-1911-CONVERT(float,left(birthday,3)) end 
+			,case when isnull(indate,'')='' then null else 
+			case when len(outdate)=0 then convert(float,year(getdate()))-1911 else CONVERT(float,left(outdate,3)) end -CONVERT(float,left(indate,3)) 
+			+round((case when len(outdate)=0 then convert(float,month(getdate())) else CONVERT(float,left(right(outdate,5),2)) end -CONVERT(float,left(right(indate,5),2)))/12,1)
+			end
+	from sss where len(indate)>0 and len(birthday)>0 and len(outdate)=0
+end
+else 
+begin
+	insert into #tmp 
+	select noa
+			,case when len(birthday)=0 then null else convert(float,year(getdate()))-CONVERT(float,left(birthday,4)) end 
+			,case when isnull(indate,'')='' then null else 
+			case when len(outdate)=0 then convert(float,year(getdate())) else CONVERT(float,left(outdate,4)) end -CONVERT(float,left(indate,4)) 
+			+round((case when len(outdate)=0 then convert(float,month(getdate())) else CONVERT(float,left(right(outdate,5),2)) end -CONVERT(float,left(right(indate,5),2)))/12,1)
+			end
+	from sss 
+	where len(indate)>0 and len(birthday)>0 and len(outdate)=0
+end
 
-select top 1 '6' ,@c1 c1,@c2 c2,@c3 c3,@c4 c4,@c5 c5,@c6 c6,@c7 c7,@c8 c8,@c9 c9,@c10 c10,@c11 c11 
-,@c12 c12 
+--select * from #tmp
+--年齡資料表
+create table #tmpb(
+	age nvarchar(50),
+	bage int,
+	eage int
+)
 
-insert into @tmp(gno,noa ,namea ,outdate ,indate ,birthday ) 
-select '5',noa,namea, outdate,indate,birthday 
-from sss 
+while(@t_mage<=@t_bage)
+begin
+	insert #tmpb
+	select case when @t_mage=(case when @t_mage+@t_rage-1>=@t_bage then @t_bage else @t_mage+@t_rage-1 end)
+	then CAST(@t_mage as nvarchar(10)) else 
+	CAST(@t_mage as nvarchar(10))+'~'+CAST((case when @t_mage+@t_rage-1>=@t_bage then @t_bage else @t_mage+@t_rage-1 end) as nvarchar(10)) end
+	,@t_mage,(case when @t_mage+@t_rage-1>=@t_bage then @t_bage else @t_mage+@t_rage-1 end)
+	
+	set @t_mage=@t_mage+@t_rage
+end
 
-insert into @tmp (gno ,noa ,namea ,outdate ,indate ,birthday ,workage ,age ) 
-select 7,noa,namea,outdate,indate,birthday,
-		case when isnull(CONVERT(float,left(outdate,3)),'')='' then YEAR(GETDATE())-1911 else CONVERT(float,left(outdate,3)) end
-		-CONVERT(float,left(indate,3)) 
-		,convert(nvarchar,convert(float,year(getdate()))-1911)-CONVERT(float,left(birthday,3)) 
-from @tmp 
-where gno='5' 
+--select * from #tmpb
 
---declare @i int = 0 
-declare @t_bmage nvarchar(10)= (convert(int,@t_mage)+convert(int,@t_rage)) 
-declare @orage nvarchar(10)=@t_mage 
+--輸出
+create table #tmpa(
+	gno nvarchar(5),
+	age nvarchar(50),--年齡
+	bage int,--起始年齡
+	eage int,--終止年齡
+	pyear int,--年資頁
+	y01 nvarchar(50),--年資
+	y02 nvarchar(50),
+	y03 nvarchar(50),
+	y04 nvarchar(50),
+	y05 nvarchar(50),
+	y06 nvarchar(50),
+	y07 nvarchar(50),
+	y08 nvarchar(50),
+	y09 nvarchar(50),
+	y10 nvarchar(50),
+	y11 nvarchar(50),
+	y12 nvarchar(50),
+	total float
+) 
 
---篩選年齡 
-while(@t_mage<@t_bage) 
-	begin 
-		insert into @tmp(gno ,noa ,namea ,outdate ,indate ,birthday ,workage,age,agerange) 
-		select '0' ,noa ,namea ,outdate ,indate ,birthday ,workage ,age, 
-				convert(nvarchar,@t_mage)+'~'+convert(nvarchar,@t_bmage ) 
-	from @tmp 
-	where age >= @t_mage and age <= @t_bmage 
-		  and age < case when @t_bmage >@t_bage then @t_bage 
-						 else @t_bmage end 
-		  and gno = '7' 
-group by gno ,noa ,namea ,outdate ,indate ,birthday ,workage ,age 
-order by age	
+declare @r_year int=0
+declare @r_pyear int=1
+declare @r_yf nvarchar(10)
+declare @t_ytiele nvarchar(50)
+declare @t_pyear nvarchar(50)
+declare @t_byear nvarchar(50)
+declare @t_eyear nvarchar(50)
+--插入年資表頭
+if(@t_mwage<=@t_bwage)
+begin
+	while(@t_mwage<=@t_bwage)
+	begin
+		if(@r_year>=12)
+		begin
+			set @r_pyear=@r_pyear+1
+			set @r_year=0
+		end
+		
+		set @t_ytiele=case when @t_mwage=(case when @t_mwage+@t_rwage-1>=@t_bwage then @t_bwage else @t_mwage+@t_rwage-1 end)
+		then CAST(@t_mwage as nvarchar(10))+'年' 
+		else CAST(@t_mwage as nvarchar(10))+'~'+CAST((case when @t_mwage+@t_rwage-1>=@t_bwage then @t_bwage else @t_mwage+@t_rwage-1 end) as nvarchar(10))+'年' end
+		
+		if(@r_year=0)
+		begin
+			--產生年資表頭
+			insert #tmpa(gno,pyear,y01)
+			select '1',@r_pyear,@t_ytiele
+			
+			--插入年齡資料
+			insert #tmpa(gno,age,bage,eage,pyear,y01)
+			select '2',age,bage,eage,@r_pyear,(select count(*) from #tmp where (age between b.bage and b.eage) and (FLOOR(years) between @t_mwage and (@t_mwage+@t_rwage-1)))
+			from #tmpb b
+		end
+		else
+		begin
+			set @r_yf= right('00'+cast(@r_year+1 as nvarchar(10)),2)
+			set @t_pyear=cast(@r_pyear as nvarchar(10))
+			
+			--更新年資表頭
+			exec(" update #tmpa set y"+@r_yf+"='"+@t_ytiele+"' where gno='1' and pyear="+@t_pyear+"")
+			
+			set @t_byear=cast(@t_mwage as nvarchar(50))
+			set @t_eyear=cast((case when @t_mwage+@t_rwage-1>=@t_bwage then @t_bwage else @t_mwage+@t_rwage-1 end) as nvarchar(50))
+			
+			--更新年齡資料
+			exec(" update a 
+			set y"+@r_yf+"=(select count(*) from #tmp where (age between a.bage and a.eage) and (FLOOR(years) between "+@t_byear+" and "+@t_eyear+"))
+			from #tmpa a
+			where gno='2' and a.pyear="+@t_pyear+" ")
+		end
+		
+		set @r_year=@r_year+1
+		set @t_mwage=@t_mwage+@t_rwage
+	end
+end
 
-set @t_mage = @t_bmage 
-set @t_bmage = convert(int,@t_bmage)+convert(int,@t_rage)	
+update #tmpa
+set total=isnull(CAST(y01 as int),0)+isnull(CAST(y02 as int),0)+isnull(CAST(y03 as int),0)+isnull(CAST(y04 as int),0)+isnull(CAST(y05 as int),0)+isnull(CAST(y06 as int),0)
++isnull(CAST(y07 as int),0)+isnull(CAST(y08 as int),0)+isnull(CAST(y09 as int),0)+isnull(CAST(y10 as int),0)+isnull(CAST(y11 as int),0)+isnull(CAST(y12 as int),0)
+where gno='2'
 
+insert #tmpa
+select '3',MAX(age),999,999,MAX(pyear)
+,SUM(CAST(y01 as int)),SUM(CAST(y02 as int)),SUM(CAST(y03 as int)),SUM(CAST(y04 as int)),SUM(CAST(y05 as int)),SUM(CAST(y06 as int))
+,SUM(CAST(y07 as int)),SUM(CAST(y08 as int)),SUM(CAST(y09 as int)),SUM(CAST(y10 as int)),SUM(CAST(y11 as int)),SUM(CAST(y12 as int))
+,SUM(total)
+from #tmpa where gno='2'
 
-end 
+select * from #tmpa order by pyear,gno,bage
 
---	select * 
---	from @tmp 
---	where gno='2' and namea='潘沂妤' 
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
 
---篩選年資 
+IF OBJECT_ID('tempdb..#tmpa')is not null
+BEGIN
+   drop table #tmpa
+END
 
-declare @t_bwmage nvarchar(10)= (convert(int,@t_mwage)+convert(int,@t_rwage)) 
-declare @owrage nvarchar(10)=@t_mwage 
-
-while(@t_mwage<@t_bwage) 
-	begin 
-		insert into @tmp(gno ,noa ,namea ,outdate ,indate ,birthday ,workage,age,wagerange,agerange) 
-		select '0' ,noa ,namea ,outdate ,indate ,birthday ,workage 
-				,age,convert(nvarchar,@t_mwage)+'~'+convert(nvarchar,@t_bwmage),agerange 
-		from @tmp 
-		where workage >= @t_mwage and workage < @t_bwmage 
-			  and workage < case when @t_bwmage > @t_bwage then @t_bwage 
-								 else @t_bwmage end  
-			  and gno='2' 
-		order by workage	
-
-set @t_mwage = @t_bwmage 
-set @t_bwmage =convert(int,@t_bwmage)+convert(int,@t_rwage)	
-set @i=@i+1 
-
-end 
--------a1------------- 
-declare @tmp1 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int ) 
-insert into @tmp1(gno,agerange,agecount) 
-select gno,agerange ,case when len(@c1) <>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >=left(@c1,2) and workage< right(@c1,2) and gno='0' 
-group by gno,agerange 
-
-insert into @tmp1 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp1 
-------a2--------------- 
-declare @tmp2 table( gno nvarchar(2),agerange nvarchar (20),agecount int) 
-insert into @tmp2(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c2) <>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >= left(@c2,2) and workage< right(@c2,2) 
-and gno='0' 
-group by gno,agerange 
-
-insert into @tmp2 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp2 
-
-
-------a3--------------- 
-declare @tmp3 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int ) 
-insert into @tmp3(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c3) <>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >= left(@c3,2) and workage< right(@c3,2) 
-	  and gno='0' 
-group by gno,agerange 
-
-insert into @tmp3 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp3 
-
-------a4--------------- 
-declare @tmp4 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp4(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c4) <>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >= left(@c4,2) and workage < right(@c4,2)  and gno='0' 
-group by gno,agerange 
-
-insert into @tmp4 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp4 
-------a5--------------- 
-declare @tmp5 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp5(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c5) <>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >= left(@c5,2) and workage < right(@c5,2) and gno='0' 
-group by gno,agerange 
-
-insert into @tmp5 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp5 
-------a6--------------- 
-declare @tmp6 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp6(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c6) <>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >= left(@c6,2) and workage< right(@c6,2) and gno='0' 
-group by gno,agerange 
-
-insert into @tmp6 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp6 
-------a7--------------- 
-declare @tmp7 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp7(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c7) <>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >= left(@c7,2) and workage< right(@c7,2) and gno='0' 
-group by gno,agerange 
-
-insert into @tmp7 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp7 
-------a8--------------- 
-declare @tmp8 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp8(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c8)<>0 then count(agerange) else 0 end 
-from @tmp 
-where workage >= left(@c8,2) and workage < right(@c8,2) and gno='0' 
-group by gno,agerange 
-
-insert into @tmp8 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp8 
-------a9--------------- 
-declare @tmp9 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp9(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c9)<>0 then count(agerange) else 0 end a2 
-from @tmp 
-where workage >= left(@c9,2) and workage< right(@c9,2)  and gno='0' 
-group by gno,agerange 
-
-insert into @tmp9 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp9 
-------a10--------------- 
-declare @tmp10 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp10(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c10)<>0 then count(agerange) else 0 end a2 
-from @tmp 
-where workage >= left(@c10,2) and workage < right(@c10,2)  and gno='0' 
-group by gno,agerange 
-
-insert into @tmp10 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp10 
-------a11--------------- 
-declare @tmp11 table (gno nvarchar(10),agerange nvarchar(10) ,agecount int) 
-insert into @tmp11(gno,agerange,agecount) 
-select gno, agerange ,case when len(@c11) <>0 then count(agerange) else 0 end a2 
-from @tmp 
-where workage >= left(@c11,2) and workage< right(@c11,2) 
-and gno='0' 
-group by gno,agerange 
-
-insert into @tmp11 (gno ,agecount ) 
-select '1',SUM(agecount) 
-from @tmp11 
-
-
-insert into @tmp(gno,ac1,ac2,ac3,ac4,ac5,ac6,ac7,ac8,ac9,ac10,ac11,ac12) 
-select a.gno, 
-	   case when a.agecount is null then 0 else a.agecount end, 
-	   case when b.agecount is null then 0 else b.agecount end, 
-	   case when c.agecount is null then 0 else c.agecount end, 
-	   case when d.agecount is null then 0 else d.agecount end, 
-	   case when e.agecount is null then 0 else e.agecount end, 
-	   case when f.agecount is null then 0 else f.agecount end, 
-	   case when g.agecount is null then 0 else g.agecount end, 
-	   case when h.agecount is null then 0 else h.agecount end, 
-	   case when i.agecount is null then 0 else i.agecount end, 
-	   case when j.agecount is null then 0 else j.agecount end, 
-	   case when k.agecount is null then 0 else k.agecount end, 
------------------------------------------------------------- 
-	   sum((case when a.agecount IS null then 0 else a.agecount end ) + 
-	   (case when b.agecount IS null then 0 else b.agecount end ) + 
-	   (case when c.agecount is null then 0 else c.agecount end ) + 
-	   (case when d.agecount is null then 0 else d.agecount end ) + 
-	   (case when e.agecount is null then 0 else e.agecount end ) + 
-	   (case when f.agecount is null then 0 else f.agecount end ) + 
-	   (case when g.agecount is null then 0 else g.agecount end ) + 
-	   (case when h.agecount is null then 0 else h.agecount end ) + 
-	   (case when i.agecount is null then 0 else i.agecount end ) + 
-	   (case when j.agecount is null then 0 else j.agecount end ) + 
-	   (case when k.agecount is null then 0 else k.agecount end )) 
------------------------------------------------------------- 
-
-from @tmp1 a left join @tmp2 b on a.gno =b.gno 
-			 left join @tmp3 c on a.gno = c.gno 
-			 left join @tmp4 d on a.gno = d.gno 
-			 left join @tmp5 e on a.gno = e.gno 
-			 left join @tmp6 f on a.gno = f.gno 
-			 left join @tmp7 g on a.gno = g.gno 
-			 left join @tmp8 h on a.gno = h.gno 
-			 left join @tmp9 i on a.gno = i.gno 
-			 left join @tmp10 j on a.gno = j.gno 
-			 left join @tmp11 k on a.gno = k.gno 
-where a.gno='1' 
-group by a.gno ,a.agecount,b.agecount,c.agecount,d.agecount 
-		 ,e.agecount,f.agecount,g.agecount,h.agecount,i.agecount 
-		 ,j.agecount,k.agecount 
-
-update @tmp set a1= 0,a2=0,a3=0,a4=0,a5=0,a6=0,a7=0,a8=0,a9=0,a10=0,a11=0,a12=0 where a1 is null 
-update @tmp set agerange='999~999' where gno='1' 
-
-select a.gno, a.agerange 
-	   ,(case when l.agecount IS null then 0 else l.agecount end ) ab1 
-	   ,(case when b.agecount IS null then 0 else b.agecount end )	ab2 
-	   ,(case when c.agecount is null then 0 else c.agecount end ) ab3 
-	   ,(case when d.agecount is null then 0 else d.agecount end ) ab4 
-	   ,(case when e.agecount is null then 0 else e.agecount end ) ab5 
-	   ,(case when f.agecount is null then 0 else f.agecount end ) ab6 
-	   ,(case when g.agecount is null then 0 else g.agecount end ) ab7 
-	   ,(case when h.agecount is null then 0 else h.agecount end ) ab8 
-	   ,(case when i.agecount is null then 0 else i.agecount end ) ab9 
-	   ,(case when j.agecount is null then 0 else j.agecount end ) ab10 
-	   ,(case when k.agecount is null then 0 else k.agecount end ) ab11 
-, 
-------總計--------------------------------------------------------------- 
-	  (case when l.agecount IS null then 0 else l.agecount end ) + 
-	  (case when b.agecount IS null then 0 else b.agecount end ) + 
-	  (case when c.agecount is null then 0 else c.agecount end ) + 
-	  (case when d.agecount is null then 0 else d.agecount end ) + 
-	  (case when e.agecount is null then 0 else e.agecount end ) + 
-	  (case when f.agecount is null then 0 else f.agecount end ) + 
-	  (case when g.agecount is null then 0 else g.agecount end ) + 
-	  (case when h.agecount is null then 0 else h.agecount end ) + 
-	  (case when i.agecount is null then 0 else i.agecount end ) + 
-	  (case when j.agecount is null then 0 else j.agecount end ) + 
-	  (case when k.agecount is null then 0 else k.agecount end ) toc 
----------------------------------------------------------------------- 
-	 ,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10 b1,a11 b2,a12 b3 
-	 ,a.ac1,a.ac2,a.ac3,a.ac4,a.ac5,a.ac6,a.ac7,a.ac8,a.ac9,a.ac10,a.ac11,a.ac12 
-
-from @tmp a left join @tmp2 b on a.agerange = b.agerange 
-	  	    left join @tmp3 c on a.agerange = c.agerange 
-			left join @tmp4 d on a.agerange = d.agerange 
-			left join @tmp5 e on a.agerange = e.agerange 
-			left join @tmp6 f on a.agerange = f.agerange 
-			left join @tmp7 g on a.agerange = g.agerange 
-			left join @tmp8 h on a.agerange = h.agerange 
-			left join @tmp9 i on a.agerange = i.agerange 
-			left join @tmp10 j on a.agerange = j.agerange 
-			left join @tmp11 k on a.agerange = k.agerange 
-			left join @tmp1 l on l.agerange=a.agerange 
-where a.gno='0' or a.gno='1' or a.gno='6' 
-group by a.gno,a.agerange,b.agecount,c.agecount 
-		,d.agecount,e.agecount,f.agecount ,g.agecount,h.agecount,i.agecount 
-		,j.agecount,k.agecount,l.agecount,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10 ,a11 ,a12 
-		,a.ac1,a.ac2,a.ac3,a.ac4,a.ac5,a.ac6,a.ac7,a.ac8,a.ac9,a.ac10,a.ac11,a.ac12 
-order by a.agerange   ;
+IF OBJECT_ID('tempdb..#tmpb')is not null
+BEGIN
+   drop table #tmpb
+END
+;
 
 -------------------------------------------------------------------------------------------------------------- 
 z_anasss02:--z_anasss02
