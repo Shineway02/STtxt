@@ -1,4 +1,72 @@
-﻿z_ordest5:--z_ordest5
+﻿z_ordest05:--z_ordest05	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
+	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
+	
+	--------------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1),
+		gno nvarchar(10),
+		recno int,
+		accy nvarchar(20),
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		odate nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		ucolor nvarchar(20),
+		scolor nvarchar(20),
+		productno nvarchar(20),
+		size nvarchar(max),
+		mount float,		
+		unit2 nvarchar(10),
+		[weight] float,
+		unit nvarchar(20),
+		price float,
+		memo nvarchar(max),
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		datea nvarchar(10),
+		custorde nvarchar(30)
+	)
+	
+		--訂單編號	開單日	客戶	規範	國別	材質	尺寸 			
+	--數量	重量	單價	備註		廠商	交期	訂單編號/案號
+	insert into @tmp(gno,accy,noa,no2,odate,custno,cust,ucolor,scolor,productno
+		,size,mount,unit2,[weight],unit,price,memo,datea,custorde)
+	select '1',a.accy,a.noa,a.no2,a.odate,a.custno,a.comp,a.ucolor,a.scolor,a.productno
+		,a.size,a.mount,a.unit2,a.[weight],a.unit,a.price,a.memo,a.datea,b.custorde
+	from view_ordes a
+	left join view_orde b on a.accy=b.accy and a.noa=b.noa
+	where isnull(b.odate,'') between @t_bodate and @t_eodate
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	and ISNULL(a.enda,0)=0
+	and ISNULL(b.enda,0)=0
+	
+-----------------	
+	--訂單編號	開單日	客戶	規範	國別	材質	尺寸	數量	重量	單價	備註	廠商	交期	訂單編號/案號	
+	select a.gno
+		,ROW_NUMBER()over(order by a.odate desc,a.noa,a.no2) rr
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.noa +'</a>' a01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.odate +'</a>' a02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.cust +'</a>' a03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.ucolor +'</a>' a04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.scolor +'</a>' a05
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.productno +'</a>' a06
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.size +'</a>' a07
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.mount,-1)+a.unit2 +'</a>' a08 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[weight],-1)+a.unit +'</a>' a09 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[price],-1) +'</a>' a10
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo +'</a>' a11
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.tgg +'</a>' a12
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.datea +'</a>' a13
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.custorde +'</a>' a14
+	from @tmp a
+	order by a.odate desc,a.noa,a.no2;
+
+z_ordest5:--z_ordest5
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
 	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
