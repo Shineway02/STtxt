@@ -26,6 +26,7 @@ z_unobd05:--z_unobd05 批號履歷
 		
 		sprice float,--成本單價
 		sprice2 float,--進貨單價
+		sprice3 float,--出貨單價
 		
 		productno nvarchar(max),
 		product nvarchar(max),
@@ -134,9 +135,11 @@ z_unobd05:--z_unobd05 批號履歷
 			if exists(select * from view_vccs where uno=@uno)
 			begin
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
-					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+					,mount01,weight01,mount02,weight02,sprice,sprice2,sprice3,productno,product,size,memo)
 				select 1,@rank+1,a.uno,'vccs',a.accy,a.noa,a.noq,b.datea 
-					,null,null,a.mount,a.[weight],null,null,a.productno,a.product,a.size,a.memo
+					,null,null,a.mount,a.[weight],null,null
+					,case when isnull(a.[weight],0)=0 then a.price else round(a.total/a.[weight],3) end
+					,a.productno,a.product,a.size,a.memo
 				from view_vccs a
 				left join view_vcc b on a.accy=b.accy and a.noa=b.noa
 				where a.uno=@uno
@@ -278,6 +281,8 @@ z_unobd05:--z_unobd05 批號履歷
 			 else tablea end
 		,memo=REPLACE(memo,'~#$',"'")
 		,product=REPLACE(product,'~#$',"'")
+		,size=REPLACE(size,'~#$',"'")
+
 	select a.* 
 		,'1' gno
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+@t_uno+'</a>' b01--批號 
@@ -305,16 +310,17 @@ z_unobd05:--z_unobd05 批號履歷
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.weight02,-1)+'</a>' a08--領料重量
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice,-1)+'</a>' a09--成本單價
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice2,-1)+'</a>' a10--進貨單價
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.uno+'</a>' a11--批號
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo+'</a>' a12--備註
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' a13--品名
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(a.size,''))=0 then b.size else a.size end+'</a>' a14--規格
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice3,-1)+'</a>' a11--出貨單價
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.uno+'</a>' a12--批號
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo+'</a>' a13--備註
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' a14--品名
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when len(isnull(a.size,''))=0 then b.size else a.size end+'</a>' a15--規格
 	from @history a
 	left join view_uccb b on a.uno=b.uno
 	left join view_uccb c on c.uno=@t_uno
 	left join view_uccc d on d.uno=@t_uno
 	left join store e on c.storeno=e.noa
-	order by a.[rank],a.datea;
+	order by a.[rank],a.datea;;
 
 z_unobd01:--z_unobd01          z_uno1
 declare @t_uno nvarchar(50)
