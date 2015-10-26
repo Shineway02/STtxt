@@ -32,6 +32,7 @@ z_rc2st1:--z_rc2st1
 	begin catch
 		--donothing
 	end catch
+	declare @t_style nvarchar(max) = case when '#non'=[20] then '' else [20] end
 	----------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(1),
@@ -69,7 +70,8 @@ z_rc2st1:--z_rc2st1
 		and (isnull(b.dime,0) between @t_bdime and @t_edime)
 		and (isnull(b.width,0) between @t_bwidth and @t_ewidth)
 		and (isnull(b.lengthb,0) between @t_blength and @t_elength)
-		and (isnull(b.radius,0) between @t_bradius and @t_eradius)		
+		and (isnull(b.radius,0) between @t_bradius and @t_eradius)	
+		and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0)	
 	order by datea desc,gno,noa,noq
 	update @tmp set csize = replace(csize,'~#$','''')
 	insert into @tmp(gno,datea,mount,total)
@@ -87,28 +89,19 @@ z_rc2st1:--z_rc2st1
 	from @tmp order by datea desc,gno,noa,noq;
 --***********************************************************************************
 z_rc2st2:--z_rc2st2
-declare @t_accy nvarchar(10)
-declare @t_bdate nvarchar(10)
-declare @t_edate nvarchar(10)
-declare @t_bmon nvarchar(7)
-declare @t_emon nvarchar(7)
-declare @t_btggno nvarchar(20)
-declare @t_etggno nvarchar(20)
-declare @t_bsalesno nvarchar(20)
-declare @t_esalesno nvarchar(20)
-declare @t_bproductno nvarchar(30)
-declare @t_eproductno nvarchar(30)
-set @t_accy = '[1]'
-set @t_bdate = case when '#non'=[2] then '' else [2] end
-set @t_edate = case when '#non'=[3] then char(255) else [3] end
-set @t_bmon = case when '#non'=[4] then '' else [4] end
-set @t_emon = case when '#non'=[5] then char(255) else [5] end
-set @t_btggno = case when '#non'=[6] then '' else [6] end
-set @t_etggno = case when '#non'=[7] then char(255) else [7] end
-set @t_bsalesno = case when '#non'=[8] then '' else [8] end
-set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
-set @t_bproductno = case when '#non'=[10] then '' else [10] end
-set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @t_accy nvarchar(10) = '[1]'
+declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+declare @t_bmon nvarchar(7) = case when '#non'=[4] then '' else [4] end
+declare @t_emon nvarchar(7) = case when '#non'=[5] then char(255) else [5] end
+declare @t_btggno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+declare @t_etggno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+declare @t_bsalesno nvarchar(20) = case when '#non'=[8] then '' else [8] end
+declare @t_esalesno nvarchar(20) = case when '#non'=[9] then char(255) else [9] end
+declare @t_bproductno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+declare @t_eproductno nvarchar(30) = case when '#non'=[11] then char(255) else [11] end
+declare @t_style nvarchar(max) = case when '#non'=[20] then '' else [20] end
+
 declare @result table(
 	gno nvarchar(10),
 	type nvarchar(10),
@@ -136,14 +129,15 @@ insert into @result
 	       b.mount, b.weight, b.price, b.total, 0 pcount,
 	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
 	       ,a.coin
-	from view_rc2s[1] b
-	left join view_rc2[1] a on a.noa = b.noa
+	from view_rc2s b
+	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
 		  (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) and
-		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
+		  (b.productno between @t_bproductno and @t_eproductno)   
+		  and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0)	    	  
 	order by a.tggno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
 
@@ -162,28 +156,19 @@ select
 from @result order by tggno,gno,datea,noa;
 --***********************************************************************************
 z_rc2st3:--z_rc2st3
-declare @t_accy nvarchar(10)
-declare @t_bdate nvarchar(10)
-declare @t_edate nvarchar(10)
-declare @t_bmon nvarchar(7)
-declare @t_emon nvarchar(7)
-declare @t_btggno nvarchar(20)
-declare @t_etggno nvarchar(20)
-declare @t_bsalesno nvarchar(20)
-declare @t_esalesno nvarchar(20)
-declare @t_bproductno nvarchar(30)
-declare @t_eproductno nvarchar(30)
-set @t_accy = '[1]'
-set @t_bdate = case when '#non'=[2] then '' else [2] end
-set @t_edate = case when '#non'=[3] then char(255) else [3] end
-set @t_bmon = case when '#non'=[4] then '' else [4] end
-set @t_emon = case when '#non'=[5] then char(255) else [5] end
-set @t_btggno = case when '#non'=[6] then '' else [6] end
-set @t_etggno = case when '#non'=[7] then char(255) else [7] end
-set @t_bsalesno = case when '#non'=[8] then '' else [8] end
-set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
-set @t_bproductno = case when '#non'=[10] then '' else [10] end
-set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @t_accy nvarchar(10) = '[1]'
+declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+declare @t_bmon nvarchar(7) = case when '#non'=[4] then '' else [4] end
+declare @t_emon nvarchar(7) = case when '#non'=[5] then char(255) else [5] end
+declare @t_btggno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+declare @t_etggno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+declare @t_bsalesno nvarchar(20) = case when '#non'=[8] then '' else [8] end
+declare @t_esalesno nvarchar(20) = case when '#non'=[9] then char(255) else [9] end
+declare @t_bproductno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+declare @t_eproductno nvarchar(30) = case when '#non'=[11] then char(255) else [11] end
+declare @t_style nvarchar(max) = case when '#non'=[20] then '' else [20] end
+
 declare @result table(
 	gno nvarchar(10),
 	type nvarchar(10),
@@ -208,14 +193,15 @@ insert into @result
 	       b.mount, b.weight, b.price, b.total,
 	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
 	       ,a.coin
-	from view_rc2s[1] b
-	left join view_rc2[1] a on a.noa = b.noa
+	from view_rc2s b
+	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
 		  (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) and
-		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
+		  (b.productno between @t_bproductno and @t_eproductno)   
+		  and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0)	    	  
 	order by b.productno,gno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
 insert into @result(gno,productno,xproduct,csize,mount,weight,total)
@@ -230,28 +216,20 @@ select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,
 from @result order by productno,xproduct,csize,gno,idno;
 --***********************************************************************************
 z_rc2st4:--z_rc2st4
-declare @t_accy nvarchar(10)
-declare @t_bdate nvarchar(10)
-declare @t_edate nvarchar(10)
-declare @t_bmon nvarchar(7)
-declare @t_emon nvarchar(7)
-declare @t_btggno nvarchar(20)
-declare @t_etggno nvarchar(20)
-declare @t_bsalesno nvarchar(20)
-declare @t_esalesno nvarchar(20)
-declare @t_bproductno nvarchar(30)
-declare @t_eproductno nvarchar(30)
-set @t_accy = '[1]'
-set @t_bdate = case when '#non'=[2] then '' else [2] end
-set @t_edate = case when '#non'=[3] then char(255) else [3] end
-set @t_bmon = case when '#non'=[4] then '' else [4] end
-set @t_emon = case when '#non'=[5] then char(255) else [5] end
-set @t_btggno = case when '#non'=[6] then '' else [6] end
-set @t_etggno = case when '#non'=[7] then char(255) else [7] end
-set @t_bsalesno = case when '#non'=[8] then '' else [8] end
-set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
-set @t_bproductno = case when '#non'=[10] then '' else [10] end
-set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+declare @t_accy nvarchar(10) = '[1]'
+declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+declare @t_bmon nvarchar(7) = case when '#non'=[4] then '' else [4] end
+declare @t_emon nvarchar(7) = case when '#non'=[5] then char(255) else [5] end
+declare @t_btggno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+declare @t_etggno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+declare @t_bsalesno nvarchar(20) = case when '#non'=[8] then '' else [8] end
+declare @t_esalesno nvarchar(20) = case when '#non'=[9] then char(255) else [9] end
+declare @t_bproductno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+declare @t_eproductno nvarchar(30) = case when '#non'=[11] then char(255) else [11] end
+declare @t_style nvarchar(max) = case when '#non'=[20] then '' else [20] end
+
+
 declare @result table(
 	gno nvarchar(10),
 	type nvarchar(10),
@@ -276,14 +254,15 @@ insert into @result
 			 isnull(c.comp,''), b.productno, b.product, b.unit,b.mount, b.weight, b.price, b.total,a.memo,
 			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
 			 ,a.coin
-	from view_rc2s[1] b
-	left join view_rc2[1] a on a.noa = b.noa
+	from view_rc2s b
+	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
 	where (a.datea between @t_bdate and @t_edate) and
 		  ((case when a.mon='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 		  (a.tggno between @t_btggno and @t_etggno) and
 		  (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) and
-		  (b.productno between @t_bproductno and @t_eproductno)   	    	  
+		  (b.productno between @t_bproductno and @t_eproductno)  
+		  and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0) 	    	  
 	order by a.tggno,b.productno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
 insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)

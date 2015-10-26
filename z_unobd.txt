@@ -149,10 +149,13 @@ z_unobd05:--z_unobd05 批號履歷
 			begin
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
 					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
-				select 1,@rank+1,a.uno,'gets',a.accy,a.noa,a.noq,b.datea 
+				select 1,@rank+1,a.uno
+					,case when c.noa is null then 'gets' else 'vccs' end
+					,a.accy,a.noa,a.noq,b.datea 
 					,null,null,a.gmount,a.[gweight],null,null,a.productno,a.product,a.size,a.memo
 				from view_gets a
 				left join view_get b on a.accy=b.accy and a.noa=b.noa
+				left join view_vcc c on a.noa=c.noa
 				where uno=@uno
 			end
 			--裁剪
@@ -320,7 +323,7 @@ z_unobd05:--z_unobd05 批號履歷
 	left join view_uccb c on c.uno=@t_uno
 	left join view_uccc d on d.uno=@t_uno
 	left join store e on c.storeno=e.noa
-	order by a.[rank],a.datea;;
+	order by a.[rank],a.datea;
 
 z_unobd01:--z_unobd01          z_uno1
 declare @t_uno nvarchar(50)
