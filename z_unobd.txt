@@ -138,7 +138,9 @@ z_unobd05:--z_unobd05 批號履歷
 					,mount01,weight01,mount02,weight02,sprice,sprice2,sprice3,productno,product,size,memo)
 				select 1,@rank+1,a.uno,'vccs',a.accy,a.noa,a.noq,b.datea 
 					,null,null,a.mount,a.[weight],null,null
-					,case when isnull(a.[weight],0)=0 then a.price else round(a.total/a.[weight],3) end
+					--單價改為實際出貨單價   (鄭小姐 2015/10/26)
+					,a.price
+					--,case when isnull(a.[weight],0)=0 then a.price else round(a.total/a.[weight],3) end
 					,a.productno,a.product,a.size,a.memo
 				from view_vccs a
 				left join view_vcc b on a.accy=b.accy and a.noa=b.noa
