@@ -181,7 +181,7 @@ vcc2cng_rb:--vcc2cng_rb
 		--產生新的歸還單
 		if(@new_cngno='')
 		begin
-			set @new_cngno=isnull((select top 1 noa from view_cng where noa like 'XE'+REPLACE(@cngdate,'/','')+'%'),'XE'+REPLACE(@cngdate,'/','')+'000')
+			set @new_cngno=isnull((select MAX(noa) from view_cng where noa like 'XE'+REPLACE(@cngdate,'/','')+'%'),'XE'+REPLACE(@cngdate,'/','')+'000')
 			set @new_cngno=LEFT(@new_cngno,9)+right('000'+cast(cast(RIGHT(@new_cngno,3) as int)+1 as nvarchar(10)),3)
 		end
 		else
