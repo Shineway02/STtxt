@@ -19,6 +19,7 @@ z_unobd05:--z_unobd05 批號履歷
 		custno nvarchar(20),
 		comp nvarchar(50),
 		
+		
 		mount01 float,--入庫數量
 		weight01 float,--入庫重量
 		mount02 float,--領料數量
@@ -27,6 +28,7 @@ z_unobd05:--z_unobd05 批號履歷
 		sprice float,--成本單價
 		sprice2 float,--進貨單價
 		sprice3 float,--出貨單價
+		unit3 nvarchar(20),--出貨單位
 		
 		productno nvarchar(max),
 		product nvarchar(max),
@@ -135,13 +137,15 @@ z_unobd05:--z_unobd05 批號履歷
 			if exists(select * from view_vccs where uno=@uno)
 			begin
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
-					,mount01,weight01,mount02,weight02,sprice,sprice2,sprice3,productno,product,size,memo)
+					,mount01,weight01,mount02,weight02,sprice,sprice2,sprice3,productno,product,size,memo
+					,unit3)
 				select 1,@rank+1,a.uno,'vccs',a.accy,a.noa,a.noq,b.datea 
 					,null,null,a.mount,a.[weight],null,null
 					--單價改為實際出貨單價   (鄭小姐 2015/10/26)
 					,a.price
 					--,case when isnull(a.[weight],0)=0 then a.price else round(a.total/a.[weight],3) end
 					,a.productno,a.product,a.size,a.memo
+					,a.unit
 				from view_vccs a
 				left join view_vcc b on a.accy=b.accy and a.noa=b.noa
 				where a.uno=@uno
@@ -315,7 +319,7 @@ z_unobd05:--z_unobd05 批號履歷
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.weight02,-1)+'</a>' a08--領料重量
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice,-1)+'</a>' a09--成本單價
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice2,-1)+'</a>' a10--進貨單價
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice3,-1)+'</a>' a11--出貨單價
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.sprice3,-1)+case when len(a.unit3)>0 then a.unit3 else '' end+'</a>' a11--出貨單價
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.uno+'</a>' a12--批號
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo+'</a>' a13--備註
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.product+'</a>' a14--品名
