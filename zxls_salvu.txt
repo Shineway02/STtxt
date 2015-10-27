@@ -113,7 +113,7 @@ begin
 		--加班都*1.33
 		update #bbs
 		set w133=round((cast(datediff(MINUTE,noa+' '+@t_offwork,noa+' '+clockout) as float)/60),1)
-		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>@t_offwork
+		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@t_offwork
 		
 		--更新備註
 		update a
@@ -136,10 +136,19 @@ begin
 	else
 	begin
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)
-		-(case when round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
-		,memo='假日加班'
-		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!=''
+		set w100= --上班時間小於正常上班時間已正常上班時間
+		round((cast(datediff(MINUTE,noa+' '+(case when clockin < @t_gowork then @t_gowork else clockin end)
+		,noa+' '+(case when clockout>@t_offwork then @t_offwork else clockout end)) as float)/60),1)
+		-(case when round((cast(datediff(MINUTE,noa+' '+(case when clockin < @t_gowork then @t_gowork else clockin end)
+		,noa+' '+(case when clockout>@t_offwork then @t_offwork else clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+		,memo='值班'
+		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+		
+		--超過8小時 移至加班
+		update #bbs
+		set w133=round((cast(datediff(MINUTE,noa+' '+@t_offwork,noa+' '+clockout) as float)/60),1)
+		,memo=memo+(case when len(memo)>0 then ',' else '' end)+'加班'
+		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@t_offwork
 	end
 	----------------------------------------------------------
 	--現場----------------------------------------------------
@@ -196,12 +205,36 @@ begin
 	end
 	else
 	begin
+		--早班
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)
-		-(case when round((cast(datediff(MINUTE,noa+' '+clockin,noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
-		,memo='假日加班'
-		where charindex('現場',stype)>0
-		and isnull(clockin,'')!='' and isnull(clockout,'')!=''
+		set w100=
+		round((cast(datediff(MINUTE,noa+' '+(case when clockin < @a_gowork then @a_gowork else clockin end)
+		,noa+' '+(case when clockout>@a_offwork then @a_offwork else clockout end)) as float)/60),1)
+		-(case when round((cast(datediff(MINUTE,noa+' '+(case when clockin < @a_gowork then @a_gowork else clockin end)
+		,noa+' '+(case when clockout>@a_offwork then @a_offwork else clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+		,memo='值班'
+		where charindex('現場早班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!=''
+		
+		--超過8小時 移至加班
+		update #bbs
+		set w133=round((cast(datediff(MINUTE,noa+' '+@a_offwork,noa+' '+clockout) as float)/60),1)
+		,memo=memo+(case when len(memo)>0 then ',' else '' end)+'加班'
+		where charindex('現場早班',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@a_offwork
+		
+		--晚班
+		update #bbs
+		set w100=
+		round((cast(datediff(MINUTE,noa+' '+(case when clockin < @b_gowork then @b_gowork else clockin end)
+		,noa+' '+(case when clockout>@b_offwork then @b_offwork else clockout end)) as float)/60),1)
+		,memo='值班'
+		where charindex('現場晚班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!=''
+		
+		--超過8小時 移至加班
+		update #bbs
+		set w133=round((cast(datediff(MINUTE,noa+' '+@b_offwork,noa+' '+clockout) as float)/60),1)
+		,memo=memo+(case when len(memo)>0 then ',' else '' end)+'加班'
+		where charindex('現場晚班',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@b_offwork
+	
 	end
 	----------------------------------------------------------
 	insert #bbm
@@ -283,11 +316,22 @@ begin
 		else
 		begin
 			update a
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)
-			-(case when round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
-			,memo='假日加班'
+			set w100= --上班時間小於正常上班時間已正常上班時間
+			round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @t_gowork then @t_gowork else a.clockin end)
+			,a.noa+' '+(case when a.clockout>@t_offwork then @t_offwork else a.clockout end)) as float)/60),1)
+			-(case when round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @t_gowork then @t_gowork else a.clockin end)
+			,a.noa+' '+(case when a.clockout>@t_offwork then @t_offwork else a.clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+			,memo='值班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('辦公室',b.typea)>0
 			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!=''
+			
+			--超過8小時 移至加班
+			update a
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@t_offwork,a.noa+' '+a.clockout) as float)/60),1)
+			,memo=a.memo+(case when len(a.memo)>0 then ',' else '' end)+'加班'
+			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('辦公室',b.typea)>0
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and a.clockout>=@t_offwork
+		
 		end
 		----------------------------------------------------------
 		--現場----------------------------------------------------
@@ -352,13 +396,39 @@ begin
 		end
 		else
 		begin
+			--早班
 			update a
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)
-			-(case when round((cast(datediff(MINUTE,a.noa+' '+clockin,a.noa+' '+clockout) as float)/60),1)>8 then 1 else 0 end)--超過8小時扣除休息時間
-			,memo='假日加班'
-			from salpresents a left join sss b on a.sssno=b.noa
-			where charindex('現場',b.typea)>0
-			and isnull(clockin,'')!='' and isnull(clockout,'')!=''
+			set w100=
+			round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @a_gowork then @a_gowork else a.clockin end)
+			,a.noa+' '+(case when a.clockout>@a_offwork then @a_offwork else a.clockout end)) as float)/60),1)
+			-(case when round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @a_gowork then @a_gowork else a.clockin end)
+			,a.noa+' '+(case when a.clockout>@a_offwork then @a_offwork else a.clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+			,memo='值班'
+			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場早班',b.typea)>0
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!=''
+			
+			--超過8小時 移至加班
+			update a
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@a_offwork,a.noa+' '+a.clockout) as float)/60),1)
+			,memo=a.memo+(case when len(a.memo)>0 then ',' else '' end)+'加班'
+			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場早班',b.typea)>0
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and a.clockout>=@a_offwork
+			
+			--晚班
+			update a
+			set w100=
+			round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @b_gowork then @b_gowork else a.clockin end)
+			,a.noa+' '+(case when a.clockout>@b_offwork then @b_offwork else a.clockout end)) as float)/60),1)
+			,memo='值班'
+			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場晚班',b.typea)>0
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!=''
+			
+			--超過8小時 移至加班
+			update #bbs
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@b_offwork,a.noa+' '+a.clockout) as float)/60),1)
+			,memo=a.memo+(case when len(a.memo)>0 then ',' else '' end)+'加班'
+			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場晚班',b.typea)>0
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and a.clockout>=@b_offwork
 		end
 		----------------------------------------------------------
 			
