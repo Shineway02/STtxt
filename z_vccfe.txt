@@ -19,6 +19,7 @@ declare @qhref_acomp nvarchar(10) ='fe'
 declare @vcctypea nvarchar(10) =''
 declare @t_partno nvarchar(30)
 declare @t_cno nvarchar(max) = case when '#non'=[35] then '' else [35] end
+declare @taxtype nvarchar(10) 
 -------------------------------------------------------------------------------------------------------
 set @t_bdate = case when '#non'=[4] then '' else [4] end
 set @t_edate = case when '#non'=[5] then char(255) else [5] end
@@ -37,6 +38,7 @@ set @t_salesgroup = case when '#non' = [19] then '' else [19] end
 set @t_showinvono = case when '#non' = [22] then 0 else [22] end
 set @vcctypea = case when '#non' = [20] then '' else [20] end
 set @t_partno = case when '#non' = [21] then '' else [21] end
+set @taxtype = case when '#non' = [36] then '' else [36] end
 if(@t_project='VU')
 	set @qhref_acomp='_vu'
 --***********************************************************************************
@@ -60,7 +62,7 @@ declare @result table(
 	price float,
 	total float,
 	qhref nvarchar(max),
-	invono nvarchar(30),
+	invono nvarchar(max),
 	idate nvarchar(30),
 	imoney float,
 	itax float,
@@ -85,7 +87,7 @@ insert into @result
 		  and (len(@t_salesgroup)=0 or s.salesgroup=@t_salesgroup)
 		  and (isnull(c.tggno,'') between @t_btggno and @t_etggno) and (len(@vcctypea)=0 or a.typea = @vcctypea) 
 		  and (len(@t_partno)=0 or s.partno=@t_partno)
-		  and (len(@t_cno)=0 or @t_cno=a.cno)
+		  and (len(@taxtype)=0 or @taxtype=a.taxtype)
 	order by a.datea,gno,noa,noq
 	
 if(@t_showinvono='1')
