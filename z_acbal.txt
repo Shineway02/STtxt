@@ -1,0 +1,105 @@
+z_acbal01:--z_acbal01
+
+SET QUOTED_IDENTIFIER OFF
+
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @accy nvarchar(5)
+
+set @t_bdate = case when '#non'=[3] then '' else [3] end
+set @t_edate = case when '#non'=[4] then char(255) else [4] end
+set @accy = LEFT(@t_bdate,3)
+---------------------------------------------------------------------------------
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+---------------------------------------------------------------------------------
+declare @cmd nvarchar(max)
+
+create table #tmp(
+	gno nvarchar(1),
+	accc5 nvarchar(20),
+	accc6 nvarchar(max),
+	accc2 nvarchar(20),
+	bal nvarchar(50),
+	accc3 nvarchar(30),
+	accc7 nvarchar(max),
+	money1 float,
+	money2 float,
+	total float
+)
+
+--accc5 1開頭:dmoney-cmoney,2開頭:cmoney-dmoney
+
+set @cmd = 
+	"insert into #tmp 
+	select '0',accc5,accc6,accc2,bal,accc3,accc7,
+		   case when LEFT(accc5,1)='1' then dmoney else cmoney end,
+		   case when LEFT(accc5,1)='1' then cmoney else dmoney end,0
+	from acccs"+@accy+"_1
+	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and 
+		  (LEFT(accc5,1)='1' or LEFT(accc5,1)='2') and (LEN(bal)>0)"
+	
+execute sp_executesql @cmd
+
+update #tmp set total = money1 - money2
+
+insert into #tmp(gno,accc5,accc7,money1,money2)
+select '1',accc5,accc7,SUM(money1),SUM(money2) from #tmp group by accc5,accc7
+
+insert into #tmp(gno,accc5,accc7,total)
+select '2',accc5,MAX(accc7),SUM(total) from #tmp group by accc5
+
+select *,dbo.getComma(total,0)ttl,dbo.getComma(money1,0)mny1,dbo.getComma(money2,0)mny2 from #tmp order by accc5,accc7,gno,accc2
+
+drop table #tmp;
+--*******************************************************************************
+z_acbal02:--z_acbal02
+
+SET QUOTED_IDENTIFIER OFF
+
+declare @t_bdate nvarchar(10)
+declare @t_edate nvarchar(10)
+declare @accy nvarchar(5)
+
+set @t_bdate = case when '#non'=[3] then '' else [3] end
+set @t_edate = case when '#non'=[4] then char(255) else [4] end
+set @accy = LEFT(@t_bdate,3)
+---------------------------------------------------------------------------------
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	drop table #tmp
+END
+---------------------------------------------------------------------------------
+declare @cmd nvarchar(max)
+
+create table #tmp(
+	gno nvarchar(1),
+	accc5 nvarchar(20),
+	accc6 nvarchar(max),
+	bal nvarchar(50),
+	accc7 nvarchar(max),
+	total float
+)
+
+--accc5 1開頭:dmoney-cmoney,2開頭:cmoney-dmoney
+
+
+set @cmd = 
+	"insert into #tmp 
+	select '0',accc5,accc6,bal,accc7,
+		   case when LEFT(accc5,1)='1' then SUM(dmoney-cmoney) else SUM(cmoney - dmoney) end
+	from acccs"+@accy+"_1
+	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and 
+		  (LEFT(accc5,1)='1' or LEFT(accc5,1)='2') and (LEN(bal)>0) 
+	group by accc5,accc6,bal,accc7"
+	
+execute sp_executesql @cmd
+
+insert into #tmp(gno,accc5,total)
+select '1',accc5,SUM(total) from #tmp group by accc5
+
+select *,dbo.getComma(total,0)ttl from #tmp order by accc5,gno,bal
+
+drop table #tmp;
