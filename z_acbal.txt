@@ -6,9 +6,9 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @accy nvarchar(5)
 
-set @t_bdate = case when '#non'=[3] then '' else [3] end
-set @t_edate = case when '#non'=[4] then char(255) else [4] end
-set @accy = LEFT(@t_bdate,3)
+set @t_bdate = case when '#non' = [3] then '' else [3] end
+set @t_edate = case when '#non' = [4] then '' else [4] end
+set @accy = case when LEN(dbo.split(@t_bdate,'/',0))>3 then CAST(CAST(dbo.split(@t_bdate,'/',0)as int)-1911 as nvarchar(5)) else dbo.split(@t_bdate,'/',0) end
 ---------------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
 BEGIN
@@ -25,6 +25,7 @@ create table #tmp(
 	bal nvarchar(50),
 	accc3 nvarchar(30),
 	accc7 nvarchar(max),
+	money0 float,
 	money1 float,
 	money2 float,
 	total float
@@ -34,24 +35,42 @@ create table #tmp(
 
 set @cmd = 
 	"insert into #tmp 
-	select '0',accc5,accc6,accc2,bal,accc3,accc7,
+	select '0',accc5,accc6,accc2,bal,accc3,accc7,0,
 		   case when LEFT(accc5,1)='1' then dmoney else cmoney end,
 		   case when LEFT(accc5,1)='1' then cmoney else dmoney end,0
 	from acccs"+@accy+"_1
 	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and 
 		  (LEFT(accc5,1)='1' or LEFT(accc5,1)='2') and (LEN(bal)>0)"
-	
 execute sp_executesql @cmd
 
 update #tmp set total = money1 - money2
 
-insert into #tmp(gno,accc5,accc7,money1,money2)
-select '1',accc5,accc7,SUM(money1),SUM(money2) from #tmp group by accc5,accc7
+set @cmd = 
+	"update #tmp set money0 = ISNULL(b.money0,0)
+	from #tmp a
+	left join(
+		select bal,accc5,accc6,case when LEFT(accc5,1)='1' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money0
+		from acccs"+@accy+"_1
+		where (accc2 between '01/01' and RIGHT('"+@t_bdate+"',5)) and 
+			  (LEFT(accc5,1)='1' or LEFT(accc5,1)='2') and (LEN(bal)>0)
+		group by bal,accc5,accc6  
+	)b on a.bal = b.bal and a.accc5 = b.accc5 and a.accc6 = b.accc6"
+execute sp_executesql @cmd
 
-insert into #tmp(gno,accc5,accc7,total)
-select '2',accc5,MAX(accc7),SUM(total) from #tmp group by accc5
+insert into #tmp(gno,accc5,accc6,bal,money1,money2)
+select '1',accc5,accc6,bal,SUM(money1),SUM(money2) from #tmp group by accc5,accc6,bal
 
-select *,dbo.getComma(total,0)ttl,dbo.getComma(money1,0)mny1,dbo.getComma(money2,0)mny2 from #tmp order by accc5,accc7,gno,accc2
+insert into #tmp(gno,accc5,accc6,bal,money1,money2,total)
+select '2',accc5,accc6,MAX(bal),SUM(money1),SUM(money2),SUM(total) 
+from #tmp where gno = '0' group by accc5,accc6
+
+select 
+	*,
+	dbo.getComma(total ,0)ttl,
+	dbo.getComma(money0,0)mny0,
+	dbo.getComma(money1,0)mny1,
+	dbo.getComma(money2,0)mny2 
+from #tmp order by accc5,accc6,bal,gno,accc2
 
 drop table #tmp;
 --*******************************************************************************
@@ -63,9 +82,9 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @accy nvarchar(5)
 
-set @t_bdate = case when '#non'=[3] then '' else [3] end
-set @t_edate = case when '#non'=[4] then char(255) else [4] end
-set @accy = LEFT(@t_bdate,3)
+set @t_bdate = case when '#non' = [3] then '' else [3] end
+set @t_edate = case when '#non' = [4] then '' else [4] end
+set @accy = case when LEN(dbo.split(@t_bdate,'/',0))>3 then CAST(CAST(dbo.split(@t_bdate,'/',0)as int)-1911 as nvarchar(5)) else dbo.split(@t_bdate,'/',0) end
 ---------------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
 BEGIN
@@ -79,27 +98,44 @@ create table #tmp(
 	accc5 nvarchar(20),
 	accc6 nvarchar(max),
 	bal nvarchar(50),
-	accc7 nvarchar(max),
+	bmoney float,
+	dmoney float,
+	cmoney float,
 	total float
 )
 
 --accc5 1開頭:dmoney-cmoney,2開頭:cmoney-dmoney
-
-
 set @cmd = 
 	"insert into #tmp 
-	select '0',accc5,accc6,bal,accc7,
+	select '0',accc5,accc6,bal,0,SUM(dmoney),SUM(cmoney),
 		   case when LEFT(accc5,1)='1' then SUM(dmoney-cmoney) else SUM(cmoney - dmoney) end
 	from acccs"+@accy+"_1
 	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and 
 		  (LEFT(accc5,1)='1' or LEFT(accc5,1)='2') and (LEN(bal)>0) 
-	group by accc5,accc6,bal,accc7"
-	
+	group by accc5,accc6,bal"
 execute sp_executesql @cmd
 
-insert into #tmp(gno,accc5,total)
-select '1',accc5,SUM(total) from #tmp group by accc5
+set @cmd = 
+	"update #tmp set bmoney = ISNULL(b.bmoney,0)
+	from #tmp a
+	left join(
+		select bal,accc5,accc6,case when LEFT(accc5,1)='1' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end bmoney
+		from acccs"+@accy+"_1
+		where (accc2 between '01/01' and RIGHT('"+@t_bdate+"',5)) and 
+			  (LEFT(accc5,1)='1' or LEFT(accc5,1)='2') and (LEN(bal)>0)
+		group by bal,accc5,accc6  
+	)b on a.bal = b.bal and a.accc5 = b.accc5 and a.accc6 = b.accc6"
+execute sp_executesql @cmd
 
-select *,dbo.getComma(total,0)ttl from #tmp order by accc5,gno,bal
+insert into #tmp(gno,accc5,accc6,bmoney,dmoney,cmoney,total)
+select '1',accc5,accc6,SUM(bmoney),SUM(dmoney),SUM(cmoney),SUM(total) from #tmp group by accc5,accc6
+
+select 
+	*,
+	dbo.getComma(bmoney,0)bmny,
+	dbo.getComma(dmoney,0)dmny,
+	dbo.getComma(cmoney,0)cmny,
+	dbo.getComma(total,0) ttl 
+from #tmp order by accc5,accc6,gno,bal
 
 drop table #tmp;
