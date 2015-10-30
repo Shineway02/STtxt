@@ -4,7 +4,8 @@
 	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
 	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
 	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
-	
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	--------------------------------------------------------------------------------------------------------
 	declare @tmp table(
 		sel int identity(1,1),
@@ -36,14 +37,16 @@
 	--數量	重量	單價	備註		廠商	交期	訂單編號/案號
 	insert into @tmp(gno,accy,noa,no2,odate,custno,cust,ucolor,scolor,productno
 		,size,mount,unit2,[weight],unit,price,memo,datea,custorde)
-	select '1',a.accy,a.noa,a.no2,a.odate,a.custno,a.comp,a.ucolor,a.scolor,a.productno
+	select '1',a.accy,a.noa,a.no2,a.odate,a.custno,c.nick,a.ucolor,a.scolor,a.productno
 		,a.size,a.mount,a.unit2,a.[weight],a.unit,a.price,a.memo,a.datea,b.custorde
 	from view_ordes a
 	left join view_orde b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on b.custno=c.noa
 	where isnull(b.odate,'') between @t_bodate and @t_eodate
 	and ISNULL(a.datea,'') between @t_bdate and @t_edate
 	and ISNULL(a.enda,0)=0
 	and ISNULL(b.enda,0)=0
+	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
 	
 -----------------	
 	--訂單編號	開單日	客戶	規範	國別	材質	尺寸	數量	重量	單價	備註	廠商	交期	訂單編號/案號	
@@ -55,7 +58,7 @@
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.ucolor +'</a>' a04
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.scolor +'</a>' a05
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.productno +'</a>' a06
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.size +'</a>' a07
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(a.size,'~#$',"'") +'</a>' a07
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.mount,-1)+a.unit2 +'</a>' a08 
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[weight],-1)+a.unit +'</a>' a09 
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[price],-1) +'</a>' a10
