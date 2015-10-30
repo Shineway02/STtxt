@@ -152,7 +152,7 @@ batchvcca_rb:--batchvcca_rb
 		,case when isnull((select top 1 addr_invo from cust where noa=dbo.split(@t_buyerno,'^^',recno-1)),'')!='' then 
 		isnull((select top 1 addr_invo from cust where noa=dbo.split(@t_buyerno,'^^',recno-1)),'')
 		else isnull((select top 1 addr_invo from cust where noa=b.custno),'') end
-		,b.taxtype
+		,'1'
 		,b.money/@t_vccacount
 		,b.tax/@t_vccacount
 		,b.total/@t_vccacount
@@ -165,10 +165,30 @@ batchvcca_rb:--batchvcca_rb
 		+(SIN(cast(SUBSTRING(a.vccano,6,2) as int))*cast(SUBSTRING(a.vccano,8,3) as int)*100) as int)as nvarchar(10)),6)
 		from @vcca a outer apply (select * from view_orde where noa=@t_ordeno) b
 		
-		insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea,ordeno,no2)
-		select b.vccano,a.no2,a.custno,a.productno,a.product,a.unit,1
-		,round(a.total/@t_vccacount,0),round(a.total/@t_vccacount,0),@t_datea,a.noa,a.no2
-		from view_ordes a , @vcca b where a.noa=@t_ordeno
+		
+		if((select taxtype from view_orde where noa=@t_ordeno)='3')
+		begin
+			insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea,ordeno,no2)
+			select b.vccano,a.no2,a.custno,a.productno,a.product,a.unit,1
+			,round(round(a.total/@t_vccacount,0)/1.05,0)
+			,round(round(a.total/@t_vccacount,0)/1.05,0)
+			,@t_datea,a.noa,a.no2
+			from view_ordes a , @vcca b where a.noa=@t_ordeno
+			
+			update a
+			set money=(select SUM(money) from vccas where noa=a.noa)
+			,tax=total-isnull((select SUM(money) from vccas where noa=a.noa),0)
+			from vcca a 
+			where exists (select * from @vcca where vccano=a.noa)
+		end
+		else
+		begin
+			insert vccas(noa,noq,custno,productno,product,unit,mount,price,money,datea,ordeno,no2)
+			select b.vccano,a.no2,a.custno,a.productno,a.product,a.unit,1
+			,round(a.total/@t_vccacount,0),round(a.total/@t_vccacount,0),@t_datea,a.noa,a.no2
+			from view_ordes a , @vcca b where a.noa=@t_ordeno
+		end
+		
 		
 		--set @x_vccano=stuff((select ','+vccano from @vcca for xml path('')),1,1,'') 
 		set @x_vccano=isnull(stuff((select ','+noa from vcca where trdno=@t_ordeno FOR XML PATH('')),1,1,''),'')
