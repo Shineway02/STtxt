@@ -6,6 +6,8 @@
 	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
 	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
 	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	declare @t_bproductno3 nvarchar(max) = case when '#non'=[34] then '' else [34] end
+	declare @t_eproductno3 nvarchar(max) = case when '#non'=[35] then '' else [35] end
 	--------------------------------------------------------------------------------------------------------
 	declare @tmp table(
 		sel int identity(1,1),
@@ -47,6 +49,7 @@
 	and ISNULL(a.enda,0)=0
 	and ISNULL(b.enda,0)=0
 	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
+	and isnull(a.productno,'') between @t_bproductno3 and @t_eproductno3
 	
 -----------------	
 	--訂單編號	開單日	客戶	規範	國別	材質	尺寸	數量	重量	單價	備註	廠商	交期	訂單編號/案號	
