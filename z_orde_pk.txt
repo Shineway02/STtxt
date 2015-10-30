@@ -25,7 +25,7 @@ declare @tmp1 table(
 
 	s_ucolor nvarchar(30),
 	s_scolor nvarchar(30),
-	s_pno nvarchar(90),
+	s_pno nvarchar(100),
 	s_size nvarchar(30),
 	s_mount float,
 	s_munit nvarchar(10),
@@ -44,7 +44,9 @@ insert into @tmp1
 select '0',a.noa,a.odate,b.datea,a.nick,a.custorde+ '   ' + a.contract,
 	   case when LEN(dbo.split(a.addr2,'/',0)) > 0 then dbo.split(a.addr2,'/',0) + '/' + dbo.split(a.addr2,'/',1)else + dbo.split(a.addr2,'/',1) end,
 	   dbo.split(a.addr2,'/',2),a.memo,--簽單號碼
-	   b.ucolor,b.scolor,b.productno,b.size,b.mount,b.unit2,
+	   b.ucolor,b.scolor,
+	   case when LEN(b.productno)>0 then b.productno else b.product end,
+	   b.size,b.mount,b.unit2,
 	   case when CHARINDEX('show',@t_show)>0 then b.weight else null end,
 	   b.price,b.unit,b.memo,
 	   c.uno,c.productno,CAST(d.dime as nvarchar(10))+'x'+CAST(d.width as nvarchar(10))+'x'+CAST(d.lengthb as nvarchar(10)),c.mount
@@ -406,4 +408,4 @@ select gno,noa,odate,datea,nick,custorde,comptel,addr,memo,
 	   s_memo1,s_memo2,s_memo3,s_memo4,s_memo5,s_memo6,s_memo7,s_memo8,s_memo9,s_memo10,
 	   t_uno1,t_uno2,t_uno3,t_uno4,t_uno5,t_pno1,t_pno2,t_pno3,t_pno4,t_pno5,
 	   t_size1,t_size2,t_size3,t_size4,t_size5,t_mount1,t_mount2,t_mount3,t_mount4,t_mount5
-from @tmp2  ;
+from @tmp2;
