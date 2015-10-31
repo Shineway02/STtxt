@@ -404,12 +404,13 @@ declare @tmp table(
 )
 insert into @tmp
 select 
-	'0',ROW_NUMBER()over (order by a.noa),a.frame,a.noa,a.spec,b.mount,
+	'0',ROW_NUMBER()over (order by a.noa),a.frame,a.noa,a.spec,SUM(b.mount),
 	case when a.usetype = '1' then '設備課' else '製造課' end,
 	a.datea
 from model a
 left join models b on a.noa = b.noa
 where (a.datea between @t_bdate and @t_edate) and (a.noa between @t_bnoa and @t_enoa) and (a.frame between @t_bframe and @t_eframe)
+group by a.frame,a.noa,a.spec,a.usetype,a.datea
 
 --補滿行數
 declare @noa nvarchar(30)
