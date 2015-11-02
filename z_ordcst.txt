@@ -19,6 +19,7 @@
 		size nvarchar(100),
 		mount float,
 		[weight] float,
+		weight2 float,
 		
 		
 		noq nvarchar(10),
@@ -51,9 +52,15 @@
 	from @tmp a
 	left join (select sel,ROW_NUMBER()over(order by accy,noa,no2,recno) recno from @tmp) b on a.sel=b.sel 
 	
-	insert into @tmp(gno,accy,[weight],gweight)
+	update @tmp set weight2=isnull([weight],0)-isnull(b.gweight,0)
+	from @tmp a
+	left join (select accy,noa,no2,SUM(isnull(gweight,0)) gweight from @tmp group by accy,noa,no2) b 
+		on a.accy=b.accy and a.noa=b.noa and a.no2=b.no2 
+	
+	insert into @tmp(gno,accy,[weight],[weight2],gweight)
 	select '3',CHAR(255)
 		,SUM(case when recno=1 then ISNULL([weight],0) else 0 end)
+		,SUM(ISNULL(weight2,0))
 		,SUM(ISNULL(gweight,0))
 	from @tmp
 	
@@ -63,6 +70,7 @@
 		,size a02
 		,noa+'-'+no2 a03
 		,dbo.getComma([weight],-1) a04
+		,dbo.getComma([weight2],-1) a05
 		,ordeno+'-'+no4 b01
 		,cust b02
 		,dbo.getComma(gweight,-1) b03
