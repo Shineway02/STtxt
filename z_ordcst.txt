@@ -1,4 +1,84 @@
-﻿z_ordcst1:--z_ordcst1
+﻿z_ordcst05:--z_ordcst05	    pk
+	SET QUOTED_IDENTIFIER OFF 
+	declare @cmd nvarchar(max) 
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_btggno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_etggno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	------------------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1),
+		recno int,
+		recno2 int,
+		gno nvarchar(10),
+		accy nvarchar(10),
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		productno nvarchar(20),
+		product nvarchar(100),
+		size nvarchar(100),
+		mount float,
+		[weight] float,
+		weight2 float,
+		
+		
+		noq nvarchar(10),
+		ordeno nvarchar(20),
+		no4 nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		gweight float
+		
+	)
+	insert into @tmp(accy,noa,no2,productno,product,size,mount,[weight]
+		,noq,ordeno,no4,custno,cust,gweight)
+	select a.accy,a.noa,a.no2,a.productno,a.product,a.size,a.mount,a.[weight]
+		,c.noq,c.ordeno,c.no4,c.custno,c.cust,c.[weight]
+	from view_ordcs a
+	left join view_ordc b on a.accy=b.accy and a.noa=b.noa
+	left join view_ordct c on a.accy=c.accy and a.noa=c.noa and a.no2=c.no2
+	where b.datea between @t_bdate and @t_edate
+	and b.tggno between @t_btggno and @t_etggno
+	and isnull(a.enda,0)=0
+	and ISNULL(b.enda,0)=0 
+	
+	update @tmp set recno=b.recno
+	from @tmp a
+	left join (select row_number()over(partition by accy,noa,no2 order by noq) recno,sel from @tmp) b on a.sel=b.sel
+	
+	update @tmp set gno=case when recno=1 then '1' else '2' end
+	
+	update @tmp set recno2=b.recno
+	from @tmp a
+	left join (select sel,ROW_NUMBER()over(order by accy,noa,no2,recno) recno from @tmp) b on a.sel=b.sel 
+	
+	update @tmp set weight2=isnull([weight],0)-isnull(b.gweight,0)
+	from @tmp a
+	left join (select accy,noa,no2,SUM(isnull(gweight,0)) gweight from @tmp group by accy,noa,no2) b 
+		on a.accy=b.accy and a.noa=b.noa and a.no2=b.no2 
+	
+	insert into @tmp(gno,accy,[weight],[weight2],gweight)
+	select '3',CHAR(255)
+		,SUM(case when recno=1 then ISNULL([weight],0) else 0 end)
+		,SUM(ISNULL(weight2,0))
+		,SUM(ISNULL(gweight,0))
+	from @tmp
+	
+	select gno 
+		,recno2 rr
+		,product a01
+		,size a02
+		,noa+'-'+no2 a03
+		,dbo.getComma([weight],-1) a04
+		,dbo.getComma([weight2],-1) a05
+		,ordeno+'-'+no4 b01
+		,cust b02
+		,dbo.getComma(gweight,-1) b03
+	from @tmp
+	order by accy,noa,no2,recno;
+
+
+z_ordcst1:--z_ordcst1
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bodate nvarchar(10)

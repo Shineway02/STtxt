@@ -2,15 +2,16 @@ z_modfix_rs01:--z_modfix_rs01
 
 SET QUOTED_IDENTIFIER OFF
 
-declare @t_bmodnoa nvarchar(30)
-declare @t_emodnoa nvarchar(30)
+declare @t_bnoa nvarchar(30)
+declare @t_enoa nvarchar(30)
 	
-set @t_bmodnoa= case when '#non' = [1] then '' else [1] end
-set @t_emodnoa= case when '#non' = [2] then CHAR(255) else [2] end
+set @t_bnoa= case when '#non' = [1] then '' else [1] end
+set @t_enoa= case when '#non' = [2] then CHAR(255) else [2] end
 ------------------------------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
 	rec int,
+	noa nvarchar(50),
 	modnoa nvarchar(50),
 	mechno nvarchar(50),
 	datea nvarchar(30),
@@ -25,14 +26,13 @@ insert into @tmp
 select
 	case when CHARINDEX('成型段',b.detail1)>0 then '0' else '1' end,
 	ROW_NUMBER()over(partition by a.modnoa,LEFT(b.detail1,3) order by b.code1),
-	a.modnoa,a.mechno,a.datea,b.code1,b.detail1,b.frame1,SUM(b.mount1),b.way1,SUM(b.weight1)
+	a.noa,a.modnoa,a.mechno,a.datea,b.code1,b.detail1,b.frame1,SUM(b.mount1),b.way1,0
 from modfix a
 left join modfixs b on a.noa = b.noa
-where (a.modnoa between @t_bmodnoa and @t_emodnoa)
-group by a.modnoa,a.mechno,a.datea,b.code1,b.detail1,b.frame1,b.way1
+where (a.noa between @t_bnoa and @t_enoa)
+group by a.noa,a.modnoa,a.mechno,a.datea,b.code1,b.detail1,b.frame1,b.way1
 
-
-declare @modnoa nvarchar(50)
+declare @noa nvarchar(50)
 declare @cnt0 int
 declare @cnt1 int
 declare @cnt  int
@@ -40,36 +40,36 @@ declare @max  int
 declare @i    int
 
 declare cursor_table cursor for 
-select modnoa from @tmp group by modnoa
+select noa from @tmp group by noa
 open cursor_table 
 fetch next from cursor_table 
-into @modnoa
+into @noa
 while(@@FETCH_STATUS <> -1) 
 begin
-	set @cnt0 = (select COUNT(*) from @tmp where gno = '0' and modnoa = @modnoa)
-	set @cnt1 = (select COUNT(*) from @tmp where gno = '1' and modnoa = @modnoa)
+	set @cnt0 = (select COUNT(*) from @tmp where gno = '0' and noa = @noa)
+	set @cnt1 = (select COUNT(*) from @tmp where gno = '1' and noa = @noa)
 	
 	if(@cnt0 > @cnt1)
 	begin
 		set @cnt = @cnt0
-		set @max = (select MAX(rec) from @tmp where gno = '0' and modnoa = @modnoa)
+		set @max = (select MAX(rec) from @tmp where gno = '0' and noa = @noa)
 		set @i = 0
 		while(@i < 25-@cnt%25)
 		begin
-			insert into @tmp(gno,rec,modnoa)
-			select '0',@max+1,@modnoa
+			insert into @tmp(gno,rec,noa)
+			select '0',@max+1,@noa
 			
 			set @max = @max + 1
 			set @i   = @i   + 1
 		end
-		set @cnt  = (select COUNT(*) from @tmp where gno = '0' and modnoa = @modnoa)
-		set @cnt1 = (select COUNT(*) from @tmp where gno = '1' and modnoa = @modnoa)
-		set @max  = (select MAX(rec) from @tmp where gno = '1' and modnoa = @modnoa)
+		set @cnt  = (select COUNT(*) from @tmp where gno = '0' and modnoa = @noa)
+		set @cnt1 = (select COUNT(*) from @tmp where gno = '1' and modnoa = @noa)
+		set @max  = (select MAX(rec) from @tmp where gno = '1' and modnoa = @noa)
 		set @i = 0
 		while(@i < @cnt-@cnt1)
 		begin
-			insert into @tmp(gno,rec,modnoa)
-			select '1',@max+1,@modnoa
+			insert into @tmp(gno,rec,noa)
+			select '1',@max+1,@noa
 			
 			set @max = @max + 1
 			set @i   = @i   + 1
@@ -78,24 +78,24 @@ begin
 	else
 	begin
 		set @cnt = @cnt1
-		set @max = (select MAX(rec) from @tmp where gno = '1' and modnoa = @modnoa)
+		set @max = (select MAX(rec) from @tmp where gno = '1' and noa = @noa)
 		set @i = 0
 		while(@i < 25-@cnt%25)
 		begin
-			insert into @tmp(gno,rec,modnoa)
-			select '1',@max+1,@modnoa
+			insert into @tmp(gno,rec,noa)
+			select '1',@max+1,@noa
 			
 			set @max = @max + 1
 			set @i   = @i   + 1
 		end
-		set @cnt  = (select COUNT(*) from @tmp where gno = '1' and modnoa = @modnoa)
-		set @cnt1 = (select COUNT(*) from @tmp where gno = '0' and modnoa = @modnoa)
-		set @max  = (select MAX(rec) from @tmp where gno = '0' and modnoa = @modnoa)
+		set @cnt  = (select COUNT(*) from @tmp where gno = '1' and noa = @noa)
+		set @cnt1 = (select COUNT(*) from @tmp where gno = '0' and noa = @noa)
+		set @max  = (select MAX(rec) from @tmp where gno = '0' and noa = @noa)
 		set @i = 0
 		while(@i < @cnt-@cnt1)
 		begin
-			insert into @tmp(gno,rec,modnoa)
-			select '0',@max+1,@modnoa
+			insert into @tmp(gno,rec,noa)
+			select '0',@max+1,@noa
 			
 			set @max = @max + 1
 			set @i   = @i   + 1
@@ -103,16 +103,32 @@ begin
 	end
 	
 	fetch next from cursor_table 
-	into @modnoa
+	into @noa
 end 
 close cursor_table 
 deallocate cursor_table 
 
+
+
+update @tmp set weight = b.weight
+from @tmp a
+left join(
+	select noa,MAX(weight1)weight from modfixs where CHARINDEX('成型段',detail1)>0 group by noa
+)b on a.noa = b.noa and a.rec = '1'
+where gno = '0'
+
+update @tmp set weight = b.weight
+from @tmp a
+left join(
+	select noa,MAX(weight1)weight from modfixs where CHARINDEX('定徑段',detail1)>0 group by noa
+)b on a.noa = b.noa and a.rec = '1'
+where gno = '1'
+
 select 
-	a.gno,a.modnoa,a.mechno,a.datea,
+	a.gno,a.rec,a.noa,a.modnoa,a.mechno,a.datea,
 	a.code code1,a.detail detail1,a.frame frame1,a.mount mount1,a.way way1,a.weight weight1,
 	b.code code2,b.detail detail2,b.frame frame2,b.mount mount2,b.way way2,b.weight weight2
 from(select * from @tmp where gno = '0')a
-left join(select * from @tmp where gno = '1')b on a.modnoa=b.modnoa and a.rec=b.rec
+left join(select * from @tmp where gno = '1')b on a.noa=b.noa and a.rec=b.rec
 
-order by a.modnoa,a.rec;
+order by a.noa,a.rec;

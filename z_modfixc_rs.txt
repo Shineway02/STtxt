@@ -2,15 +2,16 @@ z_modfixc_rs01:--z_modfixc_rs01
 
 SET QUOTED_IDENTIFIER OFF
 	
-declare @t_bmodnoa nvarchar(30)
-declare @t_emodnoa nvarchar(30)
+declare @t_bnoa nvarchar(30)
+declare @t_enoa nvarchar(30)
 
-set @t_bmodnoa= case when '#non' = [1] then '' else [1] end
-set @t_emodnoa= case when '#non' = [2] then CHAR(255) else [2] end
+set @t_bnoa= case when '#non' = [1] then '' else [1] end
+set @t_enoa= case when '#non' = [2] then CHAR(255) else [2] end
 ---------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
 	rec int,
+	noa nvarchar(30),
 	modnoa nvarchar(50),
 	mech nvarchar(50),
 	code nvarchar(50),
@@ -26,44 +27,44 @@ declare @tmp table(
 )
 insert into @tmp
 select 
-	'0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.modnoa,a.mech,b.code,b.detail,b.frame,SUM(b.mount),b.way,MIN(b.bebottom),MIN(b.enbottom),
+	'0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame,SUM(b.mount),b.way,MIN(b.bebottom),MIN(b.enbottom),
 	MIN(REPLACE(b.datea1,'-',' ')),MAX(REPLACE(b.datea2,'-',' ')),b.worker
 from modfixc a
 left join modfixcs b on a.noa = b.noa
-where(a.modnoa between @t_bmodnoa and @t_emodnoa)
-group by  a.modnoa,a.mech,b.code,b.detail,b.frame,b.way,b.worker
+where(a.noa between @t_bnoa and @t_enoa)
+group by  a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame,b.way,b.worker
 
-declare @modnoa nvarchar(50)
+declare @noa nvarchar(50)
 declare @cnt  int
 declare @max  int
 declare @i    int
 
 declare cursor_table cursor for 
-select modnoa from @tmp group by modnoa
+select noa from @tmp group by noa
 open cursor_table 
 fetch next from cursor_table 
-into @modnoa
+into @noa
 while(@@FETCH_STATUS <> -1) 
 begin
-	set @cnt = (select COUNT(*) from @tmp where modnoa = @modnoa)
-	set @max = (select MAX(rec) from @tmp where modnoa = @modnoa)
+	set @cnt = (select COUNT(*) from @tmp where noa = @noa)
+	set @max = (select MAX(rec) from @tmp where noa = @noa)
 	set @i = 0
 	while(@i < 25-@cnt%25)
 	begin
-		insert into @tmp(gno,rec,modnoa)
-		select '0',@max+1,@modnoa
+		insert into @tmp(gno,rec,noa)
+		select '0',@max+1,@noa
 			
 		set @max = @max + 1
 		set @i   = @i   + 1
 	end
 	
 	fetch next from cursor_table 
-	into @modnoa
+	into @noa
 end 
 close cursor_table 
 deallocate cursor_table 
 
-select * from @tmp order by modnoa,rec;
+select * from @tmp order by noa,rec;
 --****************************************************************
 z_modfixc_rs02:--z_modfixc_rs02
 declare @t_bdate nvarchar(20)

@@ -20,7 +20,7 @@ set @t_kind = case when '#non'=[9] then '' else [9] end
 ---------------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
-	rec int,
+	rec int,--104/10/30排序:申報月份,型,日期,發票號碼
 	kind nvarchar(50),
 	mon nvarchar(50),
 	datea nvarchar(50),
@@ -35,7 +35,7 @@ declare @tmp table(
 --"0@,1@應稅,6@作廢,2@零稅率,3@內含,4@免稅,5@自訂"
 insert into @tmp
 select 
-	'0',ROW_NUMBER() over (order by kind,mon,datea,noa),kind,mon,datea,noa,money,tax,'',
+	'0',ROW_NUMBER() over (order by mon,kind,datea,noa),kind,mon,datea,noa,money,tax,'',
 	case when taxtype='0' then ''
 		 when taxtype='1' then '應稅'
 		 when taxtype='2' then '零稅率'
@@ -55,7 +55,7 @@ select '1',MAX(rec),SUM(money),SUM(tax) from @tmp
 update @tmp set total = money+tax where gno = '1'
 
 select *,dbo.getComma(money,0)mny,dbo.getComma(tax,0)tx,dbo.getComma(total,0)ttl
-from @tmp order by rec;
+from @tmp order by rec,gno;
 
 
 
