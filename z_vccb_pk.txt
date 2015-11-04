@@ -552,21 +552,29 @@ select
 gno,idno,noa,left(ticketday,3) + ' 年 ' + substring(ticketday,5,2) + ' 月 ' + right(ticketday,2) + ' 日 ' ticketday,
 	a1,a2,a3,a4,a5,a6,a7,a8,t_name,t_addr,typea1,typea2,
 	c1,c2,c3,c4,c5,by1,bm1,bd1,by2,bm2,bd2,by3,bm3,bd3,by4,bm4,bd4,by5,bm5,bd5,s1,s2,s3,s4,s5,v1,v2,v3,v4,v5,
-	pno1,pno2,pno3,pno4,pno5,product1,product2,product3,product4,product5,
-	dbo.getComma(m1,-1) m1,dbo.getComma(m2,-1) m2,dbo.getComma(m3,-1) m3,dbo.getComma(m4,-1) m4,dbo.getComma(m5,-1) m5, 
-	dbo.getComma(price1,-1) price1,dbo.getComma(price2,-1) price2,dbo.getComma(price3,-1) price3,dbo.getComma(price4,-1) price4,dbo.getComma(price5,-1) price5, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total1),1)),4,12)) total1, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total2),1)),4,12)) total2, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total3),1)),4,12)) total3, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total4),1)),4,12)) total4, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,total5),1)),4,12)) total5, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,totals),1)),4,12)) totals, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax1),1)),4,12)) tax1, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax2),1)),4,12)) tax2, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax3),1)),4,12)) tax3, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax4),1)),4,12)) tax4, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,tax5),1)),4,12)) tax5, 
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,taxs),1)),4,12)) taxs,
-	tt11,tt12,tt13,tt14,tt15,tt21,tt22,tt23,tt24,tt25,tt31,tt32,tt33,tt34,tt35,
+	pno1,pno2,pno3,pno4,pno5,product1,product2,product3,product4,product5
+	,case when m1=0 then null else dbo.getComma(m1,-1) end m1
+	,case when m2=0 then null else dbo.getComma(m2,-1) end m2
+	,case when m3=0 then null else dbo.getComma(m3,-1) end m3
+	,case when m4=0 then null else dbo.getComma(m4,-1) end m4
+	,case when m5=0 then null else dbo.getComma(m5,-1) end m5
+	,case when price1=0 then null else dbo.getComma(price1,-1) end price1
+	,case when price2=0 then null else dbo.getComma(price2,-1) end price2
+	,case when price3=0 then null else dbo.getComma(price3,-1) end price3
+	,case when price4=0 then null else dbo.getComma(price4,-1) end price4
+	,case when price5=0 then null else dbo.getComma(price5,-1) end price5
+	,dbo.getComma(total1,-1) total1
+	,dbo.getComma(total2,-1) total2
+	,dbo.getComma(total3,-1) total3
+	,dbo.getComma(total4,-1) total4
+	,dbo.getComma(total5,-1) total5
+	,dbo.getComma(totals,-1) totals
+	,dbo.getComma(tax1,-1) tax1
+	,dbo.getComma(tax2,-1) tax2
+	,dbo.getComma(tax3,-1) tax3
+	,dbo.getComma(tax4,-1) tax4
+	,dbo.getComma(tax5,-1) tax5
+	,dbo.getComma(taxs,-1) taxs
+	,tt11,tt12,tt13,tt14,tt15,tt21,tt22,tt23,tt24,tt25,tt31,tt32,tt33,tt34,tt35,
 	dbo.getComma(summny,-1) summny,b_name,b_serial ,b_addr
 from @tmpa  ;
