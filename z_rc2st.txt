@@ -147,11 +147,11 @@ update @result set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len
 
 select  
 	gno,type,noa,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit,csize
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight 
-	,isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total 
-	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pcount),1)),0,30)) pcount,qhref,
+	,dbo.getComma(mount,-1) mount 
+	,dbo.getComma(weight,-1) weight 
+	,isnull(coin+' ','')+dbo.getComma(price,-1)price 
+	,dbo.getComma(total,0)total 
+	,dbo.getComma(pcount,-1) pcount,qhref,
 	row_number()over(partition by tggno,comp order by tggno,gno,datea,noa) idno
 from @result order by tggno,gno,datea,noa;
 --***********************************************************************************
@@ -207,11 +207,11 @@ update @result set csize = replace(csize,'~#$','''')
 insert into @result(gno,productno,xproduct,csize,mount,weight,total)
 	select '1',productno,xproduct,csize,sum(mount),sum(weight),sum(total) from @result where gno='0' group by productno,xproduct,csize
 update @result set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,csize,
-	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
-	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight ,
-	isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price,
-	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,qhref,
+select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,csize
+	,dbo.getComma(mount,-1) mount
+	,dbo.getComma(weight,-1) weight	
+	,isnull(coin+' ','')+ dbo.getComma(price,-1) price
+	,dbo.getComma(total,0) total,qhref,
 	row_number()over(partition by productno,xproduct,csize order by productno,xproduct,gno,datea,noa) idno
 from @result order by productno,xproduct,csize,gno,idno;
 --***********************************************************************************
@@ -270,11 +270,11 @@ insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
 insert into @result(gno,tggno,comp,productno,mount,weight,total)
 	select '2',tggno,comp,char(255),sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp
 update @result set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct, unit,csize,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),0,30)) mount,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,weight),1)),0,30)) weight,
-		isnull(coin+' ','')+reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(price)),1)),4,12))+'.'+cast(floor((price*1000)-(floor(price)*1000)) as nvarchar) price ,
-		reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,total),1)),4,30)) total,qhref,
+select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct, unit,csize
+	,dbo.getComma(mount,-1)  mount
+	,dbo.getComma(weight,-1)  weight
+	,isnull(coin+' ','')+dbo.getComma(price,-1)  price 
+	,dbo.getComma(total,0)  total,qhref,
 		row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno
 from @result order by tggno,productno,gno,datea;
 --***********************************************************************************
