@@ -42,7 +42,9 @@ select
 		 when taxtype='3' then '內含'
 		 when taxtype='4' then '免稅'
 		 when taxtype='5' then '自訂'
-		 when taxtype='6' then '作廢' end,
+		 when taxtype='6' then '作廢' 
+		 when taxtype='D' then '空白' 
+		 end,
 	serial,memo
 from vcct
 where(datea between @t_bdate and @t_edate) and (noa between @t_bnoa and @t_enoa) and
@@ -56,6 +58,3 @@ update @tmp set total = money+tax where gno = '1'
 
 select *,dbo.getComma(money,0)mny,dbo.getComma(tax,0)tx,dbo.getComma(total,0)ttl
 from @tmp order by rec,gno;
-
-
-
