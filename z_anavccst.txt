@@ -453,6 +453,7 @@ z_anavccst01:--z_anavccst01
 	declare @t_detail nvarchar(max)= case when '#non'=[8] then '' else [8] end
 	declare @t_kind nvarchar(max)= case when '#non'=[9] then '' else [9] end
 	-----------------------------------------------------------------------------------
+	-----------------------------------------------------------------------------------
 	declare @tmp table(
 		rr1 int,
 		rr2 int,
@@ -486,6 +487,7 @@ z_anavccst01:--z_anavccst01
 	)
 
 	--運費都平均分攤
+	--出貨單 VCCS  有批號的才抓
 	insert into @tmp(gno,noa,noq,typea,datea,custno,salesno,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total
 		,sprice,floata,vcctranmoney,vccweight)
 	select '2',a.noa,a.noq,isnull(b.typea,'0'),isnull(b.datea,'0'),b.custno,b.salesno,a.productno,a.product,a.style,a.uno
@@ -501,8 +503,7 @@ z_anavccst01:--z_anavccst01
 	and isnull(b.datea,'') between @t_bdate and @t_edate
 	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
 	and (@t_kind='全部' or (@t_kind='鋼捲' and b.kind!='B2') or (@t_kind='鋼管' and b.kind='B2') )
-	
-
+	--抓退貨的單價
 	update @tmp set sprice=isnull(b.sprice,0)
 	from @tmp a
 	outer apply(select top 1 z.sprice
@@ -517,7 +518,27 @@ z_anavccst01:--z_anavccst01
 		order by x.datea,x.noa
 		) b
 	where a.typea!='1'
+	--領料單 GETS  有批號的才抓
+	insert into @tmp(gno,noa,noq,typea,datea,custno,salesno,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total
+		,sprice,floata,vcctranmoney,vccweight)
+	select '2',a.noa,a.noq,isnull(d.typea,'0'),isnull(d.datea,'0'),d.custno,d.salesno,a.productno,a.product,a.style,a.uno
+		,replace(case when len(a.size)>0 then a.size when len(e.size)>0 then e.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))
+		,a.class,a.spec
+		,a.unit,a.[weight],a.mount,e.sprice,ROUND(a.weight*e.sprice,0),isnull(e.sprice,0),d.floata,d.tranmoney,f.[weight]
+	from view_gets a
+	left join view_get b on a.accy=b.accy and a.noa=b.noa
+	left join view_vccs c on a.noa=c.noa and a.nor=c.noq
+	left join view_vcc d on c.accy=d.accy and c.noa=d.noa
+	left join view_uccb e on a.uno=e.uno
+	outer apply (select sum(isnull([weight],0)) [weight] from view_gets where accy=a.accy and noa=a.noa and (len(isnull(uno,''))>0 or dime!=0)) f
+	where d.noa is not null
+	and len(isnull(a.uno,''))>0
+	and isnull(d.datea,'') between @t_bdate and @t_edate
+	and isnull(d.custno,'') between @t_bcustno and @t_ecustno
+	and (@t_kind='全部' or (@t_kind='鋼捲' and d.kind!='B2') or (@t_kind='鋼管' and d.kind='B2') )
+
 	
+	--   有運費時,重量不可為0, -99999錯誤提示用 
 	update @tmp set stotal = round(isnull(a.[weight],0) * isnull(a.sprice,0) * case when isnull(a.floata,0)=0 then 1 else a.floata end,0)
 		,tranmoney =case when a.[vccweight]=0 then -99999 else round(a.vcctranmoney*a.[weight]/a.[vccweight],0) end
 	from @tmp a
@@ -559,11 +580,17 @@ z_anavccst01:--z_anavccst01
 	,a.price a1
 	,a.mount a2
 	,case when a.gno='3' then CAST(cast(round(a.weight,0) as int) as nvarchar) else CAST(a.weight as nvarchar) end  a3
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) a4
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.stotal),1)),4,12)) a5
-	,case when a.tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.tranmoney),1)),4,12)) end a6
-	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.profit),1)),4,12)) a7
+	,dbo.getComma(a.total,0) a4
+	,dbo.getComma(a.stotal,0) a5
+	,case when a.tranmoney=0 and gno='2' then '' else dbo.getComma(a.tranmoney,0) end a6
+	,dbo.getComma(a.profit,0) a7
 	,case when isnull(a.total,0)=0  then null else cast(round(isnull(a.profit,0)/isnull(a.total,0)*100,2) as decimal(20,2)) end a8
+	
+	--,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) a4
+	--,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.stotal),1)),4,12)) a5
+	--,case when a.tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.tranmoney),1)),4,12)) end a6
+	--,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.profit),1)),4,12)) a7
+	--,case when isnull(a.total,0)=0  then null else cast(round(isnull(a.profit,0)/isnull(a.total,0)*100,2) as decimal(20,2)) end a8
 	,ghref = 'z_unost?$uno?'
 	from @tmp a
 	left join cust b on a.custno=b.noa
