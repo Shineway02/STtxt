@@ -342,7 +342,11 @@ z_anavccst02:--z_anavccst02
 		set @string = SUBSTRING(@string,@n+1,LEN(@string)-@n)
 	end
 	-----------------------------------------------------------------------------------
-	declare @tmp table(
+	IF OBJECT_ID('tempdb..#z_anavccst02')is not null
+	BEGIN
+		drop table #z_anavccst02
+	END
+	create table #z_anavccst02(
 		rr1 int,
 		rr2 int,
 		gno nvarchar(10),
@@ -372,7 +376,7 @@ z_anavccst02:--z_anavccst02
 		profit float,
 		rate float
 	)
-	insert into @tmp(gno,noa,noq,typea,custno,salesno,uccgano,uccganame,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal,tranmoney)
+	insert into #z_anavccst02(gno,noa,noq,typea,custno,salesno,uccgano,uccganame,productno,product,style,uno,csize,class,spec,unit,[weight],mount,price,total,sprice,stotal,tranmoney)
 	select '2',a.noa,a.noq,isnull(b.typea,'0'),b.custno,b.salesno,isnull(d.groupano,''),isnull(e.namea,''),a.productno,a.product,a.style,a.uno
 	,replace(case when len(a.size)>0 then a.size when len(c.size)>0 then c.size else dbo.csize(a.style,a.dime,a.width,a.lengthb,a.radius) end,'~#$',char(39))
 	,a.class,a.spec
@@ -392,35 +396,40 @@ z_anavccst02:--z_anavccst02
 	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
 	and ((len(isnull(d.groupano,''))=0 and exists(select * from #item where len(noa)=0)) or f.noa is not null)
 	
-	update @tmp set [weight] = case when typea='1' then 1 else -1 end * [weight] 
+	update #z_anavccst02 set [weight] = case when typea='1' then 1 else -1 end * [weight] 
 		,mount = case when typea='1' then 1 else -1 end * [mount] 
 		,total = case when typea='1' then 1 else -1 end * [total] 
 		,stotal = case when typea='1' then 1 else -1 end * [stotal] 
 	
-	update @tmp set profit = total-stotal-tranmoney,rate = case when total=0 then 0 else round((total-stotal-tranmoney)/total*100,0) end
+	update #z_anavccst02 set profit = total-stotal-tranmoney,rate = case when total=0 then 0 else round((total-stotal-tranmoney)/total*100,0) end
 	
-	insert into @tmp(gno,uccgano,uccganame,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
-	select '1',uccgano,uccganame,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from @tmp group by uccgano,uccganame
+	insert into #z_anavccst02(gno,uccgano,uccganame,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
+	select '1',uccgano,uccganame,'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from #z_anavccst02 group by uccgano,uccganame
 	
-	insert into @tmp(gno,uccgano,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
-	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from @tmp where gno='2'
+	insert into #z_anavccst02(gno,uccgano,noa,noq,[weight],mount,total,stotal,tranmoney,profit)
+	select '3',CHAR(255),'','',SUM([weight]),SUM(mount),SUM(total),SUM(stotal),SUM(tranmoney),SUM(profit) from #z_anavccst02 where gno='2'
 	
-	update @tmp set rr1=b.recno,rr2=c.recno
-	from @tmp a
-	left join (select ROW_NUMBER()over(order by total desc)recno,uccgano from @tmp where gno='1') b on a.uccgano=b.uccgano
-	left join (select ROW_NUMBER()over(partition by uccgano order by noa,noq) recno,noa,noq,uccgano from @tmp) c on a.noa=c.noa and a.noq=c.noq and a.uccgano=c.uccgano
+	update #z_anavccst02 set rr1=b.recno
+	from #z_anavccst02 a
+	left join (select ROW_NUMBER()over(order by total desc)recno,uccgano from #z_anavccst02 where gno='1') b on a.uccgano=b.uccgano
+	
+	update #z_anavccst02 set rr2=c.recno
+	from #z_anavccst02 a
+	left join (select ROW_NUMBER()over(partition by uccgano order by noa,noq) recno,noa,noq,uccgano from #z_anavccst02) c on a.noa=c.noa and a.noq=c.noq and a.uccgano=c.uccgano
+	
+	
 	
 	if(len(@t_detail)=0)
 	begin
-		delete @tmp where gno='2'
+		delete #z_anavccst02 where gno='2'
 	end
 	else
 	begin
-		update @tmp set gno='4' where gno='1'
+		update #z_anavccst02 set gno='4' where gno='1'
 	end
 	
-	update @tmp set gno='5' where profit<0 and gno='1'
-	update @tmp set gno='6' where profit<0 and gno='4'
+	update #z_anavccst02 set gno='5' where profit<0 and gno='1'
+	update #z_anavccst02 set gno='6' where profit<0 and gno='4'
 	
 	select a.*
 	,a.uccgano+'.'+a.uccganame uccga
@@ -435,9 +444,11 @@ z_anavccst02:--z_anavccst02
 	,case when a.tranmoney=0 and gno='2' then '' else reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.tranmoney),1)),4,12)) end a6
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.profit),1)),4,12)) a7
 	,case when a.total=0 then 0 else cast(round(a.profit/a.total*100,2) as decimal(18,2)) end a8
-	from @tmp a
+	from #z_anavccst02 a
 	left join cust b on a.custno=b.noa
-	order by case when rr1 is null then char(255) else ''end,rr1,rr2;
+	order by case when rr1 is null then char(255) else ''end,rr1,rr2
+	
+	drop table #z_anavccst02;
 
 z_anavccst01:--z_anavccst01
 	SET QUOTED_IDENTIFIER OFF
