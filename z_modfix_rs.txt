@@ -13,7 +13,7 @@ declare @tmp table(
 	rec int,
 	noa nvarchar(50),
 	modnoa nvarchar(50),
-	mechno nvarchar(50),
+	mech nvarchar(40),
 	datea nvarchar(30),
 	code nvarchar(30),
 	detail nvarchar(30),
@@ -26,11 +26,11 @@ insert into @tmp
 select
 	case when CHARINDEX('成型段',b.detail1)>0 then '0' else '1' end,
 	ROW_NUMBER()over(partition by a.modnoa,LEFT(b.detail1,3) order by b.code1),
-	a.noa,a.modnoa,a.mechno,a.datea,b.code1,b.detail1,b.frame1,SUM(b.mount1),b.way1,0
+	a.noa,a.modnoa,a.mech,a.datea,b.code1,b.detail1,b.frame1,SUM(b.mount1),b.way1,0
 from modfix a
 left join modfixs b on a.noa = b.noa
 where (a.noa between @t_bnoa and @t_enoa)
-group by a.noa,a.modnoa,a.mechno,a.datea,b.code1,b.detail1,b.frame1,b.way1
+group by a.noa,a.modnoa,a.mech,a.datea,b.code1,b.detail1,b.frame1,b.way1
 
 declare @noa nvarchar(50)
 declare @cnt0 int
@@ -125,7 +125,7 @@ left join(
 where gno = '1'
 
 select 
-	a.gno,a.rec,a.noa,a.modnoa,a.mechno,a.datea,
+	a.gno,a.rec,a.noa,a.modnoa,a.mech,a.datea,
 	a.code code1,a.detail detail1,a.frame frame1,a.mount mount1,a.way way1,a.weight weight1,
 	b.code code2,b.detail detail2,b.frame frame2,b.mount mount2,b.way way2,b.weight weight2
 from(select * from @tmp where gno = '0')a
