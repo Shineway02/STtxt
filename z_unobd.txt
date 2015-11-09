@@ -4,6 +4,7 @@ z_unobd05:--z_unobd05 批號履歷
 	set @t_uno = rtrim(ltrim(@t_uno))
 	declare @t_cubtype nvarchar(max) = case when '#non' = '[3]' then '' else '[3]' end
 	---------------------------------------------------------------------------------------
+	---------------------------------------------------------------------------------------
 	declare @history table(
 		sel int identity(1,1),
 		rr int,
@@ -18,8 +19,7 @@ z_unobd05:--z_unobd05 批號履歷
 		datea nvarchar(20),
 		custno nvarchar(20),
 		comp nvarchar(50),
-		
-		
+				
 		mount01 float,--入庫數量
 		weight01 float,--入庫重量
 		mount02 float,--領料數量
@@ -142,7 +142,7 @@ z_unobd05:--z_unobd05 批號履歷
 				select 1,@rank+1,a.uno,'vccs',a.accy,a.noa,a.noq,b.datea 
 					,null,null,a.mount,a.[weight],null,null
 					--單價改為實際出貨單價   (鄭小姐 2015/10/26)
-					,a.price
+					,case when ISNULL(b.floata,0)=0 then a.price else round(b.floata*a.price,2) end
 					--,case when isnull(a.[weight],0)=0 then a.price else round(a.total/a.[weight],3) end
 					,a.productno,a.product,a.size,a.memo
 					,a.unit
@@ -154,15 +154,18 @@ z_unobd05:--z_unobd05 批號履歷
 			if exists(select * from view_gets where uno=@uno)
 			begin
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
-					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
+					,mount01,weight01,mount02,weight02,sprice,sprice2,sprice3,unit3,productno,product,size,memo)
 				select 1,@rank+1,a.uno
 					,case when c.noa is null then 'gets' else 'vccs' end
 					,a.accy,a.noa,a.noq,b.datea 
-					,null,null,a.gmount,a.[gweight],null,null,a.productno,a.product,a.size,a.memo
+					,null,null,a.gmount,a.[gweight],null,null
+					,case when ISNULL(c.floata,0)=0 then d.price else round(c.floata*d.price,2) end
+					,d.unit,a.productno,a.product,a.size,a.memo
 				from view_gets a
 				left join view_get b on a.accy=b.accy and a.noa=b.noa
 				left join view_vcc c on a.noa=c.noa
-				where uno=@uno
+				left join view_vccs d on a.noa=d.noa and a.nor=d.noq
+				where a.uno=@uno
 			end
 			--裁剪
 			if exists(select * from view_cut where uno=@uno)

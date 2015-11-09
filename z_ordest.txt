@@ -962,11 +962,15 @@ insert into @tmp
 	left join view_orde b on a.noa = b.noa
 	left join cust c on b.custno = c.noa
 	left join style d on a.style = d.noa
-	where (a.notv>0) and (b.odate between @t_bodate and @t_eodate) and
-		(b.custno between @t_bcustno and @t_ecustno) and 
-		(a.productno between @t_bproductno and @t_eproductno)
-		and (b.kind !='B2') and (a.enda = '0') and (b.enda='0')
+	where (a.notv>0) 
+		and (isnull(b.odate,'') between @t_bodate and @t_eodate) 
+		and (isnull(b.custno,'') between @t_bcustno and @t_ecustno) 
+		and (isnull(a.productno,'') between @t_bproductno and @t_eproductno)
+		--and (b.kind!='B2') 
+		and (isnull(a.enda,0) = 0) 
+		and (isnull(b.enda,0) = 0) 
 	order by b.custno,a.product,b.noa,b.odate,b.datea
+	
 update @tmp set sizea = replace(sizea,'~#$','''')
 insert into @tmp(gno,style,productno,sizea,weight,notv) -------這裡的notv是庫存重量
 	select

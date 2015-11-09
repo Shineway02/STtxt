@@ -423,20 +423,20 @@ declare @tmp table(
 	detail nvarchar(50),
 	class nvarchar(50),
 	mech nvarchar(40),
-	weight float,
+	weight nvarchar(40),
 	way nvarchar(30),
 	mount float
 	
 )
 insert into @tmp
 select 
-	'1',ROW_NUMBER()over(partition by a.modnoa order by a.modnoa+b.code1),a.modnoa,b.frame1,a.modnoa+b.code1,
-	b.detail1,'入庫維修',a.mech,SUM(b.weight1),b.way1,SUM(b.mount1)
-from modfix a
-left join modfixs b on a.noa = b.noa
-where(a.modnoa between @t_bmodnoa and @t_emodnoa) and (b.frame1 between @t_bframe and @t_eframe) and
-	 not exists (select * from modfixcs where nob = b.nob)
-group by a.modnoa,b.frame1,a.modnoa+b.code1,b.detail1,a.mech,b.way1
+	'1',ROW_NUMBER()over(partition by a.modnoa order by a.modnoa+b.code),a.modnoa,b.frame,a.modnoa+b.code,
+	b.detail,'入庫維修',a.mech,'',b.way,SUM(b.mount)
+from modfixc a
+left join modfixcs b on a.noa = b.noa
+where(a.modnoa between @t_bmodnoa and @t_emodnoa) and (b.frame between @t_bframe and @t_eframe) and
+	 (ISNULL(b.mount,0)=0 and ISNULL(b.bebottom,0)=0 and ISNULL(b.enbottom,0)=0 and LEN(ISNULL(b.datea1,''))=0 and LEN(ISNULL(b.datea2,''))=0)
+group by a.modnoa,b.frame,a.modnoa+b.code,b.detail,a.mech,b.way
 
 --補空白行(25行)
 declare @modnoa  nvarchar(50)

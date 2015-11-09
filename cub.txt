@@ -114,9 +114,11 @@ declare @noa nvarchar(50)=[2]
 declare @condition nvarchar(20)=[3]--動作 0 刪除, 1 新增[3]
 declare @rc2key nvarchar(50)=[4]--RC2KEY
 declare @inakey nvarchar(50)=[5]--INAKEY
+declare @storeno nvarchar(20)=[6]--STORE
 -----------------------------------------------------------------------
 declare @cmd nvarchar(max)
 declare @accy nvarchar(20)
+declare @store nvarchar(40)=(select store from store where noa = @storeno)
 
 --原料入庫----------------------------------------------------------------------------------------------------
 --入庫單號
@@ -244,9 +246,9 @@ begin
 	BEGIN TRY
 		--bbm
 		exec("
-			insert ina"+@year+"(noa,itype,datea,product,memo,total)
+			insert ina"+@year+"(noa,itype,datea,product,memo,total,storeno,store)
 			select top 1 '"+@inano+"','生產入庫' itype,datea,noa,'由連續製令單作業("+@noa+")轉來 '
-			,isnull((select SUM(mo) from view_cubs where noa='"+@noa+"'),0)
+			,isnull((select SUM(mo) from view_cubs where noa='"+@noa+"'),0),'"+@storeno+"','"+@store+"' 
 			from view_cub where noa ='"+@noa+"'
 		")
 		--bbs
