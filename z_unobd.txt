@@ -43,7 +43,7 @@ z_unobd05:--z_unobd05 批號履歷
 		,accy,noa,noq,datea 
 		,mount,[weight],null,null,sprice,sprice2,productno,product,size,memo
 		from view_uccb where uno=@t_uno
-	
+		
 	declare @sel int
 	declare @rank int
 	declare @uno nvarchar(30)
@@ -122,9 +122,12 @@ z_unobd05:--z_unobd05 批號履歷
 		end
 		close cursor_table
 		deallocate cursor_table
-		--往下找
-		update @history set ischk=0 where [rank]=0
+	end
+	--往下找	
+	update @history set ischk=0 where [rank]=0
 		
+	while exists(select * from @history where ischk=0)
+	begin	
 		declare cursor_table cursor for
 		select sel,[rank],uno,tablea,accy,noa,noq from @history where ischk=0
 		open cursor_table
