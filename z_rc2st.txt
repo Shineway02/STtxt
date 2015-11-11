@@ -52,13 +52,15 @@ z_rc2st1:--z_rc2st1
 		total float,
 		csize nvarchar(max),
 		qhref nvarchar(max),
-		coin nvarchar(50)
+		coin nvarchar(50),
+		spec nvarchar(50),
+		source nvarchar(50)
 	)
-	insert into @tmp
+	insert into @tmp(gno,noa,noq,type,datea,mon,tggno,comp,productno,xproduct,unit,mount,weight,price,total,csize,qhref,coin,spec,source)
 	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) type, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit, 
 		   b.mount, b.weight, b.price, b.total,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-		   ,a.coin
+		   ,a.coin,b.spec,b.source
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	where a.noa is not null
@@ -86,6 +88,7 @@ z_rc2st1:--z_rc2st1
 	,isnull(coin+' ','')+dbo.getComma(price,-1) price
 	,dbo.getComma(total,0) total
 	,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno,qhref
+	,spec,source
 	from @tmp order by datea desc,gno,noa,noq;
 --***********************************************************************************
 z_rc2st2:--z_rc2st2
@@ -121,14 +124,17 @@ declare @result table(
 	pcount int,
 	csize nvarchar(max),
 	qhref nvarchar(max),
-	coin nvarchar(50)
+	coin nvarchar(50),
+	spec nvarchar(50),
+	source nvarchar(50)
 )
-insert into @result
+insert into @result(gno,type,noa,datea,tggno,comp,addr_invo,tel,productno,xproduct,unit,mount,weight,price
+	,total,pcount,csize,qhref,coin,spec,source)
 	select '0' gno, (case when a.typea='2' then '退' else '進' end), a.noa, a.datea, 
 		   a.tggno, isnull(c.comp,''), isnull(c.addr_invo,''), isnull(c.tel,''), b.productno, b.product, b.unit, 
 	       b.mount, b.weight, b.price, b.total, 0 pcount,
 	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-	       ,a.coin
+	       ,a.coin,b.spec,b.source
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
@@ -153,6 +159,7 @@ select
 	,dbo.getComma(total,0)total 
 	,dbo.getComma(pcount,-1) pcount,qhref,
 	row_number()over(partition by tggno,comp order by tggno,gno,datea,noa) idno
+	,spec,source
 from @result order by tggno,gno,datea,noa;
 --***********************************************************************************
 z_rc2st3:--z_rc2st3
@@ -185,14 +192,17 @@ declare @result table(
 	total float,
 	csize nvarchar(max),
 	qhref nvarchar(max),
-	coin nvarchar(50)
+	coin nvarchar(50),
+	spec nvarchar(50),
+	source nvarchar(50)
 )
-insert into @result
+insert into @result(gno,type,noa,datea,tggno,comp,productno,xproduct,unit,mount,weight,price,total
+	,csize,qhref,coin,spec,source)
 	select '0' gno, (case when a.typea='2' then '退' else '進' end), a.noa,a.datea, 
 		   a.tggno, isnull(c.comp,''), b.productno, b.product, b.unit, 
 	       b.mount, b.weight, b.price, b.total,
 	       (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-	       ,a.coin
+	       ,a.coin,b.spec,b.source
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
@@ -213,6 +223,7 @@ select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct,unit,
 	,isnull(coin+' ','')+ dbo.getComma(price,-1) price
 	,dbo.getComma(total,0) total,qhref,
 	row_number()over(partition by productno,xproduct,csize order by productno,xproduct,gno,datea,noa) idno
+	,spec,source
 from @result order by productno,xproduct,csize,gno,idno;
 --***********************************************************************************
 z_rc2st4:--z_rc2st4
@@ -247,13 +258,16 @@ declare @result table(
 	memo nvarchar(max),
 	csize nvarchar(max),
 	qhref nvarchar(max),
-	coin nvarchar(50)
+	coin nvarchar(50),
+	spec nvarchar(50),
+	source nvarchar(50)
 )
-insert into @result
+insert into @result(gno,type,noa,datea,tggno,comp,productno,xproduct,unit,mount,weight
+	,price,total,memo,csize,qhref,coin,spec,source)
 	select '0', (case when a.typea='2' then '退' else '進' end),a.noa,a.datea,a.tggno,
 			 isnull(c.comp,''), b.productno, b.product, b.unit,b.mount, b.weight, b.price, b.total,a.memo,
 			 (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-			 ,a.coin
+			 ,a.coin,b.spec,b.source
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
@@ -276,5 +290,7 @@ select gno, type, noa, datea, tggno, left(comp,4) comp,productno, xproduct, unit
 	,isnull(coin+' ','')+dbo.getComma(price,-1)  price 
 	,dbo.getComma(total,0)  total,qhref,
 		row_number()over(partition by tggno,comp order by tggno,productno,gno,datea) idno
-from @result order by tggno,productno,gno,datea;
+	,spec,source
+from @result order by tggno,productno,gno,datea;o;
+,spec,source0
 --***********************************************************************************
