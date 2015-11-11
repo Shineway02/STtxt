@@ -31,7 +31,7 @@ create table #tmp(
 )
 insert into #tmp
 select 
-	a.noa,a.datea,
+	a.noa,b.datea,
 	case when b.mech2 = REPLACE(dbo.split(@mechkind,',',1),'<br>','') then 1
 		 when b.mech2 = REPLACE(dbo.split(@mechkind,',',2),'<br>','') then 2
 		 when b.mech2 = dbo.split(@mechkind,',',3) then 3
@@ -45,7 +45,7 @@ left join modcucbs b on a.noa = b.noa
 where a.datea between @t_bdate and @t_edate
 
 --memo=規格+數量+機台
-update #tmp set memo = spec + ' / ' + CAST(mount as nvarchar(20)) + ' / ' + mech
+update #tmp set memo = '　'+mech+'<br>'+'　'+spec+'<br>'+'　'+CAST(mount as nvarchar(20))
 
 create table #result(
 	gno nvarchar(1),
