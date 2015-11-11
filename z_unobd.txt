@@ -101,7 +101,9 @@ z_unobd05:--z_unobd05 批號履歷
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
 					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
 				select case when tablea='cubu' or tablea='cubt' or tablea='cuts' then 0 else 1 end
-					,@rank-1,uno,tablea,accy,noa,noq,datea 
+					,@rank-1,uno
+					,case when tablea='cubt' then 'cubt_in' when tablea='cubu' then 'cubu_in' else tablea end
+					,accy,noa,noq,datea 
 					,mount,[weight],null,null,sprice,sprice2,productno,product,size,memo
 				from view_uccb where uno=@uno and not(tablea='cubt' and accy=@accy and noa=@noa and noq=@noq)
 			end
@@ -126,10 +128,12 @@ z_unobd05:--z_unobd05 批號履歷
 	--往下找	
 	update @history set ischk=0 where [rank]=0
 		
-	while exists(select * from @history where ischk=0)
+	--排除廢料	
+	while exists(select * from @history where ischk=0 and not(upper(left(uno,1)) between 'X' and 'Y') )
 	begin	
 		declare cursor_table cursor for
-		select sel,[rank],uno,tablea,accy,noa,noq from @history where ischk=0
+		select sel,[rank],uno,tablea,accy,noa,noq from @history where ischk=0 
+			and not(upper(left(uno,1)) between 'X' and 'Y') --排除廢料
 		open cursor_table
 		fetch next from cursor_table
 		into @sel,@rank,@uno,@tablea,@accy,@noa,@noq
