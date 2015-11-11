@@ -34,11 +34,11 @@ create table #tmp(
 --accc5 1.5.6.8.9開頭:dmoney-cmoney/2.3.4.7開頭:cmoney-dmoney
 set @cmd = 
 	"insert into #tmp 
-	select '0',row_number()over(partition by accc5,accc6,bal order by accc2),accc5,accc6,accc2,bal,accc3,accc7,null,
+	select '0',row_number()over(partition by accc5,accc6 order by accc2),accc5,accc6,accc2,bal,accc3,accc7,null,
 		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then dmoney else cmoney end,
 		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then cmoney else dmoney end,0
 	from acccs"+@accy+"_1
-	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and (LEN(bal)>0)"
+	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"')"
 execute sp_executesql @cmd
 
 --期初
@@ -46,29 +46,28 @@ set @cmd =
 	"update #tmp set money0 = ISNULL(b.money,0)
 	from #tmp a
 	left join(
-		select bal,acc1,SUM(money) money from(
-			select bal,accc5 acc1,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
+		select acc1,SUM(money) money from(
+			select accc5 acc1,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
 			from acccs"+@accy+"_1
-			where (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and (LEN(bal)>0) 
-			group by bal,accc5
+			where (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5))
+			group by accc5
 			union
-			select bal,acc1,money
+			select acc1,money
 			from acbab"+@accy+"_1  
-		)tmp group by bal,acc1
-	)b on a.bal = b.bal and a.accc5 = b.acc1
+		)tmp group by acc1
+	)b on a.accc5 = b.acc1
 	where rec = 1"
 execute sp_executesql @cmd
 
 declare @rec int
 declare @accc5 nvarchar(20)
 declare @accc6 nvarchar(20)
-declare @bal nvarchar(50)
 
 declare cursor_table cursor for 
-select rec,accc5,accc6,bal from #tmp where gno = '0'
+select rec,accc5,accc6 from #tmp where gno = '0'
 open cursor_table 
 fetch next from cursor_table 
-into @rec,@accc5,@accc6,@bal
+into @rec,@accc5,@accc6
 while(@@FETCH_STATUS <> -1) 
 begin
 	if(@rec = 1)
@@ -77,24 +76,24 @@ begin
 	end
 	else
 	begin
-		update #tmp set total = (select total from #tmp where rec=@rec-1 and accc5=@accc5 and accc6=@accc6 and bal=@bal)+money1-money2 where rec=@rec and accc5=@accc5 and accc6=@accc6 and bal=@bal
+		update #tmp set total = (select total from #tmp where rec=@rec-1 and accc5=@accc5 and accc6=@accc6)+money1-money2 where rec=@rec and accc5=@accc5 and accc6=@accc6
 	end
 
 	fetch next from cursor_table 
-	into @rec,@accc5,@accc6,@bal
+	into @rec,@accc5,@accc6
 end 
 close cursor_table 
 deallocate cursor_table 
 
 
-insert into #tmp(gno,accc5,accc6,bal,money0,money1,money2)
-select '1',accc5,accc6,bal,SUM(ISNULL(money0,0)),SUM(money1),SUM(money2) from #tmp group by accc5,accc6,bal
+insert into #tmp(gno,accc5,accc6,money0,money1,money2)
+select '2',accc5,accc6,SUM(ISNULL(money0,0)),SUM(money1),SUM(money2) from #tmp group by accc5,accc6
 
-update #tmp set total = money0+money1-money2 where gno = '1'
+update #tmp set total = money0+money1-money2 where gno = '2'
 
-insert into #tmp(gno,accc5,accc6,bal,money0,money1,money2,total)
-select '2',accc5,accc6,MAX(bal),SUM(money0),SUM(money1),SUM(money2),SUM(total) 
-from #tmp where gno = '1' group by accc5,accc6
+--insert into #tmp(gno,accc5,accc6,money0,money1,money2,total)
+--select '2',accc5,accc6,SUM(money0),SUM(money1),SUM(money2),SUM(total) 
+--from #tmp where gno = '1' group by accc5,accc6
 
 select 
 	*,
@@ -102,7 +101,7 @@ select
 	dbo.getComma(money0,0)mny0,
 	dbo.getComma(money1,0)mny1,
 	dbo.getComma(money2,0)mny2 
-from #tmp order by accc5,accc6,bal,gno,accc2
+from #tmp order by accc5,accc6,gno,accc2
 
 drop table #tmp;
 --*******************************************************************************
@@ -130,7 +129,7 @@ create table #tmp(
 	rec int,
 	accc5 nvarchar(20),
 	accc6 nvarchar(max),
-	bal nvarchar(50),
+--	bal nvarchar(50),
 	bmoney float,
 	dmoney float,
 	cmoney float,
@@ -139,12 +138,10 @@ create table #tmp(
 --accc5 1.5.6.8.9開頭:dmoney-cmoney/2.3.4.7開頭:cmoney-dmoney
 set @cmd = 
 	"insert into #tmp 
-	select '0',row_number()over(partition by accc5 order by accc5),accc5,accc6,bal,0,
-		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney) else SUM(cmoney) end,
-		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(cmoney) else SUM(dmoney) end,0 
+	select '0',row_number()over(partition by accc5 order by accc5),accc5,accc6,0,SUM(dmoney),SUM(cmoney),0 
 	from acccs"+@accy+"_1
-	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and (LEN(bal)>0) 
-	group by accc5,accc6,bal"
+	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"')
+	group by accc5,accc6"
 execute sp_executesql @cmd
 
 --期初
@@ -152,22 +149,22 @@ set @cmd =
 	"update #tmp set bmoney = ISNULL(b.money,0)
 	from #tmp a
 	left join(
-		select bal,acc1,SUM(money) money from(
-			select bal,accc5 acc1,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
+		select acc1,SUM(money) money from(
+			select accc5 acc1,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
 			from acccs"+@accy+"_1
-			where (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and (LEN(bal)>0) 
-			group by bal,accc5
+			where (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5))
+			group by accc5
 			union
-			select bal,acc1,money
+			select acc1,money
 			from acbab"+@accy+"_1  
-		)tmp group by bal,acc1
-	)b on a.bal = b.bal and a.accc5 = b.acc1"
+		)tmp group by acc1
+	)b on a.accc5 = b.acc1"
 execute sp_executesql @cmd
 
 insert into #tmp(gno,accc5,accc6,bmoney,dmoney,cmoney,total)
 select '1',accc5,accc6,SUM(bmoney),SUM(dmoney),SUM(cmoney),SUM(total) from #tmp group by accc5,accc6
 
-update #tmp set total = bmoney+dmoney-cmoney
+update #tmp set total = case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then bmoney+dmoney-cmoney else (bmoney+dmoney-cmoney)*-1 end
 
 select 
 	*,
@@ -175,6 +172,6 @@ select
 	dbo.getComma(dmoney,0)dmny,
 	dbo.getComma(cmoney,0)cmny,
 	dbo.getComma(total,0) ttl 
-from #tmp order by accc5,accc6,gno,bal
+from #tmp order by accc5,accc6,gno
 
 drop table #tmp;
