@@ -4,10 +4,16 @@ SET QUOTED_IDENTIFIER OFF
 
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
+declare @t_bal nvarchar(50)
+declare @t_bacc nvarchar(20)
+declare @t_eacc nvarchar(20)
 declare @accy nvarchar(5)
 
 set @t_bdate = case when '#non' = [3] then '' else [3] end
 set @t_edate = case when '#non' = [4] then char(255) else [4] end
+set @t_bal = case when '#non' = [5] then '' else [5] end
+set @t_bacc = case when '#non' = [6] then '' else [6] end
+set @t_eacc = case when '#non' = [7] then char(255) else [7] end
 set @accy = case when LEN(dbo.split(@t_bdate,'/',0))>3 then CAST(CAST(dbo.split(@t_bdate,'/',0)as int)-1911 as nvarchar(5)) else dbo.split(@t_bdate,'/',0) end
 ---------------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
@@ -38,7 +44,10 @@ set @cmd =
 		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then dmoney else cmoney end,
 		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then cmoney else dmoney end,0
 	from acccs"+@accy+"_1
-	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"')"
+	where (LEN(bal)>0) and
+		  (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and
+		  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
+		  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')"
 execute sp_executesql @cmd
 
 --期初
@@ -49,7 +58,10 @@ set @cmd =
 		select acc1,SUM(money) money from(
 			select accc5 acc1,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
 			from acccs"+@accy+"_1
-			where (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5))
+			where (LEN(bal)>0) and
+				  (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and
+				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
+				  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
 			group by accc5
 			union
 			select acc1,money
@@ -111,10 +123,16 @@ SET QUOTED_IDENTIFIER OFF
 
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
+declare @t_bal nvarchar(50)
+declare @t_bacc nvarchar(20)
+declare @t_eacc nvarchar(20)
 declare @accy nvarchar(5)
 
 set @t_bdate = case when '#non' = [3] then '' else [3] end
 set @t_edate = case when '#non' = [4] then char(255) else [4] end
+set @t_bal = case when '#non' = [5] then '' else [5] end
+set @t_bacc = case when '#non' = [6] then '' else [6] end
+set @t_eacc = case when '#non' = [7] then char(255) else [7] end
 set @accy = case when LEN(dbo.split(@t_bdate,'/',0))>3 then CAST(CAST(dbo.split(@t_bdate,'/',0)as int)-1911 as nvarchar(5)) else dbo.split(@t_bdate,'/',0) end
 ---------------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
@@ -129,7 +147,7 @@ create table #tmp(
 	rec int,
 	accc5 nvarchar(20),
 	accc6 nvarchar(max),
---	bal nvarchar(50),
+	bal nvarchar(50),
 	bmoney float,
 	dmoney float,
 	cmoney float,
@@ -138,10 +156,13 @@ create table #tmp(
 --accc5 1.5.6.8.9開頭:dmoney-cmoney/2.3.4.7開頭:cmoney-dmoney
 set @cmd = 
 	"insert into #tmp 
-	select '0',row_number()over(partition by accc5 order by accc5),accc5,accc6,0,SUM(dmoney),SUM(cmoney),0 
+	select '0',row_number()over(partition by accc5 order by accc5),accc5,accc6,bal,0,SUM(dmoney),SUM(cmoney),0 
 	from acccs"+@accy+"_1
-	where (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"')
-	group by accc5,accc6"
+	where (LEN(bal)>0) and
+		  (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and
+		  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
+		  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
+	group by accc5,accc6,bal"
 execute sp_executesql @cmd
 
 --期初
@@ -149,22 +170,45 @@ set @cmd =
 	"update #tmp set bmoney = ISNULL(b.money,0)
 	from #tmp a
 	left join(
-		select acc1,SUM(money) money from(
-			select accc5 acc1,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
+		select bal,acc1,acc2,SUM(money) money from(
+			select bal,accc5 acc1,accc6 acc2,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
 			from acccs"+@accy+"_1
-			where (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5))
-			group by accc5
+			where (LEN(bal)>0) and
+				  (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and
+				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
+				  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
+			group by bal,accc5,accc6
 			union
-			select acc1,money
+			select bal,acc1,'',money
 			from acbab"+@accy+"_1  
-		)tmp group by acc1
-	)b on a.accc5 = b.acc1"
+		)tmp group by bal,acc1,acc2
+	)b on a.bal=b.bal and a.accc5 = b.acc1 and a.accc6 = b.acc2"
+execute sp_executesql @cmd
+
+set @cmd = 
+	"insert into #tmp(gno,rec,bal,accc5,accc6,bmoney)
+	select '0',-1,bal,acc1,acc2,ISNULL(money,0)
+	from(
+		select bal,acc1,acc2,SUM(money) money from(
+			select ISNULL(bal,'') bal,accc5 acc1,accc6 acc2,case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney-cmoney) else SUM(cmoney-dmoney) end money
+			from acccs"+@accy+"_1
+			where (LEN(bal)>0) and
+				  (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and
+				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
+				  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
+			group by ISNULL(bal,''),accc5,accc6
+			union
+			select ISNULL(bal,'') bal,acc1,'',money
+			from acbab"+@accy+"_1  
+		)tmp group by bal,acc1,acc2
+	)TMP
+	where not exists(select accc5,accc5 from #tmp)"
 execute sp_executesql @cmd
 
 insert into #tmp(gno,accc5,accc6,bmoney,dmoney,cmoney,total)
 select '1',accc5,accc6,SUM(bmoney),SUM(dmoney),SUM(cmoney),SUM(total) from #tmp group by accc5,accc6
 
-update #tmp set total = case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then bmoney+dmoney-cmoney else (bmoney+dmoney-cmoney)*-1 end
+update #tmp set total = case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then bmoney+dmoney-cmoney else bmoney-dmoney+cmoney end
 
 select 
 	*,
@@ -172,6 +216,6 @@ select
 	dbo.getComma(dmoney,0)dmny,
 	dbo.getComma(cmoney,0)cmny,
 	dbo.getComma(total,0) ttl 
-from #tmp order by accc5,accc6,gno
+from #tmp   order by accc5,accc6,gno
 
 drop table #tmp;
