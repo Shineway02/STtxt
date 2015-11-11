@@ -85,10 +85,10 @@ z_ordest5:--z_ordest5
 	
 	declare @t_bradius float = cast(case when '#non'=[18] then '0' else [18] end as float)
 	declare @t_eradius float = cast(case when '#non'=[19] then '99999' else [19] end as float)
-	declare @t_bwidth float = cast(case when '#non'=[20] then '0' else [20] end as float)
-	declare @t_ewidth float = cast(case when '#non'=[21] then '99999' else [21] end as float)
 	declare @t_bdime float = cast(case when '#non'=[22] then '0' else [22] end as float)
 	declare @t_edime float = cast(case when '#non'=[23] then '99999' else [23] end as float)
+	declare @t_bwidth float = cast(case when '#non'=[20] then '0' else [20] end as float)
+	declare @t_ewidth float = cast(case when '#non'=[21] then '99999' else [21] end as float)
 	declare @t_blength float = cast(case when '#non'=[24] then '0' else [24] end as float)
 	declare @t_elength float = cast(case when '#non'=[25] then '99999' else [25] end as float)
 	set @t_sort = upper(@t_sort)
@@ -133,7 +133,8 @@ z_ordest5:--z_ordest5
 		,dime,width,lengthb,radius,mount,[weight],price,memo
 		,notv)
 	select b.accy,b.noa,b.no2
-		,a.custno,b.datea,b.style,b.productno,b.product,b.spec
+		,a.custno,case when len(isnull(b.datea,''))=0 then a.odate else b.datea end
+		,b.style,b.productno,b.product,b.spec
 		,REPLACE(REPLACE(Upper(b.spec),'STK-','SS'),'STK','SS')
 		,b.classa,b.size
 		,b.dime,b.width,b.lengthb,b.radius,b.mount,b.[weight],b.price,b.memo
@@ -967,7 +968,7 @@ insert into @tmp
 		and (isnull(b.odate,'') between @t_bodate and @t_eodate) 
 		and (isnull(b.custno,'') between @t_bcustno and @t_ecustno) 
 		and (isnull(a.productno,'') between @t_bproductno and @t_eproductno)
-		--and (b.kind!='B2') 
+		and (b.kind!='B2') 
 		and (isnull(a.enda,0) = 0) 
 		and (isnull(b.enda,0) = 0) 
 	order by b.custno,a.product,b.noa,b.odate,b.datea
