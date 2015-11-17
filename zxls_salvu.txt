@@ -288,7 +288,7 @@ begin
 		from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
 		where b.noa!='' and b.sssno!='' and a.clockout!='' 
 		and (case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout
-		>= (case when b.clockout<=@t_timea and b.clockout!='' then dbo.q_cdn(b.noa,1) else b.noa end)+' '+(case when isnull(b.clockout,'')='' then '23:59' else b.clockout end)
+		>= (case when b.clockout<=@t_timea and b.clockout!='' then dbo.q_cdn(b.noa,1) else b.noa end)+' '+(case when isnull(b.clockout,'')='' then '02:31' else b.clockout end)
 		
 		--新增bbs(不存在的)
 		insert salpresents(noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo)
