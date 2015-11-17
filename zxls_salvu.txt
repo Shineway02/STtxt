@@ -278,7 +278,9 @@ begin
 		set b.namea=a.namea,b.clockin=a.clockin
 		from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
 		where b.noa!='' and b.sssno!='' and a.clockin!='' 
-		and a.clockin<= (case when isnull(b.clockin,'99:99')='' then '99:99' else isnull(b.clockin,'99:99') end)
+		and a.clockin<= (case when isnull(b.clockin,'99:99')='' then '99:99' 
+		when b.clockin<@t_timea then '99:99' --非正常上班時間 排除凌晨2點半之前上班
+		else b.clockin end)
 		
 		--目前有的下班時間比更新時間晚
 		update b
@@ -286,7 +288,7 @@ begin
 		from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
 		where b.noa!='' and b.sssno!='' and a.clockout!='' 
 		and (case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout
-		>= (case when b.clockout<=@t_timea then dbo.q_cdn(b.noa,1) else b.noa end)+' '+(case when isnull(b.clockout,'')='' then '02:31' else b.clockout end)
+		>= (case when b.clockout<=@t_timea and b.clockout!='' then dbo.q_cdn(b.noa,1) else b.noa end)+' '+(case when isnull(b.clockout,'')='' then '02:31' else b.clockout end)
 		
 		--新增bbs(不存在的)
 		insert salpresents(noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo)
