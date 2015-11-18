@@ -12,6 +12,7 @@ declare @a_offwork2 nvarchar(10)='12:00' --現場早班中午下班時間
 --現場晚班 週一至週六
 declare @b_gowork nvarchar(10)='17:00' --現場晚班正常上班時間
 declare @b_offwork nvarchar(10)='23:00' --現場晚班正常下班時間
+declare @t_timea nvarchar(10)='02:30' --隔天最晚打卡時間
 
 --1A上班 2A下班
 
@@ -80,6 +81,7 @@ create table #bbs(
 )
 
 declare @datea nvarchar(MAX)
+declare @tomorrow nvarchar(MAX)
 
 declare cursor_table cursor for
 select datea from #tmp group by datea order by datea --匯入日期
@@ -88,11 +90,13 @@ fetch next from cursor_table
 into @datea
 while(@@FETCH_STATUS <> -1)
 begin
+	
+	set @tomorrow=dbo.q_cdn(@datea,1)
 
 	insert #bbs	
 	select  @datea,right('000'+cast(ROW_NUMBER()over (order by noa)as nvarchar(10)),3),noa,namea
-	,isnull((select top 1 timea from #tmp where sssno=a.noa and datea=@datea order by timea),'')
-	,isnull((select top 1 timea from #tmp where sssno=a.noa and datea=@datea order by timea desc),'')
+	,isnull((select top 1 timea from #tmp where sssno=a.noa and datea=@datea and timea>@t_timea order by timea),'')
+	,isnull((select top 1 timea from #tmp where sssno=a.noa and (datea=@datea or (datea=@tomorrow and timea<=@t_timea)) order by datea desc,timea desc),'')
 	,0,0,0,'',barcode,typea
 	from sss a order by noa
 	
@@ -112,8 +116,10 @@ begin
 	begin
 		--加班都*1.33
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+@t_offwork,noa+' '+clockout) as float)/60),1)
-		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@t_offwork
+		set w133=round((cast(datediff(MINUTE,noa+' '+@t_offwork
+		,(case when clockout<=@t_timea then dbo.q_cdn(noa,1) else noa end)+' '+clockout) as float)/60),1)
+		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+		and (clockout>=@t_offwork or clockout<=@t_timea )
 		
 		--更新備註
 		update a
@@ -123,7 +129,8 @@ begin
 		
 		update a
 		set memo=memo+
-		case when clockout<@t_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@t_gowork2 then @t_offwork2 else btime end) and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
+		case when clockout<@t_offwork and clockout>@t_timea 
+		and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@t_gowork2 then @t_offwork2 else btime end) and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
 		from #bbs a
 		where isnull(a.clockout,'')!='' and charindex('辦公室',stype)>0
 		
@@ -138,17 +145,18 @@ begin
 		update #bbs
 		set w100= --上班時間小於正常上班時間已正常上班時間
 		round((cast(datediff(MINUTE,noa+' '+(case when clockin < @t_gowork then @t_gowork else clockin end)
-		,noa+' '+(case when clockout>@t_offwork then @t_offwork else clockout end)) as float)/60),1)
+		,noa+' '+(case when (clockout>@t_offwork or clockout<=@t_timea ) then @t_offwork else clockout end)) as float)/60),1)
 		-(case when round((cast(datediff(MINUTE,noa+' '+(case when clockin < @t_gowork then @t_gowork else clockin end)
-		,noa+' '+(case when clockout>@t_offwork then @t_offwork else clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+		,noa+' '+(case when (clockout>@t_offwork or clockout<=@t_timea ) then @t_offwork else clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
 		,memo='值班'
 		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
 		
-		--超過8小時 移至加班
+		--加班
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+@t_offwork,noa+' '+clockout) as float)/60),1)
+		set w133=round((cast(datediff(MINUTE,noa+' '+@t_offwork,(case when clockout<=@t_timea then dbo.q_cdn(noa,1) else noa end)+' '+clockout) as float)/60),1)
 		,memo=memo+(case when len(memo)>0 then ',' else '' end)+'加班'
-		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@t_offwork
+		where charindex('辦公室',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+		and (clockout>=@t_offwork or clockout<=@t_timea)
 	end
 	----------------------------------------------------------
 	--現場----------------------------------------------------
@@ -160,11 +168,16 @@ begin
 	begin
 		--加班都*1.33
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+@a_offwork,noa+' '+clockout) as float)/60),1)
-		where charindex('現場早班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>@a_offwork
+		set w133=round((cast(datediff(MINUTE,noa+' '+@a_offwork
+		,(case when clockout<=@t_timea then dbo.q_cdn(noa,1) else noa end)+' '+clockout) as float)/60),1)
+		where charindex('現場早班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+		and (clockout>@a_offwork or clockout<=@t_timea)
+		
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+@b_offwork,noa+' '+clockout) as float)/60),1)
-		where charindex('現場晚班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>@b_offwork
+		set w133=round((cast(datediff(MINUTE,noa+' '+@b_offwork
+		,(case when clockout<=@t_timea then dbo.q_cdn(noa,1) else noa end)+' '+clockout) as float)/60),1)
+		where charindex('現場晚班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+		and (clockout>@b_offwork or clockout<=@t_timea)
 		
 		--更新備註
 		update a
@@ -179,13 +192,15 @@ begin
 		
 		update a
 		set memo=memo+
-		case when clockout<@a_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@a_gowork2 then @a_offwork2 else btime end) and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
+		case when clockout<@a_offwork and clockout>@t_timea  
+		and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@a_gowork2 then @a_offwork2 else btime end) and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
 		from #bbs a
 		where isnull(a.clockout,'')!='' and charindex('現場早班',stype)>0
 		
 		update a
 		set memo=memo+
-		case when clockout<@b_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between btime and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
+		case when clockout<@b_offwork and clockout>@t_timea  
+		and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between btime and etime ),0)=0 then (case when len(memo)>0 then ',' else '' end) +'早退' else '' end
 		from #bbs a
 		where isnull(a.clockout,'')!='' and charindex('現場晚班',stype)>0
 		
@@ -209,31 +224,33 @@ begin
 		update #bbs
 		set w100=
 		round((cast(datediff(MINUTE,noa+' '+(case when clockin < @a_gowork then @a_gowork else clockin end)
-		,noa+' '+(case when clockout>@a_offwork then @a_offwork else clockout end)) as float)/60),1)
+		,noa+' '+(case when (clockout>@a_offwork or clockout<=@t_timea) then @a_offwork else clockout end)) as float)/60),1)
 		-(case when round((cast(datediff(MINUTE,noa+' '+(case when clockin < @a_gowork then @a_gowork else clockin end)
-		,noa+' '+(case when clockout>@a_offwork then @a_offwork else clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+		,noa+' '+(case when (clockout>@a_offwork or clockout<=@t_timea) then @a_offwork else clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
 		,memo='值班'
 		where charindex('現場早班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!=''
 		
-		--超過8小時 移至加班
+		--加班
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+@a_offwork,noa+' '+clockout) as float)/60),1)
+		set w133=round((cast(datediff(MINUTE,noa+' '+@a_offwork,(case when clockout<=@t_timea then dbo.q_cdn(noa,1) else noa end)+' '+clockout) as float)/60),1)
 		,memo=memo+(case when len(memo)>0 then ',' else '' end)+'加班'
-		where charindex('現場早班',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@a_offwork
+		where charindex('現場早班',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+		and (clockout>=@a_offwork or clockout<=@t_timea)
 		
 		--晚班
 		update #bbs
 		set w100=
 		round((cast(datediff(MINUTE,noa+' '+(case when clockin < @b_gowork then @b_gowork else clockin end)
-		,noa+' '+(case when clockout>@b_offwork then @b_offwork else clockout end)) as float)/60),1)
+		,noa+' '+(case when (clockout>@b_offwork or clockout<=@t_timea) then @b_offwork else clockout end)) as float)/60),1)
 		,memo='值班'
 		where charindex('現場晚班',stype)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!=''
 		
-		--超過8小時 移至加班
+		--加班
 		update #bbs
-		set w133=round((cast(datediff(MINUTE,noa+' '+@b_offwork,noa+' '+clockout) as float)/60),1)
+		set w133=round((cast(datediff(MINUTE,noa+' '+@b_offwork,(case when clockout<=@t_timea then dbo.q_cdn(noa,1) else noa end)+' '+clockout) as float)/60),1)
 		,memo=memo+(case when len(memo)>0 then ',' else '' end)+'加班'
-		where charindex('現場晚班',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>=@b_offwork
+		where charindex('現場晚班',stype)>0 and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+		and (clockout>=@b_offwork or clockout<=@t_timea)
 	
 	end
 	----------------------------------------------------------
@@ -261,13 +278,17 @@ begin
 		set b.namea=a.namea,b.clockin=a.clockin
 		from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
 		where b.noa!='' and b.sssno!='' and a.clockin!='' 
-		and a.clockin<= (case when isnull(b.clockin,'99:99:99')='' then '99:99:99' else isnull(b.clockin,'99:99:99') end)
+		and a.clockin<= (case when isnull(b.clockin,'99:99')='' then '99:99' 
+		when b.clockin<@t_timea then '99:99' --非正常上班時間 排除凌晨2點半之前上班
+		else b.clockin end)
 		
 		--目前有的下班時間比更新時間晚
 		update b
 		set b.namea=a.namea,b.clockout=a.clockout
 		from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
-		where b.noa!='' and b.sssno!='' and a.clockout!='' and a.clockout>=(case when isnull(b.clockout,'00:00:00')='' then '00:00:00' else isnull(b.clockout,'00:00:00') end)
+		where b.noa!='' and b.sssno!='' and a.clockout!='' 
+		and (case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout
+		>= (case when b.clockout<=@t_timea and b.clockout!='' then dbo.q_cdn(b.noa,1) else b.noa end)+' '+(case when isnull(b.clockout,'')='' then '02:31' else b.clockout end)
 		
 		--新增bbs(不存在的)
 		insert salpresents(noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo)
@@ -285,10 +306,11 @@ begin
 		begin
 			--加班都*1.33
 			update a
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+@t_offwork,a.noa+' '+clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@t_offwork,(case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout) as float)/60),1)
 			from salpresents a left join sss b on a.sssno=b.noa 
 			where a.noa=@datea and charindex('辦公室',b.typea)>0 
-			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and clockout>@t_offwork
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' 
+			and (a.clockout>@t_offwork or a.clockout<=@t_timea)
 			
 			--更新備註
 			update a 
@@ -303,7 +325,8 @@ begin
 			
 			update a
 			set memo=a.memo+
-			case when clockout<@t_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@t_gowork2 then @t_offwork2 else btime end) and etime ),0)=0 then (case when len(a.memo)>0 then ',' else '' end) +'早退' else '' end
+			case when a.clockout<@t_offwork and a.clockout>@t_timea
+			and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@t_gowork2 then @t_offwork2 else btime end) and etime ),0)=0 then (case when len(a.memo)>0 then ',' else '' end) +'早退' else '' end
 			from salpresents a left join sss b on a.sssno=b.noa 
 			where isnull(a.clockout,'')!='' and a.noa=@datea and charindex('辦公室',b.typea)>0
 			
@@ -318,19 +341,19 @@ begin
 			update a
 			set w100= --上班時間小於正常上班時間已正常上班時間
 			round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @t_gowork then @t_gowork else a.clockin end)
-			,a.noa+' '+(case when a.clockout>@t_offwork then @t_offwork else a.clockout end)) as float)/60),1)
+			,a.noa+' '+(case when (a.clockout>@t_offwork or a.clockout<=@t_timea) then @t_offwork else a.clockout end)) as float)/60),1)
 			-(case when round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @t_gowork then @t_gowork else a.clockin end)
-			,a.noa+' '+(case when a.clockout>@t_offwork then @t_offwork else a.clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+			,a.noa+' '+(case when (a.clockout>@t_offwork or a.clockout<=@t_timea) then @t_offwork else a.clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
 			,memo='值班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('辦公室',b.typea)>0
 			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!=''
 			
-			--超過8小時 移至加班
+			--加班
 			update a
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+@t_offwork,a.noa+' '+a.clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@t_offwork,(case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout) as float)/60),1)
 			,memo=a.memo+(case when len(a.memo)>0 then ',' else '' end)+'加班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('辦公室',b.typea)>0
-			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and a.clockout>=@t_offwork
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and (a.clockout>=@t_offwork or a.clockout<=@t_timea)
 		
 		end
 		----------------------------------------------------------
@@ -343,14 +366,16 @@ begin
 		begin
 			--加班都*1.33
 			update a
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+@a_offwork,a.noa+' '+clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@a_offwork,(case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout) as float)/60),1)
 			from salpresents a left join sss b on a.sssno=b.noa
-			where charindex('現場早班',b.typea)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>@a_offwork
+			where charindex('現場早班',b.typea)>0	and isnull(clockin,'')!='' and isnull(a.clockout,'')!='' 
+			and (a.clockout>@a_offwork or a.clockout<=@t_timea)
 			
 			update a
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+@b_offwork,a.noa+' '+clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@b_offwork,(case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout) as float)/60),1)
 			from salpresents a left join sss b on a.sssno=b.noa
-			where charindex('現場晚班',b.typea)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!='' and clockout>@b_offwork
+			where charindex('現場晚班',b.typea)>0	and isnull(clockin,'')!='' and isnull(clockout,'')!='' 
+			and (a.clockout>@b_offwork or a.clockout<=@t_timea)
 			
 			--更新備註
 			update a 
@@ -370,13 +395,15 @@ begin
 			
 			update a
 			set memo=a.memo+
-			case when clockout<@a_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@a_gowork2 then @a_offwork2 else btime end) and etime ),0)=0 then (case when len(a.memo)>0 then ',' else '' end) +'早退' else '' end
+			case when a.clockout<@a_offwork and a.clockout>@t_timea
+			and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between (case when btime=@a_gowork2 then @a_offwork2 else btime end) and etime ),0)=0 then (case when len(a.memo)>0 then ',' else '' end) +'早退' else '' end
 			from salpresents a left join sss b on a.sssno=b.noa
 			where isnull(a.clockout,'')!='' and charindex('現場早班',b.typea)>0
 			
 			update a
 			set memo=a.memo+
-			case when clockout<@b_offwork and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between btime and etime ),0)=0 then (case when len(a.memo)>0 then ',' else '' end) +'早退' else '' end
+			case when a.clockout<@b_offwork and a.clockout>@t_timea
+			and isnull((select count(*) from salvacause where (@datea between bdate and edate) and sssno=a.sssno and a.clockout between btime and etime ),0)=0 then (case when len(a.memo)>0 then ',' else '' end) +'早退' else '' end
 			from salpresents a left join sss b on a.sssno=b.noa
 			where isnull(a.clockout,'')!='' and charindex('現場晚班',b.typea)>0
 			
@@ -400,35 +427,37 @@ begin
 			update a
 			set w100=
 			round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @a_gowork then @a_gowork else a.clockin end)
-			,a.noa+' '+(case when a.clockout>@a_offwork then @a_offwork else a.clockout end)) as float)/60),1)
+			,a.noa+' '+(case when (a.clockout>@a_offwork or a.clockout<=@t_timea) then @a_offwork else a.clockout end)) as float)/60),1)
 			-(case when round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @a_gowork then @a_gowork else a.clockin end)
-			,a.noa+' '+(case when a.clockout>@a_offwork then @a_offwork else a.clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
+			,a.noa+' '+(case when (a.clockout>@a_offwork or a.clockout<=@t_timea) then @a_offwork else a.clockout end)) as float)/60),1)>5 then 1 else 0 end)  --扣除休息時間
 			,memo='值班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場早班',b.typea)>0
 			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!=''
 			
 			--超過8小時 移至加班
 			update a
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+@a_offwork,a.noa+' '+a.clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@a_offwork,(case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout) as float)/60),1)
 			,memo=a.memo+(case when len(a.memo)>0 then ',' else '' end)+'加班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場早班',b.typea)>0
-			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and a.clockout>=@a_offwork
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' 
+			and (a.clockout>=@a_offwork or a.clockout<=@t_timea)
 			
 			--晚班
 			update a
 			set w100=
 			round((cast(datediff(MINUTE,a.noa+' '+(case when a.clockin < @b_gowork then @b_gowork else a.clockin end)
-			,a.noa+' '+(case when a.clockout>@b_offwork then @b_offwork else a.clockout end)) as float)/60),1)
+			,a.noa+' '+(case when (a.clockout>@b_offwork or a.clockout<=@t_timea) then @b_offwork else a.clockout end)) as float)/60),1)
 			,memo='值班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場晚班',b.typea)>0
 			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!=''
 			
 			--超過8小時 移至加班
 			update #bbs
-			set w133=round((cast(datediff(MINUTE,a.noa+' '+@b_offwork,a.noa+' '+a.clockout) as float)/60),1)
+			set w133=round((cast(datediff(MINUTE,a.noa+' '+@b_offwork,(case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout) as float)/60),1)
 			,memo=a.memo+(case when len(a.memo)>0 then ',' else '' end)+'加班'
 			from salpresents a left join sss b on a.sssno=b.noa where a.noa=@datea and charindex('現場晚班',b.typea)>0
-			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' and a.clockout>=@b_offwork
+			and isnull(a.clockin,'')!='' and isnull(a.clockout,'')!='' 
+			and (a.clockout>=@b_offwork or a.clockout<=@t_timea)
 		end
 		----------------------------------------------------------
 			

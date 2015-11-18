@@ -58,3 +58,219 @@ update @tmp set total = money+tax where gno = '1'
 
 select *,dbo.getComma(money,0)mny,dbo.getComma(tax,0)tx,dbo.getComma(total,0)ttl
 from @tmp order by rec,gno;
+--*******************************************************************************
+z_vcct02:--z_vcct02
+
+declare @t_bmon nvarchar(50)
+declare @t_emon nvarchar(50)
+declare @t_typea nvarchar(50)
+
+set @t_bmon = case when '#non'=[10] then '' else [10] end
+set @t_emon = case when '#non'=[11] then char(255) else [11] end
+set @t_typea = case when '#non'=[12] then '' else [12] end
+---------------------------------------------------------------------------------
+declare @tmp table(
+	gno nvarchar(1),
+	rec int,--發票本編號(自訂)
+	cno nvarchar(10),
+	rev nvarchar(10),
+	b2e nvarchar(10),--發票本起~迄
+	npg nvarchar(10),
+	tpg nvarchar(10),
+	mon nvarchar(30),
+	
+	id1 nvarchar(10),noa1 nvarchar(50),serial1 nvarchar(50),total1 float,
+	tt11 nvarchar(10),tt12 nvarchar(10),tt13 nvarchar(10),tax1 float,
+	
+	id2 nvarchar(10),noa2 nvarchar(50),serial2 nvarchar(50),total2 float,
+	tt21 nvarchar(10),tt22 nvarchar(10),tt23 nvarchar(10),tax2 float,
+	
+	cnt1 float,cnt2 float,cnt3 float,cnt4 float,cnt5 float, --合計張數
+	money1 float,money2 float,money3 float,money4 float,money5 float,money6 float,money7 float
+)
+--依vccar建立發票
+declare @i int
+declare @j int
+declare @rec int = 0
+declare @npg int = 0
+declare @cnt int
+declare @beg int
+declare @fir nvarchar(10)
+declare @cno nvarchar(10)
+declare @rev nvarchar(10)
+declare @mon nvarchar(30)
+declare @binvono nvarchar(30)
+declare @einvono nvarchar(30)
+
+
+declare cursor_table cursor for 
+select rev,cno,binvono,einvono,SUBSTRING(bdate,1,3)+' 年 '+SUBSTRING(bdate,5,2)+'~'+SUBSTRING(edate,5,2) from vccar 
+where((LEFT(bdate,6) between @t_bmon and @t_emon) or (LEFT(edate,6) between @t_bmon and @t_emon)) and (LEN(@t_typea)=0 or @t_typea=rev)
+order by rev,binvono
+open cursor_table 
+fetch next from cursor_table 
+into @rev,@cno,@binvono,@einvono,@mon
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @i = 0
+	set @cnt = (CAST(RIGHT(@einvono,8) as int)-CAST(RIGHT(@binvono,8) as int)+1)/50 --該區間發票本數(50張一本)
+	set @beg = CAST(RIGHT(@binvono,8) as int)
+	
+	while(@i < @cnt)
+	begin
+		set @j = 0
+		set @rec = @rec + 1	
+		set @fir = LEFT(@binvono,2) --字軌
+		set @npg = case when not exists(select * from @tmp where rev = @rev) then 1 else @npg+1 end
+		
+		while(@j < 25)
+		begin
+			insert into @tmp(gno,rec,cno,mon,rev,npg,b2e,id1,noa1,id2,noa2)
+			select '1',@rec,@cno,@mon,@rev,RIGHT('0000'+CAST(@npg as nvarchar(5)),4),RIGHT(@beg,2)+'~'+CAST(CAST(RIGHT(@beg,2)as int)+49 as nvarchar(5)),RIGHT(@beg+@j,2),@fir+CAST(@beg+@j as nvarchar(10)),RIGHT(@beg+@j+25,2),@fir+CAST(@beg+@j+25 as nvarchar(10))
+			
+			set @j = @j + 1
+		end
+		
+		set @beg = @beg+50
+		
+		insert into @tmp(gno,rec,rev,npg)
+		select '2',@rec,@rev,RIGHT('0000'+CAST(@npg as nvarchar(5)),4)
+		insert into @tmp(gno,rec,rev,npg)
+		select '3',@rec,@rev,RIGHT('0000'+CAST(@npg as nvarchar(5)),4)
+		
+		set @i = @i + 1 
+	end
+	
+	update @tmp set tpg = (select MAX(CAST(npg as int)) from @tmp where rev=@rev) where rev=@rev 
+	
+	fetch next from cursor_table 
+	into @rev,@cno,@binvono,@einvono,@mon
+end 
+close cursor_table 
+deallocate cursor_table 
+--依發票號碼更新資料內容
+update @tmp set serial1=b.serial,total1=b.total,tt11=b.tt1,tt12=b.tt2,tt13=b.tt3,tax1=b.tax
+from @tmp a
+left join(
+	select 
+		noa,
+		case when taxtype = '6' then '本張作廢' else serial end serial,
+		case when taxtype = '1' then 'v' else '' end tt1,
+		case when taxtype = '2' then 'v' else '' end tt2,
+		case when taxtype = '4' then 'v' else '' end tt3,
+		total,tax from vcct
+)b on a.noa1 = b.noa
+
+update @tmp set serial2=b.serial,total2=b.total,tt21=b.tt1,tt22=b.tt2,tt23=b.tt3,tax2=b.tax
+from @tmp a
+left join(
+	select 
+		noa,
+		case when taxtype = '6' then '本張作廢' else serial end serial,
+		case when taxtype = '1' then 'v' else '' end tt1,
+		case when taxtype = '2' then 'v' else '' end tt2,
+		case when taxtype = '4' then 'v' else '' end tt3,
+		total,tax from vcct
+)b on a.noa2 = b.noa
+--單本發票合計張數&金額gno:2
+update @tmp set cnt1=ISNULL(b.cnt1,0),cnt2=ISNULL(b.cnt2,0),cnt3=ISNULL(b.cnt3,0),cnt4=ISNULL(b.cnt4,0),
+				money1=ISNULL(b.money1,0),money2=ISNULL(b.money2,0),money3=ISNULL(b.money3,0),money6=ISNULL(b.money6,0),money7=ISNULL(b.money7,0)
+from @tmp a
+left join(
+	select 
+		rec,
+		SUM(case when tt11='v' then 1 else 0 end)+SUM(case when tt21='v' then 1 else 0 end)cnt1,
+		SUM(case when tt12='v' then 1 else 0 end)+SUM(case when tt22='v' then 1 else 0 end)cnt2,
+		SUM(case when tt13='v' then 1 else 0 end)+SUM(case when tt23='v' then 1 else 0 end)cnt3,
+		SUM(case when serial1='本張作廢' then 1 else 0 end)+SUM(case when serial2='本張作廢' then 1 else 0 end)cnt4,
+		SUM(case when serial1 like '%[0-9]%' then total1 else 0 end)+SUM(case when serial2 like '%[0-9]%' then total2 else 0 end)money1,
+		SUM(case when serial1 like '%[0-9]%' then tax1 else 0 end)+SUM(case when serial2 like '%[0-9]%' then tax2 else 0 end)money2,
+		SUM(case when LEN(serial1)=0 then total1 else 0 end)+SUM(case when LEN(serial2)=0 then total2 else 0 end)money3,
+		SUM(case when tt12='v' then total1 else 0 end)+SUM(case when tt22='v' then total2 else 0 end)money6,
+		SUM(case when tt13='v' then total1 else 0 end)+SUM(case when tt23='v' then total2 else 0 end)money7
+	from @tmp group by rec
+)b on a.rec = b.rec
+where gno='2'
+--全部發票合計張數&金額gno:3,npg:1
+update @tmp set cnt1=ISNULL(b.cnt1,0),cnt2=ISNULL(b.cnt2,0),cnt3=ISNULL(b.cnt3,0),cnt4=ISNULL(b.cnt4,0),
+				money1=ISNULL(b.money1,0),money2=ISNULL(b.money2,0),money3=ISNULL(b.money3,0),money6=ISNULL(b.money6,0),money7=ISNULL(b.money7,0)
+from @tmp a
+left join(
+	select 
+		MIN(rec)rec,MIN(npg)npg,
+		SUM(case when tt11='v' then 1 else 0 end)+SUM(case when tt21='v' then 1 else 0 end)cnt1,
+		SUM(case when tt12='v' then 1 else 0 end)+SUM(case when tt22='v' then 1 else 0 end)cnt2,
+		SUM(case when tt13='v' then 1 else 0 end)+SUM(case when tt23='v' then 1 else 0 end)cnt3,
+		SUM(case when serial1='本張作廢' then 1 else 0 end)+SUM(case when serial2='本張作廢' then 1 else 0 end)cnt4,
+		SUM(case when serial1 like '%[0-9]%' then total1 else 0 end)+SUM(case when serial2 like '%[0-9]%' then total2 else 0 end)money1,
+		SUM(case when serial1 like '%[0-9]%' then tax1 else 0 end)+SUM(case when serial2 like '%[0-9]%' then tax2 else 0 end)money2,
+		SUM(case when LEN(serial1)=0 then total1 else 0 end)+SUM(case when LEN(serial2)=0  then total2 else 0 end)money3,
+		SUM(case when tt12='v' then total1 else 0 end)+SUM(case when tt22='v' then total2 else 0 end)money6,
+		SUM(case when tt13='v' then total1 else 0 end)+SUM(case when tt23='v' then total2 else 0 end)money7
+	from @tmp where gno = '1' group by rev 
+)b on a.rec=b.rec and a.npg=b.npg
+where a.gno='3' and a.npg='0001'
+
+update @tmp set money4=ROUND(money3*100/105,0) where gno='3'
+update @tmp set money5=ROUND(money4*0.05,0) where gno='3'
+--判斷以下空白
+declare @noa nvarchar(50)
+declare @max nvarchar(50)
+declare @min nvarchar(50)
+declare @isexist bit = 1
+
+declare cursor_table cursor for 
+select rec from @tmp group by rec
+open cursor_table 
+fetch next from cursor_table 
+into @rec
+while(@@FETCH_STATUS <> -1) 
+begin
+	set @i = 0
+	set @max = (select MAX(noa2) from @tmp where rec = @rec)
+	set @min = @max
+	while(@i < 50)
+	begin
+		set @noa = LEFT(@max,8)+RIGHT('00'+CAST(CAST(RIGHT(@max,2)as int)-@i as nvarchar(5)),2)
+		set @isexist = case when not exists(select * from vcct where noa = @noa) then 0 else 1 end
+
+		if(@isexist = 0)
+			set @min = @noa
+		else
+			break
+			
+		set @min = @noa
+		set @i = @i + 1
+	end
+
+	if((RIGHT(@min,2)between '00' and '24') or (RIGHT(@min,2)between '50' and '74'))
+		if(@max!=@min)
+			update @tmp set serial1 = '以下空白' where noa1=@min
+	else
+		if(@max!=@min)
+			update @tmp set serial2 = '以下空白' where noa2=@min
+	update @tmp set cnt5 = case when @min=@max and @isexist=1 then 0 else CAST(RIGHT(@max,2)as int)-CAST(RIGHT(@min,2)as int)+1 end where gno = '2' and rec = @rec		
+	
+	fetch next from cursor_table 
+	into @rec
+end 
+close cursor_table 
+deallocate cursor_table
+
+update @tmp set cnt5=cnt
+from @tmp a
+left join(
+	select MIN(rec)rec,MIN(npg)npg,SUM(cnt5)cnt from @tmp where gno = '2'  group by rev
+)b on a.rec=b.rec and a.npg=b.npg
+where gno ='3'
+
+select
+	a.*,b.serial,b.acomp,c.taxno,LEFT(noa1,2)srl,SUBSTRING(noa1,3,6)num,
+	case when rev = '2' then '二聯式' when rev = '3' then '三聯式' end typea,
+	dbo.getComma(a.total1,0)ttl1,dbo.getComma(a.tax1,0)tx1,
+	dbo.getComma(a.total1,0)ttl2,dbo.getComma(a.tax1,0)tx2,
+	dbo.getComma(a.money1,0)mny1,dbo.getComma(a.money2,0)mny2,dbo.getComma(a.money3,0)mny3,dbo.getComma(a.money4,0)mny4,
+	dbo.getComma(a.money5,0)mny5,dbo.getComma(a.money6,0)mny6,dbo.getComma(a.money7,0)mny7
+from @tmp a
+left join acomp b on a.cno=b.noa
+left join acompu c on a.cno=c.noa;
