@@ -473,187 +473,241 @@ select * from @tmp order by modnoa,rec;
 --**************************************************************************
 z_modout_rs06:--z_modout_rs06
 
-declare @t_bdate nvarchar(100) 
-declare @t_edate nvarchar(100) 
-set @t_bdate = case when '#non' = [7] then ''  else [7] end
-set @t_edate = case when '#non' = [8] then char(255) else [8] end
+declare @t_date nvarchar(10) 
+
+set @t_date = case when '#non' = [12] then ''  else [12] end
 ----------------------------------------------------------------------------
-IF OBJECT_ID('tempdb..#tmp')is not null
-	BEGIN
-		drop table #tmp
-	END
-create table #tmp (
-	a1 nvarchar(100),
-	a2 nvarchar(100),
-	a3 nvarchar(100),
-	a4 nvarchar(100),
-	a5 nvarchar(100),
-	a6 nvarchar(100),
-	a7 nvarchar(100),
-	a8 nvarchar(100),
-	a9 nvarchar(100),
-	a10 nvarchar(100),
-	seq float
-	
+SET QUOTED_IDENTIFIER OFF
+
+declare @tmp table(
+	gno nvarchar(40),
+	rec int,
+	mech1 float,
+	mech2 float,
+	mech3 float,
+	mech4 float,
+	mech5 float,
+	mech6 float,
+	mech7 float,
+	mech8 float,
+	mech9 float,
+	total1 float,
+	total2 float
 )
---左邊行數
-declare @rowcount float=19
-declare @i float =0
 
-while @i < @rowcount
+declare @mech nvarchar(max) = 'F01,F02,F03,F05,G01,G02,鑽床,銑床,插床'
+declare @type nvarchar(max) = '成型段,定徑段'
+declare @cmd  nvarchar(max) 
+declare @gno int = 0
+declare @i int = 0
+declare @j int = 0
+
+--本日成型段定徑段數量
+while(@i < 2)
+begin
+	set @j = 0
+	set @gno = @gno+1
+	set @cmd = "select "+CAST(@gno as nvarchar(5))+",1,"
+	while(@j < 9)
 	begin
-		insert #tmp(seq)
-		select @i
-		set @i=@i+1
+		set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+							from modfixcs 
+							where (LEFT(detail,3)=dbo.split('"+@type+"',',',"+CAST(@i as nvarchar(5))+")) and 
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)='"+@t_date+"' and LEFT(datea2,9)='"+@t_date+"') 
+							group by mech),"
+		set @j = @j+1
 	end
-declare @j float =1
-
-declare @mech nvarchar(100),@num nvarchar(100)
---where datea between @t_bdate and @t_edate 
-DECLARE cursor_table CURSOR FOR 
-select b.namea,a.device from modeqs b left join modeq a on a.noa=b.noa	order by  b.namea
-OPEN cursor_table
-FETCH NEXT FROM cursor_table
-INTO @mech,@num
-WHILE @@FETCH_STATUS = 0
-BEGIN
-------本日-------------------------------------------------------------------
-	--成型段 
-	declare @sum1 float=(
-	select sum(c.mount)
-	from  modout b  left join modouts c on b.noa=c.noa
-	where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
-			and c.datea between @t_bdate and @t_edate  and b.mech = @mech)
-	exec('update #tmp set a'+@j+' ='''+@sum1+''' where seq=1')
-	--定徑段 
-	declare @sum2 float=(
-	select sum(c.mount)
-	from  modout b  left join modouts c on b.noa=c.noa
-	where (left(c.code,1)!='f' and left(c.code,2)!='sg' and  left(c.code,2)!='sq')
-			and c.datea between @t_bdate and @t_edate
-			and b.mech =@mech
-	 		) 
-	exec('update #tmp set a'+@j+' ='''+@sum2+''' where seq=2')
-	declare @total float = @sum1+@sum2
-	--合計
-	exec('update #tmp set a'+@j+' ='''+@total+''' where seq=3')
-	--成型段產量
-	declare @smount1 float=(
-		select sum(c.weight1)
-		from  modfixs c   left join modfix d on c.noa =d.noa
-		where (left(c.code1,1)='f' or left(c.code1,2)='sg' or  left(c.code1,2)='sq' )
-				and d.datea between @t_bdate and @t_edate
-				and d.mech =@mech		
-		)
-	exec('update #tmp set a'+@j+' ='''+@smount1+''' where seq=4')
+	set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+	insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
 	
-	--定俓段產量
-	declare @smount2 float=(
-		select sum(c.weight1)
-		from  modfixs c   left join modfix d on c.noa =d.noa
-		where (left(c.code1,1)!='f' and left(c.code1,2)!='sg' and  left(c.code1,2)!='sq') 
-				 and d.datea between @t_bdate and @t_edate	
-				 and d.mech =@mech
-		)
-	exec('update #tmp set a'+@j+' ='''+@smount2+''' where seq=5')			
-	--合計
-	declare @total2 float =@smount1 + @smount2
-	exec('update #tmp set a'+@j+' ='''+@total2+''' where seq=6')
---	select @sum1,@sum2,@total,@smount1,@smount2,@total2
+	set @i = @i+1
+end
+--本日成型段定徑段數量合計
+set @gno = @gno+1
 
----累計-------------------------------------------------------------------------------------------------
-	--成型段
-	declare @bsum1 float=(
-		select sum(c.mount)
-		from modout b  left join modouts c on b.noa=c.noa
-		where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
-			and c.datea < @t_bdate 	
-			and b.mech = @mech)
-		exec('update #tmp set a'+@j+' ='''+@bsum1+''' where seq=7')
-	--定徑段
-	declare @bsum2 float=(
-		select sum(c.mount)
-		from modout b  left join modouts c on b.noa=c.noa
-		where (left(c.code,1)!='f' and left(c.code,2)!='sg' and  left(c.code,2)!='sq')
-			and c.datea < @t_bdate 	
-			and b.mech = @mech) 
-	exec('update #tmp set a'+@j+' ='''+@bsum2+''' where seq=8')
-	--合計
-	declare @btotal float = @bsum1+@bsum2
-	exec('update #tmp set a'+@j+' ='''+@btotal+''' where seq=9')
-	--成行段產量
-	declare @bsmount1 float=(
-		select sum(c.weight1)
-		from modfixs c   left join modfix d on c.noa =d.noa
-		where (left(c.code1,1)='f' or left(c.code1,2)='sg' or  left(c.code1,2)='sq' )
-				and d.datea between  @t_bdate and @t_edate and d.mech =@mech		
-		)	
-	exec('update #tmp set a'+@j+' ='''+@bsmount1+''' where seq=10')
-	--定俓段產量
-	declare @bsmount2 float=(
-		select sum(c.weight1)
-		from modfixs c   left join modfix d on c.noa =d.noa
-		where (left(c.code1,1)!='f' and left(c.code1,2)!='sg' and  left(c.code1,2)!='sq') 
-				 and d.datea <=  @t_bdate and d.mech =@mech	
-		)
-	exec('update #tmp set a'+@j+' ='''+@bsmount2+''' where seq=11')			
-	--合計
-	declare @btotal2 float =@bsmount1 + @bsmount2
-	exec('update #tmp set a'+@j+' ='''+@btotal2+''' where seq=12')	
---	select @bsum1,@bsum2,@btotal,@bsmount1,@bsmount2,@btotal2
-	--加班數量
-	declare @otime1 float,@addtime1 float,@otime2 float,@addtime2 float
-	set @otime1=(select count(isovertime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea between  @t_bdate and @t_edate
-		  and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@otime1+''' where seq=13')		  
+insert into @tmp(gno,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9)
+select @gno,SUM(mech1),SUM(mech2),SUM(mech3),SUM(mech4),SUM(mech5),SUM(mech6),SUM(mech7),SUM(mech8),SUM(mech9)
+from @tmp where rec = 1
+
+--本日成型段定徑段產量
+set @i = 0
+set @j = 0
+while(@i < 2)
+begin
+	set @j = 0
+	set @gno = @gno+1
+	set @cmd = "select "+CAST(@gno as nvarchar(5))+",2,"
+	while(@j < 9)
+	begin
+		set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+							from modfixcs 
+							where (LEFT(detail,3)=dbo.split('"+@type+"',',',"+CAST(@i as nvarchar(5))+")) and 
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)='"+@t_date+"' and LEFT(datea2,9)='"+@t_date+"') 
+							group by mech),"
+		set @j = @j+1
+	end
+	set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+	insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
 	
-	--加班數量累計
-	set @addtime1=(select count(isovertime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea <=  @t_bdate 
-		  and a.station = @mech)	  
-	exec('update #tmp set a'+@j+' ='''+@addtime1+''' where seq=14')  
-	--加班工時	  
-	set @otime2 =(select sum(addtime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea between @t_bdate and @t_edate
-			and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@otime2+''' where seq=15') 
-	--加班工時累計
-	set @addtime2=(select sum(addtime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea <=  @t_bdate
-			and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@addtime2+''' where seq=16') 		
-	--插入機台 第一行
-	exec('update #tmp set a'+@j+' ='''+@num+@mech+''' where seq=0') 	
-	set @j=@j+1
-  fetch next from cursor_table 
-  into @mech,@num
-end 
+	set @i = @i+1
+end
+--本日成型段定徑段產量合計
+set @gno = @gno+1
 
-CLOSE cursor_table
-DEALLOCATE cursor_table
--- update #tmp set gno= seq
- select seq gno,seq,case when seq = 0 then a1 else dbo.getComma(convert(float,a1),0) end a1
-		   ,case when seq = 0 then a2 else dbo.getComma(convert(float,a2),0) end a2
-		   ,case when seq = 0 then a3 else dbo.getComma(convert(float,a3),0) end a3
-		   ,case when seq = 0 then a4 else dbo.getComma(convert(float,a4),0) end a4
-		   ,case when seq=0 then '合計' else 
-		   dbo.getComma(convert(float,a1)+convert(float,a2)+convert(float,a3)+convert(float,a4),0) end a5
-		   ,case when seq = 0 then a4 else dbo.getComma(convert(float,a5),0) end a6
-		   ,case when seq = 0 then a5 else dbo.getComma(convert(float,a6),0) end a7
-		   ,case when seq=0 then '合計' else 
-		   dbo.getComma(convert(float,a5)+convert(float,a6),0) end a8
-		   ,case when seq = 0 then a7 else dbo.getComma(convert(float,a7),0) end a9
-		   ,case when seq = 0 then a8 else dbo.getComma(convert(float,a8),0) end a10
-		   ,case when seq = 0 then a9 else dbo.getComma(convert(float,a9),0) end a11
-		   ,case when seq = 0 then a10 else dbo.getComma(convert(float,a10),0) end a12
- from #tmp 
- drop table #tmp
- ;
+insert into @tmp(gno,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9)
+select @gno,SUM(mech1),SUM(mech2),SUM(mech3),SUM(mech4),SUM(mech5),SUM(mech6),SUM(mech7),SUM(mech8),SUM(mech9)
+from @tmp where rec = 2
+
+--累積成型段定徑段數量
+set @i = 0
+set @j = 0
+while(@i < 2)
+begin
+	set @j = 0
+	set @gno = @gno+1
+	set @cmd = "select "+CAST(@gno as nvarchar(5))+",3,"
+	while(@j < 9)
+	begin
+		set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+							from modfixcs 
+							where (LEFT(detail,3)=dbo.split('"+@type+"',',',"+CAST(@i as nvarchar(5))+")) and 
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"') 
+							group by mech),"
+		set @j = @j+1
+	end
+	set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+	insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+	
+	set @i = @i+1
+end
+--累積成型段定徑段數量合計
+set @gno = @gno+1
+
+insert into @tmp(gno,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9)
+select @gno,SUM(mech1),SUM(mech2),SUM(mech3),SUM(mech4),SUM(mech5),SUM(mech6),SUM(mech7),SUM(mech8),SUM(mech9)
+from @tmp where rec = 3
+
+--累積成型段定徑段產量
+set @i = 0
+set @j = 0
+while(@i < 2)
+begin
+	set @j = 0
+	set @gno = @gno+1
+	set @cmd = "select "+CAST(@gno as nvarchar(5))+",4,"
+	while(@j < 9)
+	begin
+		set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+							from modfixcs 
+							where (LEFT(detail,3)=dbo.split('"+@type+"',',',"+CAST(@i as nvarchar(5))+")) and 
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"') 
+							group by mech),"
+		set @j = @j+1
+	end
+	set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+	insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+	
+	set @i = @i+1
+end
+--累積成型段定徑段產量合計
+set @gno = @gno+1
+
+insert into @tmp(gno,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9)
+select @gno,SUM(mech1),SUM(mech2),SUM(mech3),SUM(mech4),SUM(mech5),SUM(mech6),SUM(mech7),SUM(mech8),SUM(mech9)
+from @tmp where rec = 4
+
+--加班數量
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",5,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+						from modfixcs 
+						where (worktype='加班')and
+							  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+							  (LEFT(datea1,9)='"+@t_date+"' and LEFT(datea2,9)='"+@t_date+"')   
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+--加班數量累計
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",6,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+						from modfixcs 
+						where (worktype='加班')and
+							  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+							  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"') 
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
+--加班工時
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",7,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(CAST(DATEDIFF(mi,datea1,datea2)/60.0 as numeric(5,1))) from(
+							select mech,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea1,5) datea1,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea2,5) datea2
+							from modfixcs 
+							where (worktype='加班')and
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)='"+@t_date+"' and LEFT(datea2,9)='"+@t_date+"')
+							group by mech,datea1,datea2)t
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
+--加班工時累計
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",8,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(CAST(DATEDIFF(mi,datea1,datea2)/60.0 as numeric(5,1))) from(
+							select mech,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea1,5) datea1,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea2,5) datea2
+							from modfixcs 
+							where (worktype='加班')and
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"')
+							group by mech,datea1,datea2)t
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
+--機台合計
+update @tmp set mech1=ISNULL(mech1,0),mech2=ISNULL(mech2,0),mech3=ISNULL(mech3,0),mech4=ISNULL(mech4,0),
+				mech5=ISNULL(mech5,0),mech6=ISNULL(mech6,0),mech7=ISNULL(mech7,0),mech8=ISNULL(mech8,0),mech9=ISNULL(mech9,0)
+
+update @tmp set total1 = mech1+mech2+mech3+mech4,total2 = mech5+mech6
+
+--暫
+update @tmp set mech1=null,mech2=null,mech3=null,mech4=null,
+				mech5=null,mech6=null,mech7=null,mech8=null,mech9=null,total1=null,total2=null
+where gno = '4' or gno = '5' or gno = '6' or gno = '10' or gno = '11' or gno = '12'
+
+select 
+	gno,rec,
+	dbo.getComma(mech1,-1)mech1,dbo.getComma(mech2,-1)mech2,dbo.getComma(mech3,-1)mech3,dbo.getComma(mech4,-1)mech4,dbo.getComma(mech5,-1)mech5,
+	dbo.getComma(mech6,-1)mech6,dbo.getComma(mech7,-1)mech7,dbo.getComma(mech8,-1)mech8,dbo.getComma(mech9,-1)mech9,
+	dbo.getComma(total1,-1)ttl1,dbo.getComma(total2,-1)ttl2
+from @tmp;
  --**************************************************************************
 z_modout_rs07:--z_modout_rs07
 
@@ -735,204 +789,179 @@ from @tmp3 c left join @tmp2 b on c.seq=b.seq
 --**************************************************************************
 z_modout_rs08:--z_modout_rs08
 
-declare @t_bdate nvarchar(100) 
-declare @t_edate nvarchar(100) 
-set @t_bdate = case when '#non' = [7] then ''  else [7] end
-set @t_edate = case when '#non' = [8] then char(255) else [8] end
+declare @t_date nvarchar(10) 
+
+set @t_date = case when '#non' = [12] then ''  else [12] end
 -----------------------------------------------------------------------------
-IF OBJECT_ID('tempdb..#tmp')is not null
-	BEGIN
-		drop table #tmp
-	END
-create table #tmp (
-	a1 nvarchar(100),
-	a2 nvarchar(100),
-	a3 nvarchar(100),
-	a4 nvarchar(100),
-	a5 nvarchar(100),
-	a6 nvarchar(100),
-	a7 nvarchar(100),
-	a8 nvarchar(100),
-	a9 nvarchar(100),
-	a10 nvarchar(100),
-	seq float
+SET QUOTED_IDENTIFIER OFF
+
+declare @tmp table(
+	gno nvarchar(40),
+	rec int,
+	mech1 float,
+	mech2 float,
+	mech3 float,
+	mech4 float,
+	mech5 float,
+	mech6 float,
+	mech7 float,
+	mech8 float,
+	mech9 float,
+	total1 float,
+	total2 float
 )
-declare @i float =0
---左邊行數
-declare @rowcount float = 29
-while @i <@rowcount
+
+declare @mech nvarchar(max) = 'F01,F02,F03,F05,G01,G02,鑽床,銑床,插床'
+declare @type nvarchar(max) = '成型段,定徑段'
+declare @cmd  nvarchar(max) 
+declare @gno int = 0
+declare @i int
+declare @j int
+
+--累積成型段定徑段數量
+set @i = 0
+set @j = 0
+while(@i < 2)
+begin
+	set @j = 0
+	set @gno = @gno+1
+	set @cmd = "select "+CAST(@gno as nvarchar(5))+",1,"
+	while(@j < 9)
 	begin
-		insert #tmp(seq)
-		select @i
-		set @i=@i+1
+		set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+							from modfixcs 
+							where (LEFT(detail,3)=dbo.split('"+@type+"',',',"+CAST(@i as nvarchar(5))+")) and 
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"') 
+							group by mech),"
+		set @j = @j+1
 	end
-declare @j float =1
-
-declare @mech nvarchar(100),@num nvarchar(100)
---where datea between @t_bdate and @t_edate 
-DECLARE cursor_table CURSOR FOR 
-select b.namea,a.device from modeqs b left join modeq a on a.noa=b.noa	order by  b.namea
-OPEN cursor_table
-FETCH NEXT FROM cursor_table
-INTO @mech,@num
-WHILE @@FETCH_STATUS = 0
-BEGIN
-
-
-----------------------------------------------------------------------------------------------------
-	--成型段
-	declare @bsum1 float=(
-		select sum(c.mount)
-		from modout b  left join modouts c on b.noa=c.noa
-		where (left(c.code,1)='f' or left(c.code,2)='sg' or  left(c.code,2)='sq')
-			and c.datea < @t_bdate 	
-			and b.mech = @mech)
-		exec('update #tmp set a'+@j+' ='''+@bsum1+''' where seq=7')
-	--定徑段
-	declare @bsum2 float=(
-		select sum(c.mount)
-		from modout b  left join modouts c on b.noa=c.noa
-		where (left(c.code,1)!='f' and left(c.code,2)!='sg' and  left(c.code,2)!='sq')
-			and c.datea < @t_bdate 	
-			and b.mech = @mech) 
-	exec('update #tmp set a'+@j+' ='''+@bsum2+''' where seq=8')
-	--累計
-	declare @btotal float = @bsum1+@bsum2
-	exec('update #tmp set a'+@j+' ='''+@btotal+''' where seq=9')
--------------------------------------------------------------------------------------------------
-	--成型段產量
-	declare @bsmount1 float=(
-		select sum(c.weight1)
-		from modfixs c   left join modfix d on c.noa =d.noa
-		where (left(c.code1,1)='f' or left(c.code1,2)='sg' or  left(c.code1,2)='sq' )
-				and d.datea between  @t_bdate and @t_edate and d.mech =@mech		
-		)
-	exec('update #tmp set a'+@j+' ='''+@bsmount1+''' where seq=10')
-	--定俓段產量
-	declare @bsmount2 float=(
-		select sum(c.weight1)
-		from modfixs c   left join modfix d on c.noa =d.noa
-		where (left(c.code1,1)!='f' and left(c.code1,2)!='sg' and  left(c.code1,2)!='sq') 
-				 and d.datea <=  @t_bdate and d.mech =@mech	
-		)
-	exec('update #tmp set a'+@j+' ='''+@bsmount2+''' where seq=11')			
-	--累計
-	declare @btotal2 float =@bsmount1 + @bsmount2
-	exec('update #tmp set a'+@j+' ='''+@btotal2+''' where seq=12')	
---	select @bsum1,@bsum2,@btotal,@bsmount1,@bsmount2,@btotal2
-	--加班數量	
-	declare @otime1 float,@addtime1 float,@otime2 float,@addtime2 float
-	set @otime1=(select count(isovertime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea between  @t_bdate and @t_edate
-		  and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@otime1+''' where seq=13')		  
-	--加班數量累計
-	set @addtime1=(select count(isovertime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea <=  @t_bdate 
-		  and a.station = @mech)	  
-	exec('update #tmp set a'+@j+' ='''+@addtime1+''' where seq=14')  
-	--加班工時	  
-	set @otime2 =(select sum(addtime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea between @t_bdate and @t_edate
-			and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@otime2+''' where seq=15') 
-	--加班工時累計
-	set @addtime2=(select sum(addtime)
-	from modcuws b left join modcuw a on a.noa =b.noa
-	where isovertime=1 and a.datea <=  @t_bdate
-			and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@addtime2+''' where seq=16') 		
-		
-	--故障
-	declare @faulttime float =(
-	select sum(b.faulttime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@faulttime+''' where seq=17') 
-	--故障累計
-	declare @faulttime1 float =(
-	select sum(b.faulttime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea <  @t_bdate  and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@faulttime1+''' where seq=18') 
-	--延遲
-	declare @delaytime float =(
-		select sum(b.delaytime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@delaytime+''' where seq=19') 
-	--延遲累計
-	declare @delaytime1 float =(
-		select sum(b.delaytime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea <=  @t_bdate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@delaytime1+''' where seq=20') 
-	--待單
-	declare @waittime float=(
-	select sum(b.waittime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@waittime+''' where seq=21') 
-	--待單累計
-	declare @waittime1 float=(
-	select sum(b.waittime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea <= @t_bdate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@waittime1+''' where seq=22') 
+	set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+	insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
 	
-	--待料
-	declare @waitfedtime float=(
-	select sum(b.waitfedtime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@waitfedtime+''' where seq=23') 
-	--待料累計
-	declare @waitfedtime1 float=(
-	select sum(b.waitfedtime)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@waitfedtime1+''' where seq=24') 
-	--缺員
-	declare @lacksss float=(
-	select sum(b.lacksss)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@lacksss+''' where seq=25') 
-	--缺員累計
-	declare @lacksss1 float=(
-	select sum(b.lacksss)
-	from modcuw a left join modcuws b on a.noa=b.noa 
-	where a.datea between  @t_bdate and @t_edate and a.station = @mech)
-	exec('update #tmp set a'+@j+' ='''+@lacksss1+''' where seq=26') 
-	--第一行機台
-	exec('update #tmp set a'+@j+' ='''+@num+@mech+''' where seq=6') 
-	set @j=@j+1
-  fetch next from cursor_table 
-  into @mech,@num
-end 
+	set @i = @i+1
+end
+--累積成型段定徑段數量合計
+set @gno = @gno+1
 
-CLOSE cursor_table
-DEALLOCATE cursor_table
---delete #tmp where ISNULL(a1,'')=''
--- update #tmp set gno= seq
- select seq-6 gno,seq,case when seq = 6 then a1 else dbo.getComma(convert(float,a1),0) end a1
-		   ,case when seq = 6 then a2 else dbo.getComma(convert(float,a2),0) end a2
-		   ,case when seq = 6 then a3 else dbo.getComma(convert(float,a3),0) end a3
-		   ,case when seq = 6 then a4 else dbo.getComma(convert(float,a4),0) end a4
-		   ,case when seq = 6 then '合計' else 
-		   dbo.getComma(convert(float,a1)+convert(float,a2)+convert(float,a3)+convert(float,a4),0) end a5
-		   ,case when seq = 6 then a4 else dbo.getComma(convert(float,a5),0) end a6
-		   ,case when seq = 6 then a5 else dbo.getComma(convert(float,a6),0) end a7
-		   ,case when seq = 6 then '合計' else 
-		   dbo.getComma(convert(float,a5)+convert(float,a6),0) end a8
-		   ,case when seq = 6 then a7 else dbo.getComma(convert(float,a7),0) end a9
-		   ,case when seq = 6 then a8 else dbo.getComma(convert(float,a8),0) end a10
-		   ,case when seq = 6 then a9 else dbo.getComma(convert(float,a9),0) end a11
-		   ,case when seq = 6 then a10 else dbo.getComma(convert(float,a10),0) end a12
- from #tmp 
- where seq-6 >=0
- drop table #tmp;
-	 
+insert into @tmp(gno,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9)
+select @gno,SUM(mech1),SUM(mech2),SUM(mech3),SUM(mech4),SUM(mech5),SUM(mech6),SUM(mech7),SUM(mech8),SUM(mech9)
+from @tmp where rec = 3
+
+--累積成型段定徑段產量
+set @i = 0
+set @j = 0
+while(@i < 2)
+begin
+	set @j = 0
+	set @gno = @gno+1
+	set @cmd = "select "+CAST(@gno as nvarchar(5))+",2,"
+	while(@j < 9)
+	begin
+		set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+							from modfixcs 
+							where (LEFT(detail,3)=dbo.split('"+@type+"',',',"+CAST(@i as nvarchar(5))+")) and 
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"') 
+							group by mech),"
+		set @j = @j+1
+	end
+	set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+	insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+	
+	set @i = @i+1
+end
+--累積成型段定徑段產量合計
+set @gno = @gno+1
+
+insert into @tmp(gno,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9)
+select @gno,SUM(mech1),SUM(mech2),SUM(mech3),SUM(mech4),SUM(mech5),SUM(mech6),SUM(mech7),SUM(mech8),SUM(mech9)
+from @tmp where rec = 4
+
+--加班數量
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",3,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+						from modfixcs 
+						where (worktype='加班')and
+							  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+							  (LEFT(datea1,9)='"+@t_date+"' and LEFT(datea2,9)='"+@t_date+"')   
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+--加班數量累計
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",4,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(ISNULL(mount,0)) 
+						from modfixcs 
+						where (worktype='加班')and
+							  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+							  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"') 
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
+--加班工時
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",5,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(CAST(DATEDIFF(mi,datea1,datea2)/60.0 as numeric(5,1))) from(
+							select mech,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea1,5) datea1,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea2,5) datea2
+							from modfixcs 
+							where (worktype='加班')and
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)='"+@t_date+"' and LEFT(datea2,9)='"+@t_date+"')
+							group by mech,datea1,datea2)t
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
+--加班工時累計
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",6,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(CAST(DATEDIFF(mi,datea1,datea2)/60.0 as numeric(5,1))) from(
+							select mech,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea1,5) datea1,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea2,5) datea2
+							from modfixcs 
+							where (worktype='加班')and
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9)>=LEFT('"+@t_date+"',6)+'/01' and LEFT(datea2,9)<='"+@t_date+"')
+							group by mech,datea1,datea2)t
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
+--機台合計
+update @tmp set mech1=ISNULL(mech1,0),mech2=ISNULL(mech2,0),mech3=ISNULL(mech3,0),mech4=ISNULL(mech4,0),
+				mech5=ISNULL(mech5,0),mech6=ISNULL(mech6,0),mech7=ISNULL(mech7,0),mech8=ISNULL(mech8,0),mech9=ISNULL(mech9,0)
+
+update @tmp set total1 = mech1+mech2+mech3+mech4,total2 = mech5+mech6
+
+--暫
+update @tmp set mech1=null,mech2=null,mech3=null,mech4=null,
+				mech5=null,mech6=null,mech7=null,mech8=null,mech9=null,total1=null,total2=null
+where gno = '4' or gno = '5' or gno = '6'
+select 
+	gno,rec,
+	dbo.getComma(mech1,-1)mech1,dbo.getComma(mech2,-1)mech2,dbo.getComma(mech3,-1)mech3,dbo.getComma(mech4,-1)mech4,dbo.getComma(mech5,-1)mech5,
+	dbo.getComma(mech6,-1)mech6,dbo.getComma(mech7,-1)mech7,dbo.getComma(mech8,-1)mech8,dbo.getComma(mech9,-1)mech9,
+	dbo.getComma(total1,-1)ttl1,dbo.getComma(total2,-1)ttl2
+from @tmp;
