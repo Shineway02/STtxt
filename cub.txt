@@ -78,7 +78,7 @@
 				begin
 					select @productno=productno,@product=product from view_uccb where uno=@uno
 					insert into #cub2get(typea,uno,productno,product,mount,[weight])
-					values('鋼捲',@uno,@productno,@product,1,@weight)
+					values('鋼捲',@uno,@productno,@product,0,@weight)
 				end
 				if LEN(@uno2)>0
 				begin
@@ -101,13 +101,13 @@
 			close cursor_table
 			deallocate cursor_table
 			--cubt
-			insert into #cub2get(typea,uno,productno,product,mount,[weight])
+			/*insert into #cub2get(typea,uno,productno,product,mount,[weight])
 			select '溶劑',c.uno,c.productno,c.product,c.mount,c.[weight]
 			from view_cub a
 			left join view_cubs b on a.noa=b.noa
 			left join view_cubt c on c.noa=b.noa and c.nor=b.noq 
 			where a.noa=@cubno
-			and b.noa is not null and c.noa is not null
+			and b.noa is not null and c.noa is not null*/
 
 			update #cub2get set noa=@cubno,noq=right('000'+CAST(sel as nvarchar),3)
 			--皮膜  只看重量  CUB數量 存成  GET重量
