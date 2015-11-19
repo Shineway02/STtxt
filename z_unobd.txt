@@ -165,7 +165,10 @@ z_unobd05:--z_unobd05 批號履歷
 				select 1,@rank+1,a.uno
 					,case when c.noa is null then 'gets' else 'vccs' end
 					,a.accy,a.noa,a.noq,b.datea 
-					,null,null,a.gmount,a.[gweight],null,null
+					,null,null
+					,case when isnull(a.gmount,0)!=0 then a.gmount else a.mount end
+					,case when isnull(a.gweight,0)!=0 then a.gweight else a.[weight] end
+					,null,null
 					,case when ISNULL(c.floata,0)=0 then d.price else round(c.floata*d.price,2) end
 					,d.unit,a.productno,a.product,a.size,a.memo
 				from view_gets a
