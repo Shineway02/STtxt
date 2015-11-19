@@ -128,16 +128,17 @@ begin
 	
 	set @isasset = CAST(@h as bit)
 	set @isself = CAST(@i as bit)
-	set @money = case when @k='9' then CAST(REPLACE(@m,',','') as float) else CAST(REPLACE(@j,',','') as float) end
+	set @money = CAST(REPLACE(@j,',','') as float)
+	--case when @k='9' then CAST(REPLACE(@m,',','') as float) else CAST(REPLACE(@j,',','') as float) end
 	
-	--"0@,1@應稅,6@作廢,2@零稅率,3@內含,4@免稅,5@自訂"
+	--"0@,1@應稅,6@作廢,2@零稅率,3@內含,4@免稅,5@自訂" --內含拿掉
 	set @taxtype = case when @k = '1' then '1'
 						when @k = '2' then '2'
 						when @k = '3' then '4'
-						when @k = '9' then '3'
+						--when @k = '9' then '3'
 						when @k = 'D' then 'D'
-						when @k = 'F' then '6' end
-	set @tax = case when @k='9' then 0 else CAST(REPLACE(@l,',','') as float) end
+						when @k = 'F' then '6' else '1' end
+	set @tax = CAST(REPLACE(@l,',','') as float) --case when @k='9' then 0 else CAST(REPLACE(@l,',','') as float) end
 	set @total = CAST(REPLACE(@m,',','') as float)
 	set @mount = CAST(REPLACE(@n,',','') as float)
 	set @dutymemo = @o
