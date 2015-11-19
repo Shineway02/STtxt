@@ -278,6 +278,7 @@ declare @result table(
 	tube nvarchar(10),
 	heart float,
 	spec nvarchar(50),
+	tgg  nvarchar(50),
 	a1 float,a2 float,a3 float,a4 float,a5 float,a6 float,a7 float,a8 float,a9 float,a10 float,a11 float,a12 float,a13 float,a14 float,
 	b1 float,b2 float,b3 float,b4 float,b5 float,b6 float,b7 float,b8 float,b9 float,
 	c1 float,c2 float,
@@ -291,7 +292,7 @@ declare @result table(
 insert @result
 
 select 
-	'1',ROW_NUMBER() over (partition by a.frame order by a.noa),a.frame,a.noa,a.tube,a.heart,REPLACE(a.spec,'*','<br>*<br>'),
+	'1',ROW_NUMBER() over (partition by a.frame order by a.noa),a.frame,a.noa,a.tube,a.heart,REPLACE(a.spec,'*','<br>*<br>'),a.tgg,
 	isnull((select SUM(mount) from models c where number='F1T' and c.noa=a.noa),'') F1T,
 	isnull((select SUM(mount) from models c where number='F1B' and c.noa=a.noa),'') F1B,
 	isnull((select SUM(mount) from models c where number='F2T' and c.noa=a.noa),'') F2T,
@@ -343,7 +344,7 @@ select
 from model a 
 left join models b on a.noa=b.noa
 where (a.noa between @t_bnoa and @t_enoa) and (a.frame between @t_bframe and @t_eframe) 
-group by a.frame,a.noa,a.tube,a.heart,a.spec
+group by a.frame,a.noa,a.tube,a.heart,a.spec,a.tgg
 
 insert into @result(gno,rec,frame)
 select '0',1,frame from @result group by frame
