@@ -523,6 +523,7 @@ begin
 	
 	set @i = @i+1
 end
+
 --本日成型段定徑段數量合計
 set @gno = @gno+1
 
@@ -553,6 +554,7 @@ begin
 	
 	set @i = @i+1
 end
+
 --本日成型段定徑段產量合計
 set @gno = @gno+1
 
@@ -583,6 +585,7 @@ begin
 	
 	set @i = @i+1
 end
+
 --累積成型段定徑段數量合計
 set @gno = @gno+1
 
@@ -613,6 +616,7 @@ begin
 	
 	set @i = @i+1
 end
+
 --累積成型段定徑段產量合計
 set @gno = @gno+1
 
@@ -636,6 +640,7 @@ begin
 end
 set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
 insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
 --加班數量累計
 set @j = 0
 set @gno = @gno+1
@@ -843,6 +848,7 @@ begin
 	
 	set @i = @i+1
 end
+
 --累積成型段定徑段數量合計
 set @gno = @gno+1
 
@@ -873,6 +879,7 @@ begin
 	
 	set @i = @i+1
 end
+
 --累積成型段定徑段產量合計
 set @gno = @gno+1
 
@@ -896,6 +903,7 @@ begin
 end
 set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
 insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd*/
+
 --加班數量累計
 set @j = 0
 set @gno = @gno+1
@@ -944,6 +952,25 @@ begin
 							from modfixcs 
 							where (worktype='加班')and
 								  (fixmount > 0) and 	
+								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
+								  (LEFT(datea1,9) between '"+@t_bdate+"' and '"+@t_edate+"')  
+							group by mech,datea1,datea2)t
+						group by mech),"
+	set @j = @j+1
+end
+set @cmd = LEFT(@cmd,LEN(@cmd)-1) 
+insert into @tmp(gno,rec,mech1,mech2,mech3,mech4,mech5,mech6,mech7,mech8,mech9) execute sp_executesql @cmd
+
+--生產工時累計
+set @j = 0
+set @gno = @gno+1
+set @cmd = "select "+CAST(@gno as nvarchar(5))+",7,"
+while(@j < 9)
+begin
+	set @cmd = @cmd + "(select SUM(CAST(DATEDIFF(mi,datea1,datea2)/60.0 as numeric(5,1))) from(
+							select mech,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea1,5) datea1,CAST(dbo.ChineseEraName2AD(LEFT(datea1,9))as nvarchar(10))+' '+RIGHT(datea2,5) datea2
+							from modfixcs 
+							where (fixmount > 0) and 	
 								  (mech=dbo.split('"+@mech+"',',',"+CAST(@j as nvarchar(5))+")) and
 								  (LEFT(datea1,9) between '"+@t_bdate+"' and '"+@t_edate+"')  
 							group by mech,datea1,datea2)t
