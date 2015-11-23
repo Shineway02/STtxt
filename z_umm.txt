@@ -328,6 +328,8 @@ declare @t_esmon nvarchar(10)
 declare @t_xaccy nvarchar(20)
 declare @t_xpart nvarchar(20)
 declare @t_xcoin nvarchar(20)
+declare @t_custtype nvarchar(20)
+
 
 set @t_cno = case when '#non' = [1] then '' else [1] end
 set @t_xaccy = '[10]'
@@ -337,6 +339,7 @@ set @t_bsmon = case when '#non' = [13] then '' else [13] end
 set @t_esmon = case when '#non' = [14] then CHAR(255) else [14] end
 set @t_xpart = case when '#non' = [2] then '' else [2] end
 set @t_xcoin = case when '#non' = [27] then '' else [27] end
+set @t_custtype = case when '#non' = [31] then '' else [31] end
 -----------------------------------------------------------------------------------------------------------
 SET QUOTED_IDENTIFIER OFF
 declare @cmd nvarchar(max)
@@ -365,17 +368,23 @@ create table #tmp(
 insert into #tmp (coin,gno,cno,custno,mon,money,total,payed)
 select coin,gno,cno,custno,mon,SUM(money),SUM(total),SUM(payed) from (
 	--前期
-	select @t_xcoin coin,'9' gno,cno,noa custno,mon,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
+	select @t_xcoin coin,'9' gno,cno,a.noa custno,a.mon,sum(unpay*coin.floata) money,0 total,0 payed 
+	from cust_2s a
+	left join cust b on a.noa = b.noa
 	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
-	where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
+	where a.mon<@t_bsmon and a.noa between @t_bcustno and @t_ecustno
 	and (len(@t_cno)=0 or a.cno=@t_cno)
-	group by cno,noa,mon
+	and (len(@t_custtype)=0 or b.typea=@t_custtype)
+	group by cno,a.noa,a.mon
 	union all
 	--本期
-	select @t_xcoin,'9',cno,noa,mon,0,totsale*coin.floata,pay from cust_2s a 
+	select @t_xcoin,'9',cno,a.noa,a.mon,0,totsale*coin.floata,pay 
+	from cust_2s a 
+	left join cust b on a.noa = b.noa
 	outer apply (select case when len(@t_xcoin)=0 then 1 else isnull((select top 1 floata from flors where coin=@t_xcoin and a.mon <=edate order by edate desc,noa desc),1) end floata) coin 
-	where mon between @t_bsmon and @t_esmon and noa between @t_bcustno and @t_ecustno
+	where a.mon between @t_bsmon and @t_esmon and a.noa between @t_bcustno and @t_ecustno
 	and (len(@t_cno)=0 or a.cno=@t_cno)
+	and (len(@t_custtype)=0 or b.typea=@t_custtype)
 )tmp group by coin,gno,cno,custno,mon
 
 if(@t_xcoin='ALL')
@@ -391,17 +400,23 @@ begin
 		insert into #tmp (coin,gno,cno,custno,mon,money,total,payed)
 		select coin,gno,cno,custno,mon,SUM(money),SUM(total),SUM(payed) from (
 			--前期
-			select @coin coin,'9' gno,cno,noa custno,mon,sum(unpay*coin.floata) money,0 total,0 payed from cust_2s a 
+			select @coin coin,'9' gno,cno,a.noa custno,a.mon,sum(unpay*coin.floata) money,0 total,0 payed 
+			from cust_2s a 
+			left join cust b on a.noa = b.noa
 			outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin
-			where mon<@t_bsmon and noa between @t_bcustno and @t_ecustno
+			where a.mon<@t_bsmon and a.noa between @t_bcustno and @t_ecustno
 			and (len(@t_cno)=0 or a.cno=@t_cno)
-			group by cno,noa,mon
+			and (len(@t_custtype)=0 or b.typea=@t_custtype)
+			group by cno,a.noa,a.mon
 			union all
 			--本期
-			select @coin,'9',cno,noa,mon,0,totsale*coin.floata,pay from cust_2s a 
+			select @coin,'9',cno,a.noa,a.mon,0,totsale*coin.floata,pay 
+			from cust_2s a 
+			left join cust b on a.noa = b.noa
 			outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.mon <=edate order by edate desc,noa desc),1) floata) coin
-			where mon between @t_bsmon and @t_esmon and noa between @t_bcustno and @t_ecustno
+			where a.mon between @t_bsmon and @t_esmon and a.noa between @t_bcustno and @t_ecustno
 			and (len(@t_cno)=0 or a.cno=@t_cno)
+			and (len(@t_custtype)=0 or b.typea=@t_custtype)
 		)tmp group by coin,gno,cno,custno,mon
 		
 		fetch next from cursor_table
