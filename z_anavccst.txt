@@ -524,7 +524,7 @@ z_anavccst01:--z_anavccst01
 	and isnull(b.datea,'') between @t_bdate and @t_edate
 	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
 	and (@t_kind='全部' or (@t_kind='鋼捲' and b.kind!='B2') or (@t_kind='鋼管' and b.kind='B2') )
-	and isnull(c.itype,'')='1'
+	and (isnull(c.itype,'')='1' or upper(LEFT(a.uno,1)) between 'X' and 'Z')
 	
 	--抓退貨的成本單價
 	update #z_anavccst01 set sprice=isnull(b.sprice,0)
