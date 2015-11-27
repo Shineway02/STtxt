@@ -32,15 +32,17 @@
 		tggno nvarchar(20),
 		tgg nvarchar(50),
 		datea nvarchar(10),
-		custorde nvarchar(30)
+		custorde nvarchar(30),
+		addr nvarchar(max)
 	)
 	
 		--訂單編號	開單日	客戶	規範	國別	材質	尺寸 			
 	--數量	重量	單價	備註		廠商	交期	訂單編號/案號
 	insert into @tmp(gno,accy,noa,no2,odate,custno,cust,ucolor,scolor,productno
-		,size,mount,unit2,[weight],unit,price,memo,datea,custorde)
+		,size,mount,unit2,[weight],unit,price,memo,datea,custorde,addr)
 	select '1',a.accy,a.noa,a.no2,a.odate,a.custno,c.nick,a.ucolor,a.scolor,a.productno
 		,a.size,a.mount,a.unit2,a.[weight],a.unit,a.price,a.memo,a.datea,b.custorde
+		,b.addr2
 	from view_ordes a
 	left join view_orde b on a.accy=b.accy and a.noa=b.noa
 	left join cust c on b.custno=c.noa
@@ -69,6 +71,7 @@
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.tgg +'</a>' a12
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.datea +'</a>' a13
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.custorde +'</a>' a14
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.addr +'</a>' a15
 	from @tmp a
 	order by a.odate desc,a.noa,a.no2;
  
