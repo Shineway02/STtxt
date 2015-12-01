@@ -4,7 +4,7 @@ z_unobd05:--z_unobd05 批號履歷
 	set @t_uno = rtrim(ltrim(@t_uno))
 	declare @t_cubtype nvarchar(max) = case when '#non' = '[3]' then '' else '[3]' end
 	---------------------------------------------------------------------------------------
-	---------------------------------------------------------------------------------------
+	--進貨退回沒有處理!!
 	declare @history table(
 		sel int identity(1,1),
 		rr int,
@@ -146,8 +146,12 @@ z_unobd05:--z_unobd05 批號履歷
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
 					,mount01,weight01,mount02,weight02,sprice,sprice2,sprice3,productno,product,size,memo
 					,unit3)
-				select 1,@rank+1,a.uno,'vccs',a.accy,a.noa,a.noq,b.datea 
-					,null,null,a.mount,a.[weight],null,null
+				select 1,@rank+1,a.uno
+					,case when a.typea='1' then 'vccs' else 'vccbk' end
+					,a.accy,a.noa,a.noq,b.datea 
+					,case when a.typea='1' then null else a.mount end,case when a.typea='1' then null else a.weight end
+					,case when a.typea='1' then a.mount else null end,case when a.typea='1' then a.weight else null end
+					,null,null
 					--單價改為實際出貨單價   (鄭小姐 2015/10/26)
 					,case when ISNULL(b.floata,0)=0 then a.price else round(b.floata*a.price,2) end
 					--,case when isnull(a.[weight],0)=0 then a.price else round(a.total/a.[weight],3) end
@@ -248,7 +252,7 @@ z_unobd05:--z_unobd05 批號履歷
 	from @history a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
 	left join cust c on b.custno=c.noa
-	where a.tablea='vccs'
+	where a.tablea='vccs' or  a.tablea='vccbk'
 	
 	update @history set custno=b.custno,comp=c.nick
 	from @history a
@@ -284,19 +288,20 @@ z_unobd05:--z_unobd05 批號履歷
 			 when tablea='cut' then '裁剪領料'
 			 when tablea='cuts' then '裁剪入庫'
 			 when tablea='vccs' then '出貨'
+			 when tablea='vccbk' then '出退'
 			 when tablea='gets' then '領料'
 			 when tablea='cubt_get' then '派令領料'
 			 when tablea='cubt_in' then '派令入庫'
 			 when tablea='cubu_in' and exists(select noa from view_cubs where accy=accy and noa=noa and ordc=1) then '包裝入庫'
 			 when tablea='cut' and exists(select noa from view_cubs where accy=accy and noa=noa and ordc=1) then '製管入庫'
 			 else tablea end
- 
+		
 	update @history set 		 
 		ghref=case when tablea='rc2s' then "rc2_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
 			 when tablea='inas' then "inast?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
 			 when tablea='cut' then "cut?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
 			 when tablea='cuts' then "cut?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
-			 when tablea='vccs' then "vcc_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
+			 when tablea='vccs' or tablea='vccbk' then "vcc_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
 			 when tablea='gets' then "getst?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
 			 when tablea='cubt_get' then "cub_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
 			 when tablea='cubt_in' then "cub_pk?noa=\'"+noa+"\' and "+cast(rr as nvarchar)+"=$rr?"
