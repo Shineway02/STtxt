@@ -1,8 +1,11 @@
-
 stkucc:--stkucc
 
 declare @uccekey nvarchar(50)='Y'--RC2KEY
 declare @datea nvarchar(10)=[1]
+declare @bstoreno nvarchar(50)= case when '#non' = [2] then '' else [2] end
+declare @estoreno nvarchar(50)= case when '#non' = [3] then char(255) else [3] end
+declare @bproductno nvarchar(50)= case when '#non' = [4] then '' else [4] end
+declare @eproductno nvarchar(50)= case when '#non' = [5] then char(255) else [5] end
 /*(select convert(nvarchar,year(getDATE())-1911)+'/'+
  case when len(convert(nvarchar,month(getDATE())))<2 then +'0'+convert(nvarchar,month(getDATE()))
  else convert(nvarchar,month(getDATE())) end +'/'+
@@ -29,11 +32,10 @@ INTO @storeno
 WHILE @@FETCH_STATUS = 0
 BEGIN
 
-	
   exec('insert ucces'+@accy+'(noa,noq,storeno,store,product,productno,mount,emount2,price)
 	  select '''+@ucceno+''',b.idno+'''+@noq+''',b.storeno,b.store,b.product,b.productno,b.mount,b.mount,0 
 	  from ucc a left join stkucc('''+@datea+''','''+@storeno+''','''') b on a.noa =b.productno
-	  where b.product is not null') 
+	  where (b.product is not null) and (b.storeno between '''+@bstoreno+''' and '''+@estoreno+''') and (b.productno between '''+@bproductno+''' and '''+@eproductno+''')') 
   set @noq= @noq+(select MAX(idno) 
 			  from ucc a left join stkucc(@datea,@storeno,'') b on a.noa =b.productno
 			 where b.product is not null)+1
@@ -43,12 +45,15 @@ end
 
 CLOSE my_cursor
 DEALLOCATE my_cursor;
-
 --------------------------------------------------------------------------------------------------------------------------------
 stkuca:--stkuca
 
 declare @uccekey nvarchar(50)='Y'--RC2KEY
 declare @datea nvarchar(10)=[1]
+declare @bstoreno nvarchar(50)= case when '#non' = [2] then '' else [2] end
+declare @estoreno nvarchar(50)= case when '#non' = [3] then char(255) else [3] end
+declare @bproductno nvarchar(50)= case when '#non' = [4] then '' else [4] end
+declare @eproductno nvarchar(50)= case when '#non' = [5] then char(255) else [5] end
 /*(select convert(nvarchar,year(getDATE())-1911)+'/'+
  case when len(convert(nvarchar,month(getDATE())))<2 then +'0'+convert(nvarchar,month(getDATE()))
  else convert(nvarchar,month(getDATE())) end +'/'+
@@ -74,12 +79,10 @@ FETCH NEXT FROM my_cursor
 INTO @storeno
 WHILE @@FETCH_STATUS = 0
 BEGIN
-
-	
   exec('insert ucces'+@accy+'(noa,noq,storeno,store,product,productno,mount,emount2,price)
 	  select '''+@ucceno+''',b.idno+'''+@noq+''',b.storeno,b.store,b.product,b.productno,b.mount,b.mount,0 
 	  from ucc a left join stkucc('''+@datea+''','''+@storeno+''','''') b on a.noa =b.productno
-	  where b.product is not null') 
+	  where (b.product is not null) and (b.storeno between '''+@bstoreno+''' and '''+@estoreno+''') and (b.productno between '''+@bproductno+''' and '''+@eproductno+''')')
   set @noq= @noq+(select MAX(idno) 
 			  from ucc a left join stkucc(@datea,@storeno,'') b on a.noa =b.productno
 			 where b.product is not null)+1
@@ -89,7 +92,3 @@ end
 
 CLOSE my_cursor
 DEALLOCATE my_cursor;
-
-
-
-
