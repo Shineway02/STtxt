@@ -36,8 +36,11 @@ where(LEN(@t_stype)=0 or a.stype=@t_stype) and
 	 (a.custno between @t_bcustno and @t_ecustno)
 order by a.noa
 
-insert into @tmp(gno,mount,weight,total)
-select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,mount,weight,total)
+	select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+end
 
 select 
 	*,
@@ -86,8 +89,11 @@ where(LEN(@t_stype)=0 or a.stype=@t_stype) and
 	 (a.tggno between @t_btggno and @t_etggno)
 order by a.noa
 
-insert into @tmp(gno,mount,weight,total)
-select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,mount,weight,total)
+	select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+end
 
 select 
 	*,
@@ -121,8 +127,11 @@ select '0',noa,datea,custno,comp,total,weight,benifit
 from view_vcc
 where (datea between @t_bdate and @t_edate)and(custno between @t_bcustno and @t_ecustno)
 
-insert into @tmp(gno,total,weight,benifit)
-select '1',SUM(total),SUM(weight),SUM(benifit) from @tmp
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,total,weight,benifit)
+	select '1',SUM(total),SUM(weight),SUM(benifit) from @tmp
+end
 
 select *,dbo.getComma(total,0)ttl,dbo.getComma(weight,2)wei,dbo.getComma(benifit,0)bnft from @tmp;
 --***********************************************************************************
@@ -446,10 +455,22 @@ order by a.uno
 --頁數處理
 update @tmp set page=((idno-1)/39)+1
 
+--insert @tmp
+--select '1','ZZZZZZ','','',MAX(b.bweight),MAX(b.bmount),null,MAX(b.btotal),MAX(idno),page
+--from @tmp a outer apply(select SUM(weight)bweight,SUM(mount)bmount,SUM(total)btotal from @tmp where page<=a.page)b
+--group by page
+
 insert @tmp
-select '1','ZZZZZZ','','',MAX(b.bweight),MAX(b.bmount),null,MAX(b.btotal),MAX(idno),page
-from @tmp a outer apply(select SUM(weight)bweight,SUM(mount)bmount,SUM(total)btotal from @tmp where page<=a.page)b
+select '1','ZZZZZZ','','',0,0,null,0,MAX(idno),page
+from @tmp a 
 group by page
+
+update a 
+set weight=(select SUM(weight) from @tmp where gno='0' and page<=a.page)
+,mount=(select SUM(mount) from @tmp where gno='0' and page<=a.page)
+,total=(select SUM(total) from @tmp where gno='0' and page<=a.page)
+from @tmp a
+where gno='1'
 
 set @idno =(select MAX(idno) from @tmp where gno='0')
 set @idno=@idno+1
