@@ -446,10 +446,22 @@ order by a.uno
 --頁數處理
 update @tmp set page=((idno-1)/39)+1
 
+--insert @tmp
+--select '1','ZZZZZZ','','',MAX(b.bweight),MAX(b.bmount),null,MAX(b.btotal),MAX(idno),page
+--from @tmp a outer apply(select SUM(weight)bweight,SUM(mount)bmount,SUM(total)btotal from @tmp where page<=a.page)b
+--group by page
+
 insert @tmp
-select '1','ZZZZZZ','','',MAX(b.bweight),MAX(b.bmount),null,MAX(b.btotal),MAX(idno),page
-from @tmp a outer apply(select SUM(weight)bweight,SUM(mount)bmount,SUM(total)btotal from @tmp where page<=a.page)b
+select '1','ZZZZZZ','','',0,0,null,0,MAX(idno),page
+from @tmp a 
 group by page
+
+update a 
+set weight=(select SUM(weight) from @tmp where gno='0' and page<=a.page)
+,mount=(select SUM(mount) from @tmp where gno='0' and page<=a.page)
+,total=(select SUM(total) from @tmp where gno='0' and page<=a.page)
+from @tmp a
+where gno='1'
 
 set @idno =(select MAX(idno) from @tmp where gno='0')
 set @idno=@idno+1
