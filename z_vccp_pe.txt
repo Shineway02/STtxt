@@ -6,7 +6,7 @@ declare @t_bnoa nvarchar(20)
 declare @t_enoa nvarchar(20)
 declare @showprice nvarchar(10)
 
-set @t_bnoa = case when '#non' = [3] then '' else [4] end
+set @t_bnoa = case when '#non' = [3] then '' else [3] end
 set @t_enoa = case when '#non' = [4] then CHAR(255) else [4] end
 set @showprice = case when '#non' = [5] then '0' else [5] end
 ---------------------------------------------------------------------------------
@@ -33,7 +33,8 @@ declare @tmp table(
 	memo nvarchar(max),
 	moneys float,
 	taxs float,
-	totals float
+	totals float,
+	memos nvarchar(max)
 )
 insert into @tmp
 select 
@@ -41,7 +42,7 @@ select
 	case when a.typea='1' then '買賣' when a.typea='2' then '加工' when a.typea='3' then '代工' end,
 	b.productno,b.product,
 	case when LEN(b.size)>0 then b.size else REPLACE(dbo.getComma(b.dime,-1),',','')+'x'+REPLACE(dbo.getComma(b.width,-1),',','')+'x'+REPLACE(dbo.getComma(b.lengthb,-1),',','') end,
-	b.mount,b.weight,b.unit,b.price,b.total,a.memo,0,0,0
+	b.mount,b.weight,b.unit,b.price,b.total,b.memo,0,0,0,''
 from view_vcc a
 left join view_vccs b on a.noa = b.noa
 left join cust c on a.custno = c.noa
@@ -73,7 +74,7 @@ begin
 	end
 	
 	set @max = (select MAX(rec) from @tmp where noa=@noa)
-	insert into @tmp(gno,rec,noa,memo,moneys,taxs,totals)
+	insert into @tmp(gno,rec,noa,memos,moneys,taxs,totals)
 	select '1',@max,noa,memo,money,tax,total from view_vcc where noa=@noa
 	
 	fetch next from cursor_table 
@@ -107,7 +108,7 @@ SET QUOTED_IDENTIFIER OFF
 declare @t_bnoa nvarchar(20)
 declare @t_enoa nvarchar(20)
 
-set @t_bnoa = case when '#non' = [3] then '' else [4] end
+set @t_bnoa = case when '#non' = [3] then '' else [3] end
 set @t_enoa = case when '#non' = [4] then CHAR(255) else [4] end
 ---------------------------------------------------------------------------------
 declare @tmp table(
