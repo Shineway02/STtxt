@@ -36,8 +36,11 @@ where(LEN(@t_stype)=0 or a.stype=@t_stype) and
 	 (a.custno between @t_bcustno and @t_ecustno)
 order by a.noa
 
-insert into @tmp(gno,mount,weight,total)
-select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,mount,weight,total)
+	select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+end
 
 select 
 	*,
@@ -86,8 +89,11 @@ where(LEN(@t_stype)=0 or a.stype=@t_stype) and
 	 (a.tggno between @t_btggno and @t_etggno)
 order by a.noa
 
-insert into @tmp(gno,mount,weight,total)
-select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,mount,weight,total)
+	select '1',SUM(mount),SUM(weight),SUM(total) from @tmp
+end
 
 select 
 	*,
@@ -121,8 +127,11 @@ select '0',noa,datea,custno,comp,total,weight,benifit
 from view_vcc
 where (datea between @t_bdate and @t_edate)and(custno between @t_bcustno and @t_ecustno)
 
-insert into @tmp(gno,total,weight,benifit)
-select '1',SUM(total),SUM(weight),SUM(benifit) from @tmp
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,total,weight,benifit)
+	select '1',SUM(total),SUM(weight),SUM(benifit) from @tmp
+end
 
 select *,dbo.getComma(total,0)ttl,dbo.getComma(weight,2)wei,dbo.getComma(benifit,0)bnft from @tmp;
 --***********************************************************************************
