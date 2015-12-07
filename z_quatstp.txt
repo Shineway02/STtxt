@@ -307,9 +307,12 @@ left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' 
 order by a_noa desc,pageno,gno,orderno;
 
 z_quatstp2:--z_quatstp2
-declare @t_noa nvarchar(30)
 declare @t_pageline int = 15   --------一頁幾行
-set @t_noa = case when '#non' = [4] then '' else [4] end
+declare @t_noa nvarchar(30) = case when '#non' = [4] then '' else [4] end
+declare @t_path nvarchar(max)= '[5]'
+declare @t_db nvarchar(max)= '[6]'
+declare @t_proj nvarchar(max)= '[7]'
+
 declare @tmp table(
 	gno nvarchar(1),
 	idno int identity(0,1),
@@ -459,7 +462,8 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,floor(b_price)),1)),4,12))+'.'+cast(floor((b_price*1000)-(floor(b_price)*1000)) as nvarchar) pp1 ,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_theory),1)),4,12)) b_theory,
-	b_memo,b_ordeno,b_enda ee,b.comptel,b_spec
+	b_memo,b_ordeno,b_enda ee,b.comptel,b_spec,
+	case when @t_proj='pk' then '<img src="'+@t_path+'getlogo.aspx?noa=JC01'+CHAR(38)+'db='+@t_db+'" style="height:60px" width="100px"/>' else '' end logo
 from @tmp a
 left join (select noa,case when len(ISNULL(tel,''))>0 then 'TEL：'+tel else '' end +case when len(ISNULL(fax,''))>0 then '&nbsp'+CHAR(59)+'FAX：'+fax else '' end comptel from acomp) b on a.a_cno=b.noa
 order by a_noa desc,pageno,gno,orderno;
