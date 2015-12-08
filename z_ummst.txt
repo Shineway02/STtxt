@@ -2741,3 +2741,41 @@ z_ummst12:--z_ummst12
 		,dbo.getComma(discount,0) a04
 		,* 
 	from @tmp order by gno,custno;
+--*************************************************************************************************************************************
+z_ummst13:--z_ummst13
+declare @t_bdate nvarchar(20)
+declare @t_edate nvarchar(20)
+set @t_bdate = case when '#non' = [3] then '' else [3] end
+set @t_edate = case when '#non' = [4] then CHAR(255) else [4] end
+declare @tmp table(
+	gno nvarchar(1),
+	custno nvarchar(50),
+	comp nvarchar(MAX),
+	bmoney float,
+	opay float,
+	unopay float,
+	opbalance float
+)
+
+insert into @tmp
+	select '0'gno,a.noa,a.nick
+	--前期預收
+	,isnull((select SUM(opay-unopay)  from umm where custno=a.noa and datea < @t_bdate),0) bmoney
+	--本期預收
+	,isnull((select SUM(opay)  from umm where custno=a.noa and datea  between @t_bdate and @t_edate),0) opay
+	--本期預收沖帳
+	,isnull((select SUM(unopay)  from umm where custno=a.noa and datea between @t_bdate and @t_edate),0) unopay
+	,0
+from (select noa,nick from cust union all select noa,namea from carOwner union all select ''noa,''namea union all select null noa,null namea)a
+
+delete @tmp where bmoney=0 and opay=0 and opbalance=0 and unopay=0
+
+insert into @tmp
+select '1','','',sum(bmoney),sum(opay),sum(unopay),sum(opbalance) from @tmp
+
+select gno,custno,replace(comp,'~#$',char(39)) comp,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,bmoney),1)),4,30)) bmoney,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,opay),1)),4,30)) opays,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,unopay),1)),4,30)) unopay,
+	reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,bmoney+opay-unopay),1)),4,30)) opbalance
+from @tmp order by gno,custno;	
