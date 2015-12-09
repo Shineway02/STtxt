@@ -263,29 +263,31 @@ create table #tmp(
 )
 --期初
 set @cmd = 
-	"insert into #tmp(gno,rec,accc5,accc6,accc3,money1,money2)
-	select '0',0,acc1,acc2,'期初沖帳',SUM(money1),SUM(money2) from(
+	"insert into #tmp(gno,rec,accc5,accc6,bal,accc3,money1,money2)
+	select '0',0,acc1,acc2,bal,'期初沖帳',SUM(money1),SUM(money2) from(
 			select 
-				accc5 acc1,accc6 acc2,
+				accc5 acc1,accc6 acc2,bal,
 				case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney) else SUM(cmoney) end money1,
 				case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(cmoney) else SUM(dmoney) end money2				 
 			from acccs"+@accy+"_1
-			where (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
+			where (LEN(bal)>0) and
+				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
 				  (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and
 				  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
-			group by accc5,accc6
+			group by accc5,accc6,bal
 			union
-			select acc1,'','',''
+			select acc1,'','','',''
 			from acbab"+@accy+"_1
-	)tmp group by acc1,acc2"
+	)tmp group by acc1,acc2,bal"
 execute sp_executesql @cmd
 
 --原始金額(accc5 1.5.6.8.9開頭:dmoney-cmoney/2.3.4.7開頭:cmoney-dmoney)
 set @cmd = 
-	"insert into #tmp 
+	"insert into #tmp
 	select '0',row_number()over(partition by accc5,accc6 order by accc2),accc5,accc6,accc4,accc4,accc2,accc3,bal,accc7,dmoney,0,0,0
 	from acccs"+@accy+"_1
 	where (LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9') and
+		  (LEN(bal)>0) and
 		  (dmoney > 0) and
 		  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
 		  (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and
@@ -294,17 +296,38 @@ set @cmd =
 	select '0',row_number()over(partition by accc5,accc6 order by accc2),accc5,accc6,accc4,accc4,accc2,accc3,bal,accc7,cmoney,0,0,0
 	from acccs"+@accy+"_1
 	where (LEFT(accc5,1)='2' or LEFT(accc5,1)='3' or LEFT(accc5,1)='4' or LEFT(accc5,1)='7') and
+		  (LEN(bal)>0) and
 		  (cmoney > 0) and
 		  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
 		  (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and
 		  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')"
-		  
 execute sp_executesql @cmd
 
---未沖金額
-declare @rec int
+--刪除非日期區間內的期初沖帳
+--delete #tmp where accc5=(select accc5 from #tmp group by accc5,accc6 having MAX(rec)=0)
+
+--若無期初沖帳,則補一筆期初沖帳money1=0,money2=0
 declare @accc5 nvarchar(20)
 declare @accc6 nvarchar(20)
+
+--declare cursor_table cursor for 
+--select accc5,accc6 from #tmp where CHARINDEX('期初沖帳',accc3)=0 group by accc5,accc6
+--open cursor_table 
+--fetch next from cursor_table 
+--into @accc5,@accc6
+--while(@@FETCH_STATUS <> -1) 
+--begin
+--	insert into #tmp(gno,rec,accc5,accc6,accc3,money1,money2)
+--	select '0',0,@accc5,@accc6,'期初沖帳',0,0
+
+--	fetch next from cursor_table 
+--	into @accc5,@accc6
+--end 
+--close cursor_table 
+--deallocate cursor_table 
+
+--沖帳金額
+declare @rec int
 declare @bal nvarchar(50)
 
 declare cursor_table cursor for 
@@ -340,20 +363,22 @@ begin
 	if(@rec = 0)
 		update #tmp set blance = money1-money2 where rec=@rec
 	else
-		update #tmp set blance = (select blance from #tmp where rec=@rec-1 and accc5=@accc5 and accc6=@accc6)+total where rec=@rec and accc5=@accc5 and accc6=@accc6
-
+		update #tmp set blance = ISNULL((select blance from #tmp where rec=@rec-1 and accc5=@accc5 and accc6=@accc6),0)+total where rec=@rec and accc5=@accc5 and accc6=@accc6
+	
 	fetch next from cursor_table 
 	into @rec,@accc5,@accc6
 end 
 close cursor_table 
 deallocate cursor_table 
 
+--排版
 update #tmp set accc2 = dbo.split(@t_bdate,'/',0)+'/'+accc2
 
 update #tmp set accc3 = accc3+'<br>'+ISNULL(bal,'')
 
 update #tmp set accc7 = REPLACE(REPLACE(accc7,'NO','<br>NO'),'到期日','<br>到期日')
 
+--小計
 insert into #tmp(gno,accc5,accc6,money1,money2,total)
 select '1',accc5,accc6,SUM(money1),SUM(money2),SUM(total) from #tmp group by accc5,accc6
 
@@ -364,6 +389,6 @@ select
 	dbo.getComma(total ,0)ttl,
 	dbo.getComma(money1,0)mny1,
 	dbo.getComma(money2,0)mny2 
-from #tmp order by accc5,accc6,gno,accc2
+from #tmp order by accc5,accc6,gno,rec,accc2
 
 drop table #tmp;
