@@ -8,6 +8,7 @@
 	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	declare @t_bproductno3 nvarchar(max) = case when '#non'=[34] then '' else [34] end
 	declare @t_eproductno3 nvarchar(max) = case when '#non'=[35] then '' else [35] end
+	declare @t_enda nvarchar(max)= case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
 	--------------------------------------------------------------------------------------------------------
 	declare @tmp table(
 		sel int identity(1,1),
@@ -48,8 +49,9 @@
 	left join cust c on b.custno=c.noa
 	where isnull(b.odate,'') between @t_bodate and @t_eodate
 	and ISNULL(a.datea,'') between @t_bdate and @t_edate
-	and ISNULL(a.enda,0)=0
-	and ISNULL(b.enda,0)=0
+	and (len(@t_enda)=0 
+		or (@t_enda='0' and ISNULL(a.enda,0)=0 and ISNULL(b.enda,0)=0)
+		or (@t_enda='1' and (ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1)))
 	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
 	and isnull(a.productno,'') between @t_bproductno3 and @t_eproductno3
 	
