@@ -218,8 +218,10 @@ if(@condition='1')
 						and cut='1'") 
 
 						--更新bbm應收 
-						exec("update rc2"+@year+" set money =isnull((select SUM(total) from view_rc2 where noa='"+@rc2no+"'),0), 
-							total =isnull((select SUM(total) from view_rc2 where noa='"+@rc2no+"'),0) 
+						exec("update rc2"+@year+" set 
+							money =isnull((select sum(mo) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0), 
+							tax=isnull((select sum(w02) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0),
+							total =isnull((select sum(w01) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0) 
 							where noa='"+@rc2no+"'") 
 
 						--更新cubs 
