@@ -1,3 +1,51 @@
+z_ummrk01:--z_ummrk01 應收帳款明細表 	
+	declare @t_bdate nvarchar(20) = case when '#non'=[3] then '' else [3] end 
+	declare @t_edate nvarchar(20) = case when '#non'=[4] then char(255) else [4] end
+	declare @t_bcustno nvarchar(35) = case when '#non'=[5] then '' else [5] end 
+	declare @t_ecustno nvarchar(35) = case when '#non'=[6] then char(255) else [6] end
+	------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1),
+		gno nvarchar(10),
+		custno nvarchar(20),
+		accy nvarchar(20),
+		vccno nvarchar(20),
+		datea nvarchar(20),
+		[weight] float,
+		[money] float,
+		tax float,
+		total float,
+		paytype nvarchar(20),
+		
+		payed float,
+		unpay float,
+		
+		memo nvarchar(max)
+	)
+	insert into @tmp(custno,gno,accy,vccno,datea,[weight],[money],tax,total,paytype)
+	select a.custno,'1',a.accy,a.noa,a.datea,a.[weight],a.[money],a.tax,a.total,a.paytype
+	from view_vcc a
+	where ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
+	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	
+	update @tmp set payed=b.paysale
+	from @tmp a
+	left join pays b on a.vccno=b.vccno
+	
+	update @tmp set unpay = ISNULL(total,0)-ISNULL(payed,0)
+
+	update @tmp set payed=isnull(b.paysale,0)
+	from @tmp a
+	outer apply(select SUM(ISNULL(paysale,0)) paysale from umms where vccno=a.vccno) b
+	-----------------------------------------------------------------------------------------
+	insert into @tmp(custno,gno,accy,vccno,datea,[weight],[money],tax,total,paytype)
+	select custno,'2','','','',sum(isnull([weight],0)),sum(isnull([money],0)),sum(isnull(tax,0)),sum(isnull(total,0)),''
+	from @tmp 
+	group by custno
+	
+	select * from @tmp
+	order by custno,gno;
+
 z_ummst9:--z_ummst9
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_pageline int = 28   --------一頁幾行
