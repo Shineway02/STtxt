@@ -165,11 +165,11 @@ set total=isnull(CAST(y01 as int),0)+isnull(CAST(y02 as int),0)+isnull(CAST(y03 
 where gno='2'
 
 insert #tmpa
-select '3',MAX(age),999,999,MAX(pyear)
+select '3',MAX(age),999,999,pyear
 ,SUM(CAST(y01 as int)),SUM(CAST(y02 as int)),SUM(CAST(y03 as int)),SUM(CAST(y04 as int)),SUM(CAST(y05 as int)),SUM(CAST(y06 as int))
 ,SUM(CAST(y07 as int)),SUM(CAST(y08 as int)),SUM(CAST(y09 as int)),SUM(CAST(y10 as int)),SUM(CAST(y11 as int)),SUM(CAST(y12 as int))
 ,SUM(total)
-from #tmpa where gno='2'
+from #tmpa where gno='2' group by pyear
 
 select * from #tmpa order by pyear,gno,bage
 

@@ -91,14 +91,29 @@ select '2',noa,rec from @tmp where gno='0' and rec%10=0
 update @tmp set price = case when @showprice='0' then null else price end
 
 select 
-	*,
-	dbo.getComma(mount,0)mnt,
-	case when weight=0 then null else dbo.getComma(weight,1) end wei,
-	case when price=0 then null else dbo.getComma(price,2) end prc,
-	case when total=0 then null else dbo.getComma(total,0) end ttl,
-	dbo.getComma(moneys,0)mnys,
-	dbo.getComma(taxs,0)txs,
-	dbo.getComma(totals,0)ttls
+	gno,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + comp +'</a>' comp,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + tel +'</a>' tel,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + fax +'</a>' fax,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + addr +'</a>' addr,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + typea +'</a>' typea,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + custno +'</a>' custno,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + datea +'</a>' datea,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + noa +'</a>' noa,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + serial +'</a>' serial,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + productno +'</a>' productno,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + product +'</a>' product,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + size +'</a>' size,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + dbo.getComma(mount,0) +'</a>' mnt,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + dbo.getComma(weight,1) +'</a>' wei,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + dbo.getComma(price,2) +'</a>' prc,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + unit +'</a>' unit,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + dbo.getComma(total,0) +'</a>' ttl,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + memo +'</a>' memo,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + dbo.getComma(moneys,0) +'</a>' mnys,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + dbo.getComma(taxs,0) +'</a>' txs,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + dbo.getComma(totals,0) +'</a>' ttls,
+	'<a style="font-family: Times New Roman,微軟正黑體, serif'+CHAR(59)+'">' + memos +'</a>' memos
 from @tmp order by noa,rec,gno;
 --******************************************************************************
 z_vccp_pe02:--z_vccp_pe02

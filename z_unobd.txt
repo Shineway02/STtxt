@@ -229,6 +229,8 @@ z_unobd05:--z_unobd05 批號履歷
 				where exists(select * from view_cubt where noa=b.noa and uno=@uno and groupa=a.groupa)
 			end
 			
+			update @history set ischk=1 where left(uno,1)='-'
+			
 			fetch next from cursor_table
 			into @sel,@rank,@uno,@tablea,@accy,@noa,@noq
 		end

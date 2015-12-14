@@ -218,8 +218,10 @@ if(@condition='1')
 						and cut='1'") 
 
 						--更新bbm應收 
-						exec("update rc2"+@year+" set money =isnull((select SUM(total) from view_rc2 where noa='"+@rc2no+"'),0), 
-							total =isnull((select SUM(total) from view_rc2 where noa='"+@rc2no+"'),0) 
+						exec("update rc2"+@year+" set 
+							money =isnull((select sum(mo) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0), 
+							tax=isnull((select sum(w02) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0),
+							total =isnull((select sum(w01) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0) 
 							where noa='"+@rc2no+"'") 
 
 						--更新cubs 
@@ -338,12 +340,14 @@ create table #unotable(
 	ordeno nvarchar(50),
 	no2 nvarchar(50),
 	productno2  nvarchar(50),
-	product2 nvarchar(50)
+	product2 nvarchar(50),
+	enda nvarchar(10),
+	memo nvarchar(250)
 )
 
 insert #unotable
 select  b.accy,a.n,b.noa,b.noq,b.custno,b.comp,b.product,b.ucolor,b.spec,b.size,b.lengthb
-,b.class,b.hmount,b.mount,b.weight,b.ordeno,b.no2,b.productno2,b.product2
+,b.class,b.hmount,b.mount,b.weight,b.ordeno,b.no2,b.productno2,b.product2,'0',''
 from dbo.fnSplit(@uno) a left join view_cubs b on uno=a.n and (b.mount>=0 or b.weight>=0)
 
 --刪除找不到生產入庫單的批號
@@ -353,12 +357,16 @@ delete #unotable where isnull(noa,'')=''
 update a
 set mount=isnull(b.mount,0)-ISNULL(c.mount,0)
 ,weight=isnull(b.weight,0)-ISNULL(c.weight,0)
+,memo=case when len(bno)>0 then '已領料【'+b.bno+'】' else '' end
++case when len(bno)>0 then (case when len(bno)>0 then ',' else '' end)+'已出貨【'+c.vno+'】' else '' end
+,enda=case when isnull(b.mount,0)-ISNULL(c.mount,0)<=0 and isnull(b.weight,0)-ISNULL(c.weight,0)<=0
+then '1' else '0' end
 from #unotable a
-outer apply (select SUM(mount)mount,SUM(weight)weight from view_cubs where uno=a.uno and product=a.product and ucolor=a.ucolor and spec=a.spec and size=a.size and lengthb=a.lengthb and class=a.class)b
-outer apply (select SUM(mount)mount,SUM(weight)weight from view_vcct where uno=a.uno and product=a.product and ucolor=a.ucolor and spec=a.spec and size=a.size and lengthb=a.lengthb and class=a.class)c
+outer apply (select SUM(mount)mount,SUM(weight)weight,MAX(noa)bno from view_cubs where uno=a.uno and product=a.product and ucolor=a.ucolor and spec=a.spec and size=a.size and lengthb=a.lengthb and class=a.class)b
+outer apply (select SUM(mount)mount,SUM(weight)weight,MAX(noa)vno from view_vcct where uno=a.uno and product=a.product and ucolor=a.ucolor and spec=a.spec and size=a.size and lengthb=a.lengthb and class=a.class)c
 
---刪除已領料完畢的批號
-delete #unotable where mount<=0 and weight<=0 
+--刪除已領料完畢的批號 --1210顯示已出貨或領料單號
+--delete #unotable where mount<=0 and weight<=0 
 
 declare @xaccy nvarchar(MAX)
 declare @xuno nvarchar(MAX)
@@ -367,7 +375,6 @@ declare @nowdate nvarchar(30) --今天日期
 set @nowdate=replace(CONVERT (VARCHAR(20), GETDATE(),20 ),'-','/')
 
 --104/10/14 改為 新增加工單做領料(負數)
-
 declare @datea nvarchar(30)
 set @datea=left(@nowdate,10)
 declare @mech nvarchar(max) = isnull((select mech from mech where noa=@mechno),'')
@@ -376,7 +383,7 @@ set @cubno=isnull((select MAX(noa) from view_cub where noa like 'M'+replace(@dat
 set @cubno='M'+REPLACE(@datea,'/','')+right('000'+cast(cast(right(@cubno,3) as int) +1 as nvarchar(50)),3)
 
 --產生cub
-if((select count(*) from #unotable )>0)
+if((select count(*) from #unotable where enda='0' )>0)
 begin
 	--bbm
 	exec("
@@ -403,7 +410,7 @@ begin
 	set @cubno=''
 end
 
-select @cubno cubno
+select @cubno cubno,(select uno+' '+memo+'\n' from #unotable where enda='1' group by uno,memo FOR XML PATH('')) err
 
 IF OBJECT_ID('tempdb..#unotable')is not null
 BEGIN
