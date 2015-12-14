@@ -26,7 +26,7 @@ select
 	RIGHT(a.datea,5),a.noa,LEFT(a.comp,4),b.spec,b.product,
 	case when LEN(b.size)>0 then b.size else CAST(b.dime as nvarchar(10))+' x '+CAST(b.width as nvarchar(10))+' x '+CAST(b.lengthb as nvarchar(10))end,
 	case when a.typea='1' then ROUND(b.mount,0) else ROUND(-1*b.mount,0) end,
-	case when a.typea='1' then ROUND(b.weight,0) else ROUND(-1*b.weight,0) end,
+	case when a.typea='1' then ROUND(b.gweight,0) else ROUND(-1*b.gweight,0) end,
 	b.price,
 	case when a.typea='1' then ROUND(b.total,0) else ROUND(-1*b.total,0) end
 from view_vcc a
@@ -46,8 +46,8 @@ select
 	*,
 	case when typea='退' then '<font color="red">'+typea+'</font>' else typea end typ,
 	case when typea='退' then '<font color="red">'+dbo.getComma(mount, 0)+'</font>' else dbo.getComma(mount, 0) end mnt,
-	case when typea='退' then '<font color="red">'+dbo.getComma(weight,0)+'</font>' else dbo.getComma(weight,0) end wei,
-	case when typea='退' then '<font color="red">'+dbo.getComma(price, 2)+'</font>' else dbo.getComma(price, 2) end prc,
+	case when typea='退' then '<font color="red">'+dbo.getComma(weight,0)+'</font>' else dbo.getComma(weight,2) end wei,
+	case when typea='退' then '<font color="red">'+dbo.getComma(price, 2)+'</font>' else dbo.getComma(price, 3) end prc,
 	case when typea='退' then '<font color="red">'+dbo.getComma(total, 0)+'</font>' else dbo.getComma(total, 0) end ttl
 from @tmp order by gno;
 --***********************************************************************************
@@ -99,8 +99,8 @@ select
 	*,
 	case when typea='退' then '<font color="red">'+typea+'</font>' else typea end typ,
 	case when typea='退' then '<font color="red">'+dbo.getComma(mount, 0)+'</font>' else dbo.getComma(mount, 0) end mnt,
-	case when typea='退' then '<font color="red">'+dbo.getComma(weight,0)+'</font>' else dbo.getComma(weight,0) end wei,
-	case when typea='退' then '<font color="red">'+dbo.getComma(price, 2)+'</font>' else dbo.getComma(price, 2) end prc,
+	case when typea='退' then '<font color="red">'+dbo.getComma(weight,0)+'</font>' else dbo.getComma(weight,2) end wei,
+	case when typea='退' then '<font color="red">'+dbo.getComma(price, 2)+'</font>' else dbo.getComma(price, 3) end prc,
 	case when typea='退' then '<font color="red">'+dbo.getComma(total, 0)+'</font>' else dbo.getComma(total, 0) end ttl
 from @tmp order by gno;
 --***********************************************************************************
