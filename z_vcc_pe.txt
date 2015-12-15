@@ -461,6 +461,9 @@ begin
 	delete @tmp where weight>=0 
 end
 
+update a set idno=rr
+from (select idno,ROW_NUMBER() over (order by uno)rr from @tmp)a
+
 --頁數處理
 update @tmp set page=((idno-1)/39)+1
 
