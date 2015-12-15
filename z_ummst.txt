@@ -448,30 +448,44 @@ z_ummst03:--z_ummst03
 		paysale float 
 	)
 	insert into @tmp3(custno,mon,paysale)
-	select case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
-		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
-		else b.custno end
-	,case when len(ISNULL(a.vccno,''))=0 then '' 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
-		else isnull(c.mon,'') end
+	select case when isnull(a.custno,'')!='' then a.custno when isnull(c.custno,'')!='' then c.custno else b.custno end
+	,case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end
 	,SUM(ISNULL(a.paysale,0))
 	from umms a
 	left join umm b on a.noa=b.noa
 	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
 	where b.noa is not null
 	and ISNULL(a.paysale,0)!=0
-	and case when len(ISNULL(a.vccno,''))=0 then '' 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
-		else isnull(c.mon,'') end <= @t_emon
-	group by case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
-		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
-		else b.custno end
-		,case when len(ISNULL(a.vccno,''))=0 then '' 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
-		else isnull(c.mon,'') end
+	and case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end <= @t_emon
+	group by case when isnull(a.custno,'')!='' then a.custno when isnull(c.custno,'')!='' then c.custno else b.custno end
+		,case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end
+	
+	--insert into @tmp3(custno,mon,paysale)
+	--select case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+	--	when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+	--	else b.custno end
+	--,case when len(ISNULL(a.vccno,''))=0 then '' 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+	--	else isnull(c.mon,'') end
+	--,SUM(ISNULL(a.paysale,0))
+	--from umms a
+	--left join umm b on a.noa=b.noa
+	--left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
+	--where b.noa is not null
+	--and ISNULL(a.paysale,0)!=0
+	--and case when len(ISNULL(a.vccno,''))=0 then '' 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+	--	else isnull(c.mon,'') end <= @t_emon
+	--group by case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+	--	when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+	--	else b.custno end
+	--	,case when len(ISNULL(a.vccno,''))=0 then '' 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+	--	else isnull(c.mon,'') end
+	
 	delete @tmp3 where not(custno between @t_bcustno and @t_ecustno)
 	--------------------------------------------------------------------------------------------------
 	declare @tmp table(
@@ -815,33 +829,50 @@ z_ummst02:--z_ummst02
 	group by custno,mon
 	
 	insert into @tmp3(custno,mon,paysale)
-	select case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
-		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
-		else b.custno end
-	,case when len(ISNULL(a.vccno,''))=0 then '' 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
-		else isnull(c.mon,'') end
+	select case when isnull(a.custno,'')!='' then a.custno
+		when isnull(c.custno,'')!='' then c.custno else b.custno end
+	,case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end
 	,SUM(ISNULL(a.paysale,0))
 	from umms a
 	left join umm b on a.noa=b.noa
 	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
 	where b.noa is not null
 	and ISNULL(a.paysale,0)!=0
-	and case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
-		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
-		else b.custno end between @t_bcustno and @t_ecustno
-	and case when len(ISNULL(a.vccno,''))=0 then '' 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
-		else isnull(c.mon,'') end <= @t_emon
-	group by case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
-		when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
-		else b.custno end
-		,case when len(ISNULL(a.vccno,''))=0 then '' 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
-		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
-		else isnull(c.mon,'') end
+	and case when isnull(a.custno,'')!='' then a.custno
+		when isnull(c.custno,'')!='' then c.custno else b.custno end between @t_bcustno and @t_ecustno
+	and case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end <= @t_emon
+	group by case when isnull(a.custno,'')!='' then a.custno
+		when isnull(c.custno,'')!='' then c.custno else b.custno end
+	,case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end
+	
+	--insert into @tmp3(custno,mon,paysale)
+	--select case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+	--	when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+	--	else b.custno end
+	--,case when len(ISNULL(a.vccno,''))=0 then '' 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+	--	else isnull(c.mon,'') end
+	--,SUM(ISNULL(a.paysale,0))
+	--from umms a
+	--left join umm b on a.noa=b.noa
+	--left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
+	--where b.noa is not null
+	--and ISNULL(a.paysale,0)!=0
+	--and case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+	--	when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+	--	else b.custno end between @t_bcustno and @t_ecustno
+	--and case when len(ISNULL(a.vccno,''))=0 then '' 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+	--	else isnull(c.mon,'') end <= @t_emon
+	--group by case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
+	--	when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
+	--	else b.custno end
+	--	,case when len(ISNULL(a.vccno,''))=0 then '' 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
+	--	when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
+	--	else isnull(c.mon,'') end
 	
 	---------------------------------------------------------------------------------------
 	insert into @tmp4(custno,mon,[money],tax)
