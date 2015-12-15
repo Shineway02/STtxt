@@ -741,7 +741,7 @@ z_ummst03:--z_ummst03
 	,a.[weight] a2
 	,a.price a3
 	,dbo.getComma(a.[moneys],0) a4
-	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.comp +'</a>'comp
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(b.comp,'~#$',"'") +'</a>'comp
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.nick+'</a>' nick
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.addr_comp+'</a>' addr
 	,dbo.getComma(a.[money],0) b1
@@ -757,7 +757,7 @@ z_ummst03:--z_ummst03
 	from @result a
 	left join cust b on a.custno=b.noa
 	order by a.custno,case when len(isnull(a.vccno,''))=0 then 2 else 1 end,isnull(a.vccno,''),a.pno;
-	
+
 z_ummst02:--z_ummst02 
 	SET QUOTED_IDENTIFIER OFF 
 	declare @cmd nvarchar(max) 
