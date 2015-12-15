@@ -404,12 +404,12 @@ begin
 	where uno=@uno
 	
 	--更新到資料庫--get ucces cut 沒有sprice --只更新cuts 會執行很久
-	--if(@tablea='rc2s' or @tablea='inas' or @tablea='vccs')
-	--begin
-	--	set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
-	--	EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
-	--	,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
-	--end
+	if(@tablea='rc2s' or @tablea='inas' or @tablea='vccs')
+	begin
+		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
 	
 	if(@tablea='cuts')
 	begin
@@ -449,8 +449,20 @@ select '0',a.uno,a.product,a.size,a.weight,a.mount,a.sprice,money,ROW_NUMBER() o
 from #tmpsprice a 
 --outer apply (select top 1 * from view_uccb where uno=a.uno order by datea desc)b
 where left(a.uno,1)='-' and (len(@t_uno)=0 or a.uno=@t_uno)
-and (len(@t_nozero)=0 or (a.weight>0 or a.mount>0)) 
+--and (len(@t_nozero)=0 or (a.weight>0 or a.mount>0)) 
 order by a.uno
+
+if(@t_nozero='nozero')
+begin
+	delete @tmp where weight<=0 and mount<=0
+end
+if(@t_nozero='zero')
+begin
+	delete @tmp where weight>=0 
+end
+
+update a set idno=rr
+from (select idno,ROW_NUMBER() over (order by uno)rr from @tmp)a
 
 --頁數處理
 update @tmp set page=((idno-1)/39)+1
