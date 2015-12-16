@@ -88,9 +88,9 @@ begin
 		end
 	end
 	insert into @tmp(gno,orderno,pageno,noa,mount,weightb)
-		select '1',(@t_pageline+1),pageno,noa,sum(mount),sum(weightb) from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+		select '1',(@t_pageline*pageno+1),pageno,noa,sum(mount),sum(weightb) from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
 	insert into @tmp(gno,orderno,pageno,noa) 
-		select '2',(@t_pageline+2),pageno,noa from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
+		select '2',(@t_pageline*pageno+2),pageno,noa from @tmp where gno=0 and noa=@a_noa and pageno=@pageno group by noa,pageno
 	fetch next from cursor_table
 	into @a_noa,@orderno,@pageno,@idno,@a_count
 end
