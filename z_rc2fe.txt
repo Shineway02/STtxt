@@ -197,6 +197,7 @@ declare @result table(
 	weight float,
 	price float,
 	total float,
+	tax float,
 	pcount int,
 	qhref nvarchar(max)
 )
@@ -207,7 +208,7 @@ insert into @result
 		   ,(case when a.typea='2' then -1 else 1 end)*b.mount
 		   ,(case when a.typea='2' then -1 else 1 end)*b.weight
 		   ,b.price
-		   ,(case when a.typea='2' then -1 else 1 end)*b.total, 0 pcount,'rc2'+b.accy
+		   ,(case when a.typea='2' then -1 else 1 end)*b.total,a.tax, 0 pcount,'rc2'+b.accy
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	left join tgg c on  a.tggno = c.noa
@@ -220,8 +221,8 @@ insert into @result
 
 if( (select count(*) from @result) >0)
 begin	
-	insert into @result(gno,tggno,comp,pcount,mount,weight,total)
-	select '1',tggno,comp,count(pcount),sum(mount),sum(weight),sum(total) from @result group by tggno,comp
+	insert into @result(gno,tggno,comp,pcount,mount,weight,total,tax)
+	select '1',tggno,comp,count(pcount),sum(mount),sum(weight),sum(total),sum(tax) from @result group by tggno,comp
 end
 
 update @result  set qhref = substring(qhref,0,len(qhref)-2)+@qhcno+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
@@ -233,6 +234,7 @@ select
 	,dbo.getComma(weight,[3])  weight
 	,dbo.getComma(price,[4])  price
 	,dbo.getComma(total,0)  total
+	,dbo.getComma(tax,0)  tax
 	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pcount),1)),0,30)) pcount,qhref,
 	row_number()over(partition by tggno,comp order by tggno,gno,datea,noa) idno
 from @result order by tggno,gno,datea,noa;
