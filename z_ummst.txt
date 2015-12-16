@@ -1,50 +1,69 @@
-z_ummrk01:--z_ummrk01 應收帳款明細表 	
-	declare @t_bdate nvarchar(20) = case when '#non'=[3] then '' else [3] end 
-	declare @t_edate nvarchar(20) = case when '#non'=[4] then char(255) else [4] end
-	declare @t_bcustno nvarchar(35) = case when '#non'=[5] then '' else [5] end 
-	declare @t_ecustno nvarchar(35) = case when '#non'=[6] then char(255) else [6] end
+z_umm_rk01:--z_umm_rk01 應收帳款明細表 	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_path nvarchar(max) = '[27]'
+	declare @t_db nvarchar(max) = '[28]'
+	declare @t_bcustno nvarchar(20) = case when '#non'=[5] then '' else [5] end 
+	declare @t_ecustno nvarchar(20) = case when '#non'=[6] then char(255) else [6] end
+	declare @t_bmon nvarchar(20) = case when '#non'=[13] then '' else [13] end 
+	declare @t_emon nvarchar(20) = case when '#non'=[14] then char(255) else [14] end
 	------------------------------------------------------------------------
 	declare @tmp table(
-		sel int identity(1,1),
-		gno nvarchar(10),
-		custno nvarchar(20),
-		accy nvarchar(20),
-		vccno nvarchar(20),
-		datea nvarchar(20),
-		[weight] float,
-		[money] float,
-		tax float,
-		total float,
-		paytype nvarchar(20),
+		gno nvarchar(10)
+		,sel int identity(1,1)
+		,accy nvarchar(20)
+		,noa nvarchar(20)
+		,noq nvarchar(10)
+		,custno nvarchar(20)
+		,cust nvarchar(50)
+		,nick nvarchar(20)
+		,tel nvarchar(50)
+		,fax nvarchar(50)
+		,addr nvarchar(50)
+		,serial nvarchar(10)
+		,invodate nvarchar(10)
+		,invono nvarchar(max)
+			
+		,datea nvarchar(20)
+		,ordeno nvarchar(20)
+		,no2 nvarchar(10)
 		
-		payed float,
-		unpay float,
+		,product nvarchar(20)
+		,dime float
+		,radius float
+		,width float
+		,lengthb float
 		
-		memo nvarchar(max)
+		,mount float
+		,price float
+		,[money] float
+		,memo nvarchar(max)
+		
 	)
-	insert into @tmp(custno,gno,accy,vccno,datea,[weight],[money],tax,total,paytype)
-	select a.custno,'1',a.accy,a.noa,a.datea,a.[weight],a.[money],a.tax,a.total,a.paytype
-	from view_vcc a
-	where ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
-	and ISNULL(a.datea,'') between @t_bdate and @t_edate
+	insert into @tmp(gno,accy,noa,noq,custno,cust,nick,tel,fax,addr,serial,invono,invodate
+		,datea,ordeno,no2,product,dime,radius,width,lengthb,mount,price,[money],memo)
+	select '1',a.accy,a.noa,a.noq,b.custno,c.comp,c.nick,c.tel,c.fax
+		,case when len(isnull(c.zip_invo,''))>0 then c.zip_invo else isnull(c.zip_comp,'') end
+		,c.serial,b.invono,''
+		,b.datea,a.ordeno,a.no2,a.product,a.dime,a.radius,a.width,a.lengthb,a.mount,a.price,a.[total],a.memo
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa 
+	left join cust c on a.custno=c.noa
+	where ISNULL(b.mon,'') between @t_bmon and @t_emon
+	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
+	and ISNULL(b.typea,'')='1'
+	order by a.noa,a.noq desc
+	---------------------------------------------------------------------------------
+	--小計
+	insert into @tmp(gno,custno,cust,nick,tel,fax,addr,serial,mount,[money])
+	select '2',custno,cust,nick,tel,fax,addr,serial,sum(isnull(mount,0)),sum(isnull([money],0))
+	from @tmp
+	where gno='1'	
+	group by custno,cust,nick,tel,fax,addr,serial
 	
-	update @tmp set payed=b.paysale
-	from @tmp a
-	left join pays b on a.vccno=b.vccno
-	
-	update @tmp set unpay = ISNULL(total,0)-ISNULL(payed,0)
-
-	update @tmp set payed=isnull(b.paysale,0)
-	from @tmp a
-	outer apply(select SUM(ISNULL(paysale,0)) paysale from umms where vccno=a.vccno) b
-	-----------------------------------------------------------------------------------------
-	insert into @tmp(custno,gno,accy,vccno,datea,[weight],[money],tax,total,paytype)
-	select custno,'2','','','',sum(isnull([weight],0)),sum(isnull([money],0)),sum(isnull(tax,0)),sum(isnull(total,0)),''
-	from @tmp 
-	group by custno
-	
-	select * from @tmp
-	order by custno,gno;
+	select *
+		,'<img src="'+@t_path+'getlogo.aspx?noa=LC01'+CHAR(38)+'db='+@t_db+'"/>' logo 
+	from @tmp
+	order by custno,gno,datea;
 
 z_ummst9:--z_ummst9
 	SET QUOTED_IDENTIFIER OFF
