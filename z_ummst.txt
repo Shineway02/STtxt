@@ -100,8 +100,8 @@ z_ummst9:--z_ummst9
 	from umms a
 	left join umm b on a.noa=b.noa
 	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
-	where b.noa is not null
-	and ISNULL(a.paysale,0)!=0
+	where --b.noa is not null and 
+	ISNULL(a.paysale,0)!=0
 	and case when len(ISNULL(a.vccno,''))=0 then '' 
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
@@ -454,8 +454,8 @@ z_ummst03:--z_ummst03
 	from umms a
 	left join umm b on a.noa=b.noa
 	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
-	where b.noa is not null
-	and ISNULL(a.paysale,0)!=0
+	where --b.noa is not null and 
+	ISNULL(a.paysale,0)!=0
 	and case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end <= @t_emon
 	group by case when isnull(a.custno,'')!='' then a.custno when isnull(c.custno,'')!='' then c.custno else b.custno end
 		,case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end
@@ -772,27 +772,53 @@ z_ummst02:--z_ummst02
 	set @t_bcustno = case when '#non' = [5] then '' else [5] end
 	set @t_ecustno = case when '#non' = [6] then CHAR(255) else [6] end
 	---------------------------------------------------------------------------------
-	declare @tmp1 table(
+	IF OBJECT_ID('tempdb..#tmp1')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp1'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp2')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp2'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp3')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp3'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp4')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp4'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp5')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp5'
+		EXECUTE sp_executesql @cmd
+	END
+	
+	create table #tmp1(
 		custno nvarchar(20),
 		mon nvarchar(10),--帳款月份	
 		[money] float,
 		tax float,
 		total float
 	)
-	declare @tmp2 table(
+	create table #tmp2(
 		custno nvarchar(20),
 		mon nvarchar(20),--帳款月份
 		[money] float,
 		tax float,
 		total float
 	)
-	declare @tmp3 table(
+	create table #tmp3(
 		custno nvarchar(20),
 		mon nvarchar(20),--帳款月份
 		paysale float
 	)
 	
-	declare @tmp4 table(
+	create table #tmp4(
 		custno nvarchar(20),
 		mon nvarchar(10),
 		[money] float,
@@ -801,7 +827,7 @@ z_ummst02:--z_ummst02
 		unpay float
 	)
 	
-	declare @tmp5 table(
+	create table #tmp5(
 		gno nvarchar(10),
 		custno nvarchar(20),
 		memo nvarchar(max),
@@ -811,7 +837,7 @@ z_ummst02:--z_ummst02
 		unpay float
 	)
 	
-	insert into @tmp1(custno,mon,[money],tax,total)
+	insert into #tmp1(custno,mon,[money],tax,total)
 	select custno,mon
 	,SUM(case when typea='1' then ISNULL([money],0) else -ISNULL([money],0) end)
 	,SUM(case when typea='1' then ISNULL([tax],0) else -ISNULL([tax],0) end)
@@ -821,14 +847,14 @@ z_ummst02:--z_ummst02
 	and mon<=@t_emon
 	group by custno,mon
 	
-	insert into @tmp2(custno,mon,[money],tax,total)
+	insert into #tmp2(custno,mon,[money],tax,total)
 	select custno,mon,SUM(ISNULL([money],0)),SUM(ISNULL([tax],0)),SUM(ISNULL([total],0))
 	from vcca
 	where custno between @t_bcustno and @t_ecustno
 	and mon<=@t_emon
 	group by custno,mon
 	
-	insert into @tmp3(custno,mon,paysale)
+	insert into #tmp3(custno,mon,paysale)
 	select case when isnull(a.custno,'')!='' then a.custno
 		when isnull(c.custno,'')!='' then c.custno else b.custno end
 	,case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end
@@ -836,8 +862,8 @@ z_ummst02:--z_ummst02
 	from umms a
 	left join umm b on a.noa=b.noa
 	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
-	where b.noa is not null
-	and ISNULL(a.paysale,0)!=0
+	where --b.noa is not null and 
+	ISNULL(a.paysale,0)!=0
 	and case when isnull(a.custno,'')!='' then a.custno
 		when isnull(c.custno,'')!='' then c.custno else b.custno end between @t_bcustno and @t_ecustno
 	and case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end <= @t_emon
@@ -845,7 +871,7 @@ z_ummst02:--z_ummst02
 		when isnull(c.custno,'')!='' then c.custno else b.custno end
 	,case when isnull(a.paymon,'')!='' then a.paymon else isnull(c.mon,'') end
 	
-	--insert into @tmp3(custno,mon,paysale)
+	--insert into #tmp3(custno,mon,paysale)
 	--select case when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]%' then SUBSTRING(a.vccno,0,charindex('-',a.vccno)) 
 	--	when len(ISNULL(a.vccno,''))=0 and len(ISNULL(c.custno,''))>0 then c.custno
 	--	else b.custno end
@@ -875,27 +901,27 @@ z_ummst02:--z_ummst02
 	--	else isnull(c.mon,'') end
 	
 	---------------------------------------------------------------------------------------
-	insert into @tmp4(custno,mon,[money],tax)
-	select custno,mon,[money],tax from @tmp1
+	insert into #tmp4(custno,mon,[money],tax)
+	select custno,mon,[money],tax from #tmp1
 	
 	---------------------------------------------------------------------------------------
-	update @tmp4 set tax = isnull(a.tax,0) + isnull(b.tax,0)
-	from @tmp4 a
-	left join @tmp2 b on a.custno=b.custno and a.mon=b.mon
+	update #tmp4 set tax = isnull(a.tax,0) + isnull(b.tax,0)
+	from #tmp4 a
+	left join #tmp2 b on a.custno=b.custno and a.mon=b.mon
 	
-	insert into @tmp4(custno,mon,[money],tax)
-	select custno,mon,0,tax from @tmp2 a
-	where not exists(select * from @tmp4 where custno=a.custno and mon=a.mon)
+	insert into #tmp4(custno,mon,[money],tax)
+	select custno,mon,0,tax from #tmp2 a
+	where not exists(select * from #tmp4 where custno=a.custno and mon=a.mon)
 	---------------------------------------------------------------------------------------
-	update @tmp4 set paysale=ISNULL(b.paysale,0)
-	from @tmp4 a
-	left join @tmp3 b on a.custno=b.custno and a.mon=b.mon
+	update #tmp4 set paysale=ISNULL(b.paysale,0)
+	from #tmp4 a
+	left join #tmp3 b on a.custno=b.custno and a.mon=b.mon
 	
-	insert into @tmp4(custno,mon,[money],tax,paysale)
-	select custno,mon,0,0,paysale from @tmp3 a
-	where not exists(select * from @tmp4 where custno=a.custno and mon=a.mon)
+	insert into #tmp4(custno,mon,[money],tax,paysale)
+	select custno,mon,0,0,paysale from #tmp3 a
+	where not exists(select * from #tmp4 where custno=a.custno and mon=a.mon)
 	---------------------------------------------------------------------------------------
-	update @tmp4 set unpay = ISNULL(money,0)+ISNULL(tax,0)-ISNULL(paysale,0)
+	update #tmp4 set unpay = ISNULL(money,0)+ISNULL(tax,0)-ISNULL(paysale,0)
 	
 	---------------------------------------------------------------------------------------
 	declare @custno nvarchar(20)
@@ -906,7 +932,7 @@ z_ummst02:--z_ummst02
 	declare @unpay float
 	
 	declare cursor_table cursor for
-	select custno from @tmp4 group by custno
+	select custno from #tmp4 group by custno
 	open cursor_table
 	fetch next from cursor_table
 	into @custno
@@ -914,7 +940,7 @@ z_ummst02:--z_ummst02
 	begin
 		set @cmd = ''
 		declare cursor_table2 cursor for
-		select mon,unpay from @tmp4 
+		select mon,unpay from #tmp4 
 		where custno=@custno and unpay !=0 and mon<@t_bmon
 		order by mon
 		open cursor_table2
@@ -933,10 +959,10 @@ z_ummst02:--z_ummst02
 		deallocate cursor_table2
 		
 		select @money=0,@tax=0,@pay=0,@unpay=0
-		select @money=SUM(ISNULL([money],0)),@tax=SUM(ISNULL([tax],0)),@pay=SUM(ISNULL([paysale],0)) from @tmp4 where custno=@custno and mon between @t_bmon and @t_emon
-		select @unpay=SUM(ISNULL([unpay],0)) from @tmp4 where custno=@custno
+		select @money=SUM(ISNULL([money],0)),@tax=SUM(ISNULL([tax],0)),@pay=SUM(ISNULL([paysale],0)) from #tmp4 where custno=@custno and mon between @t_bmon and @t_emon
+		select @unpay=SUM(ISNULL([unpay],0)) from #tmp4 where custno=@custno
 		
-		insert into @tmp5(gno,custno,memo,[money],pay,unpay)values('1',@custno,@cmd,@money+@tax,@pay,@unpay)
+		insert into #tmp5(gno,custno,memo,[money],pay,unpay)values('1',@custno,@cmd,@money+@tax,@pay,@unpay)
 	
 		fetch next from cursor_table
 		into @custno
@@ -944,15 +970,43 @@ z_ummst02:--z_ummst02
 	close cursor_table
 	deallocate cursor_table
 	
-	insert into @tmp5(gno,[money],pay,unpay)
-	select '2',SUM(ISNULL([money],0)),SUM(ISNULL(pay,0)),SUM(ISNULL(unpay,0)) from @tmp5
+	insert into #tmp5(gno,[money],pay,unpay)
+	select '2',SUM(ISNULL([money],0)),SUM(ISNULL(pay,0)),SUM(ISNULL(unpay,0)) from #tmp5
 	
 	select a.*,b.nick
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,[money]),1)),4,12)) aa1
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,[pay]),1)),4,12)) aa2
 	,reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,[unpay]),1)),4,12)) aa3
-	from @tmp5 a
-	left join cust b on a.custno=b.noa;
+	from #tmp5 a
+	left join cust b on a.custno=b.noa
+	order by gno,custno
+	
+	IF OBJECT_ID('tempdb..#tmp1')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp1'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp2')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp2'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp3')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp3'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp4')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp4'
+		EXECUTE sp_executesql @cmd
+	END
+	IF OBJECT_ID('tempdb..#tmp5')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp5'
+		EXECUTE sp_executesql @cmd
+	END
+	;
 
 z_ummst01:--z_ummst01
 	SET QUOTED_IDENTIFIER OFF
@@ -1010,8 +1064,8 @@ z_ummst01:--z_ummst01
 		select b.custno,b.datea,a.noa,a.noq,a.acc1,a.acc2,a.[money],a.checkno,a.bankno,a.bank,a.indate
 		from umms a
 		left join umm b on a.noa=b.noa
-		where b.noa is not null
-		and b.datea between @t_bdate and @t_edate
+		where --b.noa is not null and 
+		b.datea between @t_bdate and @t_edate
 		and b.custno between @t_bcustno and @t_ecustno
 		and isnull(a.[money],0)!=0
 		union all
@@ -1027,8 +1081,8 @@ z_ummst01:--z_ummst01
 	select b.custno,b.datea,a.vccno,a.paysale
 	from umms a
 	left join umm b on a.noa=b.noa
-	where b.noa is not null
-	and b.datea between @t_bdate and @t_edate
+	where --b.noa is not null and 
+	b.datea between @t_bdate and @t_edate
 	and b.custno between @t_bcustno and @t_ecustno
 	and isnull(a.paysale,0)!=0
 	order by b.custno,b.datea,a.noa,a.noq
@@ -1072,8 +1126,8 @@ z_ummst01:--z_ummst01
 	select b.custno,SUM(ISNULL(a.[money],0)-ISNULL(a.paysale,0))
 	from umms a
 	left join umm b on a.noa=b.noa
-	where b.noa is not null
-	or b.custno between @t_bcustno and @t_ecustno
+	where --b.noa is not null or 
+	b.custno between @t_bcustno and @t_ecustno
 	and b.datea <= @t_edate
 	group by b.custno
 	open cursor_table
@@ -1912,8 +1966,8 @@ set @t_ecustno = case when '#non'=[6] then char(255) else [6] end
 	from umms a
 	left join umm b on a.noa=b.noa
 	left join view_vcc c on a.accy=c.accy and a.vccno=c.noa
-	where b.noa is not null
-	and ISNULL(a.paysale,0)!=0
+	where --b.noa is not null and 
+	ISNULL(a.paysale,0)!=0
 	and case when len(ISNULL(a.vccno,''))=0 then '' 
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]-TAX' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6) 
 		when a.vccno like '%-[0-9][0-9][0-9]/[0-9][0-9]' then SUBSTRING(a.vccno,charindex('-',a.vccno)+1,6)
