@@ -149,6 +149,9 @@ z_unobd05:--z_unobd05 批號履歷
 		close cursor_table
 		deallocate cursor_table
 	end
+	
+	
+	
 	--往下找	
 	update @history set ischk=0 where [rank]=0
 		
@@ -184,6 +187,7 @@ z_unobd05:--z_unobd05 批號履歷
 				from view_vccs a
 				left join view_vcc b on a.accy=b.accy and a.noa=b.noa
 				where a.uno=@uno
+				and len(ISNULL(a.uno,''))>0
 			end
 			--領料
 			if exists(select * from view_gets where uno=@uno)
@@ -204,6 +208,7 @@ z_unobd05:--z_unobd05 批號履歷
 				left join view_vcc c on a.noa=c.noa
 				left join view_vccs d on a.noa=d.noa and a.nor=d.noq
 				where a.uno=@uno
+				and len(ISNULL(a.uno,''))>0
 			end
 			--裁剪
 			if exists(select * from view_cut where uno=@uno)
@@ -213,6 +218,7 @@ z_unobd05:--z_unobd05 批號履歷
 				select 1,@rank+1,a.uno,'cut',a.accy,a.noa,'',a.datea 
 					,null,null,a.gmount,a.[gweight],null,null,a.productno,a.product,'',a.memo
 				from view_cut a where uno=@uno
+				and len(ISNULL(uno,''))>0
 				
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
 					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
@@ -221,6 +227,7 @@ z_unobd05:--z_unobd05 批號履歷
 				from view_cuts a 
 				left join view_cut b on a.accy=b.accy and a.noa=b.noa
 				where b.uno=@uno
+				and len(ISNULL(b.uno,''))>0
 			end
 			--派令
 			if exists(select * from view_cubt where uno=@uno)
@@ -233,6 +240,7 @@ z_unobd05:--z_unobd05 批號履歷
 				from view_cubt a 
 				left join view_cub b on a.accy=b.accy and a.noa=b.noa
 				where a.uno=@uno
+				and len(ISNULL(a.uno,''))>0
 				--cubt
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
 					,mount01,weight01,mount02,weight02,sprice,sprice2,productno,product,size,memo)
@@ -240,7 +248,7 @@ z_unobd05:--z_unobd05 批號履歷
 					,a.mount,a.[weight],null,null,null,null,a.productno,a.product,a.size,a.memo
 				from view_cubt a 
 				left join view_cub b on a.accy=b.accy and a.noa=b.noa
-				where a.uno=@uno
+				where a.bno=@uno
 				and len(ISNULL(a.bno,''))>0
 				--cubu
 				insert into @history(ischk,[rank],uno,tablea,accy,noa,noq,datea
@@ -250,6 +258,7 @@ z_unobd05:--z_unobd05 批號履歷
 				from view_cubu a 
 				left join view_cub b on a.accy=b.accy and a.noa=b.noa
 				where exists(select * from view_cubt where noa=b.noa and uno=@uno and groupa=a.groupa)
+				and len(ISNULL(a.uno,''))>0
 			end
 			
 			update @history set ischk=1 where left(uno,1)='-'
@@ -375,6 +384,7 @@ z_unobd05:--z_unobd05 批號履歷
 	left join view_uccc d on d.uno=@t_uno
 	left join store e on c.storeno=e.noa
 	order by a.[rank],a.datea;
+
 
 z_unobd01:--z_unobd01          z_uno1
 declare @t_uno nvarchar(50)
