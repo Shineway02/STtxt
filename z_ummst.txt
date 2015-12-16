@@ -38,6 +38,9 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		,[money] float
 		,memo nvarchar(max)
 		
+		,b01 float
+		,b02 float
+		,b03 float
 	)
 	insert into @tmp(gno,accy,noa,noq,custno,cust,nick,tel,fax,addr,serial,invono,invodate
 		,datea,ordeno,no2,product,dime,radius,width,lengthb,mount,price,[money],memo)
@@ -49,36 +52,88 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa 
 	left join cust c on a.custno=c.noa
 	where ISNULL(b.mon,'') between @t_bmon and @t_emon
-	and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno
+	and ISNULL(b.custno,'') between @t_bcustno and @t_ecustno
 	and ISNULL(b.typea,'')='1'
 	order by a.noa,a.noq desc
 	---------------------------------------------------------------------------------
-	--小計
-	insert into @tmp(gno,custno,cust,nick,tel,fax,addr,serial,mount,[money])
-	select '2',custno,cust,nick,tel,fax,addr,serial,sum(isnull(mount,0)),sum(isnull([money],0))
-	from @tmp
-	where gno='1'	
-	group by custno,cust,nick,tel,fax,addr,serial
+	declare @tmpb table(
+		custno nvarchar(20)
+		,[money] float
+		,tax float
+		,total float
+		,invono nvarchar(max)
+	)
+	declare @custno nvarchar(20)
+	declare @money float
+	declare @tax float
+	declare @total float
+	declare @invono nvarchar(max)
 	
-	select * 
+	declare cursor_table cursor for
+	select custno,[money],tax,total,invono 
+	from view_vcc b
+	where ISNULL(b.mon,'') between @t_bmon and @t_emon
+	and ISNULL(b.custno,'') between @t_bcustno and @t_ecustno
+	and ISNULL(b.typea,'')='1'
+	open cursor_table
+	fetch next from cursor_table
+	into @custno,@money,@tax,@total,@invono
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if exists(select * from @tmpb where custno=@custno)
+		begin
+			update @tmpb set [money]= ISNULL([money],0)+@money
+				,[tax]= ISNULL([tax],0)+@tax
+				,[total]= ISNULL([total],0)+@total
+				,invono=case when len(ISNULL(invono,''))>0 then ISNULL(invono,'')+',' else '' end +@invono
+			where custno=@custno
+		end
+		else
+		begin
+			insert into @tmpb(custno,[money],tax,total,invono)
+			select @custno,@money,@tax,@total,@invono
+		end
+		
+		fetch next from cursor_table
+		into @custno,@money,@tax,@total,@invono
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	
+	--小計
+	insert into @tmp(gno,custno,cust,nick,tel,fax,addr,serial,mount,b01,b02,b03)
+	select '2',a.custno,b.comp,b.nick,b.tel,b.fax
+		,case when len(isnull(b.zip_invo,''))>0 then b.zip_invo else isnull(b.zip_comp,'') end
+		,b.serial
+		,ISNULL(c.mount,0)
+		,ISNULL(a.[money],0)
+		,ISNULL(a.[tax],0)
+		,ISNULL(a.[total],0)
+		
+	from @tmpb a
+	left join cust b on a.custno=b.noa
+	outer apply (select SUM(ISNULL(mount,0)) mount from @tmp where custno=a.custno )c
+
+	select gno
 		,'<img src="'+@t_path+'getlogo.aspx?noa=LC01'+CHAR(38)+'db='+@t_db+'"/>' logo 
-		,'' a01
-		,'' a02
+		,datea a01
+		,noa a02
 		,'' a03
-		,'' a04
-		,'' a05
-		,'' a06
-		,'' a07
-		,'' a08
-		,'' a09
-		,'' a10
-		,'' a11
-		,'' a12
-		,'' a13
-		,'' b01
-		,'' b02
-		,'' b03
-		,'' c01
+		,ordeno a04
+		,product a05
+		,dime a06
+		,radius a07
+		,width a08
+		,lengthb a09
+		,mount a10
+		,price a11
+		,[money] a12
+		,memo a13
+		,b01 b01
+		,b02 b02
+		,b02 b03
+		,invono c01
 	from @tmp
 	order by custno,gno,datea;
 
