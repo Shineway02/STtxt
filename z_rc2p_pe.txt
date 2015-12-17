@@ -41,7 +41,7 @@ select
 	'0',ROW_NUMBER()over(partition by a.noa order by a.noa),a.noa,a.datea,a.tggno,a.tgg,c.tel,c.fax,c.serial,c.addr_fact,
 	case when a.typea='1' then '買賣' when a.typea='2' then '加工' when a.typea='3' then '代工' end,
 	b.productno,b.product,
-	case when LEN(b.size)>0 then b.size else REPLACE(dbo.getComma(b.dime,-1),',','')+'x'+REPLACE(dbo.getComma(b.width,-1),',','')+'x'+REPLACE(dbo.getComma(b.lengthb,-1),',','') end,
+	case when LEN(b.size)>0 then REPLACE(b.size,'~#$','''') else REPLACE(dbo.getComma(b.dime,-1),',','')+'x'+REPLACE(dbo.getComma(b.width,-1),',','')+'x'+REPLACE(dbo.getComma(b.lengthb,-1),',','') end,
 	b.mount,b.weight,b.unit,b.price,b.total,b.memo,0,0,0,''
 from view_rc2 a
 left join view_rc2s b on a.noa = b.noa

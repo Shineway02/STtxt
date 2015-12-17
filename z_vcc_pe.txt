@@ -24,7 +24,7 @@ insert into @tmp
 select
 	'0',case when a.typea='1' then '出' else '退' end,
 	RIGHT(a.datea,5),a.noa,LEFT(a.comp,4),b.spec,b.product,
-	case when LEN(b.size)>0 then b.size else CAST(b.dime as nvarchar(10))+' x '+CAST(b.width as nvarchar(10))+' x '+CAST(b.lengthb as nvarchar(10))end,
+	case when LEN(b.size)>0 then REPLACE(b.size,'~#$','''') else CAST(b.dime as nvarchar(10))+' x '+CAST(b.width as nvarchar(10))+' x '+CAST(b.lengthb as nvarchar(10))end,
 	case when a.typea='1' then ROUND(b.mount,0) else ROUND(-1*b.mount,0) end,
 	case when a.typea='1' then ROUND(b.gweight,0) else ROUND(-1*b.gweight,0) end,
 	b.price,
@@ -77,7 +77,7 @@ insert into @tmp
 select
 	'0',case when a.typea='1' then '進' else '退' end,
 	RIGHT(a.datea,5),a.noa,LEFT(a.tgg,4),b.spec,b.product,
-	case when LEN(b.size)>0 then b.size else REPLACE(dbo.getComma(b.dime,-1),',','')+' x '+REPLACE(dbo.getComma(b.width,-1),',','')+' x '+REPLACE(dbo.getComma(b.lengthb,-1),',','')end,
+	case when LEN(b.size)>0 then REPLACE(b.size,'~#$','''') else REPLACE(dbo.getComma(b.dime,-1),',','')+' x '+REPLACE(dbo.getComma(b.width,-1),',','')+' x '+REPLACE(dbo.getComma(b.lengthb,-1),',','')end,
 	case when a.typea='1' then ROUND(b.mount,0) else ROUND(-1*b.mount,0) end,
 	case when a.typea='1' then ROUND(b.weight,0) else ROUND(-1*b.weight,0) end,
 	b.price,
