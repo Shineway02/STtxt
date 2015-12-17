@@ -146,7 +146,7 @@ declare @tmp table(
 insert into @tmp
 select 
 	'0',ROW_NUMBER()over(partition by a.noa order by a.noa),a.noa,a.datea,a.custno,a.comp,a.tel,a.addr2,b.product,b.spec,
-	case when LEN(b.size)>0 then b.size else REPLACE(dbo.getComma(b.dime,-1),',','')+'x'+REPLACE(dbo.getComma(b.width,-1),',','')+'x'+REPLACE(dbo.getComma(b.lengthb,-1),',','') end,
+	case when LEN(b.size)>0 then REPLACE(b.size,'~#$','''') else REPLACE(dbo.getComma(b.dime,-1),',','')+'x'+REPLACE(dbo.getComma(b.width,-1),',','')+'x'+REPLACE(dbo.getComma(b.lengthb,-1),',','') end,
 	b.mweight,b.weight,b.mount,b.memo
 from view_vcc a
 left join view_vccs b on a.noa = b.noa
