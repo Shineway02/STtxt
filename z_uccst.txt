@@ -62,7 +62,8 @@ z_uccst5:--z_uccst5
 		,case when isnull(a.[weight],0)!=0 then a.total/a.[weight] else a.price end
 	from view_vccs a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
-	left join view_uccb c on a.uno=c.uno
+	outer apply (select top 1 * from view_uccb where a.uno=uno and datea<=a.datea order by datea desc)c --處理-批號問題
+	--left join view_uccb c on a.uno=c.uno
 	where len(isnull(a.uno,''))>0
 	and b.datea between @t_bdate and @t_edate
 	and c.productno between @t_bproductno and @t_eproductno
