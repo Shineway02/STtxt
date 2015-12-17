@@ -110,13 +110,32 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		,ISNULL(a.[money],0)
 		,ISNULL(a.[tax],0)
 		,ISNULL(a.[total],0)
-		
 	from @tmpb a
 	left join cust b on a.custno=b.noa
 	outer apply (select SUM(ISNULL(mount,0)) mount from @tmp where custno=a.custno )c
-
+	
+	insert into @tmp(gno,custno,cust,nick,tel,fax,addr,serial,mount,b01,b02,b03)
+	select '3',a.custno,b.comp,b.nick,b.tel,b.fax
+		,case when len(isnull(b.zip_invo,''))>0 then b.zip_invo else isnull(b.zip_comp,'') end
+		,b.serial
+		,ISNULL(c.mount,0)
+		,ISNULL(a.[money],0)
+		,ISNULL(a.[tax],0)
+		,ISNULL(a.[total],0)
+	from @tmpb a
+	left join cust b on a.custno=b.noa
+	outer apply (select SUM(ISNULL(mount,0)) mount from @tmp where custno=a.custno )c
+	
 	select gno
 		,'<img src="'+@t_path+'getlogo.aspx?noa=LC01'+CHAR(38)+'db='+@t_db+'"/>' logo 
+		,custno d01
+		,dbo.AD2ChineseEraName(GETDATE()) d02
+		,replace(cust,'~#$',"'") d03
+		,tel d04
+		,fax d05
+		,addr d06
+		,serial d07
+		
 		,datea a01
 		,noa a02
 		,'' a03
@@ -132,7 +151,7 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		,memo a13
 		,b01 b01
 		,b02 b02
-		,b02 b03
+		,b03 b03
 		,invono c01
 	from @tmp
 	order by custno,gno,datea;
