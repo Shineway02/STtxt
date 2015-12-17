@@ -1923,6 +1923,7 @@ z_uccst2A:--z_uccst2A
 			sum((case when gno='1' then weight*(-1) else weight end))
 		from @tmp where gno ='0'
 	update @tmp set csize = replace(csize,'~#$','''')
+	update @tmp set spec = replace(csize,'~#$','''')
 	update @tmp set sprice = null where @t_showprice = 0
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref)) where len(isnull(qhref,'')) > 4
 	
@@ -2336,6 +2337,7 @@ begin
 end
 
 update @tmp set csize = replace(csize,'~#$','''')
+update @tmp set spec = replace(csize,'~#$','''')
 update @tmp set sprice = null where @t_showprice = 0
 update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref))
 update @tmp set weight = round(weight,3)

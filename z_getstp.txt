@@ -178,6 +178,9 @@
 	close cursor_table
 	deallocate cursor_table
 	
+	update @tmp set size = replace(size,'~#$','''')
+	update @tmp set spec = replace(spec,'~#$','''')
+	
 	select case when typea='寄庫' then '寄庫出貨' else typea end+'單' titlea
 	,(ROW_NUMBER()over(partition by a.noa order by pno)-1)/@t_pageline +1 pp
 	,(b.n-1)/@t_pageline +1 qq

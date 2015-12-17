@@ -76,6 +76,7 @@ z_rc2st1:--z_rc2st1
 		and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0)	
 	order by datea desc,gno,noa,noq
 	update @tmp set csize = replace(csize,'~#$','''')
+	update @tmp set spec = replace(spec,'~#$','''')
 	insert into @tmp(gno,datea,mount,total)
 		select '1',datea,sum(mount),sum(total) from @tmp where gno='0' group by datea
 	insert into @tmp(gno,datea,mount,total)
@@ -146,6 +147,7 @@ insert into @result(gno,type,noa,datea,tggno,comp,addr_invo,tel,productno,xprodu
 		  and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0)	    	  
 	order by a.tggno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
+update @result set spec = replace(spec,'~#$','''')
 
 insert into @result(gno,tggno,comp,pcount,mount,weight,total)
 	select '1',tggno,comp,count(pcount),sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp
@@ -214,6 +216,7 @@ insert into @result(gno,type,noa,datea,tggno,comp,productno,xproduct,unit,mount,
 		  and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0)	    	  
 	order by b.productno,gno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
+update @result set spec = replace(spec,'~#$','''')
 insert into @result(gno,productno,xproduct,csize,mount,weight,total)
 	select '1',productno,xproduct,csize,sum(mount),sum(weight),sum(total) from @result where gno='0' group by productno,xproduct,csize
 update @result set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
@@ -279,6 +282,7 @@ insert into @result(gno,type,noa,datea,tggno,comp,productno,xproduct,unit,mount,
 		  and (len(@t_style)=0 or charindex(','+b.style+',',','+@t_style+',')>0) 	    	  
 	order by a.tggno,b.productno,a.datea,a.noa
 update @result set csize = replace(csize,'~#$','''')
+update @result set spec = replace(spec,'~#$','''')
 insert into @result(gno,tggno,comp,productno,xproduct,mount,weight,total)
 	select '1',tggno,comp,productno,xproduct,sum(mount),sum(weight),sum(total) from @result where gno='0' group by tggno,comp,productno,xproduct
 insert into @result(gno,tggno,comp,productno,mount,weight,total)
