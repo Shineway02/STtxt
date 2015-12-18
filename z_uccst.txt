@@ -1641,6 +1641,14 @@ z_uccst2A:--z_uccst2A
 	
 	set @t_sortby = upper(@t_sortby)
 	----------------------------------------------------------------------------------------------
+	SET QUOTED_IDENTIFIER OFF 
+	declare @cmd nvarchar(max)  
+	IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp'
+		EXECUTE sp_executesql @cmd
+	END
+	
 	set @t_style = upper(@t_style)
 	set @t_waste = upper(@t_waste)
 	set @t_stktype = upper(@t_stktype)
@@ -1663,7 +1671,7 @@ z_uccst2A:--z_uccst2A
 		set @t_bdime = @swapTmp1
 		set @t_edime = @swapTmp2	
 	end
-	declare @tmp table(
+	create table #tmp(
 		gno nvarchar(1),
 		idno int identity(0,1),
 		g2 nvarchar(1),
@@ -1694,9 +1702,10 @@ z_uccst2A:--z_uccst2A
 		qhref nvarchar(max),
 		[source] nvarchar(20)
 	)
-	insert into @tmp
-		select
-			a.gno,'0' g2,a.sortno,a.datea,f.store,a.custno,c.nick,a.uno,
+	CREATE INDEX tmp_index ON #tmp(uno,datea)
+	
+	insert into #tmp
+		select a.gno,'0' g2,a.sortno,a.datea,f.store,a.custno,c.nick,a.uno,
 			case a.tablea when 'rc2s' then d.uno2 when 'inas' then e.uno2 end,
 			a.productno,a.product,a.class,a.spec,
 			case @t_showtype when '0' then
@@ -1783,7 +1792,7 @@ z_uccst2A:--z_uccst2A
 	declare @t_uno nvarchar(max)
 	--------尋找原批號 <<Start>>
 	declare cursor_table cursor for
-		select idno,uno,uno2 from @tmp where (left(kind,1) != 'B') and (ltrim(rtrim(isnull(uno2,''))) = '')
+		select idno,uno,uno2 from #tmp where (left(kind,1) != 'B') and (ltrim(rtrim(isnull(uno2,''))) = '')
 	open cursor_table
 	fetch next from cursor_table
 	into @idno,@t_uno,@uno2
@@ -1795,13 +1804,13 @@ z_uccst2A:--z_uccst2A
 			if((select count(*) from view_rc2s a left join view_rc2 b on a.noa = b.noa where a.uno = @SearchUno) >0)
 			begin
 				set @uno2 = (select top 1 a.uno2 from view_rc2s a left join view_rc2 b on a.noa = b.noa where a.uno = @SearchUno)
-				update @tmp set uno2 = @uno2 where idno=@idno
+				update #tmp set uno2 = @uno2 where idno=@idno
 				break
 			end
 			else if((select count(*) from view_inas a left join view_ina b on a.noa = b.noa  where a.uno = @SearchUno) >0)
 			begin
 				set @uno2 = (select top 1 a.uno2 from view_inas a left join view_ina b on a.noa = b.noa  where a.uno = @SearchUno)
-				update @tmp set uno2 = @uno2 where idno=@idno
+				update #tmp set uno2 = @uno2 where idno=@idno
 				break
 			end
 			else
@@ -1827,10 +1836,10 @@ z_uccst2A:--z_uccst2A
 	deallocate cursor_table
 	--------尋找原批號 <<End>>
 	
-	update @tmp set csize = replace(csize,'X','*')
+	update #tmp set csize = replace(csize,'X','*')
 	
 	declare cursor_table cursor for
-		select idno,csize from @tmp
+		select idno,csize from #tmp
 	open cursor_table
 	fetch next from cursor_table
 	into @idno,@csize
@@ -1847,7 +1856,7 @@ z_uccst2A:--z_uccst2A
 			set @csize = RIGHT(@csize,LEN(@csize)-CHARINDEX('*',@csize))
 		end
 		set @new_csize = substring(@new_csize,0,len(@new_csize))
-		update @tmp set csize = @new_csize where idno=@idno
+		update #tmp set csize = @new_csize where idno=@idno
 		fetch next from cursor_table
 		into @idno,@csize
 	end 
@@ -1856,36 +1865,36 @@ z_uccst2A:--z_uccst2A
 	
 	if(@t_merga = 1)
 	begin
-		update @tmp set gno = '1'
-		update @tmp set datea='',custno='',custs='',uno='',uno2='',ordeno='',no2='',sprice=0,memo='',radius=0,dime=0,width=0,lengthb=0
-		insert into @tmp(
+		update #tmp set gno = '1'
+		update #tmp set datea='',custno='',custs='',uno='',uno2='',ordeno='',no2='',sprice=0,memo='',radius=0,dime=0,width=0,lengthb=0
+		insert into #tmp(
 			gno,g2,sortno,datea,storeno,custno,custs,uno,uno2,productno,products,class,
 			spec,csize,mount,weight,ordeno,no2,sfi,radius,dime,width,lengthb,kind,sprice,memo,qhref
 		)
 		select
 			'0',g2,sortno,'',storeno,'','','','',productno,products,
 			class,spec,csize,sum(mount),sum(weight),'','',sfi,radius,dime,width,lengthb,kind,0,'',''
-		from @tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb
-		delete @tmp where gno='1'
+		from #tmp group by g2,sortno,storeno,productno,products,class,spec,kind,csize,sfi,radius,dime,width,lengthb
+		delete #tmp where gno='1'
 	end
 	
 	
 	if(@t_orderstatus = '1') ----已受訂
-		delete @tmp where isnull(ordeno,'') = ''
+		delete #tmp where isnull(ordeno,'') = ''
 	else if(@t_orderstatus = '2') ----未受訂
-		delete @tmp where isnull(ordeno,'') != ''
+		delete #tmp where isnull(ordeno,'') != ''
 	declare @t_count int
 	declare @t_idno int
 	declare cursor_table cursor for
-		select distinct uno,max(idno) from @tmp where gno='1' group by uno
+		select distinct uno,max(idno) from #tmp where gno='1' group by uno
 	open cursor_table
 	fetch next from cursor_table
 	into @t_uno,@t_idno
 	while(@@FETCH_STATUS <> -1)
 	begin
-		select @t_count = count(*) from @tmp where uno = @t_uno 
+		select @t_count = count(*) from #tmp where uno = @t_uno 
 		if(@t_count = 1)
-			delete @tmp where idno=@t_idno
+			delete #tmp where idno=@t_idno
 		fetch next from cursor_table
 		into @t_uno,@t_idno
 	end 
@@ -1895,7 +1904,7 @@ z_uccst2A:--z_uccst2A
 	if(@t_merga = 0)
 	begin
 		declare cursor_table cursor for
-			select distinct uno,count(*) from @tmp group by uno
+			select distinct uno,count(*) from #tmp group by uno
 		open cursor_table
 		fetch next from cursor_table
 		into @t_uno,@t_count
@@ -1903,13 +1912,13 @@ z_uccst2A:--z_uccst2A
 		begin
 			if(@t_count >=2)
 			begin
-				insert into @tmp(gno,g2,sortno,datea,uno,csize,productno,mount,weight,radius,dime,width,lengthb,kind)
+				insert into #tmp(gno,g2,sortno,datea,uno,csize,productno,mount,weight,radius,dime,width,lengthb,kind)
 					select
 						'2' gno,'0' g2,'2' sortno,datea,uno,csize,productno,
 						sum((case when gno='1' then mount*(-1) else mount end)),
 						sum((case when gno='1' then weight*(-1) else weight end)),
 						radius,dime,width,lengthb,kind
-					from @tmp where uno = @t_uno group by uno,kind,csize,radius,dime,width,lengthb,datea,productno
+					from #tmp where uno = @t_uno group by uno,kind,csize,radius,dime,width,lengthb,datea,productno
 			end
 			fetch next from cursor_table
 			into @t_uno,@t_count
@@ -1917,53 +1926,53 @@ z_uccst2A:--z_uccst2A
 		close cursor_table
 		deallocate cursor_table
 	end
-	insert into @tmp(gno,g2,mount,weight)
+	insert into #tmp(gno,g2,mount,weight)
 		select '3','1',
 			sum((case when gno='1' then mount*(-1) else mount end)),
 			sum((case when gno='1' then weight*(-1) else weight end))
-		from @tmp where gno ='0'
-	update @tmp set csize = replace(csize,'~#$','''')
-	update @tmp set spec = replace(csize,'~#$','''')
-	update @tmp set sprice = null where @t_showprice = 0
-	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref)) where len(isnull(qhref,'')) > 4
+		from #tmp where gno ='0'
+	update #tmp set csize = replace(csize,'~#$','''')
+	update #tmp set spec = replace(csize,'~#$','''')
+	update #tmp set sprice = null where @t_showprice = 0
+	update #tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(ordeno) as nvarchar)+')=$ordeno?'+substring(qhref,len(qhref)-2,len(qhref)) where len(isnull(qhref,'')) > 4
 	
 	if(@t_isordermemo='1')
 	begin
-		insert into @tmp(gno,g2,mount,weight)
+		insert into #tmp(gno,g2,mount,weight)
 			select '4','2',sum(mount),sum(weight)
-			from @tmp where gno =1
-		insert into @tmp(gno,g2,mount,weight)
+			from #tmp where gno =1
+		insert into #tmp(gno,g2,mount,weight)
 			select '5','3',sum(mount),sum(weight)
-			from @tmp where gno =2
+			from #tmp where gno =2
 	end
-	update @tmp set weight = round(weight,3)
-	update @tmp set uno2=isnull(uno2,'')
-	update @tmp set memo =  ltrim(rtrim(substring(memo,len(uno2)+1,len(memo)))) where (charindex(uno2,memo)>0)
+	update #tmp set weight = round(weight,3)
+	update #tmp set uno2=isnull(uno2,'')
+	update #tmp set memo =  ltrim(rtrim(substring(memo,len(uno2)+1,len(memo)))) where (charindex(uno2,memo)>0)
 	if(@t_sortby = 'DATEA')
 		select
 			ROW_NUMBER()over(order by g2,datea,productno,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 			qhref ghref,uno2 u2,sfi,memo
-		from @tmp order by g2,datea,productno,csize,uno,gno,sortno
+		from #tmp order by g2,datea,productno,csize,uno,gno,sortno
 	else if(@t_sortby = 'PNO')
 		select
 			ROW_NUMBER()over(order by g2,productno,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 			qhref ghref,uno2 u2,sfi,memo
-		from @tmp order by g2,productno,datea,csize,uno,gno,sortno
+		from #tmp order by g2,productno,datea,csize,uno,gno,sortno
 	else if(@t_sortby = 'DIME')
 		select
 			ROW_NUMBER()over(order by g2,dime,radius,width,lengthb,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 			qhref ghref,uno2 u2,sfi,memo
-		from @tmp order by g2,dime,radius,width,lengthb,datea,csize,uno,gno,sortno
+		from #tmp order by g2,dime,radius,width,lengthb,datea,csize,uno,gno,sortno
 	else if(@t_sortby = 'MEMO')
 		select
 			ROW_NUMBER()over(order by g2,memo,dime,radius,width,lengthb,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 			qhref ghref,uno2 u2,sfi,memo
-		from @tmp order by g2,memo,dime,radius,width,lengthb,datea,csize,uno,gno,sortno
+		from #tmp order by g2,memo,dime,radius,width,lengthb,datea,csize,uno,gno,sortno
 	else if(@t_sortby = 'SOURCE')
 		select
 			ROW_NUMBER()over(order by g2,memo,dime,radius,width,lengthb,datea,csize,uno,sortno) idno,*,@t_title t_title ,qhref,
 			qhref ghref,uno2 u2,sfi,memo
-		from @tmp order by g2,[source],dime,radius,width,lengthb,datea,csize,uno,gno,sortno
+		from #tmp order by g2,[source],dime,radius,width,lengthb,datea,csize,uno,gno,sortno
 	else
 		select
 			ROW_NUMBER()over(	order by g2,
@@ -1973,13 +1982,20 @@ z_uccst2A:--z_uccst2A
 				(case left(kind,1) when 'B' then lengthb end ),
 				csize,productno,datea,uno,gno,sortno) idno,*,@t_title t_title ,qhref,
 			qhref ghref,uno2 u2,sfi,memo
-		from @tmp 
+		from #tmp 
 		order by g2,
 		(case left(kind,1) when 'B' then radius else dime end ),
 		(case left(kind,1) when 'B' then width else width end ),
 		(case left(kind,1) when 'B' then dime else lengthb end ),
 		(case left(kind,1) when 'B' then lengthb end ),
-		csize,productno,datea,uno,gno,sortno;
+		csize,productno,datea,uno,gno,sortno
+		
+	IF OBJECT_ID('tempdb..#tmp')is not null
+	BEGIN
+		set @cmd = 'drop table #tmp'
+		EXECUTE sp_executesql @cmd
+	END
+	;
 ----------************************************************************************-------------------
 z_uccst3:--z_uccst3
 z_uccst3A:--z_uccst3A
