@@ -52,7 +52,7 @@ z_uccst5:--z_uccst5
 	and a.dime between @t_bdime and @t_edime
 	and (a.width between @t_bwidth and @t_ewidth)
 	and (@t_stktype='C3' or a.lengthb between @t_blength and @t_elength)
-	and (@t_stktype='A1' or @t_stktype='C3' or @t_stktype='A4' or a.radius between @t_bradius and @t_eradius)
+	and (@t_stktype='A1' or @t_stktype='C3' or @t_stktype='A4' or isnull(a.radius,0) between @t_bradius and @t_eradius)
 	and (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
 	and (len(@t_style)=0 or a.style=@t_style)
 	------------------------------------------------------------------------------------------
@@ -1595,7 +1595,7 @@ insert into @tmp
 	left join uccy b on b.uno = a.uno
 	where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 			 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
-			 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
+			 (isnull(a.radius,0) between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
 			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
 update @tmp set sizea = replace(sizea,'~#$','''')
@@ -1766,7 +1766,7 @@ z_uccst2A:--z_uccst2A
 		left join store f on a.storeno = f.noa
 		where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 				 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
-				 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
+				 (isnull(a.radius,0) between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 				 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
 				 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
 				 (a.storeno between @t_bstoreno and @t_estoreno)
@@ -2164,7 +2164,7 @@ insert into @tmp
 	left join store f on a.storeno = f.noa
 	where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 			 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
-			 (a.radius between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
+			 (isnull(a.radius,0) between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
 			 (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype) and (a.mount > 0 and a.weight > 0) and
 			 (a.storeno between @t_bstoreno and @t_estoreno)
