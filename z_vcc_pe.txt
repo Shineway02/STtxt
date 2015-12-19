@@ -450,13 +450,13 @@ insert @tmp(gno,uno,product,size,weight,mount,sprice,total,idno)
 select '0',a.uno,a.product,a.size,a.weight,a.mount,a.sprice,money,ROW_NUMBER() over (order by a.uno)
 from #tmpsprice a 
 --outer apply (select top 1 * from view_uccb where uno=a.uno order by datea desc)b
-where left(a.uno,1)='-' and (len(@t_uno)=0 or a.uno=@t_uno)
+where left(a.uno,1)='-' and (len(@t_uno)=0 or a.uno like @t_uno+'%' )
 --and (len(@t_nozero)=0 or (a.weight>0 or a.mount>0)) 
 order by a.uno
 
 if(@t_nozero='nozero')
 begin
-	delete @tmp where weight<=0 and mount<=0
+	delete @tmp where weight<=0 --and mount<=0
 end
 if(@t_nozero='zero')
 begin
@@ -861,7 +861,7 @@ select '0',tablea,uno,product,case when size='0 x 0 x 0' then '' else size end,l
 ,case when tablea='rc2s' then isnull(money,0) else 0 end
 ,case when tablea='vccs' then isnull(money,0) else 0 end
 ,case when tablea='vccs' then isnull(vmoney,0) else 0 end
-from #tmpa where (len(@t_uno)=0 or uno=@t_uno) order by uno,datea,sort,noa,noq,tablea
+from #tmpa where (len(@t_uno)=0 or uno like @t_uno+'%') order by uno,datea,sort,noa,noq,tablea
 
 --小計
 insert #tmp (gno,uno,smoney,rmoney,vmoney,benifit)
