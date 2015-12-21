@@ -522,6 +522,7 @@ z_ummst03:--z_ummst03
 	declare @t_bcustno nvarchar(20) = case when '#non' = [5] then '' else [5] end
 	declare @t_ecustno nvarchar(20) = case when '#non' = [6] then CHAR(255) else [6] end
 	declare @t_memo nvarchar(max) = case when '#non' = [19] then '' else [19] end
+	declare @t_proj nvarchar(max) = '[29]'
 	---------------------------------------------------------------------------------
 	declare @tmp1 table(
 		custno nvarchar(20),
@@ -853,7 +854,7 @@ z_ummst03:--z_ummst03
 	,dbo.getComma(a.[moneys],0) a4
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(b.comp,'~#$',"'") +'</a>'comp
 	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.nick+'</a>' nick
-	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+b.addr_comp+'</a>' addr
+	,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+case when @t_proj!='pe' then b.addr_comp else b.addr_home end+'</a>' addr
 	,dbo.getComma(a.[money],0) b1
 	,dbo.getComma(a.[bkmoney],0) b2
 	,dbo.getComma(a.[tax],0) b3
