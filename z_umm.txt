@@ -1325,7 +1325,7 @@ begin
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
-		where (a.datea between @t_bdate and @t_edate) and
+		where --(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
@@ -1341,7 +1341,7 @@ begin
 		left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
 		where tax > 0 and (taxtype='1' or taxtype='5') and
-			  (a.datea between @t_bdate and @t_edate)and
+			  --(a.datea between @t_bdate and @t_edate)and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -1355,7 +1355,7 @@ begin
 		from vcca a left join cust c on a.custno = c.noa
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
 		where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
-				(a.datea between @t_bdate and @t_edate)and
+				--(a.datea between @t_bdate and @t_edate)and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and
 			  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)and
@@ -1371,7 +1371,7 @@ begin
 		left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
 		where a.discount > 0 and @t_project='YC' and
-			  (a.datea between @t_bdate and @t_edate)and
+			  --(a.datea between @t_bdate and @t_edate)and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -1391,7 +1391,8 @@ begin
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
-		where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
+		where --(a.datea between @t_bdate and @t_edate) and 
+			a.unpay>0 and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
@@ -1407,7 +1408,7 @@ begin
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
-			  (a.datea between @t_bdate and @t_edate)and
+			  --(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -1421,7 +1422,7 @@ begin
 		from vcca a left join cust c on a.custno = c.noa
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
-				(a.datea between @t_bdate and @t_edate)and
+				--(a.datea between @t_bdate and @t_edate)and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and 
 			  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)and
@@ -1437,7 +1438,7 @@ begin
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
 		where a.discount > 0 and @t_project='YC' and
-			  (a.datea between @t_bdate and @t_edate)and
+			  --(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -1468,7 +1469,7 @@ begin
 				left join view_vcc a on a.noa = b.noa
 				left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
-				where (a.datea between @t_bdate and @t_edate) and
+				where --(a.datea between @t_bdate and @t_edate) and
 					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 					  ((case when a.custno2!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
@@ -1484,7 +1485,7 @@ begin
 				left join cust c on (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa 
 				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
 				where tax > 0 and (taxtype='1' or taxtype='5') and
-					  (a.datea between @t_bdate and @t_edate)and
+					  --(a.datea between @t_bdate and @t_edate) and
 					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 					  ( (case when isnull(a.custno2,'') !='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -1498,7 +1499,7 @@ begin
 				from vcca a left join cust c on a.custno = c.noa
 				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
 				where tax > 0 and (taxtype='1' or taxtype='5') and ([21]!=3) and
-						(a.datea between @t_bdate and @t_edate)and
+						--(a.datea between @t_bdate and @t_edate) and
 					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 					  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and
 					  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)and
@@ -1517,7 +1518,8 @@ begin
 				left join view_vcc a on a.noa = b.noa
 				left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
-				where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
+				where --(a.datea between @t_bdate and @t_edate) and 
+					a.unpay>0 and
 					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 					  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno) and
@@ -1533,7 +1535,7 @@ begin
 				left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin
 				where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
-					  (a.datea between @t_bdate and @t_edate)and
+					  --(a.datea between @t_bdate and @t_edate) and
 					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 					  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 					  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -1547,7 +1549,7 @@ begin
 				from vcca a left join cust c on a.custno = c.noa
 				outer apply (select isnull((select top 1 floata from flors where coin=@coin and a.datea <=edate order by edate desc,noa desc),1) floata) coin 
 				where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
-						(a.datea between @t_bdate and @t_edate)and
+						--(a.datea between @t_bdate and @t_edate) and
 					  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 					  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and 
 					  (isnull(c.salesno,'') between @t_bsalesno and @t_esalesno) and (len(@t_cno)=0 or a.cno=@t_cno)and
@@ -1658,7 +1660,7 @@ sum(case when typea in ('1','折') then total else 0 end), sum(case when typea =
 ,SUM(case when typea = '稅' then total else 0 end) , 0
 , isnull((select sum(ub.paysale) from umms ub where exists (select noa from #result where ub.vccno=noa and gno='0' and custno=a.custno)),0) --單據 
 +isnull((select sum(ub.paysale) from umms ub where (ub.custno+'-'+ub.paymon=ub.vccno 
-and (ub.paymon between @t_bmon and @t_emon) and (ub.paymon+'/01' between @t_bdate and @t_edate) 
+and (ub.paymon between @t_bmon and @t_emon) --and (ub.paymon+'/01' between @t_bdate and @t_edate) 
 and ub.custno=a.custno)),0) --月結 
 pay , 0 unpay, 0 total2, count(*),'',''  from #result a group by custno,coin
 
@@ -2001,6 +2003,8 @@ begin
 	update #result set coin='' where coin=@t_xcoin
 	update @tmp set coin='' where coin=@t_xcoin
 end
+
+delete #result where datea not between @t_bdate and @t_edate and (gno='0' or gno='2')
 
 select
 	gno,typea,noa,noq,datea,mon,custno,replace(comp,'~#$',char(39)) comp,addr_invo,tel,productno,replace(xproduct,'~#$',char(39)) xproduct,unit
@@ -2434,7 +2438,7 @@ begin
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
-		where (a.datea between @t_bdate and @t_edate) and
+		where --(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -2452,7 +2456,7 @@ begin
 		from view_vcc a
 		left join cust c on  (case when a.custno2!='' then a.custno2 else a.custno end) = c.noa
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
-			  (a.datea between @t_bdate and @t_edate)and
+			  --(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -2463,7 +2467,7 @@ begin
 			   ,'vcca','',''
 		from vcca a left join cust c on a.custno=c.noa
 		where a.tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
-				(a.datea between @t_bdate and @t_edate)and
+				--(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  (a.custno between @t_bcustno and @t_ecustno) and 
 			  (c.salesno between @t_bsalesno and @t_esalesno)
@@ -2482,7 +2486,8 @@ begin
 		from view_vccs b
 		left join view_vcc a on a.noa = b.noa
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
-		where (a.datea between @t_bdate and @t_edate) and a.unpay>0 and
+		where --(a.datea between @t_bdate and @t_edate) and 
+			a.unpay>0 and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ((case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -2500,7 +2505,7 @@ begin
 		from view_vcc a
 		left join cust c on  (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) = c.noa
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and
-			  (a.datea between @t_bdate and @t_edate)and
+			  --(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  ( (case when isnull(a.custno2,'')!='' then a.custno2 else a.custno end) between @t_bcustno and @t_ecustno) and
 			  ((case when isnull(a.salesno2,'')!='' then a.salesno2 when isnull(a.salesno,'')!='' then a.salesno else isnull(c.salesno,'') end) between @t_bsalesno and @t_esalesno)
@@ -2512,7 +2517,7 @@ begin
 		from vcca a 
 		left join cust c on  a.custno = c.noa
 		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
-				(a.datea between @t_bdate and @t_edate)and
+				--(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  (a.custno between @t_bcustno and @t_ecustno) and 
 			  (c.salesno between @t_bsalesno and @t_esalesno)
@@ -2654,11 +2659,16 @@ from @tmp a left join cust b on a.custno=b.noa left join sss c on a.salesno=c.no
 and exists (select custno from #result where custno=a.custno group by custno)  
 --and custno in (select custno from #result group by custno) 
 
+insert #result (gno,noa,datea,mon,custno,comp,total1,pay,unpay,total2,salesno)
+select '3','','','',custno,comp,SUM(total1),SUM(pay),SUM(unpay),SUM(total2),'' 
+from #result where gno='1' group by custno,comp
+
 --預收
 update a
 set pay=isnull((select SUM( opay - unopay) total from umm where custno=a.custno),0)
-from #result a where gno='1'
-update #result set gno='3' where gno='1'
+from #result a where gno='3'
+
+delete #result where gno='1'
 ----------------------------------------------------
 --貨單備註
 if(CHARINDEX('2',@t_showunpay)>0)
@@ -2700,6 +2710,7 @@ begin
 	deallocate cursor_table
 end
 delete #result where gno = '4' and LEN(memo) = 0
+delete #result where gno='0' and datea not between @t_bdate and @t_edate
 ----------------------------------------------------
 declare @pageCount int = 12 --一頁含合計共幾行
 declare @totalLineCount int = 5 --合計有幾行
@@ -2710,7 +2721,7 @@ declare @nowOrder int = 0
 declare @thisPageno int = 0
 set @t_custno = '#zzzz#zzzz'
 declare cursor_table cursor for
-	select idno,gno,custno from #result where gno != '3' order by custno,noa,gno,datea,case when noa='前期帳款' then '' else noa end
+	select idno,gno,custno from #result where gno != '3' order by custno,case when noa like '前期帳款%' then '' else noa end,gno,datea
 open cursor_table
 fetch next from cursor_table
 into @idno,@gno,@custno
