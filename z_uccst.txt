@@ -64,7 +64,7 @@ z_uccst5:--z_uccst5
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
 	outer apply (select top 1 * from view_uccb where a.uno=uno and datea<=a.datea order by datea desc)c --處理-批號問題
 	--left join view_uccb c on a.uno=c.uno
-	where len(isnull(a.uno,''))>0
+	where len(isnull(a.uno,''))>0 and left(a.uno,1)!='-' 
 	and b.datea between @t_bdate and @t_edate
 	and c.productno between @t_bproductno and @t_eproductno
 	and c.dime between @t_bdime and @t_edime
