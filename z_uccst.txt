@@ -46,7 +46,7 @@ z_uccst5:--z_uccst5
 	select a.tablea,a.accy,a.noa,a.uno,left(a.[action],2),a.datea,a.productno,a.product,a.style,a.kind,a.dime,a.width,a.lengthb,a.radius,a.size
 		,a.mount,a.[weight],a.sprice,a.sprice2
 	from view_uccb a
-	where 1=1 
+	where 1=1 and left(a.uno,1)!='-' 
 	and datea between @t_bdate and @t_edate
 	and productno between @t_bproductno and @t_eproductno
 	and a.dime between @t_bdime and @t_edime
@@ -1773,7 +1773,7 @@ z_uccst2A:--z_uccst2A
 		left join view_rc2s d on (a.tablea='rc2s') and (a.noa = d.noa) and (a.uno=d.uno)
 		left join view_inas e on (a.tablea='inas') and (a.noa = e.noa) and (a.uno=e.uno)
 		left join store f on a.storeno = f.noa
-		where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
+		where left(a.uno,1)!='-' and (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 				 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
 				 (isnull(a.radius,0) between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 				 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
@@ -2178,7 +2178,7 @@ insert into @tmp
 	left join view_rc2s d on (a.tablea='rc2s') and (a.noa = d.noa) and (a.uno=d.uno)
 	left join view_inas e on (a.tablea='inas') and (a.noa = e.noa) and (a.uno=e.uno)
 	left join store f on a.storeno = f.noa
-	where (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
+	where left(a.uno,1)!='-' and (a.datea between @t_bdate and @t_edate) and (a.productno between @t_bproductno and @t_eproductno) and
 			 (len(@t_style)=0 or upper(a.style) = @t_style) and (len(@t_waste)=0 or upper(a.waste) = @t_waste) and
 			 (isnull(a.radius,0) between @t_bradius and @t_eradius) and (a.width between @t_bwidth and @t_ewidth) and
 			 (a.dime between @t_bdime and @t_edime) and (a.lengthb between @t_blengthb and @t_elengthb) and
