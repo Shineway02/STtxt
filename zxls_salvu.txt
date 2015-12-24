@@ -98,7 +98,8 @@ begin
 	,isnull((select top 1 timea from #tmp where sssno=a.noa and datea=@datea and timea>@t_timea order by timea),'')
 	,isnull((select top 1 timea from #tmp where sssno=a.noa and (datea=@datea or (datea=@tomorrow and timea<=@t_timea)) order by datea desc,timea desc),'')
 	,0,0,0,'',barcode,typea
-	from sss a order by noa
+	from sss a where isnull(outdate,'')='' or   isnull(outdate,'')>@datea
+	order by noa
 	
 	update #bbs
 	set clockout=''

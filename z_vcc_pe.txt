@@ -234,7 +234,7 @@ insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,spric
 select 'vccs',va.accy,va.datea,va.noa,vb.noq,vb.product,vb.size,vb.uno
 ,(case when va.typea='1' then 1 else -1 end)*vb.mount
 ,(case when va.typea='1' then 1 else -1 end)*vb.weight
-,0,0,0,'5'
+,0,0,0,(case when va.typea='1' then '5' else '2' end)
 from view_vcc va left join view_vccs vb on va.noa=vb.noa 
 where left(isnull(vb.uno,''),1)='-' --and (len(@t_uno)=0 or vb.uno=@t_uno)
 and va.datea<=@t_edate 
@@ -251,6 +251,8 @@ update a
 set	t1=isnull((select SUM(abs(weight)) from #tmpa where uno=a.uno and tablea in ('ucce','rc2s','inas','cuts')),0)
 from #tmpa a
 
+declare @datea nvarchar(90)
+declare @sort nvarchar(90)
 declare @idno int
 declare @accy nvarchar(90)
 declare @noa nvarchar(90)
@@ -302,11 +304,11 @@ where isnull(a.cuno,'')!='' and left(a.cuno,1)!='-' group by a.cuno
 --計算成本--不能以批號優先排 會有 cut成本找不到的問題
 --成本負數歸0 不處理 由使用者自行調整
 declare cursor_table cursor for
-select idno,accy,noa,noq,product,size,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
+select datea,sort,idno,accy,noa,noq,product,size,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
 order by datea,sort,noa,noq,tablea,uno
 open cursor_table
 fetch next from cursor_table
-into @idno,@accy,@noa,@noq,@product,@size,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+into @datea,@sort,@idno,@accy,@noa,@noq,@product,@size,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 while(@@FETCH_STATUS <> -1)
 begin
 	--讀取批號成本資料
@@ -323,6 +325,21 @@ begin
 		--set @x_mount=@mount
 		--set @x_weight=@weight
 		--set @x_money=@money
+	end
+	
+	--更新到資料庫--get ucces cut 沒有sprice
+	if(@tablea='vccs')
+	begin
+		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	if(@tablea='cuts')
+	begin
+		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
 	--進貨 --入庫 --裁入
@@ -368,7 +385,11 @@ begin
 		
 		set @s_mount=@s_mount-@mount
 		set @s_weight=@s_weight-@weight
-		set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
+		if(@tablea='vccs' and @sort='2')--出貨退回 抓上一次成本
+			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
+		else
+			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
+			
 		--set @x_mount=@x_mount-@mount
 		--set @x_weight=@x_weight-@weight
 		--set @x_money=@x_money-round(case when @t1>0 then @weight else @mount end * @x_sprice ,0)
@@ -385,12 +406,12 @@ begin
 	if(@t1>0)
 	begin
 		--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
-		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,2) end
+		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,3) end
 	end
 	else
 	begin
 		--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
-		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,2) end
+		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,3) end
 	end	
 	
 	--更新回暫存表(庫存表可不執行)
@@ -405,23 +426,16 @@ begin
 	--,tmount=@x_mount,tweight=@x_weight,tmoney=@x_money,tsprice=@x_sprice
 	where uno=@uno
 	
-	--更新到資料庫--get ucces cut 沒有sprice --只更新cuts 會執行很久
-	if(@tablea='rc2s' or @tablea='inas' or @tablea='vccs')
+	--更新到資料庫--get ucces cut 沒有sprice
+	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
-	
-	if(@tablea='cuts')
-	begin
-		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
-		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
-	end
 		
 	fetch next from cursor_table
-	into @idno,@accy,@noa,@noq,@product,@size,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+	into @datea,@sort,@idno,@accy,@noa,@noq,@product,@size,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 end
 close cursor_table
 deallocate cursor_table
@@ -628,7 +642,9 @@ select 'vccs',va.accy,va.datea,(case when va.typea='1' then '出' else '出退' 
 ,vb.product,vb.size,vb.uno
 ,(case when va.typea='1' then 1 else -1 end)*isnull(vb.mount,0)
 ,(case when va.typea='1' then 1 else -1 end)*isnull(vb.weight,0)
-,vb.price,0,vb.total,'5'
+,vb.price,0
+,(case when va.typea='1' then 1 else -1 end)*vb.total
+,(case when va.typea='1' then '5' else '2' end)
 from view_vcc va left join view_vccs vb on va.noa=vb.noa 
 where left(isnull(vb.uno,''),1)='-' --and (len(@t_uno)=0 or vb.uno=@t_uno)
 and va.datea<=@t_edate 
@@ -646,6 +662,8 @@ update a
 set t1=isnull((select SUM(abs(weight)) from #tmpa where uno=a.uno and tablea in ('ucce','rc2s','inas','cuts')),0)
 from #tmpa a
 
+declare @datea nvarchar(90)
+declare @sort nvarchar(90)
 declare @idno int
 declare @accy nvarchar(90)
 declare @noa nvarchar(90)
@@ -693,11 +711,11 @@ where isnull(a.cuno,'')!='' and left(a.cuno,1)!='-' group by a.cuno
 --計算成本--不能以批號優先排 會有 cut成本找不到的問題
 --成本負數歸0 不處理 由使用者自行調整
 declare cursor_table cursor for
-select idno,accy,noa,noq,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
+select datea,sort,idno,accy,noa,noq,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
 order by datea,sort,noa,noq,tablea,uno
 open cursor_table
 fetch next from cursor_table
-into @idno,@accy,@noa,@noq,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+into @datea,@sort,@idno,@accy,@noa,@noq,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 while(@@FETCH_STATUS <> -1)
 begin
 	--讀取批號成本資料
@@ -714,6 +732,21 @@ begin
 		--set @x_mount=@mount
 		--set @x_weight=@weight
 		--set @x_money=@money
+	end
+	
+	--更新到資料庫--get ucces cut 沒有sprice 
+	if(@tablea='vccs')
+	begin
+		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	if(@tablea='cuts')
+	begin
+		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
 	--進貨 --入庫 --裁入
@@ -760,10 +793,20 @@ begin
 		
 		set @s_mount=@s_mount-@mount
 		set @s_weight=@s_weight-@weight
-		set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
-		
-		--if(@tablea='vccs') --回寫出貨成本
-		update #tmpa set vmoney=round(case when @t1>0 then @weight else @mount end * @s_sprice ,0) where idno=@idno
+		if(@tablea='vccs' and @sort='2')--出貨退回 抓上一次成本
+		begin
+			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
+			
+			--if(@tablea='vccs') --回寫出貨成本
+			update #tmpa set vmoney=round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0) where idno=@idno
+		end
+		else
+		begin
+			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
+			
+			--if(@tablea='vccs') --回寫出貨成本
+			update #tmpa set vmoney=round(case when @t1>0 then @weight else @mount end * @s_sprice ,0) where idno=@idno
+		end
 		
 		--set @x_mount=@x_mount-@mount
 		--set @x_weight=@x_weight-@weight
@@ -780,12 +823,12 @@ begin
 		
 	if(@t1>0)
 	begin
-		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,2) end
+		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,3) end
 		--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
 	end
 	else
 	begin
-		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,2) end
+		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,3) end
 		--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
 	end	
 	
@@ -801,23 +844,16 @@ begin
 	--,tmount=@x_mount,tweight=@x_weight,tmoney=@x_money,tsprice=@x_sprice
 	where uno=@uno
 	
-	--更新到資料庫--get ucces cut 沒有sprice --只更新cuts 會執行很久
-	--if(@tablea='rc2s' or @tablea='inas' or @tablea='vccs')
-	--begin
-	--	set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
-	--	EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
-	--	,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
-	--end
-	
-	if(@tablea='cuts')
+	--更新到資料庫--get ucces cut 沒有sprice 
+	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
-		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
+		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 		
 	fetch next from cursor_table
-	into @idno,@accy,@noa,@noq,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+	into @datea,@sort,@idno,@accy,@noa,@noq,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 end
 close cursor_table
 deallocate cursor_table
