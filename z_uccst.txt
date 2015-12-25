@@ -1,3 +1,56 @@
+z_uccst01:--z_uccst01
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bproductno nvarchar(20) = ''
+	declare @t_eproductno nvarchar(20) = char(255)
+	declare @t_style nvarchar(20)= ''
+	declare @t_bdime float = 0
+	declare @t_edime float = 99999
+	declare @t_bwidth float =0
+	declare @t_ewidth float= 99999
+	declare @t_blengthb float=0
+	declare @t_elengthb float= 99999
+	declare @t_bstoreno nvarchar(20)= ''
+	declare @t_estoreno nvarchar(20)= char(255)
+	declare @t_source nvarchar(max)=''
+	declare @t_store nvarchar(max)=''
+	--------------------------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1)
+		,uno nvarchar(30)
+		,datea nvarchar(10)
+		,storeno nvarchar(20)
+		,store nvarchar(30)
+		,productno nvarchar(20)
+		,product nvarchar(30)
+		,spec nvarchar(30)
+		,source nvarchar(30)
+		,dime float
+		,width float
+		,lengthb float
+		,eweight float
+		,emount float
+	)
+	insert into @tmp(uno,datea,storeno,productno,product,spec,source
+		,dime,width,lengthb,eweight,emount)
+	select a.uno,b.datea,b.storeno,b.productno,b.product,b.spec,b.source
+		,b.dime,b.width,b.lengthb,a.eweight,a.emount
+	from uccy a
+	left join view_uccb b on a.uno=b.uno
+	where a.emount>0
+	and isnull(b.productno,'') between @t_bproductno and @t_eproductno
+	and isnull(b.dime,0) between @t_bdime and @t_edime
+	and isnull(b.width,0) between @t_bwidth and @t_ewidth
+	and isnull(b.lengthb,0) between @t_blengthb and @t_elengthb
+	and (len(@t_style)=0 and b.style=@t_style)
+	and (len(@t_source)=0 and b.source=@t_source)
+	and ISNULL(b.storeno,'') between @t_bstoreno and @t_estoreno
+	
+	select * from @tmp;
+
+
+
+
+
 z_uccst5:--z_uccst5
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
