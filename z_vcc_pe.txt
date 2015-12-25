@@ -233,7 +233,7 @@ and ca.datea<=@t_edate
 insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
 select 'vccs',va.accy,va.datea,va.noa,vb.noq,vb.product,vb.size,vb.uno
 ,(case when va.typea='1' then 1 else -1 end)*vb.mount
-,(case when va.typea='1' then 1 else -1 end)*vb.weight
+,(case when va.typea='1' then 1 else -1 end)*case when isnull(vb.gweight,0)!=0 then vb.gweight else vb.weight end
 ,0,0,0,(case when va.typea='1' then '5' else '2' end)
 from view_vcc va left join view_vccs vb on va.noa=vb.noa 
 where left(isnull(vb.uno,''),1)='-' --and (len(@t_uno)=0 or vb.uno=@t_uno)
@@ -335,13 +335,6 @@ begin
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
-	if(@tablea='cuts')
-	begin
-		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
-		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
-	end
-	
 	--進貨 --入庫 --裁入
 	if(@tablea='rc2s' or @tablea='inas' or @tablea='cuts')
 	begin
@@ -390,7 +383,7 @@ begin
 		
 		set @s_mount=@s_mount-@mount
 		set @s_weight=@s_weight-@weight
-		if(@tablea='vccs' and @sort='2')--出貨退回 抓上一次成本
+		if(@tablea='vccs' and @sort='2' and (select count(*) from view_vccs where uno=@uno and datea<@datea and typea='1')>0)--出貨退回 抓上一次成本
 			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
 		else
 			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
@@ -435,6 +428,13 @@ begin
 	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	if(@tablea='cuts')
+	begin
+		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
@@ -646,7 +646,7 @@ insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,mount,weight,
 select 'vccs',va.accy,va.datea,(case when va.typea='1' then '出' else '出退' end),va.comp,va.noa,vb.noq
 ,vb.product,vb.size,vb.uno
 ,(case when va.typea='1' then 1 else -1 end)*isnull(vb.mount,0)
-,(case when va.typea='1' then 1 else -1 end)*isnull(vb.weight,0)
+,(case when va.typea='1' then 1 else -1 end)*case when isnull(vb.gweight,0)!=0 then vb.gweight else isnull(vb.weight,0) end
 ,vb.price,0
 ,(case when va.typea='1' then 1 else -1 end)*vb.total
 ,(case when va.typea='1' then '5' else '2' end)
@@ -747,13 +747,6 @@ begin
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
-	if(@tablea='cuts')
-	begin
-		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
-		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
-	end
-	
 	--進貨 --入庫 --裁入
 	if(@tablea='rc2s' or @tablea='inas' or @tablea='cuts')
 	begin
@@ -803,7 +796,7 @@ begin
 		
 		set @s_mount=@s_mount-@mount
 		set @s_weight=@s_weight-@weight
-		if(@tablea='vccs' and @sort='2')--出貨退回 抓上一次成本
+		if(@tablea='vccs' and @sort='2' and (select count(*) from view_vccs where uno=@uno and datea<@datea and typea='1')>0)--出貨退回 抓上一次成本
 		begin
 			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
 			
@@ -858,6 +851,13 @@ begin
 	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	if(@tablea='cuts')
+	begin
+		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
