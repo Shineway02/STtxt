@@ -171,19 +171,19 @@ create table #tmpa(
 	size nvarchar(100),
 	uno nvarchar(50),
 	cuno nvarchar(50),
-	mount float, 
-	weight float,
-	price float,--進貨單價 
-	sprice float,--成本單價
-	money float,
+	mount decimal(25, 4), 
+	weight decimal(25, 4),
+	price decimal(25, 4),--進貨單價 
+	sprice decimal(25, 4),--成本單價
+	money decimal(25, 4),
 	sort nvarchar(1),
-	--tmount float, --累計成本數量(會因成本負數歸0)
-	--tweight float,--累計成本重量(會因成本負數歸0)
-	--tmoney float,--累計成本金額(會因成本負數歸0)
-	smount float, --累計數量
-	sweight float,--累計重量
-	smoney float,--累計金額
-	t1 float, --t1>0 重量計價, t1<=0 數量計價
+	--tmount decimal(25, 4), --累計成本數量(會因成本負數歸0)
+	--tweight decimal(25, 4),--累計成本重量(會因成本負數歸0)
+	--tmoney decimal(25, 4),--累計成本金額(會因成本負數歸0)
+	smount decimal(25, 4), --累計數量
+	sweight decimal(25, 4),--累計重量
+	smoney decimal(25, 4),--累計金額
+	t1 decimal(25, 4), --t1>0 重量計價, t1<=0 數量計價
 	primary key(datea,sort,noa,noq,tablea,uno)
 ) 
 
@@ -202,7 +202,7 @@ select 'rc2s',ra.accy,ra.datea,rb.noa,rb.noq,rb.product,rb.size,rb.uno
 ,(case when ra.typea='1' then 1 else -1 end)*rb.mount
 ,(case when ra.typea='1' then 1 else -1 end)*rb.weight
 ,rb.price,rb.price
-,(case when ra.typea='1' then 1 else -1 end)*rb.total,'1'
+,(case when ra.typea='1' then 1 else -1 end)*rb.total,(case when ra.typea='1' then '1' else '5' end)
 from view_rc2 ra left join view_rc2s rb on ra.noa=rb.noa 
 where left(isnull(rb.uno,''),1)='-' --and (len(@t_uno)=0 or rb.uno=@t_uno)
 and ra.datea<=@t_edate 
@@ -241,7 +241,7 @@ and va.datea<=@t_edate
 
 --領料
 insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'gets',ga.accy,ga.datea,ga.noa,gb.noq,gb.product,gb.size,gb.uno,gb.mount,gb.weight,0,0,0,'6'
+select 'gets',ga.accy,ga.datea,ga.noa,gb.noq,gb.product,gb.size,gb.uno,gb.gmount,gb.gweight,0,0,0,'6'
 from view_get ga left join view_gets gb on ga.noa=gb.noa 
 left join view_ucaucc c on gb.productno=c.noa 
 where left(isnull(gb.uno,''),1)='-' --and (len(@t_uno)=0 or gb.uno=@t_uno)
@@ -261,34 +261,34 @@ declare @product nvarchar(100)
 declare @size nvarchar(100)
 declare @uno nvarchar(90)
 declare @tablea nvarchar(90)
-declare @mount float
-declare @weight float
-declare @price float
-declare @money float
-declare @t1 float
+declare @mount decimal(25, 4)
+declare @weight decimal(25, 4)
+declare @price decimal(25, 4)
+declare @money decimal(25, 4)
+declare @t1 decimal(25, 4)
 declare @cuno nvarchar(90)
-declare @x_mount float=0
-declare @x_weight float=0
-declare @x_money float=0
-declare @x_sprice float=0
-declare @s_mount float=0
-declare @s_weight float=0
-declare @s_money float=0
-declare @s_sprice float=0
+declare @x_mount decimal(25, 4)=0
+declare @x_weight decimal(25, 4)=0
+declare @x_money decimal(25, 4)=0
+declare @x_sprice decimal(25, 4)=0
+declare @s_mount decimal(25, 4)=0
+declare @s_weight decimal(25, 4)=0
+declare @s_money decimal(25, 4)=0
+declare @s_sprice decimal(25, 4)=0
 
 --批號成本
 create table #tmpsprice(
 	uno nvarchar(90),
 	product nvarchar(100),
 	size nvarchar(100),
-	sprice float,
-	mount float,
-	weight float,
-	money float,
-	--tsprice float,--累計成本單價(會因成本負數歸0)
-	--tmount float,--累計成本數量(會因成本負數歸0)
-	--tweight float,--累計成本重量(會因成本負數歸0)
-	--tmoney float,--累計成本金額(會因成本負數歸0)
+	sprice decimal(25, 4),
+	mount decimal(25, 4),
+	weight decimal(25, 4),
+	money decimal(25, 4),
+	--tsprice decimal(25, 4),--累計成本單價(會因成本負數歸0)
+	--tmount decimal(25, 4),--累計成本數量(會因成本負數歸0)
+	--tweight decimal(25, 4),--累計成本重量(會因成本負數歸0)
+	--tmoney decimal(25, 4),--累計成本金額(會因成本負數歸0)
 	primary key(uno)
 )
 
@@ -331,14 +331,14 @@ begin
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
 	if(@tablea='cuts')
 	begin
 		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
@@ -351,7 +351,12 @@ begin
 		--set @x_mount=@x_mount+@mount
 		--set @x_weight=@x_weight+@weight
 		
-		if(@tablea='cuts')
+		if(@tablea='rc2s' and @sort='5')
+		begin
+			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@uno),0)
+			set @s_money=@s_money+(@s_sprice*case when @t1>0 then @weight else @mount end)
+		end
+		else if(@tablea='cuts')
 		begin
 			--取得領料成本單價
 			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@cuno),0)
@@ -430,7 +435,7 @@ begin
 	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 		
@@ -448,10 +453,10 @@ declare @tmp table(
 	uno nvarchar(90),
 	product nvarchar(100),
 	size nvarchar(100),
-	weight float,
-	mount float,
-	sprice float,
-	total float,
+	weight decimal(25, 4),
+	mount decimal(25, 4),
+	sprice decimal(25, 4),
+	total decimal(25, 4),
 	idno int,
 	page int
 )
@@ -573,20 +578,20 @@ create table #tmpa(
 	size nvarchar(100),
 	uno nvarchar(50),
 	cuno nvarchar(50),
-	mount float, 
-	weight float,
-	price float,--進貨單價 
-	sprice float,--成本單價
-	money float,
+	mount decimal(25, 4), 
+	weight decimal(25, 4),
+	price decimal(25, 4),--進貨單價 
+	sprice decimal(25, 4),--成本單價
+	money decimal(25, 4),
 	sort nvarchar(1),
-	--tmount float, --累計成本數量(會因成本負數歸0)
-	--tweight float,--累計成本重量(會因成本負數歸0)
-	--tmoney float,--累計成本金額(會因成本負數歸0)
-	smount float, --累計數量
-	sweight float,--累計重量
-	smoney float,--累計金額
-	t1 float, --t1>0 重量計價, t1<=0 數量計價
-	vmoney float,--出貨成本
+	--tmount decimal(25, 4), --累計成本數量(會因成本負數歸0)
+	--tweight decimal(25, 4),--累計成本重量(會因成本負數歸0)
+	--tmoney decimal(25, 4),--累計成本金額(會因成本負數歸0)
+	smount decimal(25, 4), --累計數量
+	sweight decimal(25, 4),--累計重量
+	smoney decimal(25, 4),--累計金額
+	t1 decimal(25, 4), --t1>0 重量計價, t1<=0 數量計價
+	vmoney decimal(25, 4),--出貨成本
 	primary key(datea,sort,noa,noq,tablea,uno)
 ) 
 
@@ -606,7 +611,7 @@ select 'rc2s',ra.accy,ra.datea,case when ra.typea='1' then '進' else '進退' e
 ,(case when ra.typea='1' then 1 else -1 end)*rb.mount
 ,(case when ra.typea='1' then 1 else -1 end)*rb.weight
 ,rb.price,rb.price
-,(case when ra.typea='1' then 1 else -1 end)*rb.total,'1'
+,(case when ra.typea='1' then 1 else -1 end)*rb.total,(case when ra.typea='1' then '1' else '5' end)
 from view_rc2 ra left join view_rc2s rb on ra.noa=rb.noa 
 where left(isnull(rb.uno,''),1)='-' --and (len(@t_uno)=0 or rb.uno=@t_uno)
 and ra.datea<=@t_edate 
@@ -652,7 +657,7 @@ and va.datea<=@t_edate
 --領料
 insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
 select 'gets',ga.accy,ga.datea,'領料',ga.comp,ga.noa,gb.noq
-,gb.product,gb.size,gb.uno,gb.mount,gb.weight,0,0,0,'6'
+,gb.product,gb.size,gb.uno,gb.gmount,gb.gweight,0,0,0,'6'
 from view_get ga left join view_gets gb on ga.noa=gb.noa 
 left join view_ucaucc c on gb.productno=c.noa 
 where left(isnull(gb.uno,''),1)='-' --and (len(@t_uno)=0 or gb.uno=@t_uno)
@@ -670,32 +675,32 @@ declare @noa nvarchar(90)
 declare @noq nvarchar(90)
 declare @uno nvarchar(90)
 declare @tablea nvarchar(90)
-declare @mount float
-declare @weight float
-declare @price float
-declare @money float
-declare @t1 float
+declare @mount decimal(25, 4)
+declare @weight decimal(25, 4)
+declare @price decimal(25, 4)
+declare @money decimal(25, 4)
+declare @t1 decimal(25, 4)
 declare @cuno nvarchar(90)
-declare @x_mount float=0
-declare @x_weight float=0
-declare @x_money float=0
-declare @x_sprice float=0
-declare @s_mount float=0
-declare @s_weight float=0
-declare @s_money float=0
-declare @s_sprice float=0
+declare @x_mount decimal(25, 4)=0
+declare @x_weight decimal(25, 4)=0
+declare @x_money decimal(25, 4)=0
+declare @x_sprice decimal(25, 4)=0
+declare @s_mount decimal(25, 4)=0
+declare @s_weight decimal(25, 4)=0
+declare @s_money decimal(25, 4)=0
+declare @s_sprice decimal(25, 4)=0
 
 --批號成本
 create table #tmpsprice(
 	uno nvarchar(90),
-	sprice float,
-	mount float,
-	weight float,
-	money float,
-	--tsprice float,--累計成本單價(會因成本負數歸0)
-	--tmount float,--累計成本數量(會因成本負數歸0)
-	--tweight float,--累計成本重量(會因成本負數歸0)
-	--tmoney float,--累計成本金額(會因成本負數歸0)
+	sprice decimal(25, 4),
+	mount decimal(25, 4),
+	weight decimal(25, 4),
+	money decimal(25, 4),
+	--tsprice decimal(25, 4),--累計成本單價(會因成本負數歸0)
+	--tmount decimal(25, 4),--累計成本數量(會因成本負數歸0)
+	--tweight decimal(25, 4),--累計成本重量(會因成本負數歸0)
+	--tmoney decimal(25, 4),--累計成本金額(會因成本負數歸0)
 	primary key(uno)
 )
 
@@ -738,14 +743,14 @@ begin
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
 	if(@tablea='cuts')
 	begin
 		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 	
@@ -758,7 +763,12 @@ begin
 		--set @x_mount=@x_mount+@mount
 		--set @x_weight=@x_weight+@weight
 		
-		if(@tablea='cuts')
+		if(@tablea='rc2s' and @sort='5')
+		begin
+			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@uno),0)
+			set @s_money=@s_money+(@s_sprice*case when @t1>0 then @weight else @mount end)
+		end
+		else if(@tablea='cuts')
 		begin
 			--取得領料成本單價
 			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@cuno),0)
@@ -848,7 +858,7 @@ begin
 	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
-		EXECUTE sp_executesql @cmd,N'@s_sprice float,@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
 		
@@ -872,17 +882,17 @@ create table #tmp(
 	noa nvarchar(50),
 	datea nvarchar(10),
 	typea nvarchar(50),
-	weight float,
-	mount float,
-	price float,
-	total float,
-	sweight float,
-	smount float,
-	sprice float,
-	smoney float,
-	rmoney float,
-	vmoney float,
-	benifit float
+	weight decimal(25, 4),
+	mount decimal(25, 4),
+	price decimal(25, 4),
+	total decimal(25, 4),
+	sweight decimal(25, 4),
+	smount decimal(25, 4),
+	sprice decimal(25, 4),
+	smoney decimal(25, 4),
+	rmoney decimal(25, 4),
+	vmoney decimal(25, 4),
+	benifit decimal(25, 4)
 )
 
 CREATE INDEX tmpa_index ON #tmp(uno)
