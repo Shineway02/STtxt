@@ -438,6 +438,14 @@ begin
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
+	
+	--1041228 更新損益
+	if(@tablea='vccs')
+	begin
+		set @cmd = "update a set benifit=isnull((select sum(total-(weight*sprice)) from vccs"+@accy+" where noa=a.noa),0) from vcc"+@accy+" a where noa=@noa "
+		EXECUTE sp_executesql @cmd,N'@noa nvarchar(90)'
+		,@noa=@noa
+	end
 		
 	fetch next from cursor_table
 	into @datea,@sort,@idno,@accy,@noa,@noq,@product,@size,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
@@ -860,6 +868,14 @@ begin
 		set @cmd = "update cuts"+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and bno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	--1041228 更新損益
+	if(@tablea='vccs')
+	begin
+		set @cmd = "update a set benifit=isnull((select sum(total-(weight*sprice)) from vccs"+@accy+" where noa=a.noa),0) from vcc"+@accy+" a where noa=@noa "
+		EXECUTE sp_executesql @cmd,N'@noa nvarchar(90)'
+		,@noa=@noa
 	end
 		
 	fetch next from cursor_table
