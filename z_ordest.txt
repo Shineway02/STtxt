@@ -492,9 +492,10 @@ declare @tmp table(
 insert into @tmp
 	select
 		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
-		a.custno,c.nick,b.productno,b.product,b.spec,
-		(case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),
-		b.dime,b.unit,b.mount,b.weight,b.price,b.total,'ordest'+a.accy
+		a.custno,c.nick,b.productno,b.product,b.spec
+		,(case when exists(select * from acomp where charindex('聯琦',acomp)>0) then cast(b.dime as nvarchar)+'+'+cast(b.radius as nvarchar)+'*'+cast(b.width as nvarchar)+'*'+case when isnull(b.lengthb,0)=0 then 'C' else cast(b.lengthb as nvarchar) end
+		 	when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
+		,b.dime,b.unit,b.mount,b.weight,b.price,b.total,'ordest'+a.accy
 	from view_orde a
 	left join view_ordes b on a.noa = b.noa
 	left join cust c on a.custno = c.noa
