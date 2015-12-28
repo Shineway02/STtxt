@@ -58,7 +58,7 @@ z_uccst01:--z_uccst01
 		,product nvarchar(30)
 		,spec nvarchar(30)
 		,size nvarchar(50)
-		,source nvarchar(30)
+		,[source] nvarchar(30)
 		,dime float
 		,width float
 		,lengthb float
@@ -66,9 +66,11 @@ z_uccst01:--z_uccst01
 		,emount float
 		,sprice float
 	)
-	insert into @tmp(gno,uno,datea,storeno,productno,product,spec,size,source
+	insert into @tmp(gno,uno,datea,storeno,productno,product,spec,size,[source]
 		,dime,width,lengthb,eweight,emount,sprice)
-	select '1',a.uno,b.datea,b.storeno,b.productno,b.product,b.spec,b.size,b.source
+	select '1',a.uno,b.datea,b.storeno,b.productno,b.product,b.spec
+		,case when len(b.size)>0 then b.size else [dbo].[csize](b.kind,b.dime,b.width,b.lengthb,b.radius) end
+		,b.source
 		,b.dime,b.width,b.lengthb,a.eweight,a.emount,b.sprice
 	from uccy a
 	left join view_uccb b on a.uno=b.uno
@@ -91,15 +93,15 @@ z_uccst01:--z_uccst01
 		,ROW_NUMBER()over(order by a.gno,a.sel) rr
 		,a.datea a01
 		,b.store a02
-		,a.uno a03
-		,a.productno a04
-		,a.product a05
-		,a.spec a06
-		,a.size a07
-		,dbo.getComma(a.emount,-1) a08
-		,dbo.getComma(a.eweight,-1) a09
-		,a.sprice a10
+		,a.[source] a03
+		,a.uno a04
+		,a.productno a05
+		,a.product a06
+		,a.spec a07
+		,a.size a08
+		,dbo.getComma(a.emount,-1) a09
+		,dbo.getComma(a.eweight,-1) a10
+		,a.sprice a11
 	from @tmp a
 	left join store b on a.storeno=b.noa 
 	order by a.gno,a.sel;
-
