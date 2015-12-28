@@ -26,6 +26,7 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		,datea nvarchar(20)
 		,ordeno nvarchar(20)
 		,no2 nvarchar(10)
+		,quatno nvarchar(20)
 		
 		,product nvarchar(20)
 		,dime float
@@ -56,6 +57,10 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 	and ISNULL(b.typea,'')='1'
 	order by a.noa,a.noq desc
 	---------------------------------------------------------------------------------
+	update @tmp set quatno=isnull(b.quatno,'')
+	from @tmp a
+	left join view_ordes b on a.ordeno=b.noa and a.no2=b.no2
+	
 	declare @tmpb table(
 		custno nvarchar(20)
 		,[money] float
@@ -138,20 +143,20 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		
 		,datea a01
 		,noa a02
-		,'' a03
+		,quatno a03
 		,ordeno a04
 		,product a05
 		,dime a06
 		,radius a07
 		,width a08
 		,lengthb a09
-		,mount a10
-		,price a11
-		,[money] a12
+		,dbo.getComma(mount,-1) a10
+		,dbo.getComma(price,-1) a11
+		,dbo.getComma([money],0) a12
 		,memo a13
-		,b01 b01
-		,b02 b02
-		,b03 b03
+		,dbo.getComma(b01,0) b01
+		,dbo.getComma(b02,0) b02
+		,dbo.getComma(b03,0) b03
 		,invono c01
 	from @tmp
 	order by custno,gno,datea;
