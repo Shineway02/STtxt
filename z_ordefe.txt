@@ -53,7 +53,7 @@
 	)
 	insert into @result
 	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno,case when isnull(a.nick,'')!='' then a.nick else a.comp end,
-		   b.productno pno,b.product+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname,
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname,
 		   b.unit, b.mount pmount, b.weight pweight, b.price,
 		   b.total ptotal, b.enda e, b.cancel c, 0 pcount	
 	from view_ordes b
@@ -203,7 +203,7 @@ z_ordefe02:--z_ordefe02
 	)	
 	insert into @result
 	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno, case when isnull(a.nick,'')!='' then a.nick else a.comp end,
-		   b.productno pno,b.product+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname, 
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname, 
 		   b.unit, b.mount pmount, b.weight pweight, b.price,
 		   b.total ptotal, case b.enda when '1' then 'Y' else 'N' end e, b.cancel c, b.notv, b.notv*b.price noptotal, 0 pcount	
 	from view_ordes b
@@ -351,7 +351,7 @@ z_ordefe03:--z_ordefe03
 	)	
 	insert into @result
 	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno, case when isnull(a.nick,'')!='' then a.nick else a.comp end,
-		   b.productno pno,b.product+(case when @isspec='1' then '<BR>　　　'+isnull(b.spec,'') else '' end) pname, 
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>　　　'+isnull(b.spec,'') else '' end) pname, 
 		   b.unit, b.mount pmount, b.weight pweight, b.price,
 		   b.total ptotal, case b.enda when '1' then 'Y' else 'N' end e, b.cancel c, b.notv, b.notv*b.price noptotal, 0 pcount	
 	from view_ordes b
@@ -498,7 +498,7 @@ z_ordefe04:--z_ordefe04
 	)	
 	insert into @result
 	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno, case when isnull(a.nick,'')!='' then a.nick else a.comp end,
-		   b.productno pno,b.product+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname, 
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname, 
 		   b.unit, b.mount pmount, b.weight pweight, b.price,
 		   b.total ptotal, case b.enda when '1' then 'Y' else 'N' end e, b.cancel c, b.notv, b.notv*b.price noptotal, 0 pcount	
 	from view_ordes b
@@ -623,7 +623,7 @@ declare @tmp table(
 insert into @tmp
 	select 
 		'0',b.custno,case when isnull(b.nick,'')!='' then b.nick else a.comp end,
-		a.product+(case when @isspec='1' then '<BR>'+isnull(a.spec,'') else '' end),b.noa,b.odate,a.datea,a.mount,a.weight,a.unit,a.notv,0,
+		REPLACE(a.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(a.spec,'') else '' end),b.noa,b.odate,a.datea,a.mount,a.weight,a.unit,a.notv,0,
 		case a.enda when '1' then 'Y' else 'N' end e,a.memo
 	from view_ordes a
 	left join view_orde b on a.noa = b.noa
