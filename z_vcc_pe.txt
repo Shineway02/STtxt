@@ -455,6 +455,23 @@ deallocate cursor_table
 
 --刪除有批號的成本單價
 delete #tmpsprice where left(uno,1)!='-'
+--uccy2------------------------------------------------------------
+declare @now_date nvarchar(90)
+set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
+
+if(@t_edate=CHAR(255))
+begin
+	set @t_edate=@now_date
+end
+
+if(@t_edate>=isnull((select top 1 sdate from uccy2),'')) --只更新最後的庫存
+begin
+	delete uccy2
+	insert uccy2(uno,sdate,sprice,eweight,emount,emoney)
+	select uno,@now_date,sprice,weight,mount,money from #tmpsprice
+end
+-------------------------------------------------------------------
 
 declare @tmp table(
 	gno nvarchar(1),
@@ -886,7 +903,23 @@ deallocate cursor_table
 
 --刪除有批號的成本單價 --明細可不做
 --delete #tmpsprice where left(uno,1)!='-'
+--uccy2------------------------------------------------------------
+declare @now_date nvarchar(90)
+set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
 
+if(@t_edate=CHAR(255))
+begin
+	set @t_edate=@now_date
+end
+
+if(@t_edate>=isnull((select top 1 sdate from uccy2),'')) --只更新最後的庫存
+begin
+	delete uccy2
+	insert uccy2(uno,sdate,sprice,eweight,emount,emoney)
+	select uno,@now_date,sprice,weight,mount,money from #tmpsprice
+end
+-------------------------------------------------------------------
 create table #tmp(
 	gno nvarchar(1),
 	idno int identity(1,1),
