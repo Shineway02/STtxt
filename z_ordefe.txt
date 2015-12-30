@@ -1,0 +1,645 @@
+﻿z_ordefe01:--z_ordefe01
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bodate nvarchar(10)
+	declare @t_eodate nvarchar(10)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_bsalesno nvarchar(20)
+	declare @t_esalesno nvarchar(20)
+	declare @t_bproductno nvarchar(30)
+	declare @t_eproductno nvarchar(30)
+	declare @t_stype nvarchar(20)
+	declare @t_trantype nvarchar(20)
+	declare @t_cancel nvarchar(1)
+	declare @t_enda nvarchar(1)
+	declare @isspec nvarchar(10)='[16]'
+	declare @t_cno nvarchar(max)= case when '#non'=[17] then '' else [17] end
+	
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then char(255) else [3] end
+	set @t_bodate = case when '#non'=[4] then '' else [4] end
+	set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bcustno = case when '#non'=[6] then '' else [6] end
+	set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+	set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+	set @t_bproductno = case when '#non'=[10] then '' else [10] end
+	set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+	set @t_stype = case when '#non'=[12] then '' else [12] end
+	set @t_trantype = case when '#non'=[13] then '' else [13] end
+	set @t_cancel = case when '#non'=[14] then '' else [14] end
+	set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	--*****************************************************************************************	
+	declare @result table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		custno nvarchar(50),
+		comp nvarchar(100),
+		pno nvarchar(30),
+		pname nvarchar(MAX),
+		unit nvarchar(8),
+		pmount float,
+		pweight float,
+		price float,
+		ptotal float,
+		e nvarchar(10),
+		c nvarchar(10),
+		pcount int
+		primary key (odate,gno,noa,no2) 
+	)
+	insert into @result
+	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno,case when isnull(a.nick,'')!='' then a.nick else a.comp end,
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname,
+		   b.unit, b.mount pmount, b.weight pweight, b.price,
+		   b.total ptotal, b.enda e, b.cancel c, 0 pcount	
+	from view_ordes b
+	left join view_orde a on a.noa=b.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      and (len(@t_cno)=0 or a.cno=@t_cno)
+	order by a.odate,gno,a.noa,b.no2
+
+	--*****************************************************************************************	
+	declare @odate nvarchar(10)
+	declare @pmount float
+	declare @pweight float
+	declare @ptotal float
+	
+	declare @t_odate nvarchar(10)
+	declare @t_pmount float
+	declare @t_pweight float
+	declare @t_ptotal float
+	declare @tot_pmount float
+	declare @tot_pweight float
+	declare @tot_ptotal float
+	declare @t_pcount int
+
+	set @t_odate = '#@SDER#$#@'
+	set @t_pmount = 0
+	set @t_pweight = 0
+	set @t_ptotal = 0
+	set @tot_pmount = 0
+	set @tot_pweight = 0
+	set @tot_ptotal = 0
+	set @t_pcount = 0
+	declare cursor_table cursor for
+	select odate,pmount,pweight,ptotal from @result
+	open cursor_table
+	fetch next from cursor_table
+	into @odate,@pmount,@pweight,@ptotal
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @t_odate!=@odate and @t_odate != '#@SDER#$#@'
+		begin
+			insert into @result
+			select '1' gno, '小計' noa, '' no2, '' datea, @t_odate, '' custno, '' comp,
+				   '' pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,
+				   @t_ptotal ptotal, '' e, '' c, @t_pcount pcount	
+		end
+		if @t_odate!=@odate
+		begin
+			set @t_odate = @odate
+			set @t_pmount = @pmount
+			set @t_pweight = @pweight
+			set @t_ptotal = @ptotal
+			set @t_pcount = @t_pcount + 1
+		end
+		else
+		begin
+			set @t_pmount = @t_pmount + @pmount
+			set @t_pweight = @t_pweight + @pweight
+			set @t_ptotal = @t_ptotal + @ptotal
+		end
+		set @tot_pmount = @tot_pmount + @pmount
+		set @tot_pweight = @tot_pweight + @pweight
+		set @tot_ptotal = @tot_ptotal + @ptotal
+		
+		fetch next from cursor_table
+		into @odate,@pmount,@pweight,@ptotal
+	end
+	close cursor_table
+	deallocate cursor_table
+	if @t_odate != '#@SDER#$#@'
+	begin
+		insert into @result
+		select '1' gno, '小計' noa, '' no2, '' datea, @t_odate odate, '' custno, '' comp,
+			   '' pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,
+			   @t_ptotal ptotal, '' e, '' c, @t_pcount pcount	
+		insert into @result
+		select '2' gno, '總計' noa, '' no2, '' datea, @t_odate odate, '' custno, '' comp,
+			   '' pno,'' pname, '' unit, @tot_pmount pmount, @tot_pweight pweight, 0 price,
+			   @tot_ptotal ptotal, '' e, '' c, @t_pcount pcount
+	end
+	
+	select gno,noa,no2,datea,odate,custno,comp,pno,pname,unit
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,30)) pmount
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pweight),1)),0,30)) pweight
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,ptotal),1)),4,30)) ptotal
+	,case e when '1' then 'Y' else 'N' end e,c,pcount	
+	from @result;
+----------------------------------------------------------------------------------------------
+z_ordefe02:--z_ordefe02
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bodate nvarchar(10)
+	declare @t_eodate nvarchar(10)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_bsalesno nvarchar(20)
+	declare @t_esalesno nvarchar(20)
+	declare @t_bproductno nvarchar(30)
+	declare @t_eproductno nvarchar(30)
+	declare @t_stype nvarchar(20)
+	declare @t_trantype nvarchar(20)
+	declare @t_cancel nvarchar(1)
+	declare @t_enda nvarchar(1)
+	declare @isspec nvarchar(10)='[16]'
+	declare @t_cno nvarchar(max)= case when '#non'=[17] then '' else [17] end
+	
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then char(255) else [3] end
+	set @t_bodate = case when '#non'=[4] then '' else [4] end
+	set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bcustno = case when '#non'=[6] then '' else [6] end
+	set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+	set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+	set @t_bproductno = case when '#non'=[10] then '' else [10] end
+	set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+	set @t_stype = case when '#non'=[12] then '' else [12] end
+	set @t_trantype = case when '#non'=[13] then '' else [13] end
+	set @t_cancel = case when '#non'=[14] then '' else [14] end
+	set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	--****************************************************************************************************
+	declare @result table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		custno nvarchar(30),
+		comp nvarchar(50),
+		pno nvarchar(30),
+		pname nvarchar(MAX),
+		unit nvarchar(8),
+		pmount float,
+		pweight float,
+		price float,
+		ptotal float,
+		e nvarchar(10),
+		c nvarchar(10),
+		notv float,
+		noptotal float,
+		pcount int
+		primary key (custno,gno,noa,no2) 
+	)	
+	insert into @result
+	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno, case when isnull(a.nick,'')!='' then a.nick else a.comp end,
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname, 
+		   b.unit, b.mount pmount, b.weight pweight, b.price,
+		   b.total ptotal, case b.enda when '1' then 'Y' else 'N' end e, b.cancel c, b.notv, b.notv*b.price noptotal, 0 pcount	
+	from view_ordes b
+	left join view_orde a on a.noa=b.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      and (len(@t_cno)=0 or a.cno=@t_cno)
+	order by a.custno,gno,a.noa,b.no2
+	--****************************************************************************************************
+	declare @custno nvarchar(20)
+	declare @pmount float
+	declare @pweight float
+	declare @ptotal float
+	declare @notv float
+	declare @noptotal float
+	
+	declare @t_custno nvarchar(20)
+	declare @t_pmount float
+	declare @t_pweight float
+	declare @t_ptotal float
+	declare @t_notv float
+	declare @t_noptotal float
+	declare @t_pcount int
+
+	set @t_custno = '#@SDER#$#@'
+	set @t_pmount = 0
+	set @t_pweight = 0
+	set @t_ptotal = 0
+	set @t_notv = 0
+	set @t_noptotal = 0
+	set @t_pcount = 0
+	declare cursor_table cursor for
+	select custno,pmount,pweight,ptotal,notv,noptotal from @result
+	open cursor_table
+	fetch next from cursor_table
+	into @custno,@pmount,@pweight,@ptotal,@notv,@noptotal
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @t_custno!=@custno and @t_custno != '#@SDER#$#@'
+		begin
+			insert into @result
+			select '1' gno, '小計' noa, '' no2, '' datea, '' odate, @t_custno custno, '' comp,
+				   '' pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,	@t_ptotal ptotal, 
+				   @t_enda e, @t_cancel c, @t_notv notv, @t_noptotal noptotal, @t_pcount pcount	
+		end
+		if @t_custno!=@custno
+		begin
+			set @t_custno = @custno
+			set @t_pmount = @pmount
+			set @t_pweight = @pweight
+			set @t_ptotal = @ptotal
+			set @t_notv = @notv
+			set @t_noptotal = @noptotal
+			set @t_pcount = @t_pcount + 1
+		end
+		else
+		begin
+			set @t_pmount = @t_pmount + @pmount
+			set @t_pweight = @t_pweight + @pweight
+			set @t_ptotal = @t_ptotal + @ptotal
+			set @t_notv = @t_notv + @notv
+			set @t_noptotal = @t_noptotal + @noptotal
+		end
+		
+		fetch next from cursor_table
+		into @custno,@pmount,@pweight,@ptotal,@notv,@noptotal
+	end
+	close cursor_table
+	deallocate cursor_table
+	if @t_custno != '#@SDER#$#@'
+	begin
+		insert into @result
+		select '1' gno, '小計' noa, '' no2, '' datea, '' odate, @t_custno custno, '' comp,
+			   '' pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,	@t_ptotal ptotal, 
+			   @t_enda e, @t_cancel c, @t_notv notv, @t_noptotal noptotal, @t_pcount pcount	
+	end
+	--****************************************************************************************************
+	select gno,noa,no2,datea,odate,custno,comp,pno,pname,unit
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,30)) pmount
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pweight),1)),0,30)) pweight
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,ptotal),1)),4,30)) ptotal
+	,e,c,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notv),1)),4,30)) notv
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,noptotal),1)),4,30)) noptotal
+	,pcount
+	from @result;
+----------------------------------------------------------------------------------------------
+z_ordefe03:--z_ordefe03
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bodate nvarchar(10)
+	declare @t_eodate nvarchar(10)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_bsalesno nvarchar(20)
+	declare @t_esalesno nvarchar(20)
+	declare @t_bproductno nvarchar(30)
+	declare @t_eproductno nvarchar(30)
+	declare @t_stype nvarchar(20)
+	declare @t_trantype nvarchar(20)
+	declare @t_cancel nvarchar(1)
+	declare @t_enda nvarchar(1)
+	declare @isspec nvarchar(10)='[16]'
+	declare @t_cno nvarchar(max)= case when '#non'=[17] then '' else [17] end
+	
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then char(255) else [3] end
+	set @t_bodate = case when '#non'=[4] then '' else [4] end
+	set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bcustno = case when '#non'=[6] then '' else [6] end
+	set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+	set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+	set @t_bproductno = case when '#non'=[10] then '' else [10] end
+	set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+	set @t_stype = case when '#non'=[12] then '' else [12] end
+	set @t_trantype = case when '#non'=[13] then '' else [13] end
+	set @t_cancel = case when '#non'=[14] then '' else [14] end
+	set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	--****************************************************************************************************
+	declare @result table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		custno nvarchar(30),
+		comp nvarchar(50),
+		pno nvarchar(30),
+		pname nvarchar(MAX),
+		unit nvarchar(8),
+		pmount float,
+		pweight float,
+		price float,
+		ptotal float,
+		e nvarchar(10),
+		c nvarchar(10),
+		notv float,
+		noptotal float,
+		pcount int
+		primary key (pno,gno,custno,noa,no2) 
+	)	
+	insert into @result
+	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno, case when isnull(a.nick,'')!='' then a.nick else a.comp end,
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>　　　'+isnull(b.spec,'') else '' end) pname, 
+		   b.unit, b.mount pmount, b.weight pweight, b.price,
+		   b.total ptotal, case b.enda when '1' then 'Y' else 'N' end e, b.cancel c, b.notv, b.notv*b.price noptotal, 0 pcount	
+	from view_ordes b
+	left join view_orde a on a.noa=b.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      and (len(@t_cno)=0 or a.cno=@t_cno)
+	order by pno,gno,a.custno,a.noa,b.no2
+	--****************************************************************************************************
+	declare @pno nvarchar(30)
+	declare @pmount float
+	declare @pweight float
+	declare @ptotal float
+	declare @notv float
+	declare @noptotal float
+	
+	declare @t_pno nvarchar(30)
+	declare @t_pmount float
+	declare @t_pweight float
+	declare @t_ptotal float
+	declare @t_notv float
+	declare @t_noptotal float
+	declare @t_pcount int
+
+	set @t_pno = '#@SDER#$#@'
+	set @t_pmount = 0
+	set @t_pweight = 0
+	set @t_ptotal = 0
+	set @t_notv = 0
+	set @t_noptotal = 0
+	set @t_pcount = 0
+	declare cursor_table cursor for
+	select pno,pmount,pweight,ptotal,notv,noptotal from @result
+	open cursor_table
+	fetch next from cursor_table
+	into @pno,@pmount,@pweight,@ptotal,@notv,@noptotal
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @t_pno!=@pno and @t_pno != '#@SDER#$#@'
+		begin
+			insert into @result
+			select '1' gno, '小計' noa, '' no2, '' datea, '' odate, '' custno, '' comp,
+				   @t_pno pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,	@t_ptotal ptotal, 
+				   @t_enda e, @t_cancel c, @t_notv notv, @t_noptotal noptotal, @t_pcount pcount	
+		end
+		if @t_pno!=@pno
+		begin
+			set @t_pno=@pno
+			set @t_pmount = @pmount
+			set @t_pweight = @pweight
+			set @t_ptotal = @ptotal
+			set @t_notv = @notv
+			set @t_noptotal = @noptotal
+			set @t_pcount = @t_pcount + 1
+		end
+		else
+		begin
+			set @t_pmount = @t_pmount + @pmount
+			set @t_pweight = @t_pweight + @pweight
+			set @t_ptotal = @t_ptotal + @ptotal
+			set @t_notv = @t_notv + @notv
+			set @t_noptotal = @t_noptotal + @noptotal
+		end
+		
+		fetch next from cursor_table
+		into @pno,@pmount,@pweight,@ptotal,@notv,@noptotal
+	end
+	close cursor_table
+	deallocate cursor_table
+	if @t_pno != '#@SDER#$#@'
+	begin
+		insert into @result
+		select '1' gno, '小計' noa, '' no2, '' datea, '' odate, '' custno, '' comp,
+			   @t_pno pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,	@t_ptotal ptotal, 
+			   @t_enda e, @t_cancel c, @t_notv notv, @t_noptotal noptotal, @t_pcount pcount	
+	end
+	--****************************************************************************************************
+	select gno,noa,no2,datea,odate,custno,comp,pno,pname,unit
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,30)) pmount
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pweight),1)),0,30)) pweight
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,ptotal),1)),4,30)) ptotal
+	,e,c,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notv),1)),4,30)) notv
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,noptotal),1)),4,30)) noptotal
+	,pcount,pno+custno g from @result;
+----------------------------------------------------------------------------------------------
+z_ordefe04:--z_ordefe04
+	declare @t_bdate nvarchar(10)
+	declare @t_edate nvarchar(10)
+	declare @t_bodate nvarchar(10)
+	declare @t_eodate nvarchar(10)
+	declare @t_bcustno nvarchar(20)
+	declare @t_ecustno nvarchar(20)
+	declare @t_bsalesno nvarchar(20)
+	declare @t_esalesno nvarchar(20)
+	declare @t_bproductno nvarchar(30)
+	declare @t_eproductno nvarchar(30)
+	declare @t_stype nvarchar(20)
+	declare @t_trantype nvarchar(20)
+	declare @t_cancel nvarchar(1)
+	declare @t_enda nvarchar(1)
+	declare @isspec nvarchar(10)='[16]'
+	declare @t_cno nvarchar(max)= case when '#non'=[17] then '' else [17] end
+	
+	set @t_bdate = case when '#non'=[2] then '' else [2] end
+	set @t_edate = case when '#non'=[3] then char(255) else [3] end
+	set @t_bodate = case when '#non'=[4] then '' else [4] end
+	set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+	set @t_bcustno = case when '#non'=[6] then '' else [6] end
+	set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+	set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+	set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+	set @t_bproductno = case when '#non'=[10] then '' else [10] end
+	set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+	set @t_stype = case when '#non'=[12] then '' else [12] end
+	set @t_trantype = case when '#non'=[13] then '' else [13] end
+	set @t_cancel = case when '#non'=[14] then '' else [14] end
+	set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	--****************************************************************************************************
+	declare @result table(
+		gno nvarchar(1),
+		noa nvarchar(50),
+		no2 nvarchar(10),
+		datea nvarchar(10),
+		odate nvarchar(10),
+		custno nvarchar(30),
+		comp nvarchar(50),
+		pno nvarchar(30),
+		pname nvarchar(MAX),
+		unit nvarchar(8),
+		pmount float,
+		pweight float,
+		price float,
+		ptotal float,
+		e nvarchar(10),
+		c nvarchar(10),
+		notv float,
+		noptotal float,
+		pcount int
+		primary key (noa,gno,no2) 
+	)	
+	insert into @result
+	select '0' gno, a.noa, b.no2, b.datea, a.odate, a.custno, case when isnull(a.nick,'')!='' then a.nick else a.comp end,
+		   b.productno pno,REPLACE(b.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(b.spec,'') else '' end) pname, 
+		   b.unit, b.mount pmount, b.weight pweight, b.price,
+		   b.total ptotal, case b.enda when '1' then 'Y' else 'N' end e, b.cancel c, b.notv, b.notv*b.price noptotal, 0 pcount	
+	from view_ordes b
+	left join view_orde a on a.noa=b.noa
+	where (a.datea between @t_bdate and @t_edate) and (a.odate between @t_bodate and @t_eodate) and 
+	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) and
+	      (len(@t_enda)=0 or @t_enda=b.enda)
+	      and (len(@t_cno)=0 or a.cno=@t_cno)
+	order by a.noa,gno,b.no2
+	--****************************************************************************************************
+	declare @noa nvarchar(50)
+	declare @pmount float
+	declare @pweight float
+	declare @ptotal float
+	declare @notv float
+	declare @noptotal float
+	
+	declare @t_noa nvarchar(50)
+	declare @t_pmount float
+	declare @t_pweight float
+	declare @t_ptotal float
+	declare @t_notv float
+	declare @t_noptotal float
+	declare @t_pcount int
+
+	set @t_noa = '#@SDER#$#@'
+	set @t_pmount = 0
+	set @t_pweight = 0
+	set @t_ptotal = 0
+	set @t_notv = 0
+	set @t_noptotal = 0
+	set @t_pcount = 0
+	declare cursor_table cursor for
+	select noa,pmount,pweight,ptotal,notv,noptotal from @result
+	open cursor_table
+	fetch next from cursor_table
+	into @noa,@pmount,@pweight,@ptotal,@notv,@noptotal
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @t_noa!=@noa and @t_noa != '#@SDER#$#@'
+		begin
+			insert into @result
+			select '1' gno, @t_noa noa, '' no2, '' datea, '' odate, '' custno, '' comp,
+				   '' pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,	@t_ptotal ptotal, 
+				   @t_enda e, @t_cancel c, @t_notv notv,@t_noptotal noptotal, @t_pcount pcount	
+		end
+		if @t_noa!=@noa
+		begin
+			set @t_noa = @noa
+			set @t_pmount = @pmount
+			set @t_pweight = @pweight
+			set @t_ptotal = @ptotal
+			set @t_notv = @notv
+			set @t_noptotal = @noptotal
+			set @t_pcount = @t_pcount + 1
+		end
+		else
+		begin
+			set @t_pmount = @t_pmount + @pmount
+			set @t_pweight = @t_pweight + @pweight
+			set @t_ptotal = @t_ptotal + @ptotal
+			set @t_notv = @t_notv + @notv
+			set @t_noptotal = @t_noptotal + @noptotal
+		end
+		
+		fetch next from cursor_table
+		into @noa,@pmount,@pweight,@ptotal,@notv,@noptotal
+	end
+	close cursor_table
+	deallocate cursor_table
+	if @t_noa != '#@SDER#$#@'
+	begin
+		insert into @result
+		select '1' gno, @t_noa noa, '' no2, '' datea, '' odate, '' custno, '' comp,
+			   '' pno,'' pname, '' unit, @t_pmount pmount, @t_pweight pweight, 0 price,	@t_ptotal ptotal, 
+			   @t_enda e, @t_cancel c, @t_notv notv, @t_noptotal noptotal, @t_pcount pcount	
+	end
+	--****************************************************************************************************
+	select gno,noa,no2,datea,odate,custno,comp,pno,pname,unit
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pmount),1)),4,30)) pmount
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,pweight),1)),0,30)) pweight
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,price),1)),0,30)) price
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,ptotal),1)),4,30)) ptotal
+	,e,c,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notv),1)),4,30)) notv
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,noptotal),1)),4,30)) noptotal
+	,pcount from @result;
+----------------------------------------------------------------------------------------------
+z_ordefe05:--z_ordefe05
+declare @t_bodate nvarchar(10)
+declare @t_eodate nvarchar(10)
+declare @t_bcustno nvarchar(20)
+declare @t_ecustno nvarchar(20)
+declare @t_bproductno nvarchar(30)
+declare @t_eproductno nvarchar(30)
+declare @isspec nvarchar(10)='[16]'
+declare @t_cno nvarchar(max)= case when '#non'=[17] then '' else [17] end
+set @t_bodate = case when '#non'=[4] then '' else [4] end
+set @t_eodate = case when '#non'=[5] then char(255) else [5] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
+
+declare @tmp table(
+	gno nvarchar(1),
+	custno nvarchar(50),
+	custnick nvarchar(100),
+	products nvarchar(MAX),
+	ordeno nvarchar(50),
+	odate nvarchar(20),
+	datea nvarchar(20),
+	mount float,
+	weight float,
+	unit nvarchar(10),
+	notv float,
+	notpercent float,
+	e nvarchar(10),
+	memo nvarchar(max)
+)
+insert into @tmp
+	select 
+		'0',b.custno,case when isnull(b.nick,'')!='' then b.nick else a.comp end,
+		REPLACE(a.product,'~#$',char(39))+(case when @isspec='1' then '<BR>'+isnull(a.spec,'') else '' end),b.noa,b.odate,a.datea,a.mount,a.weight,a.unit,a.notv,0,
+		case a.enda when '1' then 'Y' else 'N' end e,a.memo
+	from view_ordes a
+	left join view_orde b on a.noa = b.noa
+	left join cust c on b.custno = c.noa
+	where (a.mount>0) and (b.odate between @t_bodate and @t_eodate) and
+		(b.custno between @t_bcustno and @t_ecustno) and 
+		(a.productno between @t_bproductno and @t_eproductno) and a.enda!='1' and b.enda!='1' and a.cancel !='1' and b.cancel !='1'
+		and(len(@t_cno)=0 or b.cno=@t_cno)
+	order by b.custno,a.product,b.noa,b.odate,b.datea
+	
+update @tmp set notpercent = round((notv/mount)*100,2)
+
+select
+	gno,custno,custnick,products,ordeno,odate,datea,unit
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,mount),1)),4,30)) mount
+	,dbo.getComma(weight,2) weight
+	,reverse(substring(reverse(convert(nvarchar(30),CONVERT(money,notv),1)),4,30)) notv
+	,cast(notpercent as nvarchar) + '%' notpercent,e,memo
+from @tmp order by gno,custno,ordeno,products;

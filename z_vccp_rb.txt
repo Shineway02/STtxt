@@ -147,8 +147,7 @@ from @tmp a
 
 --發票(a_invo)長度調整
 update @tmp set a_invo = case when LEN(a_invo)>88 then SUBSTRING(a_invo,1,88)+'<br>'+SUBSTRING(a_invo,89,LEN(a_invo)) else a_invo end
-update @tmp set b_products = REPLACE(b_products,'<','&#60')
-update @tmp set b_products = REPLACE(b_products,'>','&#62')
+update @tmp set b_products=REPLACE(REPLACE(b_products,'<','&#60'),'>','&#62') where b_products like '%<[A-Z]>%' or b_products like '%<[A-Z][A-Z]>%'
 
 select
 	gno,a_noa,a_typea,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_sale2s,a_invo,a_title,a_trantype,a_paytype,a_cardeal,a_ordeno
@@ -427,6 +426,7 @@ insert into @tmp(gno,noa,datea,pageno,pageorder,buyer,serial,invoaddr,chkno,vccn
 --insert into @tmp(gno,noa,datea,pageno,pageorder)
 	--select '8',noa,datea,pageno,0 from @tmp where pageno >= 2 group by noa,datea,pageno
 ------------插入頁首<<End>>-------------
+update @tmp set products=REPLACE(REPLACE(products,'<','&#60'),'>','&#62') where products like '%<[A-Z]>%' or products like '%<[A-Z][A-Z]>%'
 select
 	a.gno,a.pageno,a.pageorder,a.datea,
 	left(a.datea,3) da1,
@@ -741,6 +741,7 @@ insert into @tmp(gno,noa,datea,pageno,pageorder,buyer,serial,invoaddr,chkno,vccn
 --insert into @tmp(gno,noa,datea,pageno,pageorder)
 	--select '8',noa,datea,pageno,0 from @tmp where pageno >= 2 group by noa,datea,pageno
 ------------插入頁首<<End>>-------------
+update @tmp set products=REPLACE(REPLACE(products,'<','&#60'),'>','&#62') where products like '%<[A-Z]>%' or products like '%<[A-Z][A-Z]>%'
 select
 	a.gno,a.pageno,a.pageorder,a.datea,
 	left(a.datea,3) da1,
