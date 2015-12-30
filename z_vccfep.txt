@@ -240,6 +240,11 @@ end
 close cursor_table
 deallocate cursor_table
 
+update @tmp set atotal = b.atotal
+from @tmp a
+left join(select noa,MAX(pageno)pageno,MAX(atotal)atotal from @tmp where gno='0' group by noa)b
+on a.noa=b.noa 
+where gno='1' and a.noa = b.noa and a.pageno=b.pageno
 
 select 
 left(datea,3) year,right(left(datea,6),2) mon,right(datea,2) day,@nowtime timea
