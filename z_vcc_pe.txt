@@ -167,8 +167,17 @@ create table #tmpa(
 	datea nvarchar(10),
 	noa nvarchar(50),
 	noq nvarchar(50),
+	
+	productno nvarchar(50),
 	product nvarchar(100),
+	style nvarchar(100),
 	size nvarchar(100),
+	spec nvarchar(200),
+	dime float,
+	width float,
+	lengthb float,
+	storeno nvarchar(50),
+	
 	uno nvarchar(50),
 	cuno nvarchar(50),
 	mount decimal(25, 4), 
@@ -190,15 +199,19 @@ create table #tmpa(
 CREATE INDEX tmpa_index ON #tmpa(idno)
 
 --盤點ucce --不會有盤點
-insert #tmpa (tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'ucce',ua.accy,ua.datea,ub.noa,ub.noq,ub.product,ub.size
+insert #tmpa (tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'ucce',ua.accy,ua.datea,ub.noa,ub.noq
+,ub.productno,ub.product,ub.style,ub.size,ub.spec,ub.dime,ub.width,ub.lengthb,ub.storeno
 ,ub.uno,ub.mount,ub.eweight,ub.price,ub.price,ub.total,'0'
 from view_ucce ua left join view_ucces ub on ua.noa=ub.noa 
 where ua.datea<=@t_edate and left(isnull(uno,''),1)='-' --and (len(@t_uno)=0 or uno=@t_uno)
 
 --進貨
-insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'rc2s',ra.accy,ra.datea,rb.noa,rb.noq,rb.product,rb.size,rb.uno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'rc2s',ra.accy,ra.datea,rb.noa,rb.noq
+,rb.productno,rb.product,rb.style,rb.size,rb.spec,rb.dime,rb.width,rb.lengthb,rb.storeno,rb.uno
 ,(case when ra.typea='1' then 1 else -1 end)*rb.mount
 ,(case when ra.typea='1' then 1 else -1 end)*rb.weight
 ,rb.price,rb.price
@@ -208,30 +221,40 @@ where left(isnull(rb.uno,''),1)='-' --and (len(@t_uno)=0 or rb.uno=@t_uno)
 and ra.datea<=@t_edate 
 
 --入庫
-insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'inas',ia.accy,ia.datea,ib.noa,ib.noq,ib.product,ib.size,ib.uno
-,ib.mount,ib.weight,ib.price,ib.price,ib.total,'2'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'inas',ia.accy,ia.datea,ib.noa,ib.noq
+,ib.productno,ib.product,ib.style,ib.size,ib.spec,ib.dime,ib.width,ib.lengthb,ib.storeno
+,ib.uno,ib.mount,ib.weight,ib.price,ib.price,ib.total,'2'
 from view_ina ia left join view_inas ib on ia.noa=ib.noa 
 where left(isnull(ib.uno,''),1)='-' --and (len(@t_uno)=0 or ib.uno=@t_uno)
 and ia.datea<=@t_edate 
 
 --裁入
-insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,cuno,mount,weight,price,sprice,money,sort)
-select 'cuts',ca.accy,ca.datea,cb.noa,cb.noq,cb.product,cb.size,cb.bno,isnull(ca.uno,''),cb.mount,cb.weight,wprice,0,0,'3'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,cuno,mount,weight,price,sprice,money,sort)
+select 'cuts',ca.accy,ca.datea,cb.noa,cb.noq
+,cb.productno,cb.product,cb.style,cb.size,cb.spec,cb.dime,cb.width,cb.lengthb,cb.storeno
+,cb.bno,isnull(ca.uno,''),cb.mount,cb.weight,wprice,0,0,'3'
 from view_cut ca left join view_cuts cb on ca.noa=cb.noa 
 where left(isnull(cb.bno,''),1)='-' --and (len(@t_uno)=0 or cb.bno=@t_uno)
 and ca.datea<=@t_edate 
 
 --裁領
-insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'cut',ca.accy,ca.datea,ca.noa,'',ca.product,'',ca.uno,ca.gmount,ca.gweight,0,0,0,'4'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'cut',ca.accy,ca.datea,ca.noa,''
+,ca.productno,ca.product,'','',ca.spec,ca.dime,ca.width,ca.lengthb,ca.storeno
+,ca.uno,ca.gmount,ca.gweight,0,0,0,'4'
 from view_cut ca 
 where left(isnull(ca.uno,''),1)='-' --and (len(@t_uno)=0 or ca.uno=@t_uno)
 and ca.datea<=@t_edate 
 
 --銷售
-insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'vccs',va.accy,va.datea,va.noa,vb.noq,vb.product,vb.size,vb.uno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'vccs',va.accy,va.datea,va.noa,vb.noq
+,vb.productno,vb.product,vb.style,vb.size,vb.spec,vb.dime,vb.width,vb.lengthb,vb.storeno,vb.uno
 ,(case when va.typea='1' then 1 else -1 end)*vb.mount
 ,(case when va.typea='1' then 1 else -1 end)*case when isnull(vb.gweight,0)!=0 then vb.gweight else vb.weight end
 ,0,0,0,(case when va.typea='1' then '5' else '2' end)
@@ -240,8 +263,11 @@ where left(isnull(vb.uno,''),1)='-' --and (len(@t_uno)=0 or vb.uno=@t_uno)
 and va.datea<=@t_edate 
 
 --領料
-insert #tmpa(tablea,accy,datea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'gets',ga.accy,ga.datea,ga.noa,gb.noq,gb.product,gb.size,gb.uno,gb.gmount,gb.gweight,0,0,0,'6'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'gets',ga.accy,ga.datea,ga.noa,gb.noq
+,gb.productno,gb.product,gb.style,gb.size,gb.spec,gb.dime,gb.width,gb.lengthb,gb.storeno
+,gb.uno,gb.gmount,gb.gweight,0,0,0,'6'
 from view_get ga left join view_gets gb on ga.noa=gb.noa 
 left join view_ucaucc c on gb.productno=c.noa 
 where left(isnull(gb.uno,''),1)='-' --and (len(@t_uno)=0 or gb.uno=@t_uno)
@@ -257,8 +283,15 @@ declare @idno int
 declare @accy nvarchar(90)
 declare @noa nvarchar(90)
 declare @noq nvarchar(90)
+declare @productno nvarchar(50)
 declare @product nvarchar(100)
 declare @size nvarchar(100)
+declare @style nvarchar(100)
+declare	@spec nvarchar(200)
+declare @dime float
+declare @width float
+declare @lengthb float
+declare @storeno nvarchar(50)
 declare @uno nvarchar(90)
 declare @tablea nvarchar(90)
 declare @mount decimal(25, 4)
@@ -279,8 +312,16 @@ declare @s_sprice decimal(25, 4)=0
 --批號成本
 create table #tmpsprice(
 	uno nvarchar(90),
+	productno nvarchar(50),
 	product nvarchar(100),
+	style nvarchar(100),
 	size nvarchar(100),
+	spec nvarchar(200),
+	dime float,
+	width float,
+	lengthb float,
+	storeno nvarchar(50),
+	
 	sprice decimal(25, 4),
 	mount decimal(25, 4),
 	weight decimal(25, 4),
@@ -293,7 +334,7 @@ create table #tmpsprice(
 )
 
 insert #tmpsprice
-select uno,'','',0,0,0,0--,0,0,0
+select uno,'','','','','',0,0,0,'',0,0,0,0--,0,0,0
 from #tmpa group by uno
 
 --插入批號的成本單價資料
@@ -304,11 +345,15 @@ where isnull(a.cuno,'')!='' and left(a.cuno,1)!='-' group by a.cuno
 --計算成本--不能以批號優先排 會有 cut成本找不到的問題
 --成本負數歸0 不處理 由使用者自行調整
 declare cursor_table cursor for
-select datea,sort,idno,accy,noa,noq,product,size,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
+select datea,sort,idno,accy,noa,noq
+,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
 order by datea,sort,noa,noq,tablea,uno
 open cursor_table
 fetch next from cursor_table
-into @datea,@sort,@idno,@accy,@noa,@noq,@product,@size,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+into @datea,@sort,@idno,@accy,@noa,@noq
+,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 while(@@FETCH_STATUS <> -1)
 begin
 	--讀取批號成本資料
@@ -404,12 +449,12 @@ begin
 	if(@t1>0)
 	begin
 		--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
-		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,3) end
+		set @s_sprice=case when @s_weight=0 then @s_sprice else round(@s_money/@s_weight,3) end
 	end
 	else
 	begin
 		--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
-		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,3) end
+		set @s_sprice=case when @s_mount=0 then @s_sprice else round(@s_money/@s_mount,3) end
 	end	
 	
 	--更新回暫存表(庫存表可不執行)
@@ -420,7 +465,8 @@ begin
 	
 	--批號成本寫入
 	update #tmpsprice
-	set sprice=@s_sprice,mount=@s_mount,weight=@s_weight,money=@s_money,product=@product,size=@size
+	set sprice=@s_sprice,mount=@s_mount,weight=@s_weight,money=@s_money
+	,productno=@productno,product=@product,style=@style,size=@size,spec=@spec,dime=@dime,width=@width,lengthb=@lengthb,storeno=@storeno
 	--,tmount=@x_mount,tweight=@x_weight,tmoney=@x_money,tsprice=@x_sprice
 	where uno=@uno
 	
@@ -448,7 +494,9 @@ begin
 	end
 		
 	fetch next from cursor_table
-	into @datea,@sort,@idno,@accy,@noa,@noq,@product,@size,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+	into @datea,@sort,@idno,@accy,@noa,@noq
+	,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+	,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 end
 close cursor_table
 deallocate cursor_table
@@ -468,8 +516,9 @@ end
 if(@t_edate>=isnull((select top 1 sdate from uccy2),'')) --只更新最後的庫存
 begin
 	delete uccy2
-	insert uccy2(uno,sdate,sprice,eweight,emount,emoney)
-	select uno,@now_date,sprice,weight,mount,money from #tmpsprice
+	insert uccy2(uno,sdate,sprice,eweight,emount,emoney,productno,product,style,spec,size,dime,width,lengthb,storeno)
+	select uno,@now_date,sprice,weight,mount,money,productno,product,style,spec,size,dime,width,lengthb,storeno 
+	from #tmpsprice where left(uno,1)='-'
 end
 -------------------------------------------------------------------
 
@@ -599,8 +648,17 @@ create table #tmpa(
 	typea nvarchar(50),
 	noa nvarchar(50),
 	noq nvarchar(50),
+	
+	productno nvarchar(50),
 	product nvarchar(100),
+	style nvarchar(100),
 	size nvarchar(100),
+	spec nvarchar(200),
+	dime float,
+	width float,
+	lengthb float,
+	storeno nvarchar(50),
+	
 	uno nvarchar(50),
 	cuno nvarchar(50),
 	mount decimal(25, 4), 
@@ -623,16 +681,19 @@ create table #tmpa(
 CREATE INDEX tmpa_index ON #tmpa(idno)
 
 --盤點ucce --不會有盤點
-insert #tmpa (tablea,accy,datea,typea,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'ucce',ua.accy,ua.datea,'盤點',ub.noa,ub.noq
-,ub.product,ub.size,ub.uno,ub.mount,ub.eweight,ub.price,ub.price,ub.total,'0'
+insert #tmpa (tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'ucce',ua.accy,ua.datea,ub.noa,ub.noq
+,ub.productno,ub.product,ub.style,ub.size,ub.spec,ub.dime,ub.width,ub.lengthb,ub.storeno
+,ub.uno,ub.mount,ub.eweight,ub.price,ub.price,ub.total,'0'
 from view_ucce ua left join view_ucces ub on ua.noa=ub.noa 
-where ua.datea<=@t_edate and left(isnull(uno,''),1)='-' --and (len(@t_uno)=0 or uno=@t_uno) //要全部批號算 不然沒辦法算到現在的成本單價
+where ua.datea<=@t_edate and left(isnull(uno,''),1)='-' --and (len(@t_uno)=0 or uno=@t_uno)
 
 --進貨
-insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'rc2s',ra.accy,ra.datea,case when ra.typea='1' then '進' else '進退' end,ra.comp,rb.noa,rb.noq
-,rb.product,rb.size,rb.uno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'rc2s',ra.accy,ra.datea,rb.noa,rb.noq
+,rb.productno,rb.product,rb.style,rb.size,rb.spec,rb.dime,rb.width,rb.lengthb,rb.storeno,rb.uno
 ,(case when ra.typea='1' then 1 else -1 end)*rb.mount
 ,(case when ra.typea='1' then 1 else -1 end)*rb.weight
 ,rb.price,rb.price
@@ -642,47 +703,53 @@ where left(isnull(rb.uno,''),1)='-' --and (len(@t_uno)=0 or rb.uno=@t_uno)
 and ra.datea<=@t_edate 
 
 --入庫
-insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'inas',ia.accy,ia.datea,'入庫',ia.comp,ib.noa,ib.noq
-,ib.product,ib.size,ib.uno,ib.mount,ib.weight,ib.price,ib.price,ib.total,'2'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'inas',ia.accy,ia.datea,ib.noa,ib.noq
+,ib.productno,ib.product,ib.style,ib.size,ib.spec,ib.dime,ib.width,ib.lengthb,ib.storeno
+,ib.uno,ib.mount,ib.weight,ib.price,ib.price,ib.total,'2'
 from view_ina ia left join view_inas ib on ia.noa=ib.noa 
 where left(isnull(ib.uno,''),1)='-' --and (len(@t_uno)=0 or ib.uno=@t_uno)
 and ia.datea<=@t_edate 
 
 --裁入
-insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,cuno,mount,weight,price,sprice,money,sort)
-select 'cuts',ca.accy,ca.datea,'裁入',cb.cust,cb.noa,cb.noq
-,cb.product,cb.size,cb.bno,isnull(ca.uno,''),isnull(cb.mount,0),isnull(cb.weight,0),wprice,0,0,'3'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,cuno,mount,weight,price,sprice,money,sort)
+select 'cuts',ca.accy,ca.datea,cb.noa,cb.noq
+,cb.productno,cb.product,cb.style,cb.size,cb.spec,cb.dime,cb.width,cb.lengthb,cb.storeno
+,cb.bno,isnull(ca.uno,''),cb.mount,cb.weight,wprice,0,0,'3'
 from view_cut ca left join view_cuts cb on ca.noa=cb.noa 
 where left(isnull(cb.bno,''),1)='-' --and (len(@t_uno)=0 or cb.bno=@t_uno)
 and ca.datea<=@t_edate 
 
 --裁領
-insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'cut',ca.accy,ca.datea,'裁領',ca.cust,ca.noa,''
-,ca.product,''--,isnull((select top 1 size from view_uccb where uno=ca.uno and datea<=ca.datea order by datea desc),'')
-,ca.uno,isnull(ca.gmount,0),isnull(ca.gweight,0),0,0,0,'4'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'cut',ca.accy,ca.datea,ca.noa,''
+,ca.productno,ca.product,'','',ca.spec,ca.dime,ca.width,ca.lengthb,ca.storeno
+,ca.uno,ca.gmount,ca.gweight,0,0,0,'4'
 from view_cut ca 
 where left(isnull(ca.uno,''),1)='-' --and (len(@t_uno)=0 or ca.uno=@t_uno)
 and ca.datea<=@t_edate 
 
 --銷售
-insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'vccs',va.accy,va.datea,(case when va.typea='1' then '出' else '出退' end),va.comp,va.noa,vb.noq
-,vb.product,vb.size,vb.uno
-,(case when va.typea='1' then 1 else -1 end)*isnull(vb.mount,0)
-,(case when va.typea='1' then 1 else -1 end)*case when isnull(vb.gweight,0)!=0 then vb.gweight else isnull(vb.weight,0) end
-,vb.price,0
-,(case when va.typea='1' then 1 else -1 end)*vb.total
-,(case when va.typea='1' then '5' else '2' end)
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'vccs',va.accy,va.datea,va.noa,vb.noq
+,vb.productno,vb.product,vb.style,vb.size,vb.spec,vb.dime,vb.width,vb.lengthb,vb.storeno,vb.uno
+,(case when va.typea='1' then 1 else -1 end)*vb.mount
+,(case when va.typea='1' then 1 else -1 end)*case when isnull(vb.gweight,0)!=0 then vb.gweight else vb.weight end
+,0,0,0,(case when va.typea='1' then '5' else '2' end)
 from view_vcc va left join view_vccs vb on va.noa=vb.noa 
 where left(isnull(vb.uno,''),1)='-' --and (len(@t_uno)=0 or vb.uno=@t_uno)
 and va.datea<=@t_edate 
 
 --領料
-insert #tmpa(tablea,accy,datea,typea,comp,noa,noq,product,size,uno,mount,weight,price,sprice,money,sort)
-select 'gets',ga.accy,ga.datea,'領料',ga.comp,ga.noa,gb.noq
-,gb.product,gb.size,gb.uno,gb.gmount,gb.gweight,0,0,0,'6'
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,mount,weight,price,sprice,money,sort)
+select 'gets',ga.accy,ga.datea,ga.noa,gb.noq
+,gb.productno,gb.product,gb.style,gb.size,gb.spec,gb.dime,gb.width,gb.lengthb,gb.storeno
+,gb.uno,gb.gmount,gb.gweight,0,0,0,'6'
 from view_get ga left join view_gets gb on ga.noa=gb.noa 
 left join view_ucaucc c on gb.productno=c.noa 
 where left(isnull(gb.uno,''),1)='-' --and (len(@t_uno)=0 or gb.uno=@t_uno)
@@ -698,6 +765,17 @@ declare @idno int
 declare @accy nvarchar(90)
 declare @noa nvarchar(90)
 declare @noq nvarchar(90)
+
+declare @productno nvarchar(50)
+declare @product nvarchar(100)
+declare @size nvarchar(100)
+declare @style nvarchar(100)
+declare	@spec nvarchar(200)
+declare @dime float
+declare @width float
+declare @lengthb float
+declare @storeno nvarchar(50)
+
 declare @uno nvarchar(90)
 declare @tablea nvarchar(90)
 declare @mount decimal(25, 4)
@@ -718,6 +796,17 @@ declare @s_sprice decimal(25, 4)=0
 --批號成本
 create table #tmpsprice(
 	uno nvarchar(90),
+	
+	productno nvarchar(50),
+	product nvarchar(100),
+	style nvarchar(100),
+	size nvarchar(100),
+	spec nvarchar(200),
+	dime float,
+	width float,
+	lengthb float,
+	storeno nvarchar(50),
+	
 	sprice decimal(25, 4),
 	mount decimal(25, 4),
 	weight decimal(25, 4),
@@ -730,7 +819,7 @@ create table #tmpsprice(
 )
 
 insert #tmpsprice
-select uno,0,0,0,0--,0,0,0
+select uno,'','','','','',0,0,0,'',0,0,0,0--,0,0,0
 from #tmpa group by uno
 
 --插入批號的資料
@@ -741,11 +830,15 @@ where isnull(a.cuno,'')!='' and left(a.cuno,1)!='-' group by a.cuno
 --計算成本--不能以批號優先排 會有 cut成本找不到的問題
 --成本負數歸0 不處理 由使用者自行調整
 declare cursor_table cursor for
-select datea,sort,idno,accy,noa,noq,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
+select datea,sort,idno,accy,noa,noq
+,productno,product,style,size,spec,dime,width,lengthb,storeno
+,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
 order by datea,sort,noa,noq,tablea,uno
 open cursor_table
 fetch next from cursor_table
-into @datea,@sort,@idno,@accy,@noa,@noq,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+into @datea,@sort,@idno,@accy,@noa,@noq
+,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 while(@@FETCH_STATUS <> -1)
 begin
 	--讀取批號成本資料
@@ -851,12 +944,12 @@ begin
 		
 	if(@t1>0)
 	begin
-		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,3) end
+		set @s_sprice=case when @s_weight=0 then @s_sprice else round(@s_money/@s_weight,3) end
 		--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
 	end
 	else
 	begin
-		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,3) end
+		set @s_sprice=case when @s_mount=0 then @s_sprice else round(@s_money/@s_mount,3) end
 		--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
 	end	
 	
@@ -869,6 +962,7 @@ begin
 	--批號成本寫入
 	update #tmpsprice
 	set sprice=@s_sprice,mount=@s_mount,weight=@s_weight,money=@s_money
+	,productno=@productno,product=@product,style=@style,size=@size,spec=@spec,dime=@dime,width=@width,lengthb=@lengthb,storeno=@storeno
 	--,tmount=@x_mount,tweight=@x_weight,tmoney=@x_money,tsprice=@x_sprice
 	where uno=@uno
 	
@@ -896,7 +990,9 @@ begin
 	end
 		
 	fetch next from cursor_table
-	into @datea,@sort,@idno,@accy,@noa,@noq,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
+	into @datea,@sort,@idno,@accy,@noa,@noq
+	,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+	,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 end
 close cursor_table
 deallocate cursor_table
@@ -916,8 +1012,9 @@ end
 if(@t_edate>=isnull((select top 1 sdate from uccy2),'')) --只更新最後的庫存
 begin
 	delete uccy2
-	insert uccy2(uno,sdate,sprice,eweight,emount,emoney)
-	select uno,@now_date,sprice,weight,mount,money from #tmpsprice
+	insert uccy2(uno,sdate,sprice,eweight,emount,emoney,productno,product,style,spec,size,dime,width,lengthb,storeno)
+	select uno,@now_date,sprice,weight,mount,money,productno,product,style,spec,size,dime,width,lengthb,storeno
+	from #tmpsprice where left(uno,1)='-'
 end
 -------------------------------------------------------------------
 create table #tmp(

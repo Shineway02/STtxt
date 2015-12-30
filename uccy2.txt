@@ -1,0 +1,467 @@
+post:--post
+SET QUOTED_IDENTIFIER OFF
+declare @cmd nvarchar(max) = ''
+declare @noa nvarchar(max) = [1] --單號
+declare @condition nvarchar(max) =[2] --動作
+declare @q_name nvarchar(max) = [3] --q_name
+
+declare @uno nvarchar(90)
+declare @bno nvarchar(90)
+declare @productno nvarchar(50)
+declare @product nvarchar(100)
+declare @size nvarchar(100)
+declare @style nvarchar(100)
+declare	@spec nvarchar(200)
+declare @dime float
+declare @width float
+declare @lengthb float
+declare @radius float
+declare @storeno nvarchar(50)
+declare @mount decimal(25, 4)
+declare @weight decimal(25, 4)
+declare @price decimal(25, 4)
+declare @money decimal(25, 4)
+declare @sprice decimal(25, 4)
+declare @typea nvarchar(50)
+declare @datea nvarchar(20)
+
+if @q_name='rc2'
+begin
+	declare cursor_table cursor for
+	select b.typea,uno,productno,product,style,size,spec,dime,width,lengthb,radius,storeno,isnull(mount,0),isnull(weight,0),isnull(price,0)
+	from view_rc2s a outer apply (select typea from view_rc2 where noa=a.noa) b where noa=@noa and left(uno,1)='-'
+	open cursor_table
+	fetch next from cursor_table
+	into @typea,@uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight,@price
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if(@typea='1')
+		begin
+			if(@condition='0')
+			begin
+				--uno判斷是否存在
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight-@weight,4)=0 then sprice else round((emoney-(@price*@weight))/round(eweight-@weight,4),4) end
+					,emount=round(emount-@mount,4)
+					,eweight=round(eweight-@weight,4)
+					,emoney=round(emoney-(@price*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno	
+				end
+			end
+			else--@condition='1'
+			begin
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight+@weight,4)=0 then @price else round((emoney+(@price*@weight))/round(eweight+@weight,4),4) end
+					,emount=round(emount+@mount,4)
+					,eweight=round(eweight+@weight,4)
+					,emoney=round(emoney+(@price*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno
+				end
+				else
+				begin			
+					insert uccy2 (uno,sdate,sprice,emount,eweight,emoney,productno,product,style,size,spec,dime,width,lengthb,radius,storeno)
+					select @uno,'',@price,@mount,@weight,@price*@weight,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno
+				end
+			end
+		end
+		else
+		begin
+			if(@condition='0')
+			begin
+				--uno判斷是否存在
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight+@weight,4)=0 then @price else round((emoney+(@price*@weight))/round(eweight+@weight,4),4) end
+					,emount=round(emount+@mount,4)
+					,eweight=round(eweight+@weight,4)
+					,emoney=round(emoney+(@price*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno
+				end
+				else
+				begin			
+					insert uccy2 (uno,sdate,sprice,emount,eweight,emoney,productno,product,style,size,spec,dime,width,lengthb,radius,storeno)
+					select @uno,'',@price,@mount,@weight,@price*@weight,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno
+				end
+			end
+			else--@condition='1'
+			begin
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight-@weight,4)=0 then sprice else round((emoney-(@price*@weight))/round(eweight-@weight,4),4) end
+					,emount=round(emount-@mount,4)
+					,eweight=round(eweight-@weight,4)
+					,emoney=round(emoney-(@price*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno
+				end
+			end
+		end
+		
+		fetch next from cursor_table
+		into @typea,@uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight,@price
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+
+if @q_name='vcc'
+begin
+	declare cursor_table cursor for
+	select b.datea,b.typea,uno,productno,product,style,size,spec,dime,width,lengthb,radius,storeno
+	,case when isnull(gmount,0)!=0 then isnull(gmount,0) else isnull(mount,0) end
+	,case when isnull(gweight,0)!=0 then isnull(gweight,0) else isnull(weight,0) end
+	from view_vccs a outer apply (select typea,datea from view_vcc where noa=a.noa) b where noa=@noa and left(uno,1)='-'
+	open cursor_table
+	fetch next from cursor_table
+	into @datea,@typea,@uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		--領料成本單價
+		set @sprice=isnull((select top 1 sprice from uccy2 where uno=@uno),0)
+		
+		if(@typea='1')
+		begin
+			if(@condition='0')
+			begin
+				--uno判斷是否存在
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight+@weight,4)=0 then sprice else round((emoney+(@sprice*@weight))/round(eweight+@weight,4),4) end
+					,emount=round(emount+@mount,4)
+					,eweight=round(eweight+@weight,4)
+					,emoney=round(emoney+(@sprice*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno	
+				end
+			end
+			else--@condition='1'
+			begin
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight-@weight,4)=0 then @sprice else round((emoney-(@sprice*@weight))/round(eweight-@weight,4),4) end
+					,emount=round(emount-@mount,4)
+					,eweight=round(eweight-@weight,4)
+					,emoney=round(emoney-(@sprice*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno
+				end
+			end
+		end
+		else
+		begin
+		
+			set @sprice=isnull((select top 1 sprice from view_vccs where uno=@uno and datea<=@datea and noa<@noa and typea='1' order by datea desc,noa desc),0)
+			
+			if(@condition='0')
+			begin
+				--uno判斷是否存在
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight-@weight,4)=0 then @sprice else round((emoney-(@sprice*@weight))/round(eweight-@weight,4),4) end
+					,emount=round(emount-@mount,4)
+					,eweight=round(eweight-@weight,4)
+					,emoney=round(emoney-(@sprice*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno
+				end
+			end
+			else--@condition='1'
+			begin
+				if(select count(*) from uccy2 where uno=@uno)>0
+				begin
+					update uccy2
+					set sprice=case when round(eweight+@weight,4)=0 then sprice else round((emoney+(@sprice*@weight))/round(eweight+@weight,4),4) end
+					,emount=round(emount+@mount,4)
+					,eweight=round(eweight+@weight,4)
+					,emoney=round(emoney+(@sprice*@weight),4)
+					,productno=@productno,product=@product
+					,style=@style,size=@size,spec=@spec
+					,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+					,storeno=@storeno
+					where uno=@uno
+				end
+				else --出貨退回
+				begin
+					insert uccy2 (uno,sdate,sprice,emount,eweight,emoney,productno,product,style,size,spec,dime,width,lengthb,radius,storeno)
+					select @uno,'',@price,@mount,@weight,@price*@weight,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno
+				end
+			end
+		end
+		
+		fetch next from cursor_table
+		into @datea,@typea,@uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+
+
+if @q_name='cut'
+begin
+	--cuts
+	declare cursor_table cursor for
+	select uno,bno,productno,product,style,size,spec,dime,width,lengthb,radius,storeno,isnull(mount,0),isnull(weight,0),wprice
+	from view_cuts where noa=@noa and left(bno,1)='-'
+	open cursor_table
+	fetch next from cursor_table
+	into @uno,@bno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight,@price
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @sprice=0
+		--領料成本單價
+		if(left(@uno,1)='-')
+		begin
+			set @sprice=isnull((select top 1 sprice from uccy2 where uno=@uno),0)
+		end
+		else
+		begin
+			set @sprice=isnull((select top 1 sprice from view_uccb where uno=@uno),0)
+		end
+		--加工成本
+		if(isnull(@price,0)!=0)
+		begin
+			set @sprice=@sprice+@price
+		end
+	
+		if(@condition='0')
+		begin
+			--bno判斷是否存在
+			if(select count(*) from uccy2 where uno=@bno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight-@weight,4)=0 then sprice else round((emoney-(@sprice*@weight))/round(eweight-@weight,4),4) end
+				,emount=round(emount-@mount,4)
+				,eweight=round(eweight-@weight,4)
+				,emoney=round(emoney-(@sprice*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@bno	
+			end
+		end
+		else--@condition='1'
+		begin
+			if(select count(*) from uccy2 where uno=@bno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight+@weight,4)=0 then @sprice else round((emoney+(@sprice*@weight))/round(eweight+@weight,4),4) end
+				,emount=round(emount+@mount,4)
+				,eweight=round(eweight+@weight,4)
+				,emoney=round(emoney+(@sprice*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@bno
+			end
+			else
+			begin			
+				insert uccy2 (uno,sdate,sprice,emount,eweight,emoney,productno,product,style,size,spec,dime,width,lengthb,radius,storeno)
+				select @bno,'',@sprice,@mount,@weight,@sprice*@weight,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno
+			end
+		end
+		
+		fetch next from cursor_table
+		into @uno,@bno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight,@price
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	--cut
+	declare cursor_table cursor for
+	select uno,productno,product,spec,dime,width,lengthb,radius,storeno,isnull(gmount,0),isnull(gweight,0)
+	from view_cut where noa=@noa and left(uno,1)='-'
+	open cursor_table
+	fetch next from cursor_table
+	into @uno,@productno,@product,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight
+	while(@@FETCH_STATUS <> -1)
+	begin
+		set @sprice=0
+		--領料成本單價
+		set @sprice=isnull((select top 1 sprice from uccy2 where uno=@uno),0)
+	
+		if(@condition='0')
+		begin
+			--bno判斷是否存在
+			if(select count(*) from uccy2 where uno=@uno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight+@weight,4)=0 then @sprice else round((emoney+(@sprice*@weight))/round(eweight+@weight,4),4) end
+				,emount=round(emount+@mount,4)
+				,eweight=round(eweight+@weight,4)
+				,emoney=round(emoney+(@sprice*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@uno	
+			end
+		end
+		else--@condition='1'
+		begin
+			if(select count(*) from uccy2 where uno=@uno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight-@weight,4)=0 then sprice else round((emoney-(@sprice*@weight))/round(eweight-@weight,4),4) end
+				,emount=round(emount-@mount,4)
+				,eweight=round(eweight-@weight,4)
+				,emoney=round(emoney-(@sprice*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@uno
+			end
+		end
+		
+		fetch next from cursor_table
+		into @uno,@productno,@product,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+
+if @q_name='ina'
+begin
+	declare cursor_table cursor for
+	select uno,productno,product,style,size,spec,dime,width,lengthb,radius,storeno,isnull(mount,0),isnull(weight,0),isnull(price,0)
+	from view_inas where noa=@noa and left(uno,1)='-'
+	open cursor_table
+	fetch next from cursor_table
+	into @uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight,@price
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		if(@condition='0')
+		begin
+			--uno判斷是否存在
+			if(select count(*) from uccy2 where uno=@uno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight-@weight,4)=0 then sprice else round((emoney-(@price*@weight))/round(eweight-@weight,4),4) end
+				,emount=round(emount-@mount,4)
+				,eweight=round(eweight-@weight,4)
+				,emoney=round(emoney-(@price*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@uno	
+			end
+		end
+		else--@condition='1'
+		begin
+			if(select count(*) from uccy2 where uno=@uno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight+@weight,4)=0 then @price else round((emoney+(@price*@weight))/round(eweight+@weight,4),4) end
+				,emount=round(emount+@mount,4)
+				,eweight=round(eweight+@weight,4)
+				,emoney=round(emoney+(@price*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@uno
+			end
+			else
+			begin			
+				insert uccy2 (uno,sdate,sprice,emount,eweight,emoney,productno,product,style,size,spec,dime,width,lengthb,radius,storeno)
+				select @uno,'',@price,@mount,@weight,@price*@weight,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno
+			end
+		end
+		
+		fetch next from cursor_table
+		into @uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight,@price
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+
+if @q_name='get'
+begin
+	declare cursor_table cursor for
+	select uno,productno,product,style,size,spec,dime,width,lengthb,radius,storeno,isnull(gmount,0),isnull(gweight,0)
+	from view_gets where noa=@noa and left(uno,1)='-'
+	open cursor_table
+	fetch next from cursor_table
+	into @uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		--領料成本單價
+		set @sprice=isnull((select top 1 sprice from uccy2 where uno=@uno),0)
+		
+		if(@condition='0')
+		begin
+			--uno判斷是否存在
+			if(select count(*) from uccy2 where uno=@uno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight+@weight,4)=0 then sprice else round((emoney+(@sprice*@weight))/round(eweight+@weight,4),4) end
+				,emount=round(emount+@mount,4)
+				,eweight=round(eweight+@weight,4)
+				,emoney=round(emoney+(@sprice*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@uno	
+			end
+		end
+		else--@condition='1'
+		begin
+			if(select count(*) from uccy2 where uno=@uno)>0
+			begin
+				update uccy2
+				set sprice=case when round(eweight-@weight,4)=0 then @sprice else round((emoney-(@sprice*@weight))/round(eweight-@weight,4),4) end
+				,emount=round(emount-@mount,4)
+				,eweight=round(eweight-@weight,4)
+				,emoney=round(emoney-(@sprice*@weight),4)
+				,productno=@productno,product=@product
+				,style=@style,size=@size,spec=@spec
+				,dime=@dime,width=@width,lengthb=@lengthb,radius=@radius
+				,storeno=@storeno
+				where uno=@uno
+			end
+		end
+		
+		fetch next from cursor_table
+		into @uno,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@radius,@storeno,@mount,@weight
+	end
+	close cursor_table
+	deallocate cursor_table
+end
+;
