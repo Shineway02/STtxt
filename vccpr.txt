@@ -165,6 +165,6 @@ import:--vccpr import
 		*(case when typea='2' then -1 else 1 end),0) - tranmoney - tranmoney2 - tranmoney3 - inte 
 	update #vccpr_import set rate = profit / case when ISNULL(total,0)=0 then 1 else total end *100
 	update #vccpr_import set rate = round(case when rate>999 then 999 else rate end,2)
-
-	select * from #vccpr_import order by datea,accy,vccno,vccnoq
+	--最多顯示999筆,避免資料太多前端跑不動
+	select top 999 * from #vccpr_import order by datea,accy,vccno,vccnoq
 	drop table #vccpr_import;
