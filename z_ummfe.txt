@@ -490,198 +490,205 @@ declare @t_edate nvarchar(20) = case when '#non' = [10] then CHAR(255) else [10]
 declare @t_worker nvarchar(20) = case when '#non' = '[14]' then '' else '[14]' end
 declare @t_bzdate nvarchar(20) = case when '#non' = [15] then '' else [15] end
 declare @t_ezdate nvarchar(20) = case when '#non' = [16] then CHAR(255) else [16] end
----------------------------------------------------------------------------------
-declare @tmp table(
-	gno nvarchar(1),
-	rno int,
-	rec int,
-	custno nvarchar(30),
-	comp nvarchar(100),
-	addr nvarchar(100),
-	tel nvarchar(100),
-	
-	datea nvarchar(10),
-	typea nvarchar(10),
-	noa nvarchar(20),
-	stotal float,
-	product nvarchar(200),
-	unit nvarchar(8),
-	mount float,
-	price float,
-	mtotal float,
-	
-	slmoney float,
-	bkmoney float,
-	tax float,
-	money float,
-	pay float,
-	unpay float,
-	total float,
-	
-	counts float,
-	weight float,
-	-----------------------
-	dateb nvarchar(10),
-	acc2 nvarchar(50),
-	moneyb float,
-	checkno nvarchar(40),
-	bank nvarchar(60),
-	indate nvarchar(10)
-)
-insert into @tmp(gno,rno,rec,custno,comp,addr,tel,datea,typea,noa,stotal,product,unit,mount,price,mtotal,slmoney,bkmoney,tax)
-select 
-	'2',ROW_NUMBER()over(partition by a.custno order by a.noa),ROW_NUMBER()over(partition by a.noa order by a.noa),
-	a.custno,a.comp,a.addr,a.tel,a.datea,
-	case when a.typea = '1' then '出' else '退' end,
-	a.noa,a.total,b.product,b.unit,b.mount,b.price,b.total,
-	case when a.typea = '1' then ISNULL(b.total,0) else 0 end,
-	case when a.typea = '2' then ISNULL(b.total,0) else 0 end,
-	case when ROW_NUMBER()over(partition by a.noa order by a.noa)=1 then ISNULL(a.tax,0) else 0 end
-from view_vcc a
-left join view_vccs b on a.noa = b.noa
-where (len(@t_cno)=0 or a.cno=@t_cno) and (a.custno between @t_bcustno and @t_ecustno) and
- 	  (a.mon between @t_bmon and @t_emon) and (a.datea between @t_bzdate and @t_ezdate)
+	declare @curdate nvarchar(max) = convert(nvarchar,getDate(),120)
+	---------------------------------------------------------------------------------
+	declare @tmp table(
+		gno nvarchar(1),
+		rno int,
+		rec int,
+		custno nvarchar(30),
+		comp nvarchar(100),
+		addr nvarchar(100),
+		tel nvarchar(100),
+		
+		datea nvarchar(10),
+		typea nvarchar(10),
+		noa nvarchar(20),
+		stotal float,
+		product nvarchar(200),
+		unit nvarchar(8),
+		mount float,
+		price float,
+		mtotal float,
+		
+		slmoney float,
+		bkmoney float,
+		tax float,
+		money float,
+		pay float,
+		unpay float,
+		total float,
+		
+		counts float,
+		weight float,
+		-----------------------
+		dateb nvarchar(10),
+		acc2 nvarchar(50),
+		moneyb float,
+		checkno nvarchar(40),
+		bank nvarchar(60),
+		indate nvarchar(10)
+	)
+	insert into @tmp(gno,rno,rec,custno,comp,addr,tel,datea,typea,noa,stotal,product,unit,mount,price,mtotal,slmoney,bkmoney,tax)
+	select 
+		'2',ROW_NUMBER()over(partition by a.custno order by a.noa),ROW_NUMBER()over(partition by a.noa order by a.noa),
+		a.custno,a.comp,a.addr,a.tel,a.datea,
+		case when a.typea = '1' then '出' else '退' end,
+		a.noa,a.total,b.product,b.unit,b.mount,b.price,b.total,
+		case when a.typea = '1' then ISNULL(b.total,0) else 0 end,
+		case when a.typea = '2' then ISNULL(b.total,0) else 0 end,
+		case when ROW_NUMBER()over(partition by a.noa order by a.noa)=1 then ISNULL(a.tax,0) else 0 end
+	from view_vcc a
+	left join view_vccs b on a.noa = b.noa
+	where (len(@t_cno)=0 or a.cno=@t_cno) and (a.custno between @t_bcustno and @t_ecustno) and
+ 		  (a.mon between @t_bmon and @t_emon) and (a.datea between @t_bzdate and @t_ezdate)
 
-update @tmp set tax = case when typea = '出' then tax else -1*tax end
+	update @tmp set tax = case when typea = '出' then tax else -1*tax end
 
---出貨金額&退貨金額&稅額&單據張數
-insert into @tmp(gno,rno,custno,slmoney,bkmoney,tax,counts)
-select '3',MAX(rno),custno,SUM(slmoney),SUM(bkmoney),SUM(tax),COUNT(DISTINCT noa)
-from @tmp 
-group by custno
-
---重量合計
-update @tmp set weight = b.mount
-from @tmp a
-left join(	
-	select custno,SUM(mount)mount
-	from @tmp
-	where gno = '2' and UPPER(unit) = 'KG'
+	--出貨金額&退貨金額&稅額&單據張數
+	insert into @tmp(gno,rno,custno,slmoney,bkmoney,tax,counts)
+	select '3',MAX(rno),custno,SUM(slmoney),SUM(bkmoney),SUM(tax),COUNT(DISTINCT noa)
+	from @tmp 
 	group by custno
-)b on a.custno = b.custno
-where gno = '3'
 
---已付金額&前期未付
-update @tmp set pay = ISNULL(b.pay,0),unpay = ISNULL(b.unpay,0)
-from @tmp a
-left join(	
-	select noa,SUM(pay)pay,SUM(unpay)unpay
-	from cust_2s
-	where (noa between @t_bcustno and @t_ecustno) and(mon < @t_bmon)
-	group by noa
-)b on a.custno = b.noa
-where gno = '3'
+	--重量合計
+	update @tmp set weight = b.mount
+	from @tmp a
+	left join(	
+		select custno,SUM(mount)mount
+		from @tmp
+		where gno = '2' and UPPER(unit) = 'KG'
+		group by custno
+	)b on a.custno = b.custno
+	where gno = '3'
 
---本期應收(出貨金額+退貨金額+稅額)
-update @tmp set money = slmoney - bkmoney +tax 
+	--已付金額&前期未付
+	update @tmp set pay = ISNULL(b.pay,0),unpay = ISNULL(b.unpay,0)
+	from @tmp a
+	left join(	
+		select noa,SUM(case when mon between @t_bmon and @t_emon then 1 else 0 end *pay)pay,SUM(unpay)unpay
+		from cust_2s
+		where (noa between @t_bcustno and @t_ecustno) and(mon < @t_bmon)
+		group by noa
+	)b on a.custno = b.noa
+	where gno = '3'
 
---應收總計(本期應收+前期未收-已付金額)
-update @tmp set total = money + unpay - pay 
----------------------------------------------------------------------------------
-if LEN(@t_bdate)>0 and LEN(@t_edate)>0
-begin
-	insert into @tmp(gno,rno,custno,comp,dateb,acc2,moneyb,checkno,bank,indate)
-	select '6',ROW_NUMBER()over(partition by a.custno order by a.noa),a.custno,comp,a.datea,b.acc2,b.money,b.checkno,b.bank,b.indate
-	from umm a
-	left join umms b on a.noa=b.noa
-	where a.datea between @t_bdate and @t_edate and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno and isnull(b.money,0)!=0
-end
----------------------------------------------------------------------------------
---排版&換頁
-update @tmp set datea='',typea='',noa='',stotal=null where rec > 1
 
-declare @custno nvarchar(30)
-declare @cnt1 int
-declare @cnt2 int 
-declare @max  int
-declare @min  int
-declare @i int
+	--本期應收(出貨金額+退貨金額+稅額)
+	update @tmp set money = slmoney - bkmoney +tax 
 
-declare cursor_table cursor for 
-select custno from @tmp group by custno
-open cursor_table 
-fetch next from cursor_table 
-into @custno
-while(@@FETCH_STATUS <> -1) 
-begin
-	set @cnt1 = (select COUNT(*) from @tmp where gno = '2' and custno = @custno)
-	set @cnt2 = (select COUNT(*) from @tmp where gno = '6' and custno = @custno)
-	
-	set @max = case when @cnt1 > 0 then (select MAX(rno) from @tmp where gno = '2' and custno = @custno) else 0 end
-	update @tmp set rno = rno+@max+12 where gno = '6' and custno = @custno
-	
-	print @custno
-	print @max
-	
-	if(@cnt1+7+@cnt2 <= 40)
+	--應收總計(本期應收+前期未收-已付金額)
+	update @tmp set total = money + unpay - pay 
+	---------------------------------------------------------------------------------
+	if LEN(@t_bdate)>0 and LEN(@t_edate)>0
 	begin
-		if(@cnt1 > 0)
-		begin
-			set @min = (select MIN(rno) from @tmp where gno = '2' and custno = @custno)
-			
-			insert into @tmp(gno,rno,custno)
-			select '1',@min,@custno 
-		end	
-		if(@cnt2 > 0) 
-		begin
-			set @min = (select MIN(rno) from @tmp where gno = '6' and custno = @custno)
-		
-			insert into @tmp(gno,rno,custno,comp)
-			select '5',@min,@custno,comp from @tmp where gno = '6' and rno = @min and custno = @custno
-		end
-		set @max = (select MAX(rno) from @tmp where (gno = '2' or gno = '6') and custno = @custno)	
-		
-		insert into @tmp(gno,rno,custno)
-		select '7',@max,@custno 	
+		insert into @tmp(gno,rno,custno,comp,dateb,acc2,moneyb,checkno,bank,indate)
+		select '6',ROW_NUMBER()over(partition by a.custno order by a.noa),a.custno,comp,a.datea,b.acc2,b.money,b.checkno,b.bank,b.indate
+		from umm a
+		left join umms b on a.noa=b.noa
+		where a.datea between @t_bdate and @t_edate and ISNULL(a.custno,'') between @t_bcustno and @t_ecustno and isnull(b.money,0)!=0
 	end
-	else
-	begin
-		if(@cnt1 > 0)
-		begin
-			insert into @tmp(gno,rno,custno)
-			select '1',case when rno = 1 then 1 else rno+1 end,@custno from @tmp where gno = '2' and (rno = 1 or rno%40 = 0) and custno = @custno
-			insert into @tmp(gno,rno,custno)
-			select '4',rno,@custno from @tmp where gno = '2' and rno%40 = 0 and custno = @custno
-		end	
-		if(@cnt2 > 0)
-		begin
-			set @min = (select MIN(rno) from @tmp where gno = '6' and custno = @custno)
-		
-			insert into @tmp(gno,rno,custno,comp)
-			select '5',case when rno = @min then @min else rno+1 end,@custno,comp from @tmp where gno = '6' and (rno = @min or rno%40 = 0) and custno = @custno
-			
-			set @max = (select MAx(rno) from @tmp where gno = '6' and custno = @custno)
-			insert into @tmp(gno,rno,custno)
-			select '7',rno,@custno from @tmp where gno = '6' and (rno%40 = 0 or rno = @max) and custno = @custno
-		end
-	end
+	---------------------------------------------------------------------------------
+	--排版&換頁
+	update @tmp set datea='',typea='',noa='',stotal=null where rec > 1
 
+	declare @custno nvarchar(30)
+	declare @cnt1 int
+	declare @cnt2 int 
+	declare @max  int
+	declare @min  int
+	declare @i int
+
+	declare cursor_table cursor for 
+	select custno from @tmp group by custno
+	open cursor_table 
 	fetch next from cursor_table 
 	into @custno
-end 
-close cursor_table 
-deallocate cursor_table
+	while(@@FETCH_STATUS <> -1) 
+	begin
+		set @cnt1 = (select COUNT(*) from @tmp where gno = '2' and custno = @custno)
+		set @cnt2 = (select COUNT(*) from @tmp where gno = '6' and custno = @custno)
+		
+		set @max = case when @cnt1 > 0 then (select MAX(rno) from @tmp where gno = '2' and custno = @custno) else 0 end
+		update @tmp set rno = rno+@max+12 where gno = '6' and custno = @custno
+		
+		print @custno
+		print @max
+		
+		if(@cnt1+7+@cnt2 <= 40)
+		begin
+			if(@cnt1 > 0)
+			begin
+				set @min = (select MIN(rno) from @tmp where gno = '2' and custno = @custno)
+				
+				insert into @tmp(gno,rno,custno)
+				select '1',@min,@custno 
+			end	
+			if(@cnt2 > 0) 
+			begin
+				set @min = (select MIN(rno) from @tmp where gno = '6' and custno = @custno)
+			
+				insert into @tmp(gno,rno,custno,comp)
+				select '5',@min,@custno,comp from @tmp where gno = '6' and rno = @min and custno = @custno
+			end
+			set @max = (select MAX(rno) from @tmp where (gno = '2' or gno = '6') and custno = @custno)	
+			
+			insert into @tmp(gno,rno,custno)
+			select '7',@max,@custno 	
+		end
+		else
+		begin
+			if(@cnt1 > 0)
+			begin
+				insert into @tmp(gno,rno,custno)
+				select '1',case when rno = 1 then 1 else rno+1 end,@custno from @tmp where gno = '2' and (rno = 1 or rno%40 = 0) and custno = @custno
+				insert into @tmp(gno,rno,custno)
+				select '4',rno,@custno from @tmp where gno = '2' and rno%40 = 0 and custno = @custno
+			end	
+			if(@cnt2 > 0)
+			begin
+				set @min = (select MIN(rno) from @tmp where gno = '6' and custno = @custno)
+			
+				insert into @tmp(gno,rno,custno,comp)
+				select '5',case when rno = @min then @min else rno+1 end,@custno,comp from @tmp where gno = '6' and (rno = @min or rno%40 = 0) and custno = @custno
+				
+				set @max = (select MAx(rno) from @tmp where gno = '6' and custno = @custno)
+				insert into @tmp(gno,rno,custno)
+				select '7',rno,@custno from @tmp where gno = '6' and (rno%40 = 0 or rno = @max) and custno = @custno
+			end
+		end
 
-select 
-	*,
-	case when @t_bmon='' and @t_emon=CHAR(255) 
-		then '帳款日期：'+@t_bzdate+'~'+case when @t_ezdate=CHAR(255) then '' else @t_ezdate end 
-		else '帳款月份：'+@t_bmon+'~'+case when @t_emon=CHAR(255) then '' else @t_emon end end b2edate,
-	@t_bdate+'~'+case when @t_edate=CHAR(255) then '' else @t_edate end b2edateb,
-	@t_worker worker,
-	dbo.getComma(stotal,0)sttl,
-	dbo.getComma(mount,2)mnt,
-	dbo.getComma(price,2)prc,
-	dbo.getComma(mtotal,0)mttl,
-	dbo.getComma(slmoney,0)mny1,
-	dbo.getComma(bkmoney,0)mny2,
-	dbo.getComma(tax,0)mny3,
-	dbo.getComma(money,0)mny4,
-	dbo.getComma(unpay,0)mny5,
-	dbo.getComma(pay,0)mny6,
-	dbo.getComma(total,0)mny7,
-	dbo.getComma(weight,0)wei
-from @tmp order by custno,rno,gno;
+		fetch next from cursor_table 
+		into @custno
+	end 
+	close cursor_table 
+	deallocate cursor_table
+
+	update @tmp set comp=b.comp,addr=b.addr_comp,tel=b.tel
+	from @tmp a
+	left join cust b on a.custno=b.noa
+
+	select 
+		*
+		,dbo.AD2ChineseEraName(@curdate) xcurdate
+		,case when @t_bmon='' and @t_emon=CHAR(255) 
+			then '帳款日期：'+@t_bzdate+'~'+case when @t_ezdate=CHAR(255) then '' else @t_ezdate end 
+			else '帳款月份：'+@t_bmon+'~'+case when @t_emon=CHAR(255) then '' else @t_emon end end b2edate,
+		@t_bdate+'~'+case when @t_edate=CHAR(255) then '' else @t_edate end b2edateb,
+		@t_worker worker,
+		dbo.getComma(stotal,0)sttl,
+		dbo.getComma(mount,2)mnt,
+		dbo.getComma(price,2)prc,
+		dbo.getComma(mtotal,0)mttl,
+		dbo.getComma(slmoney,0)mny1,
+		dbo.getComma(bkmoney,0)mny2,
+		dbo.getComma(tax,0)mny3,
+		dbo.getComma(money,0)mny4,
+		dbo.getComma(unpay,0)mny5,
+		dbo.getComma(pay,0)mny6,
+		dbo.getComma(total,0)mny7,
+		dbo.getComma(weight,0)wei
+	from @tmp order by custno,rno,gno;
 --*******************************************************************************
 z_ummfe02:--z_ummfe02
 
