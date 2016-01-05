@@ -2658,8 +2658,8 @@ from @tmp a left join cust b on a.custno=b.noa left join sss c on a.salesno=c.no
 and exists (select custno from #result where custno=a.custno group by custno)  
 --and custno in (select custno from #result group by custno) 
 
-insert #result (gno,noa,datea,mon,custno,comp,total1,pay,unpay,total2,salesno)
-select '3','','','',custno,comp,SUM(total1),SUM(pay),SUM(unpay),SUM(total2),'' 
+insert #result (gno,noa,datea,mon,custno,comp,money,tax,total1,pay,unpay,total2,salesno)
+select '3','','','',custno,comp,SUM(money),sum(tax),SUM(total1),SUM(pay),SUM(unpay),SUM(total2),'' 
 from #result where gno='1' group by custno,comp
 
 --預收
