@@ -1933,24 +1933,24 @@ select @t_xcoin,'1',custno,salesno,SUM(money) from (
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	--,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay*coin.floata,0))
-	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)*coin.floata money 
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon ) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)*coin.floata money 
 	from view_vcc aa left join cust bb on aa.custno=bb.noa 
 	outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and aa.datea <=edate order by edate desc,noa desc),1) floata) coin 
-	where ((case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon and aa.datea <@t_bdate) and (left(isnull(kind,''),4)!='健勞勞退')
+	where ((case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon) and (left(isnull(kind,''),4)!='健勞勞退')
 	and (len(@t_cno)=0 or aa.cno=@t_cno)
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end),coin.floata
-	having SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay*coin.floata,0))	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)*coin.floata!=0
+	having SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay*coin.floata,0))	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon ) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)*coin.floata!=0
 	--vcca
 	union all
 	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
 	--,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon and left(vccno,len(vccno)-11)=ca.custno),0)
-	,SUM(isnull(ca.tax*coin.floata,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0) *coin.floata
+	,SUM(isnull(ca.tax*coin.floata,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon ) and ub.custno=ca.custno),0) *coin.floata
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
 	outer apply (select isnull((select top 1 floata from flors where coin=@t_xcoin and ca.datea <=edate order by edate desc,noa desc),1) floata) coin 
-	where ((case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bmon and ca.datea <@t_bdate) and ([21]!=3)
+	where ((case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bmon ) and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5') and (len(@t_cno)=0 or ca.cno=@t_cno)
 	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end),ca.noa,coin.floata
-	having SUM(isnull(ca.tax*coin.floata,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0)*coin.floata !=0
+	having SUM(isnull(ca.tax*coin.floata,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon ) and ub.custno=ca.custno),0)*coin.floata !=0
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
@@ -2466,7 +2466,7 @@ begin
 			   0 total, 0 money, 0 back, a.tax, 0 total1, 0 pay, 0 unpay, 0 total2,c.salesno,c.sales
 			   ,'vcca','',''
 		from vcca a left join cust c on a.custno=c.noa
-		where a.tax > 0 and (a.taxtype='1' or a.taxtype='5') and (3!=3) and
+		where a.tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
 				--(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  (a.custno between @t_bcustno and @t_ecustno) and 
@@ -2516,7 +2516,7 @@ begin
 			   ,'vcca','',''
 		from vcca a 
 		left join cust c on  a.custno = c.noa
-		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and (3!=3) and
+		where tax > 0 and (a.taxtype='1' or a.taxtype='5') and ([21]!=3) and
 				--(a.datea between @t_bdate and @t_edate) and
 			  ((case when isnull(a.mon,'')='' then left(a.datea,6) else a.mon end) between @t_bmon and @t_emon) and
 			  (a.custno between @t_bcustno and @t_ecustno) and 
@@ -2605,21 +2605,21 @@ select '1',custno,salesno,SUM(money) from (
 	select (case when aa.custno2!='' then aa.custno2 else aa.custno end) custno,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end) salesno
 	--,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,6)<@t_bsmon and left(vccno,len(vccno)-7)=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money
 	,SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))
-	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money 
+	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0) money 
 	from view_vcc aa left join cust bb on aa.custno=bb.noa 
-	where ((case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon and aa.datea <@t_bdate) and (left(isnull(kind,''),4)!='健勞勞退')
+	where ((case when len(aa.mon)=0 then left(aa.datea,6) else aa.mon end) < @t_bmon ) and (left(isnull(kind,''),4)!='健勞勞退')
 	group by (case when aa.custno2!='' then aa.custno2 else aa.custno end) ,(case when aa.salesno2!='' then aa.salesno2 when aa.salesno !='' then aa.salesno else bb.salesno end)
-	having SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)!=0
+	having SUM(isnull((case when aa.typea='1' then 1 else -1 end)*unpay,0))	-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ub.custno+'-'+ub.paymon=ub.vccno and (ub.paymon<@t_bmon ) and ub.custno=(case when aa.custno2!='' then aa.custno2 else aa.custno end)),0)!=0
 	--vcca
 	union all
 	select  ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end) salesno
 	--,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where len(vccno)>8 and right(vccno,4)='-TAX' and left(right(vccno,10),6)<@t_bsmon and left(vccno,len(vccno)-11)=ca.custno),0)
-	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0) 
+	,SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon ) and ub.custno=ca.custno),0) 
 	from vcca ca left join view_vcc cb on ca.noa=cb.invono left join cust cc on ca.custno=cc.noa
-	where ((case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bmon and ca.datea <@t_bdate) and (3!=3)
+	where ((case when ca.mon!='' then ca.mon else LEFT(ca.datea,6) end) < @t_bmon ) and ([21]!=3)
 	and (ca.taxtype='1' or ca.taxtype='5')
 	group by ca.custno,(case when cb.salesno2!='' then cb.salesno2 when cb.salesno !='' then cb.salesno else cc.salesno end),ca.noa
-	having SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon or ub.paymon+'/01'<@t_bdate) and ub.custno=ca.custno),0) !=0
+	having SUM(isnull(ca.tax,0))-isnull((select sum(ub.paysale) from umms ub left join umm ua on ub.noa=ua.noa where ca.noa=ub.vccno and (ub.paymon<@t_bmon ) and ub.custno=ca.custno),0) !=0
 	--union all
 	--cara
 	--select ca.carownerno,ca.sssno,outmoney-inmoney from cara ca left join caras cb on ca.noa=cb.noa where ca.mon=@t_bsmon and cb.caritemno='001'
@@ -2658,8 +2658,8 @@ from @tmp a left join cust b on a.custno=b.noa left join sss c on a.salesno=c.no
 and exists (select custno from #result where custno=a.custno group by custno)  
 --and custno in (select custno from #result group by custno) 
 
-insert #result (gno,noa,datea,mon,custno,comp,total1,pay,unpay,total2,salesno)
-select '3','','','',custno,comp,SUM(total1),SUM(pay),SUM(unpay),SUM(total2),'' 
+insert #result (gno,noa,datea,mon,custno,comp,money,tax,total1,pay,unpay,total2,salesno)
+select '3','','','',custno,comp,SUM(money),sum(tax),SUM(total1),SUM(pay),SUM(unpay),SUM(total2),'' 
 from #result where gno='1' group by custno,comp
 
 --預收
