@@ -225,8 +225,9 @@ if(@condition='1')
 							total =isnull((select sum(w01) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0) 
 							where noa='"+@rc2no+"'") 
 
+						set @accy=(select accy from view_cub where noa=@noa)
 						--更新cubs 
-						exec("update cubs"+@year+" set ordeno='"+@rc2no+"' where noa='"+@noa+"' and cut='1' and tggno='"+@tggno+"' and datea='"+@datea+"'") 
+						exec("update cubs"+@accy+" set ordeno='"+@rc2no+"' where noa='"+@noa+"' and cut='1' and tggno='"+@tggno+"' and datea='"+@datea+"'") 
 
 				end
 			ELSE
