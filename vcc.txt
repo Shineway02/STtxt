@@ -1,36 +1,3 @@
-vcc_orde_fe:--vcc_orde_fe
-	declare @t_custno nvarchar(20) = [1]
-	declare @t_vccno nvarchar(20) = [2]
-	declare @t_para nvarchar(20) = [3]
-	
-	declare @tmp table(
-		ordeno nvarchar(20)
-		,no2 nvarchar(10)
-		,odate nvarchar(20)
-		,productno nvarchar(50)
-		,product nvarchar(50)
-		,unit nvarchar(20)
-		,mount float
-		,[weight] float
-		,price float
-		,emount float
-		,eweight float
-	)
-	insert into @tmp(ordeno,no2,odate,productno,product,unit,[mount],[weight],price,emount,eweight)
-	select a.noa,a.no2,a.odate,a.productno,a.product,a.unit, a.mount,a.[weight],a.price,c.mount,c.[weight]
-	from view_ordes a
-	left join view_orde b on a.accy=b.accy and a.noa=b.noa
-	left join (select ordeno,no2, SUM(ISNULL(mount,0)) mount,SUM(ISNULL([weight],0)) [weight] 
-		from view_vccs where noa!=@t_vccno and len(isnull(ordeno,''))>0
-		group by ordeno,no2) c on a.noa=c.ordeno and a.no2=c.no2
-	where b.noa is not null
-	and ISNULL(b.enda,0)=0
-	and ISNULL(b.cancel,0)=0
-	and ISNULL(a.enda,0)=0
-	and ISNULL(a.cancel,0)=0
-	and ISNULL(a.mount,0)-ISNULL(c.mount,0)>0
-	and ISNULL(a.[weight],0)-ISNULL(c.mount,0)>0
-	select * from @tmp order by odate desc,ordeno,no2;
 
 vccfe_save:--vccfe_save
 	SET QUOTED_IDENTIFIER OFF
