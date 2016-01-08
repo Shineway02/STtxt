@@ -147,7 +147,7 @@ begin
 	set @memo = @r
 	
 	set @noa = @f
-	set @isexist = case when (LEN(ISNULL((select noa from vcct where noa = @noa),''))=0) then 0 else 1 end
+	set @isexist = case when (LEN(ISNULL((select noa from vcct where noa = @noa and (case when @kind in ('33','34','23','24') then '1' else '0' end=case when kind in ('33','34','23','24') then '1' else '0' end) ),''))=0) then 0 else 1 end
 	
 	select @bdate=a.bdate,@edate=a.edate from 
 	vccar a
@@ -188,10 +188,10 @@ declare @accy nvarchar(50)
 declare @vccno nvarchar(50)
 declare @t_sono nvarchar(50)
 declare cursor_table cursor for
-select isexist,noa,sono from #z_vcctrb
+select isexist,noa,sono,kind from #z_vcctrb
 open cursor_table
 fetch next from cursor_table
-into @isexist,@noa,@sono
+into @isexist,@noa,@sono,@kind
 while(@@FETCH_STATUS <> -1)
 begin
 	set @t_sono=''
@@ -209,6 +209,7 @@ begin
 		end
 		
 		delete vcct where noa = @noa
+		and (case when @kind in ('33','34','23','24') then '1' else '0' end=case when kind in ('33','34','23','24') then '1' else '0' end)
 		
 		if(@vccno!='')
 		begin
@@ -233,7 +234,7 @@ begin
 	end
 	
 	fetch next from cursor_table
-	into @isexist,@noa,@sono
+	into @isexist,@noa,@sono,@kind
 end
 close cursor_table
 deallocate cursor_table
