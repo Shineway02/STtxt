@@ -276,8 +276,9 @@ set @cmd =
 				  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
 			group by accc5,accc6,bal
 			union
-			select acc1,'','','',''
+			select acc1,'','',SUM(money),''
 			from acbab"+@accy+"_1
+			group by acc1
 	)tmp group by acc1,acc2,bal"
 execute sp_executesql @cmd
 
@@ -306,10 +307,11 @@ execute sp_executesql @cmd
 --刪除非日期區間內的期初沖帳
 --delete #tmp where accc5=(select accc5 from #tmp group by accc5,accc6 having MAX(rec)=0)
 
---若無期初沖帳,則補一筆期初沖帳money1=0,money2=0
+
 declare @accc5 nvarchar(20)
 declare @accc6 nvarchar(20)
 
+--若無期初沖帳,則補一筆期初沖帳money1=0,money2=0
 --declare cursor_table cursor for 
 --select accc5,accc6 from #tmp where CHARINDEX('期初沖帳',accc3)=0 group by accc5,accc6
 --open cursor_table 

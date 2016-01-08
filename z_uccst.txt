@@ -172,13 +172,14 @@ z_uccst01:--z_uccst01
 		,eweight float
 		,emount float
 		,sprice float
+		,uno2 nvarchar(30)
 	)
 	insert into @tmp(gno,uno,datea,storeno,productno,product,spec,size,[source]
-		,dime,width,lengthb,eweight,emount,sprice)
+		,dime,width,lengthb,eweight,emount,sprice,uno2)
 	select '1',a.uno,b.datea,b.storeno,b.productno,b.product,b.spec
 		,case when len(b.size)>0 then b.size else [dbo].[csize](b.kind,b.dime,b.width,b.lengthb,b.radius) end
 		,b.source
-		,b.dime,b.width,b.lengthb,a.eweight,a.emount,b.sprice
+		,b.dime,b.width,b.lengthb,a.eweight,a.emount,b.sprice,b.uno2
 	from uccy a
 	left join view_uccb b on a.uno=b.uno
 	where a.emount>0
@@ -209,6 +210,7 @@ z_uccst01:--z_uccst01
 		,dbo.getComma(a.emount,-1) a09
 		,dbo.getComma(a.eweight,-1) a10
 		,a.sprice a11
+		,a.uno2 a12
 	from @tmp a
 	left join store b on a.storeno=b.noa 
 	order by a.gno,a.sel;
