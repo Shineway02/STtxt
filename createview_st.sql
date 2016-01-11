@@ -1260,7 +1260,7 @@
 print 'bbm+bbs+bbt:'
 	--orde
 	set @table = 'orde'
-	print space(4)+@table+'  view_ordesXXX 有不一樣'
+	print space(4)+@table+' view_ordeXXX view_ordesXXX 有不一樣'
 	delete @tmp
 	insert into @tmp(tablea,tableas,tableat,accy)
 	SELECT TABLE_NAME 
@@ -1298,7 +1298,7 @@ print 'bbm+bbs+bbt:'
 	begin
 		--
 		set @cmd = @cmd + case when LEN(@cmd)=0 then '' else CHAR(13)+ space(4)+'union all'+CHAR(13) end
-			+ space(4)+"select '"+@accy+"' accy,* from "+@tablea
+			+ space(4)+"select '"+@accy+"' accy,* from "+@tablea+"  a outer apply (select count(*) vcce from view_vcces where ordeno=a.noa) b"
 		--s
 		set @cmds = @cmds + case when LEN(@cmds)=0 then '' else CHAR(13)+ space(4)+'union all'+CHAR(13) end
 			+ space(4)+"select '"+@accy+"' accy,* from "+@tableas
@@ -1315,13 +1315,13 @@ print 'bbm+bbs+bbt:'
 		set @accy2 = right('000'+CAST(@accy as int)-1,3)
 		if exists(select * from @tmp where accy=@accy2)
 		begin
-			set @cmdaccy = space(4)+"select '"+@accy2+"' accy,* from "+@table+@accy2
+			set @cmdaccy = space(4)+"select '"+@accy2+"' accy,* from "+@table+@accy2+"  a outer apply (select count(*) vcce from view_vcces where ordeno=a.noa) b"
 		end
-		set @cmdaccy = @cmdaccy + case when len(@cmdaccy)>0 then CHAR(13)+ space(4)+'union all'+CHAR(13) else '' end +SPACE(4)+"select '"+@accy+"' accy,* from "+@tablea
+		set @cmdaccy = @cmdaccy + case when len(@cmdaccy)>0 then CHAR(13)+ space(4)+'union all'+CHAR(13) else '' end +SPACE(4)+"select '"+@accy+"' accy,* from "+@tablea+" a outer apply (select count(*) vcce from view_vcces where ordeno=a.noa) b"
 		set @accy2 = right('000'+CAST(@accy as int)+1,3)
 		if exists(select * from @tmp where accy=@accy2)
 		begin
-			set @cmdaccy = @cmdaccy + CHAR(13)+ space(4)+'union all'+CHAR(13)+space(4)+"select '"+@accy2+"' accy,* from "+@table+@accy2
+			set @cmdaccy = @cmdaccy + CHAR(13)+ space(4)+'union all'+CHAR(13)+space(4)+"select '"+@accy2+"' accy,* from "+@table+@accy2+" a outer apply (select count(*) vcce from view_vcces where ordeno=a.noa) b"
 		end
 		set @cmdaccy = "create view view_"+@table+@accy+ CHAR(13)+"as" + CHAR(13) + @cmdaccy	
 		execute sp_executesql @cmdaccy 
