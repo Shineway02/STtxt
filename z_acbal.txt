@@ -278,6 +278,9 @@ set @cmd =
 			union
 			select acc1,'','',SUM(money),''
 			from acbab"+@accy+"_1
+			where (LEN(bal)>0) and
+				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and				  
+				  (acc1 between '"+@t_bacc+"' and '"+@t_eacc+"')
 			group by acc1
 	)tmp group by acc1,acc2,bal"
 execute sp_executesql @cmd
@@ -307,7 +310,6 @@ execute sp_executesql @cmd
 --刪除非日期區間內的期初沖帳
 --delete #tmp where accc5=(select accc5 from #tmp group by accc5,accc6 having MAX(rec)=0)
 
-
 declare @accc5 nvarchar(20)
 declare @accc6 nvarchar(20)
 
@@ -333,20 +335,20 @@ declare @rec int
 declare @bal nvarchar(50)
 
 declare cursor_table cursor for 
-select MIN(rec),accc5,accc6,ISNULL(bal,'') from #tmp where rec != 0 group by accc5,accc6,bal
+select MIN(rec),accc5,ISNULL(bal,'') from #tmp where rec != 0 group by accc5,bal
 open cursor_table 
 fetch next from cursor_table 
-into @rec,@accc5,@accc6,@bal
+into @rec,@accc5,@bal
 while(@@FETCH_STATUS <> -1) 
 begin
 	set @cmd = 
 	"update #tmp 
-		set money2 = (select SUM(case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then cmoney else dmoney end)from acccs"+@accy+"_1 where accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"' and accc5 = '"+@accc5+"' and accc6='"+@accc6+"' and ISNULL(bal,'') = '"+@bal+"')
-	where rec="+CAST(@rec as nvarchar(10))+" and accc5 = '"+@accc5+"' and accc6='"+@accc6+"' and ISNULL(bal,'') = '"+@bal+"'"
+		set money2 = (select SUM(case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then cmoney else dmoney end)from acccs"+@accy+"_1 where accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"' and accc5 = '"+@accc5+"' and ISNULL(bal,'') = '"+@bal+"')
+	where rec="+CAST(@rec as nvarchar(10))+" and accc5 = '"+@accc5+"' and ISNULL(bal,'') = '"+@bal+"'"
 	execute sp_executesql @cmd
 	
 	fetch next from cursor_table 
-	into @rec,@accc5,@accc6,@bal
+	into @rec,@accc5,@bal
 end 
 close cursor_table 
 deallocate cursor_table 
@@ -356,33 +358,31 @@ update #tmp set total = money1-money2
 
 --餘額
 declare cursor_table cursor for 
-select rec,accc5,accc6 from #tmp where gno = '0' order by accc5,accc6,rec
+select rec,accc5 from #tmp where gno = '0' order by accc5,rec
 open cursor_table 
 fetch next from cursor_table 
-into @rec,@accc5,@accc6
+into @rec,@accc5
 while(@@FETCH_STATUS <> -1) 
 begin
 	if(@rec = 0)
 		update #tmp set blance = money1-money2 where rec=@rec
 	else
-		update #tmp set blance = ISNULL((select blance from #tmp where rec=@rec-1 and accc5=@accc5 and accc6=@accc6),0)+total where rec=@rec and accc5=@accc5 and accc6=@accc6
+		update #tmp set blance = ISNULL((select blance from #tmp where rec=@rec-1 and accc5=@accc5),0)+total where rec=@rec and accc5=@accc5
 	
 	fetch next from cursor_table 
-	into @rec,@accc5,@accc6
+	into @rec,@accc5
 end 
 close cursor_table 
 deallocate cursor_table 
 
 --排版
 update #tmp set accc2 = dbo.split(@t_bdate,'/',0)+'/'+accc2
-
 update #tmp set accc3 = accc3+'<br>'+ISNULL(bal,'')
-
 update #tmp set accc7 = REPLACE(REPLACE(accc7,'NO','<br>NO'),'到期日','<br>到期日')
 
 --小計
-insert into #tmp(gno,accc5,accc6,money1,money2,total)
-select '1',accc5,accc6,SUM(money1),SUM(money2),SUM(total) from #tmp group by accc5,accc6
+insert into #tmp(gno,accc5,money1,money2,total)
+select '1',accc5,SUM(money1),SUM(money2),SUM(total) from #tmp group by accc5
 
 update #tmp set blance = money1-money2 where gno = '1'
 
@@ -391,6 +391,6 @@ select
 	dbo.getComma(total ,0)ttl,
 	dbo.getComma(money1,0)mny1,
 	dbo.getComma(money2,0)mny2 
-from #tmp order by accc5,accc6,gno,rec,accc2
+from #tmp order by accc5,gno,rec,accc2
 
 drop table #tmp;
