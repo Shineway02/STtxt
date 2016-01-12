@@ -200,10 +200,10 @@ orde:-- workj -> orde
 	--合併productno
 	set @cmd =
 	"insert into ordes"+@accy+"(noa,no2,datea,custno,productno,product,unit,lengthb,[weight],mount,price,total
-		,quatno,no3,tablea,enda,cancel,c1,notv,unit)
+		,quatno,no3,tablea,enda,cancel,c1,notv)
 	select @ordeno,right('000'+cast(ROW_NUMBER()over(order by a.productno) as nvarchar),3)
-		,c.datea,c.custno,a.productno,a.product,a.unit,0,a.[weight],a.mount,a.price,a.total
-		,'','','workj',0,0,0,a.notv,'KG'
+		,c.datea,c.custno,a.productno,a.product,'KG',0,a.[weight],a.mount,a.price,a.total
+		,'','','workj',0,0,0,a.notv
 	from(
 		select a.productno,a.product,isnull(b.unit,'') unit,isnull(b.price,0) price
 			,SUM(a.[weight]) [weight],SUM(a.mount) mount
