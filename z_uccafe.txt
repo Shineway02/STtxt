@@ -22,7 +22,8 @@ z_uccafe03:--z_uccafe03 銷售分析表(產品)
 		inte float,
 		profit float
 	)
-	insert into @tmpa(productno,product,accy,vccno,vccnoq,typea,total,tranmoney,tranmoney2,tranmoney3,spricemoney,wcost)
+	insert into @tmpa(productno,product,accy,vccno,vccnoq,typea,total
+		,tranmoney,tranmoney2,tranmoney3,spricemoney,wcost)
 	select b.productno,b.product,a.accy,a.noa,b.noq,isnull(a.typea,'')
 		,b.total --* case when isnull(a.typea,'')='1' then 1 else -1 end
 		,b.tranmoney --* case when isnull(a.typea,'')='1' then 1 else -1 end
@@ -36,9 +37,18 @@ z_uccafe03:--z_uccafe03 銷售分析表(產品)
 	and b.noa is not null
 	and isnull(b.productno,'') between @t_bproductno and @t_eproductno
 	--------------------------------------------------------------------------
-	update @tmpa set inte=b.inte
+	
+	
+	update @tmpa set inte = isnull(round(a.total
+		*case when patindex('%[0-9]%',ISNULL(b.paytype,''))>0 then CAST(substring(ISNULL(b.paytype,''),patindex('%[0-9]%',ISNULL(b.paytype,'')),len(ISNULL(b.paytype,''))-patindex('%[0-9]%',ISNULL(b.paytype,''))- patindex('%[0-9%]',reverse(ISNULL(b.paytype,'')))) as int) else 0 end
+		*0.0004*(case when a.typea='2' then -1 else 1 end),0),0)
 	from @tmpa a
-	outer apply(select top 1 inte from vccprs where accy=a.accy and vccno=a.vccno and vccnoq=a.vccnoq order by noa desc) b
+	left join view_vcc b on a.accy=b.accy and a.vccno=b.noa
+	
+	
+	--update @tmpa set inte=b.inte
+	--from @tmpa a
+	--outer apply(select top 1 inte from vccprs where accy=a.accy and vccno=a.vccno and vccnoq=a.vccnoq order by noa desc) b
 	
 	update @tmpa set profit = total-tranmoney-tranmoney2-tranmoney3-spricemoney-wcost-inte
 	--------------------------------------------------------------------------------------------
@@ -55,8 +65,8 @@ z_uccafe03:--z_uccafe03 銷售分析表(產品)
 		inte float,
 		profit float
 	)	
-	insert into @tmp(gno,productno,product,total,tranmoney1,tranmoney2,tranmoney3,spricemoney,wcost,inte,profit)
-	select '1' gno,productno,product
+	insert into @tmp(gno,productno,total,tranmoney1,tranmoney2,tranmoney3,spricemoney,wcost,inte,profit)
+	select '1' gno,productno
 		,SUM(case when typea='1' then 1 else -1 end*isnull(total,0)) total
 		,SUM(case when typea='1' then 1 else -1 end*isnull(tranmoney,0)) tranmoney1
 		,SUM(case when typea='1' then 1 else -1 end*isnull(tranmoney2,0)) tranmoney2
@@ -66,7 +76,17 @@ z_uccafe03:--z_uccafe03 銷售分析表(產品)
 		,SUM(case when typea='1' then 1 else -1 end*isnull(inte,0)) inte
 		,SUM(case when typea='1' then 1 else -1 end*isnull(profit,0)) profit
 	from @tmpa
-	group by productno,product
+	group by productno
+	
+	UPDATE @tmp set product=ISNULL(b.product,'')
+	from @tmp a
+	left join ucc b on a.productno=b.noa
+	
+	UPDATE @tmp set product=ISNULL(b.product,'')
+	from @tmp a
+	outer apply(select top 1 product from @tmp where a.productno=productno and len(ISNULL(product,''))>0) b
+	where len(ISNULL(a.product,''))=0
+
 	insert into @tmp(gno,productno,product,total,tranmoney1,tranmoney2,tranmoney3,spricemoney,wcost,inte,profit)
 	select '2',CHAR(255),''
 		,SUM(case when typea='1' then 1 else -1 end*isnull(total,0)) total
@@ -80,7 +100,7 @@ z_uccafe03:--z_uccafe03 銷售分析表(產品)
 	from @tmpa
 
 	select * 
-		,row_number()over(order by gno,total desc) rr
+		,row_number()over(order by gno,productno,total desc) rr
 		,productno a01
 		,product a02
 		,dbo.getComma(total,0) a03
@@ -90,7 +110,7 @@ z_uccafe03:--z_uccafe03 銷售分析表(產品)
 		,dbo.getComma(wcost,0) a07
 		,dbo.getComma(inte,0) a08
 		,dbo.getComma(profit,0) a09
-	from @tmp order by gno,total desc;
+	from @tmp order by gno,productno,total desc;
 	
 z_uccafe02:--z_uccafe02 銷售分析表(客戶)
 	declare @t_bdate nvarchar(10)=case when '#non' = [1] then '' else [1] end
@@ -130,9 +150,14 @@ z_uccafe02:--z_uccafe02 銷售分析表(客戶)
 	and b.noa is not null
 	and isnull(a.custno,'') between @t_bcustno and @t_ecustno
 	--------------------------------------------------------------------------
-	update @tmpa set inte=b.inte
+	update @tmpa set inte = isnull(round(a.total
+		*case when patindex('%[0-9]%',ISNULL(b.paytype,''))>0 then CAST(substring(ISNULL(b.paytype,''),patindex('%[0-9]%',ISNULL(b.paytype,'')),len(ISNULL(b.paytype,''))-patindex('%[0-9]%',ISNULL(b.paytype,''))- patindex('%[0-9%]',reverse(ISNULL(b.paytype,'')))) as int) else 0 end
+		*0.0004*(case when a.typea='2' then -1 else 1 end),0),0)
 	from @tmpa a
-	outer apply(select top 1 inte from vccprs where accy=a.accy and vccno=a.vccno and vccnoq=a.vccnoq order by noa desc) b
+	left join view_vcc b on a.accy=b.accy and a.vccno=b.noa
+	--update @tmpa set inte=b.inte
+	--from @tmpa a
+	--outer apply(select top 1 inte from vccprs where accy=a.accy and vccno=a.vccno and vccnoq=a.vccnoq order by noa desc) b
 	
 	update @tmpa set profit = total-tranmoney-tranmoney2-tranmoney3-spricemoney-wcost-inte
 	--------------------------------------------------------------------------------------------
@@ -224,9 +249,14 @@ z_uccafe01:--z_uccafe01 銷售分析表(業務)
 	and b.noa is not null
 	and isnull(a.salesno,'') between @t_bsalesno and @t_esalesno
 	
-	update @tmpa set inte=b.inte
+	update @tmpa set inte = isnull(round(a.total
+		*case when patindex('%[0-9]%',ISNULL(b.paytype,''))>0 then CAST(substring(ISNULL(b.paytype,''),patindex('%[0-9]%',ISNULL(b.paytype,'')),len(ISNULL(b.paytype,''))-patindex('%[0-9]%',ISNULL(b.paytype,''))- patindex('%[0-9%]',reverse(ISNULL(b.paytype,'')))) as int) else 0 end
+		*0.0004*(case when a.typea='2' then -1 else 1 end),0),0)
 	from @tmpa a
-	outer apply(select top 1 inte from vccprs where accy=a.accy and vccno=a.vccno and vccnoq=a.vccnoq order by noa desc) b
+	left join view_vcc b on a.accy=b.accy and a.vccno=b.noa
+	--update @tmpa set inte=b.inte
+	--from @tmpa a
+	--outer apply(select top 1 inte from vccprs where accy=a.accy and vccno=a.vccno and vccnoq=a.vccnoq order by noa desc) b
 	
 	update @tmpa set profit = total-tranmoney-tranmoney2-tranmoney3-spricemoney-wcost-inte
 	
