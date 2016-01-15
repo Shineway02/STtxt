@@ -281,7 +281,8 @@ set @accy=isnull((select top 1 accy from view_quat where noa=@t_quatno1),@t_accy
 
 EXEC("
 	update a
-	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
+	--,enda=(case when eweight=0 then 1 else enda end)
 	from quat"+@accy+" a
 	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
 	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
@@ -300,7 +301,8 @@ set @accy=isnull((select top 1 accy from view_quat where noa=@t_quatno2),@t_accy
 
 EXEC("
 	update a
-	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
+	--,enda=(case when eweight=0 then 1 else enda end)
 	from quat"+@accy+" a
 	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
 	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
@@ -321,7 +323,8 @@ begin
 
 	EXEC("
 		update a
-		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
+		--,enda=(case when eweight=0 then 1 else enda end)
 		from quat"+@accy+" a
 		outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
 		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
@@ -343,7 +346,8 @@ begin
 
 	EXEC("
 		update a
-		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
+		--,enda=(case when eweight=0 then 1 else enda end)
 		from quat"+@accy+" a
 		outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
 		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight

@@ -38,7 +38,8 @@ where a.noa=@t_contno2
 if(len(@t_cont1)>0)
 begin
 	update a
-	set gweight=isnull(b.gweight,0),eweight=isnull(ordeweight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+	set gweight=isnull(b.gweight,0),eweight=isnull(ordeweight,0)-isnull(b.gweight,0)
+	--,enda=(case when eweight=0 then 1 else enda end)
 	from cont a
 	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(transtart,'##',0),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',0),'@',1) else 0 end
 	+case when dbo.split(dbo.split(transtart,'##',1),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',1),'@',1) else 0 end gweight
@@ -54,7 +55,8 @@ end
 if(len(@t_cont2)>0)
 begin
 	update a
-	set gweight=isnull(b.gweight,0),eweight=isnull(ordeweight,0)-isnull(b.gweight,0),enda=(case when eweight=0 then 1 else enda end)
+	set gweight=isnull(b.gweight,0),eweight=isnull(ordeweight,0)-isnull(b.gweight,0)
+	--,enda=(case when eweight=0 then 1 else enda end)
 	from cont a
 	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(transtart,'##',0),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',0),'@',1) else 0 end
 	+case when dbo.split(dbo.split(transtart,'##',1),'@',0)=a.noa then dbo.split(dbo.split(transtart,'##',1),'@',1) else 0 end gweight
