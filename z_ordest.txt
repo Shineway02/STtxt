@@ -23,6 +23,7 @@
 		ucolor nvarchar(20),
 		scolor nvarchar(20),
 		productno nvarchar(20),
+		product nvarchar(50),
 		size nvarchar(max),
 		mount float,		
 		unit2 nvarchar(10),
@@ -34,16 +35,19 @@
 		tgg nvarchar(50),
 		datea nvarchar(10),
 		custorde nvarchar(max),
-		addr nvarchar(max)
+		addr nvarchar(max),
+		dime float,
+		width float,
+		enda nvarchar(20)
 	)
 	
 		--訂單編號	開單日	客戶	規範	國別	材質	尺寸 			
 	--數量	重量	單價	備註		廠商	交期	訂單編號/案號
-	insert into @tmp(gno,accy,noa,no2,odate,custno,cust,ucolor,scolor,productno
-		,size,mount,unit2,[weight],unit,price,memo,datea,custorde,addr)
-	select '1',a.accy,a.noa,a.no2,a.odate,a.custno,c.nick,a.ucolor,a.scolor,a.productno
+	insert into @tmp(gno,accy,noa,no2,odate,custno,cust,ucolor,scolor,productno,product
+		,size,mount,unit2,[weight],unit,price,memo,datea,custorde,addr,dime,width,enda)
+	select '1',a.accy,a.noa,a.no2,a.odate,a.custno,c.nick,a.ucolor,a.scolor,a.productno,a.product
 		,a.size,a.mount,a.unit2,a.[weight],a.unit,a.price,a.memo,a.datea,b.custorde
-		,b.addr2
+		,b.addr2,a.dime,a.width,case when ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1 then 'Y' else ''end
 	from view_ordes a
 	left join view_orde b on a.accy=b.accy and a.noa=b.noa
 	left join cust c on b.custno=c.noa
@@ -73,7 +77,11 @@
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.tgg +'</a>' a12
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.datea +'</a>' a13
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.custorde +'</a>' a14
-		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.addr +'</a>' a15
+		--傑期 / 換行
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(a.addr,'/','<br>') +'</a>' a15
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[dime],-1) +'</a>' b01 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[width],-1) +'</a>' b02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.enda +'</a>' b03
 	from @tmp a
 	order by a.odate desc,a.noa,a.no2;
  
@@ -405,7 +413,7 @@ z_ordest5:--z_ordest5
 		and b.lengthb between @t_blength and @t_elength
 		and b.radius between @t_bradius and @t_eradius
 	 )
-	 order by a.recno;
+	 order by case when gno='1' or gno='2' then 0 else 1 end, a.recno;
 
 z_ordest1:--z_ordest1
 declare @t_bdate nvarchar(10)

@@ -54,13 +54,14 @@ z_rc2st1:--z_rc2st1
 		qhref nvarchar(max),
 		coin nvarchar(50),
 		spec nvarchar(50),
-		source nvarchar(50)
+		source nvarchar(50),
+		uno nvarchar(30)
 	)
-	insert into @tmp(gno,noa,noq,type,datea,mon,tggno,comp,productno,xproduct,unit,mount,weight,price,total,csize,qhref,coin,spec,source)
+	insert into @tmp(gno,noa,noq,type,datea,mon,tggno,comp,productno,xproduct,unit,mount,weight,price,total,csize,qhref,coin,spec,source,uno)
 	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) type, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit, 
 		   b.mount, b.weight, b.price, b.total,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-		   ,a.coin,b.spec,b.source
+		   ,a.coin,b.spec,b.source,b.uno
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	where a.noa is not null
@@ -89,7 +90,7 @@ z_rc2st1:--z_rc2st1
 	,isnull(coin+' ','')+dbo.getComma(price,-1) price
 	,dbo.getComma(total,0) total
 	,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno,qhref
-	,spec,source
+	,spec,source,uno
 	from @tmp order by datea desc,gno,noa,noq;
 --***********************************************************************************
 z_rc2st2:--z_rc2st2
