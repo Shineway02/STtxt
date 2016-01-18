@@ -210,11 +210,8 @@ set @t_enob= case when '#non' = [6] then char(255) else [6] end
 declare @tmp table(
 	gno nvarchar(1),
 	rec int,
-	noa nvarchar(50),
-	tgg nvarchar(50),
-	datea nvarchar(50),
-	usetype nvarchar(50),
-	frame nvarchar(50),
+	modnoa nvarchar(50),
+	noa nvarchar(50),	
 	nob nvarchar(50),
 	detail nvarchar(50),
 	class nvarchar(10),
@@ -229,76 +226,57 @@ declare @tmp table(
 	mech  nvarchar(40),
 	worker  nvarchar(10)
 )
-insert into @tmp(gno,rec,noa,tgg,datea,usetype,frame,nob)
-select 
-	'0',ROW_NUMBER()over(partition by c.nob order by c.nob),a.noa,a.tgg,a.datea,
-	case when a.usetype='1' then '設備課' else '製造課' end,a.frame,c.nob
-from model a
-left join models b on a.noa = b.noa
-left join modfixs  c on b.productno = c.nob
-left join modfixcs  d on b.productno = d.nob
-left join modfixcs  e on b.productno = e.nob
-where (c.nob between @t_bnob and @t_enob)and
-	  exists (select * from modfixs  where nob = b.productno)and
-	  exists (select * from modfixcs where nob = b.productno)and
-	  exists (select * from modouts  where nob = b.productno)
+insert into @tmp(gno,rec,modnoa,noa,nob,detail,class,weight,way,datea1,mount,mech)
+select '1',ROW_NUMBER()over(order by a.noa),a.modnoa,a.noa,b.nob,b.detail1,'入庫維修',b.weight1,b.way1,a.datea,b.mount1,a.mech
+from modfix a
+left join modfixs b on a.noa=b.noa
+where nob between @t_bnob and @t_enob
 
 declare @rec int
 declare @noa nvarchar(50)
 declare @nob nvarchar(50)
-declare @xnob nvarchar(50) = 'xxxxxx'
-declare @code nvarchar(50)
 
 declare cursor_table cursor for 
-select noa,nob from @tmp where gno = '0'
+select rec,noa,nob from @tmp where gno='1'
 open cursor_table 
 fetch next from cursor_table 
-into @noa,@nob
+into @rec,@noa,@nob
 while(@@FETCH_STATUS <> -1) 
 begin
-	if(@nob != @xnob)
-	begin
-		set @rec = 2
-		set @xnob = @nob
-	end	
-	
-	insert into @tmp(gno,rec,noa,nob,detail,class,weight,way,datea1,mount,mech)
-	select '1',@rec,@noa,@nob,b.detail1,'入庫維修',b.weight1,b.way1,a.datea,b.mount1,a.mech 
-	from modfix a
-	left join modfixs b on a.noa = b.noa
-	where(b.nob = @nob)
-	set @rec = @rec + 1
-	
-	insert into @tmp(gno,rec,noa,nob,detail,class,bebottom,enbottom,way,datea1,datea2,mount,mech,worker)
-	select '2',@rec,@noa,@nob,b.detail,'維修',b.bebottom,b.enbottom,b.way,b.datea1,b.datea2,b.mount,a.mech,b.worker
+	insert into @tmp
+	select '2',@rec,a.modnoa,a.noa,b.nob,b.detail,'維修',b.weight,b.bebottom,b.enbottom,b.way,b.datea1,b.datea2,0,b.mount,a.mech,b.worker
 	from modfixc a
-	left join modfixcs b on a.noa = b.noa
-	where(b.nob = @nob)
-	set @rec = @rec + 1
+	left join modfixcs b on a.noa=b.noa
+	where a.innoa=@noa and b.nob=@nob 
 	
-	insert into @tmp(gno,rec,noa,nob,detail,class,enbottom,datea1,mount,mech)
-	select '3',@rec,@noa,@nob,b.detail,'領用出庫',c.enbottom,a.datea,b.mount,a.mech
-	from modout a
-	left join modouts b on a.noa = b.noa
-	left join modfixcs c on b.nob = c.nob
-	where(b.nob = @nob)
-	set @rec = @rec + 1
-	
-
 	fetch next from cursor_table 
-	into @noa,@nob
+	into @rec,@noa,@nob
 end 
 close cursor_table 
 deallocate cursor_table 
-
 
 update @tmp set times =
 	ROUND((DATEDIFF(minute,CAST(dbo.ChineseEraName2AD(dbo.split(datea1,'-','0'))as nvarchar(20))+' '+dbo.split(datea1,'-','1') ,CAST(dbo.ChineseEraName2AD(dbo.split(datea2,'-','0'))as nvarchar(20))+' '+dbo.split(datea2,'-','1')))/60.0,1)
 where gno = '2'
 
-update @tmp set datea1 = datea1+'<br>(入庫日期)' where gno = '1'
-update @tmp set datea1 = dbo.split(datea1,'-',0)+'<br>'+dbo.split(datea1,'-',1)+'<br>(完成起時間)' ,datea2 = dbo.split(datea2,'-',0)+'<br>'+dbo.split(datea2,'-',1)+'<br>(完成訖時間)'where gno = '2'
-update @tmp set datea1 = datea1+'<br>(出庫日期)' where gno = '3'
+declare cursor_table cursor for 
+select rec,noa,nob from @tmp where gno='2'
+open cursor_table 
+fetch next from cursor_table 
+into @rec,@noa,@nob
+while(@@FETCH_STATUS <> -1) 
+begin
+	insert into @tmp(gno,rec,modnoa,noa,nob,detail,class,datea1,mount,mech)
+	select '3',@rec,a.modnoa,a.noa,b.nob,b.detail,'領用出庫',a.datea,b.mount,a.mech
+	from modout a
+	left join modouts b on a.noa=b.noa
+	where a.fixnoa=@noa and b.nob=@nob 
+	
+	fetch next from cursor_table 
+	into @rec,@noa,@nob
+end 
+close cursor_table 
+deallocate cursor_table
 
 --補空白行(25行)
 declare @cnt  int
@@ -330,7 +308,12 @@ end
 close cursor_table 
 deallocate cursor_table
 
-select * from  @tmp order by nob,rec;
+select 
+	a.*,
+	b.tgg,b.datea,b.frame,case when b.usetype='1' then '製造課' else '設備課' end usetype
+from @tmp a
+left join model b on a.modnoa=b.noa
+order by nob,rec,gno;
 --**************************************************************************
 z_modout_rs04:--z_modout_rs04
 
