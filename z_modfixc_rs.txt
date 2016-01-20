@@ -4,9 +4,15 @@ SET QUOTED_IDENTIFIER OFF
 	
 declare @t_bnoa nvarchar(30)
 declare @t_enoa nvarchar(30)
+declare @t_bdate nvarchar(30)
+declare @t_edate nvarchar(30)
+declare @t_frame nvarchar(30)
 
 set @t_bnoa = case when '#non' = [1] then '' else [1] end
 set @t_enoa = case when '#non' = [2] then CHAR(255) else [2] end
+set @t_bdate = case when '#non' = [3] then '' else [3] end
+set @t_edate = case when '#non' = [4] then CHAR(255) else [4] end
+set @t_frame = case when '#non' = [5] then '' else [5] end
 ---------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -17,22 +23,40 @@ declare @tmp table(
 	code nvarchar(50),
 	detail nvarchar(50),
 	frame nvarchar(10),
+	weight float,
 	mount float,
-	way nvarchar(30),
+	fixmount float,
+	bottom float,
 	bebottom float,
 	enbottom float,
-	bdatea nvarchar(20),
-	edatea nvarchar(20),
-	worker nvarchar(50)
+	brepair float,
+	erepair float,
+	lastloss float,
+	loss float,
+	memo nvarchar(max),
+	way nvarchar(30),
+	way2 nvarchar(30),
+	mechs nvarchar(30),
+	mechs2 nvarchar(30),
+	worktype nvarchar(20),
+	worktype2 nvarchar(20),
+	bdate nvarchar(20),
+	bdate2 nvarchar(20),
+	edate nvarchar(20),
+	edate2 nvarchar(20),
+	worker nvarchar(20),
+	worker2 nvarchar(20)
 )
 insert into @tmp
-select 
-	'0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame,SUM(b.mount),b.way,MIN(b.bebottom),MIN(b.enbottom),
-	MIN(REPLACE(b.datea1,'-',' ')),MAX(REPLACE(b.datea2,'-',' ')),b.worker
+select '0',ROW_NUMBER()over(partition by a.noa order by b.code),a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame,SUM(b.weight),SUM(b.mount),SUM(b.fixmount),
+	   MIN(b.bottom),MIN(b.bebottom),'',MIN(b.brepair),MAX(b.erepair),MAX(b.lastloss),'',MAX(b.memo),MIN(b.way),MIN(b.way2),MIN(b.mech),MIN(b.mech2),
+	   MIN(b.worktype),MIN(b.worktype2),MIN(b.bdate),MIN(b.bdate2),MAX(b.edate),MAX(b.edate2),MAX(b.worker),MAX(b.worker2)
 from modfixc a
-left join modfixcs b on a.noa = b.noa
-where(a.noa between @t_bnoa and @t_enoa)
-group by  a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame,b.way,b.worker
+left join modfixcs b on a.noa=b.noa
+where a.noa between @t_bnoa and @t_enoa and a.datea between @t_bdate and @t_edate and (LEN(@t_frame)=0 or b.frame=@t_frame)
+group by a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame
+
+update @tmp set loss = brepair-erepair, enbottom = bottom+erepair
 
 declare @noa nvarchar(50)
 declare @cnt  int
@@ -62,6 +86,6 @@ begin
 	into @noa
 end 
 close cursor_table 
-deallocate cursor_table 
+deallocate cursor_table
 
 select * from @tmp order by noa,rec;
