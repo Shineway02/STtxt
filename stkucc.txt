@@ -1,85 +1,80 @@
-stkucc:--stkucc
-
-declare @uccekey nvarchar(50)='Y'--RC2KEY
+stkucce:--stkucce
+SET QUOTED_IDENTIFIER OFF
+declare @uccekey nvarchar(50)='Y' --ucceKEY
 declare @datea nvarchar(10)=[1]
-declare @bstoreno nvarchar(50)= case when LEN([2])=0 then '' else [2] end
-declare @estoreno nvarchar(50)= case when LEN([3])=0 then char(255) else [3] end
-declare @bproductno nvarchar(50)= case when LEN([4])=0 then '' else [4] end
-declare @eproductno nvarchar(50)= case when LEN([5])=0 then char(255) else [5] end
+declare @typea nvarchar(10)=[2] --0@全部,1@原料,2@製成品
+declare @bstoreno nvarchar(50)= case when '#non'=[3] then '' else [3] end
+declare @estoreno nvarchar(50)= case when '#non'=[4] then CHAR(255) else [4] end
+declare @bproductno nvarchar(50)= case when '#non'=[5] then '' else [5] end
+declare @eproductno nvarchar(50)= case when '#non'=[6] then CHAR(255) else [6] end
+
 declare @ucceno nvarchar(30)
-declare @accy nvarchar(5)=left(@datea,3)
+declare @accy nvarchar(5)
+declare @noqlen int
 
+declare @cmd nvarchar(max)
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+	set @cmd = 'drop table #tmp'
+	EXECUTE sp_executesql @cmd
+END
 
+if(len(@datea)=10)
+	set @accy=right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)
+else
+	set @accy=left(@datea,3)
+	
 --該日期中最大的noa
 select @ucceno=MAX(noa) from view_ucce where noa like @uccekey+REPLACE(@datea,'/','')+'%' 
 --該日期中最大的noa+1
 set @ucceno=@uccekey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@ucceno,'000'),3) as int)+1 as nvarchar(10)),3)	
 
-exec('insert ucce'+@accy+'(noa,datea,kind)	
-	  select '''+@ucceno+''' ,+'''+@datea+''',''1'' ')
-	  
-declare @noq nvarchar(10)='0'
-declare @storeno nvarchar(50)
+create table #tmp(
+	noq nvarchar(50),
+	storeno nvarchar(50),
+	store nvarchar(100),
+	productno nvarchar(50),
+	product nvarchar(200),
+	spec nvarchar(MAX),
+	unit nvarchar(50),
+	mount float,
+	weight float,
+	price float,
+	total float
+)
 
-DECLARE my_cursor CURSOR FOR 
-select isnull(b.storeno,'') from ucc a left join stkucc(@datea,'','') b on a.noa =b.productno where   isnull(b.store,'') !=''  group by b.storeno 
-OPEN my_cursor
-FETCH NEXT FROM my_cursor 
-INTO @storeno
-WHILE @@FETCH_STATUS = 0
+insert #tmp
+select '0',b.noa,b.store,a.noa,a.product,isnull(a.spec,''),isnull(a.unit,''),0,0,0,0
+from view_ucaucc a ,store b 
+where (a.noa between @bproductno and @eproductno) and (b.noa between @bstoreno and @estoreno)
+and (case when a.tablea='uca' then '2' else '1' end=@typea or @typea='0')
+
+update a
+set mount=isnull(b.mount,0),weight=isnull(b.weight,0)
+from #tmp a left join stkucc(@datea,'','') b on a.productno=b.productno and a.storeno=b.storeno
+
+delete #tmp where mount=0 and weight=0
+
+set @noqlen=len(cast((select count(*) from #tmp) as nvarchar(50)))
+if (@noqlen<3)
+	set @noqlen=3
+
+update a 
+set noq=rr
+from (select noq,right(REPLICATE('0',@noqlen)+cast(ROW_NUMBER()over (order by storeno,productno) as nvarchar(50)),@noqlen) rr from #tmp) a
+
+if((select count(*) from #tmp)>0)
+begin
+	exec("insert ucce"+@accy+" (noa,datea,kind)	 select '"+@ucceno+"' ,'"+@datea+"','1' ")
+
+	EXEC(" insert ucces"+@accy+"(noa,noq,storeno,store,productno,product,spec,unit,mount,weight,emount2,eweight2,price,total)
+		select '"+@ucceno+"',noq,storeno,store,productno,product,spec,unit,mount,weight,mount,weight,price,total from #tmp
+	")
+end
+
+IF OBJECT_ID('tempdb..#tmp')is not null
 BEGIN
-  exec('insert ucces'+@accy+'(noa,noq,storeno,store,product,productno,mount,emount2,price)
-	  select '''+@ucceno+''',b.idno+'''+@noq+''',b.storeno,b.store,b.product,b.productno,b.mount,b.mount,0 
-	  from ucc a left join stkucc('''+@datea+''','''+@storeno+''','''') b on a.noa =b.productno
-	  where (b.product is not null) and (b.storeno between '''+@bstoreno+''' and '''+@estoreno+''') and (b.productno between '''+@bproductno+''' and '''+@eproductno+''')') 
-  set @noq= @noq+(select MAX(idno) 
-			  from ucc a left join stkucc(@datea,@storeno,'') b on a.noa =b.productno
-			 where b.product is not null)+1
-  fetch next from my_cursor 
-  into @storeno
-end 
-
-CLOSE my_cursor
-DEALLOCATE my_cursor;
+	set @cmd = 'drop table #tmp'
+	EXECUTE sp_executesql @cmd
+END;
 --------------------------------------------------------------------------------------------------------------------------------
-stkuca:--stkuca
-
-declare @uccekey nvarchar(50)='Y'--RC2KEY
-declare @datea nvarchar(10)=[1]
-declare @bstoreno nvarchar(50)= case when LEN([2])=0 then '' else [2] end
-declare @estoreno nvarchar(50)= case when LEN([3])=0 then char(255) else [3] end
-declare @bproductno nvarchar(50)= case when LEN([4])=0 then '' else [4] end
-declare @eproductno nvarchar(50)= case when LEN([5])=0 then char(255) else [5] end
-declare @ucceno nvarchar(30)
-declare @accy nvarchar(5)=left(@datea,3)
-
---該日期中最大的noa
-select @ucceno=MAX(noa) from view_ucce where noa like @uccekey+REPLACE(@datea,'/','')+'%' 
---該日期中最大的noa+1
-set @ucceno=@uccekey+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@ucceno,'000'),3) as int)+1 as nvarchar(10)),3)	
-
-exec('insert ucce'+@accy+'(noa,datea,kind)	
-	  select '''+@ucceno+''' ,+'''+@datea+''',''1'' ')
-	  
-declare @noq nvarchar(10)='0'
-declare @storeno nvarchar(50)
-DECLARE my_cursor CURSOR FOR 
-select isnull(b.storeno,'') from uca a left join stkucc(@datea,'','') b on a.noa =b.productno where   isnull(b.store,'') !=''  group by b.storeno 
-OPEN my_cursor
-FETCH NEXT FROM my_cursor 
-INTO @storeno
-WHILE @@FETCH_STATUS = 0
-BEGIN
-  exec('insert ucces'+@accy+'(noa,noq,storeno,store,product,productno,mount,emount2,price)
-	  select '''+@ucceno+''',b.idno+'''+@noq+''',b.storeno,b.store,b.product,b.productno,b.mount,b.mount,0 
-	  from ucc a left join stkucc('''+@datea+''','''+@storeno+''','''') b on a.noa =b.productno
-	  where (b.product is not null) and (b.storeno between '''+@bstoreno+''' and '''+@estoreno+''') and (b.productno between '''+@bproductno+''' and '''+@eproductno+''')')
-  set @noq= @noq+(select MAX(idno) 
-			  from ucc a left join stkucc(@datea,@storeno,'') b on a.noa =b.productno
-			 where b.product is not null)+1
-  fetch next from my_cursor 
-  into @storeno
-end 
-
-CLOSE my_cursor
-DEALLOCATE my_cursor;

@@ -1,14 +1,125 @@
-getvccadate:--getvccadate 檢查日期	
-	declare @vccano nvarchar(max) = [1]	
-	declare @tmpa table(datea nvarchar(max))
+checkdata:-- vcca.txt  checkdata 
+	declare @q_cur nvarchar(max) = N[1]
+	declare @t_vccano nvarchar(max) = N[2]
+	declare @t_cno nvarchar(max) = N[3]
+	declare @t_datea nvarchar(max) = N[4]
+	--------------------------------------------------------------------
+	if @q_cur='1' and exists(select * from vcca where noa=@t_vccano) 
+	begin
+		--***************--
+		select 0 val,'發票【'+@t_vccano+'】已存在。' msg
+		return
+	end
+	
+	declare @tmp table(
+		sel int identity(1,1)
+		,[key] nvarchar(50)
+		,recno int
+		,invono nvarchar(20)
+		,datea nvarchar(20)
+	)
+	declare @n int
+	declare @m int
+	declare @tmpno nvarchar(20)
+	declare @key nvarchar(max)
+	declare @bdate nvarchar(20) = ''
+	declare @edate nvarchar(20) = char(255)
 	declare @binvono nvarchar(20) = ''
-	declare @einvono nvarchar(20) = ''
-	declare @datea nvarchar(20) = ''
-	select @binvono=binvono,@einvono=einvono from vccars where @vccano between binvono and einvono
-	select @datea=MAX(datea) from vcca where noa between @binvono and @einvono and noa<@vccano
-	insert into @tmpa(datea)values(isnull(@datea,''))
-	select * from @tmpa
-	;
+	declare @einvono nvarchar(20) = '999/12/31'
+	declare @cno nvarchar(20) = ''
+	declare @acomp nvarchar(max) = ''
+	
+	if not exists(select b.bdate,b.edate,a.binvono,a.einvono
+		from vccars a
+		left join vccar b on a.noa=b.noa
+		where @t_vccano between a.binvono and a.einvono)
+	begin
+		--***************--
+		select 0 val,'發票主檔沒有設定' msg
+		return
+	end
+
+	select @cno=b.cno,@acomp=b.acomp,@bdate=b.bdate,@edate=b.edate,@binvono=a.binvono,@einvono=a.einvono
+	from vccars a
+	left join vccar b on a.noa=b.noa
+	where @t_vccano between a.binvono and a.einvono
+	
+	if @cno!=@t_cno
+	begin
+		--***************--
+		select 0 val,'公司錯誤，應為【'+@cno+' '+@acomp+'】' msg
+		return
+	end
+	
+	set @n = CAST(RIGHT(@binvono,2) as int)
+	set @m = 1
+	set @tmpno = LEFT(@binvono,8)+right('00'+CAST(@n as nvarchar),2)
+	while @tmpno<=@einvono and @m<=50
+	begin
+		insert into @tmp([key],recno,invono)
+		values(@key+'-'+LEFT(@binvono,8),@m,@tmpno)
+		set @n = @n + 1
+		set @tmpno = LEFT(@binvono,8)+right('00'+CAST(@n as nvarchar),2)
+		set @m = @m + 1
+	end
+		
+	update @tmp set datea=ISNULL(b.datea,'')
+	from @tmp a
+	left join vcca b on a.invono=b.noa
+	----------------------------------------------------------
+	declare @datea nvarchar(20)
+	declare @invono nvarchar(20)
+	
+	declare @xbdate nvarchar(20) = ''
+	declare @xedate nvarchar(20) = '999/12/30'
+	
+	declare cursor_table cursor for
+	select invono,datea from @tmp where invono!=@t_vccano order by recno desc
+	open cursor_table
+	fetch next from cursor_table
+	into @invono,@datea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @invono<@t_vccano and len(@datea)>0
+		begin
+			set @xbdate = @datea
+			break
+		end
+		fetch next from cursor_table
+		into @invono,@datea
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	declare cursor_table cursor for
+	select invono,datea from @tmp where invono!=@t_vccano order by recno
+	open cursor_table
+	fetch next from cursor_table
+	into @invono,@datea
+	while(@@FETCH_STATUS <> -1)
+	begin
+		if @invono>@t_vccano and len(@datea)>0
+		begin
+			set @xedate = @datea
+			break
+		end
+		fetch next from cursor_table
+		into @invono,@datea
+	end
+	close cursor_table
+	deallocate cursor_table
+
+	declare @ybdate nvarchar(20) = case when @bdate>@xbdate then @bdate else @xbdate end 
+	declare @yedate nvarchar(20) = case when @edate<@xedate then @edate else @xedate end 
+	if not @t_datea between @ybdate and @yedate
+	begin
+		--***************--
+		select 0 val,'發票日期需在 '+@ybdate+' ~ '+@yedate+' 之間。' msg
+		return
+	end
+	--***************--
+	select 1 val,'檢查完成' msg
+	return;
 ----------------------------------------------------------------------------------------------------------------------------------------
 batchvcca_rb:--batchvcca_rb
 	declare @t_ordeno nvarchar(50) = [1]
