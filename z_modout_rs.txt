@@ -389,13 +389,11 @@ z_modout_rs05:--z_modout_rs05
 
 declare @t_bmodnoa nvarchar(50)
 declare @t_emodnoa nvarchar(50)
-declare @t_bframe nvarchar(50)
-declare @t_eframe nvarchar(50)
+declare @t_frame nvarchar(50)
 
 set @t_bmodnoa= case when '#non' = [3] then '' else [3] end
 set @t_emodnoa= case when '#non' = [4] then char(255) else [4] end
-set @t_bframe = case when '#non' = [10] then '' else [10] end
-set @t_eframe = case when '#non' = [11] then char(255) else [11] end
+set @t_frame = case when '#non' = [10] then '' else [10] end
 ----------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -417,8 +415,8 @@ select
 	b.detail,'入庫維修',a.mech,'',b.way,SUM(b.mount)
 from modfixc a
 left join modfixcs b on a.noa = b.noa
-where(a.modnoa between @t_bmodnoa and @t_emodnoa) and (b.frame between @t_bframe and @t_eframe) and
-	 (ISNULL(b.mount,0)=0 and ISNULL(b.bebottom,0)=0 and ISNULL(b.enbottom,0)=0 and LEN(ISNULL(b.bdate,''))=0 and LEN(ISNULL(b.edate,''))=0)
+where(a.modnoa between @t_bmodnoa and @t_emodnoa) and (LEN(@t_frame)=0 or b.frame=@t_frame) and
+	 (ISNULL(b.fixmount,0)=0 and ISNULL(b.bebottom,0)=0 and ISNULL(b.enbottom,0)=0 and LEN(ISNULL(b.bdate,''))=0 and LEN(ISNULL(b.edate,''))=0)
 group by a.modnoa,b.frame,a.modnoa+b.code,b.detail,a.mech,b.way
 
 --補空白行(25行)
@@ -458,7 +456,7 @@ z_modout_rs06:--z_modout_rs06
 
 declare @t_date nvarchar(10) 
 
-set @t_date = case when '#non' = [12] then ''  else [12] end
+set @t_date = case when '#non' = [11] then ''  else [11] end
 ----------------------------------------------------------------------------
 SET QUOTED_IDENTIFIER OFF
 

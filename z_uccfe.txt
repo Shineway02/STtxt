@@ -1064,6 +1064,11 @@ z_uccfe1:--z_uccfe1
 	execute dbo.stkucc2 @t_enddate,@t_bstoreno,@t_estoreno,@t_bproductno,@t_eproductno 
 	--select productno,storeno,mount,[weight]
 	--from dbo.stkucc(@t_enddate,'','')
+	
+	if(@t_project='FE') --20160120 刪除不再產品主檔的庫存
+	begin
+		delete a from @tmpa a where not exists (select * from view_ucaucc where noa=a.productno)
+	end
 	------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#z_uccfe1')is not null
 	BEGIN
