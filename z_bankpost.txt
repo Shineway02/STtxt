@@ -2,6 +2,7 @@ z_bankpost01:--z_bankpost01
 SET QUOTED_IDENTIFIER OFF
 declare @t_typea nvarchar(50) =case when '#non' = [1] then '' else [1] end
 declare @t_mon nvarchar(50) =case when '#non' = [2] then '' else [2] end
+declare @t_noa nvarchar(50) =case when '#non' = [4] then '' else [4] end
 ------------------------------------------------------------------------------------------------
 declare @t_pageline int =52
 declare @t_pagetotalline int =10
@@ -27,9 +28,9 @@ insert into @tmp
 select '0',a.sno,left(replace(b.account,'-',''),7),right(replace(b.account,'-',''),7) 
 ,b.namea,b.id,a.total,0,0,0,0,0,0,0
 from(
-	select sno,total5 total from salarys where mon=@t_mon and charindex('薪資',@t_typea)>0
+	select sno,total5 total from salarys where mon=@t_mon and charindex('薪資',@t_typea)>0 and (len(@t_noa)=0 or noa=@t_noa)
 	union all
-	select b.sssno,total8 total from salaward a left join salawards b on a.noa=b.noa where a.year=@t_mon and charindex('獎金',@t_typea)>0
+	select b.sssno,total8 total from salaward a left join salawards b on a.noa=b.noa where a.year=@t_mon and charindex('獎金',@t_typea)>0 and (len(@t_noa)=0 or a.noa=@t_noa)
 ) a left join sss b on a.sno=b.noa
 where isnull(a.total,0)>0
 order by a.sno
@@ -83,6 +84,7 @@ z_bankpost02:--z_bankpost02
 SET QUOTED_IDENTIFIER OFF
 declare @t_typea nvarchar(50) =case when '#non' = [1] then '' else [1] end
 declare @t_mon nvarchar(50) =case when '#non' = [2] then '' else [2] end
+declare @t_noa nvarchar(50) =case when '#non' = [4] then '' else [4] end
 ------------------------------------------------------------------------------------------------
 declare @tmp table( 
 	gno nvarchar,
@@ -101,9 +103,9 @@ insert into @tmp
 select '9',a.sno,left(replace(b.account,'-',''),7),right(replace(b.account,'-',''),7) 
 ,b.namea,b.id,a.total,0,0
 from(
-	select sno,total5 total from salarys where mon=@t_mon and charindex('薪資',@t_typea)>0
+	select sno,total5 total from salarys where mon=@t_mon and charindex('薪資',@t_typea)>0 and (len(@t_noa)=0 or noa=@t_noa)
 	union all
-	select b.sssno,total8 total from salaward a left join salawards b on a.noa=b.noa where a.year=@t_mon and charindex('獎金',@t_typea)>0
+	select b.sssno,total8 total from salaward a left join salawards b on a.noa=b.noa where a.year=@t_mon and charindex('獎金',@t_typea)>0 and (len(@t_noa)=0 or a.noa=@t_noa)
 ) a left join sss b on a.sno=b.noa
 where isnull(a.total,0)>0
 order by a.sno
