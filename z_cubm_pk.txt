@@ -4,11 +4,13 @@ SET QUOTED_IDENTIFIER OFF
 	
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
-declare @t_uno nvarchar(30)
+declare @t_bmech nvarchar(10)
+declare @t_emech nvarchar(10)
 
 set @t_bdate = case when '#non' = [1] then '' else [1] end
 set @t_edate = case when '#non' = [2] then CHAR(255) else [2] end
-set @t_uno = case when '#non' = [3] then '' else [3] end
+set @t_bmech = case when '#non' = [4] then '' else [4] end
+set @t_emech = case when '#non' = [5] then CHAR(255) else [5] end
 ---------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -35,7 +37,7 @@ declare @tmp table(
 insert into @tmp
 select '0',noa,datea,orderno,no2,uno,mechno,mech,btime,etime,gmount,gweight,length,mount,weight,worker,worker2,trantype,memo
 from cubm
-where (datea between @t_bdate and @t_edate) and (LEN(@t_uno)=0 or uno=@t_uno)
+where (datea between @t_bdate and @t_edate) and (mechno between @t_bmech and @t_emech)
 
 insert into @tmp(gno,datea,gmount,gweight,length,mount,weight)
 select '1',datea,SUM(gmount),SUM(gweight),SUM(length),SUM(mount),SUM(weight) from @tmp group by datea
