@@ -2765,6 +2765,8 @@ from #result a
 outer apply(select max(orderno) maxorderno from #result where a.custno=custno and (a.totpage=pageno)) b
 where a.gno='3'
 
+update #result set orderno=1,pageno=1,totpage=1 where gno=3 and orderno is null and pageno is null and totpage is null
+
 declare @totpage int = 0
 declare cursor_table cursor for
 	select idno,custno,totpage from #result where gno = '3' order by custno
