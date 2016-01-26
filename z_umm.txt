@@ -2640,7 +2640,7 @@ left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa
 --where custno not in (select custno from #result) and gno='1' and total!=0 
 where  not exists (select custno from #result where custno=a.custno) and gno='1' and total!=0
 
-update #result set total1=total,total2=case when typea = '1' then total else -1 end*total+tax where gno='0'
+update #result set total1=total,total2=case when typea = '1' then 1 else -1 end*total+tax where gno='0'
 update #result set total2=total1+unpay-pay where gno='1'
 update #result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 
