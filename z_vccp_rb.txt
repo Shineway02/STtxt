@@ -165,8 +165,12 @@ select
 from @tmp a order by a_noa desc,pageno,gno,orderno;
 --*******************************************************************************
 z_vccp_rb02:--z_vccp_rb02
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
 declare @t_binvo nvarchar(max)
 declare @t_einvo nvarchar(max)
+set @t_bxnoa = case when '#non' = [2] then '' else [2] end
+set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
 set @t_binvo = case when '#non'=[6] then '' else [6] end
 set @t_einvo = case when '#non'=[7] then '' else [7] end
 ------------報表設定<<Start>>------------
@@ -226,6 +230,7 @@ insert into @tmp
 	left join view_vcc c on a.vccno = c.noa
 	left join cust d on a.buyerno=d.noa
 	where (a.taxtype != '6') and (a.noa between @t_binvo and @t_einvo)
+	and c.noa between @t_bxnoa and @t_exnoa
 ------------單筆處理<<Start>>-----------
 insert into @tmp(
 		gno,pageno,pageorder,datea,noa,noq,buyer,serial,invoaddr,chkno,
@@ -480,8 +485,12 @@ from view_vcc where noa between @t_bxnoa and @t_exnoa
 ;
 --*******************************************************************************
 z_vccp_rb06:--z_vccp_rb06
+declare @t_bxnoa nvarchar(20)
+declare @t_exnoa nvarchar(20)
 declare @t_binvo nvarchar(max)
 declare @t_einvo nvarchar(max)
+set @t_bxnoa = case when '#non' = [2] then '' else [2] end
+set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
 set @t_binvo = case when '#non'=[6] then '' else [6] end
 set @t_einvo = case when '#non'=[7] then '' else [7] end
 ------------報表設定<<Start>>------------
@@ -541,6 +550,7 @@ insert into @tmp
 	left join view_vcc c on a.vccno = c.noa
 	left join cust d on a.buyerno=d.noa
 	where (a.taxtype != '6') and (a.noa between @t_binvo and @t_einvo)
+	and c.noa between @t_bxnoa and @t_exnoa
 ------------單筆處理<<Start>>-----------
 insert into @tmp(
 		gno,pageno,pageorder,datea,noa,noq,buyer,serial,invoaddr,chkno,

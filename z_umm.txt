@@ -2573,7 +2573,8 @@ set @t_total2 = 0
 insert #result
 select '1' gno,0 pageno,0 totpage,0 orderno, '' typea, '' noa,'' invoiceno, '' datea, '' mon, custno, MAX(comp) comp
 		,MAX(addr_invo) addr_invo,MAX(serial) serial, MAX(tel) tel,0 total
-		,SUM(case when typea = '1' then total else 0 end), sum(case when typea = '2' then total else 0 end)
+		,SUM(case when typea = '1' then total else -1*total end),0 --後面退貨金額拿掉 所以直接加總
+		--,SUM(case when typea = '1' then total else 0 end), sum(case when typea = '2' then total else 0 end)
 		--,SUM(case when typea = '稅' then total else 0 end),0
 		,sum(tax),0
 		,isnull((select sum(ub.paysale) from umms ub where ub.vccno in (select noa from #result where gno='0' and custno=a.custno)),0) --單據
@@ -2584,7 +2585,7 @@ select '1' gno,0 pageno,0 totpage,0 orderno, '' typea, '' noa,'' invoiceno, '' d
 		
 update #result set total1=money-back+tax where gno='1'
 	
-update #result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
+--update #result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 
 declare @tmp table( 
 	coin nvarchar(20), 
@@ -2639,8 +2640,9 @@ left join cust b on a.custno=b.noa left join sss c on a.salesno=c.noa
 --where custno not in (select custno from #result) and gno='1' and total!=0 
 where  not exists (select custno from #result where custno=a.custno) and gno='1' and total!=0
 
-update #result set total1=total,total2=total+tax where gno='0'
+update #result set total1=total,total2=case when typea = '1' then 1 else -1 end*total+tax where gno='0'
 update #result set total2=total1+unpay-pay where gno='1'
+update #result set typea = (case typea when '1' then '出' else '退' end) where typea ='1' or typea = '2'
 
 --當本期區間內沒有未收就不顯示
 if(@t_showunpay='1')
