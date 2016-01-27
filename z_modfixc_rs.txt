@@ -50,11 +50,14 @@ declare @tmp table(
 insert into @tmp
 select '0',ROW_NUMBER()over(partition by a.noa order by b.code),a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame,SUM(b.weight),SUM(b.mount),SUM(b.fixmount),
 	   MIN(b.bottom),MIN(b.bebottom),'',MIN(b.brepair),MAX(b.erepair),MAX(b.lastloss),'',MAX(b.memo),MIN(b.way),MIN(b.way2),MIN(b.mech),MIN(b.mech2),
-	   MIN(b.worktype),MIN(b.worktype2),MIN(b.bdate),MIN(b.bdate2),MAX(b.edate),MAX(b.edate2),MAX(b.worker),MAX(b.worker2)
+	   b.worktype,b.worktype2,
+	   MIN(b.bdate+'-'+case when LEN(b.btime)=0 then '999/99/99' else b.btime end),
+	   MIN(b.bdate2+'-'+case when LEN(b.btime2)=0 then '999/99/99' else b.btime2 end),
+	   MAX(b.edate+'-'+b.etime),MAX(b.edate2+'-'+b.etime2),MAX(b.worker),MAX(b.worker2)
 from modfixc a
 left join modfixcs b on a.noa=b.noa
 where a.noa between @t_bnoa and @t_enoa and a.datea between @t_bdate and @t_edate and (LEN(@t_frame)=0 or b.frame=@t_frame)
-group by a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame
+group by a.noa,a.modnoa,a.mech,b.code,b.detail,b.frame,b.worktype,b.worktype2
 
 update @tmp set loss = brepair-erepair, enbottom = bottom+erepair
 
@@ -87,5 +90,8 @@ begin
 end 
 close cursor_table 
 deallocate cursor_table
+
+update @tmp set bdate='-'where CHARINDEX('999/99/99',bdate)>0
+update @tmp set bdate2='-'where CHARINDEX('999/99/99',bdate2)>0
 
 select * from @tmp order by noa,rec;
