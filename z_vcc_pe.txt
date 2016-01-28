@@ -407,10 +407,18 @@ begin
 		--set @x_money=@money
 	end
 	
-	--更新到資料庫--get ucces cut 沒有sprice
+	--更新到資料庫--get ucces cut 沒有sprice 
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	--105/01/28 get 的sprice 寫到price,price(沒有使用)
+	if(@tablea='gets')
+	begin
+		set @cmd = "update "+@tablea+@accy+" set price=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
@@ -933,10 +941,18 @@ begin
 		--set @x_money=@money
 	end
 	
-	--更新到資料庫--get ucces cut 沒有sprice 
+	--更新到資料庫--get ucces cut 沒有sprice
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	--105/01/28 get 的sprice 寫到price,price(沒有使用)
+	if(@tablea='gets')
+	begin
+		set @cmd = "update "+@tablea+@accy+" set price=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
