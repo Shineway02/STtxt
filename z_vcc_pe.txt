@@ -407,10 +407,18 @@ begin
 		--set @x_money=@money
 	end
 	
-	--更新到資料庫--get ucces cut 沒有sprice
+	--更新到資料庫--get ucces cut 沒有sprice 
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	--105/01/28 get 的sprice 寫到price,price(沒有使用)
+	if(@tablea='gets')
+	begin
+		set @cmd = "update "+@tablea+@accy+" set price=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
@@ -538,24 +546,24 @@ deallocate cursor_table
 
 --刪除有批號的成本單價
 delete #tmpsprice where left(uno,1)!='-'
---uccy2------------------------------------------------------------
-declare @now_date nvarchar(90)
-set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
-set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
+--uccy2------------------------------------------------------------ 105/01/26 取消 後端會自動算
+--declare @now_date nvarchar(90)
+--set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+--set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
 
-if(@t_edate=CHAR(255))
-begin
-	set @t_edate=@now_date
-end
+--if(@t_edate=CHAR(255))
+--begin
+--	set @t_edate=@now_date
+--end
 
-if(@t_edate>=isnull((select top 1 sdate from uccy2 a where exists (select * from #tmpsprice where uno=a.uno) ),'')
-or (select count(*) from uccy2) =0 ) --只更新最後的庫存
-begin
-	delete a from uccy2 a where exists (select * from #tmpsprice where uno=a.uno)
-	insert uccy2(uno,sdate,sprice,eweight,emount,emoney,productno,product,style,spec,size,dime,width,lengthb,storeno)
-	select uno,@now_date,sprice,weight,mount,money,productno,product,style,spec,size,dime,width,lengthb,storeno 
-	from #tmpsprice where left(uno,1)='-'
-end
+--if(@t_edate>=isnull((select top 1 sdate from uccy2 a where exists (select * from #tmpsprice where uno=a.uno) ),'')
+--or (select count(*) from uccy2) =0 ) --只更新最後的庫存
+--begin
+--	delete a from uccy2 a where exists (select * from #tmpsprice where uno=a.uno)
+--	insert uccy2(uno,sdate,sprice,eweight,emount,emoney,productno,product,style,spec,size,dime,width,lengthb,storeno)
+--	select uno,@now_date,sprice,weight,mount,money,productno,product,style,spec,size,dime,width,lengthb,storeno 
+--	from #tmpsprice where left(uno,1)='-'
+--end
 -------------------------------------------------------------------
 
 declare @tmp table(
@@ -933,10 +941,18 @@ begin
 		--set @x_money=@money
 	end
 	
-	--更新到資料庫--get ucces cut 沒有sprice 
+	--更新到資料庫--get ucces cut 沒有sprice
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
+		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
+		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
+	end
+	
+	--105/01/28 get 的sprice 寫到price,price(沒有使用)
+	if(@tablea='gets')
+	begin
+		set @cmd = "update "+@tablea+@accy+" set price=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
 		EXECUTE sp_executesql @cmd,N'@s_sprice decimal(25, 4),@noa nvarchar(90),@noq nvarchar(90),@uno nvarchar(90)'
 		,@s_sprice=@s_sprice,@noa=@noa,@noq=@noq,@uno=@uno
 	end
@@ -1075,24 +1091,24 @@ deallocate cursor_table
 
 --刪除有批號的成本單價 --明細可不做
 --delete #tmpsprice where left(uno,1)!='-'
---uccy2------------------------------------------------------------
-declare @now_date nvarchar(90)
-set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
-set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
+--uccy2------------------------------------------------------------ 105/01/26 取消 後端會自動算
+--declare @now_date nvarchar(90)
+--set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+--set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
 
-if(@t_edate=CHAR(255))
-begin
-	set @t_edate=@now_date
-end
+--if(@t_edate=CHAR(255))
+--begin
+--	set @t_edate=@now_date
+--end
 
-if(@t_edate>=isnull((select top 1 sdate from uccy2 a where exists (select * from #tmpsprice where uno=a.uno) ),'')
-or (select count(*) from uccy2) =0 ) --只更新最後的庫存
-begin
-	delete a from uccy2 a where exists (select * from #tmpsprice where uno=a.uno)
-	insert uccy2(uno,sdate,sprice,eweight,emount,emoney,productno,product,style,spec,size,dime,width,lengthb,storeno)
-	select uno,@now_date,sprice,weight,mount,money,productno,product,style,spec,size,dime,width,lengthb,storeno 
-	from #tmpsprice where left(uno,1)='-'
-end
+--if(@t_edate>=isnull((select top 1 sdate from uccy2 a where exists (select * from #tmpsprice where uno=a.uno) ),'')
+--or (select count(*) from uccy2) =0 ) --只更新最後的庫存
+--begin
+--	delete a from uccy2 a where exists (select * from #tmpsprice where uno=a.uno)
+--	insert uccy2(uno,sdate,sprice,eweight,emount,emoney,productno,product,style,spec,size,dime,width,lengthb,storeno)
+--	select uno,@now_date,sprice,weight,mount,money,productno,product,style,spec,size,dime,width,lengthb,storeno 
+--	from #tmpsprice where left(uno,1)='-'
+--end
 -------------------------------------------------------------------
 create table #tmp(
 	gno nvarchar(1),
