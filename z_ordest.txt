@@ -1,4 +1,109 @@
-﻿z_ordest05:--z_ordest05	
+﻿z_ordest7:--z_ordest7	
+	SET QUOTED_IDENTIFIER OFF
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
+	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	declare @t_enda nvarchar(max)= case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	declare @t_bwidth float = case when '#non'=[28] then 0.00 else cast([28] as float)end
+	declare @t_ewidth float = case when '#non'=[29] then 9999.99 else cast([29] as float) end
+	declare @t_bdime float = case when '#non'=[30] then 0.000 else cast([30] as float) end
+	declare @t_edime float = case when '#non'=[31] then 999.990 else cast([31] as float) end
+	declare @t_bproductno3 nvarchar(max) = case when '#non'=[34] then '' else [34] end
+	declare @t_eproductno3 nvarchar(max) = case when '#non'=[35] then '' else [35] end
+	declare @t_style nvarchar(max) = case when '#non'=[36] then '' else [36] end
+	--------------------------------------------------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1),
+		gno nvarchar(10),
+		recno int,
+		accy nvarchar(20),
+		noa nvarchar(20),
+		no2 nvarchar(10),
+		odate nvarchar(10),
+		custno nvarchar(20),
+		cust nvarchar(50),
+		ucolor nvarchar(20),
+		scolor nvarchar(20),
+		productno nvarchar(20),
+		product nvarchar(50),
+		size nvarchar(max),
+		mount float,		
+		unit2 nvarchar(10),
+		[weight] float,
+		unit nvarchar(20),
+		price float,
+		memo nvarchar(max),
+		tggno nvarchar(20),
+		tgg nvarchar(50),
+		datea nvarchar(10),
+		custorde nvarchar(max),
+		addr nvarchar(max),
+		dime float,
+		width float,
+		enda nvarchar(20),
+		class nvarchar(30),
+		paytype nvarchar(20),
+		addr1 nvarchar(max),
+		addr2 nvarchar(max),
+		addr3 nvarchar(max)
+	)
+	
+		--訂單編號	開單日	客戶	規範	國別	材質	尺寸 			
+	--數量	重量	單價	備註		廠商	交期	訂單編號/案號
+	insert into @tmp(gno,accy,noa,no2,odate,custno,cust,ucolor,scolor,productno,product
+		,size,mount,unit2,[weight],unit,price,memo,datea,custorde,addr,dime,width,enda,class,paytype,addr1,addr2,addr3)
+	select '1',a.accy,a.noa,a.no2,a.odate,a.custno,c.nick,a.ucolor,a.scolor,a.productno,a.product
+		,a.size,a.mount,a.unit2,a.[weight],a.unit,a.price,a.memo,a.datea,b.custorde
+		,b.addr2,a.dime,a.width,case when ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1 then 'Y' else ''end
+		,a.class,b.paytype,dbo.split(b.addr2,'/',0),dbo.split(b.addr2,'/',1),dbo.split(b.addr2,'/',2)
+	from view_ordes a
+	left join view_orde b on a.accy=b.accy and a.noa=b.noa
+	left join cust c on b.custno=c.noa
+	where isnull(b.odate,'') between @t_bodate and @t_eodate
+	and isnull(a.datea,'') between @t_bdate and @t_edate
+	and (len(@t_enda)=0 
+		or (@t_enda='0' and isnull(a.enda,0)=0 and isnull(b.enda,0)=0)
+		or (@t_enda='1' and (isnull(a.enda,0)=1 or isnull(b.enda,0)=1)))
+	and isnull(b.custno,'') between @t_bcustno and @t_ecustno
+	and isnull(a.productno,'') between @t_bproductno3 and @t_eproductno3
+	and isnull(a.width,0) between @t_bwidth and @t_ewidth
+	and isnull(a.dime,0) between @t_bdime and @t_edime
+	and (LEN(@t_style)=0 or a.style=@t_style)
+-----------------	
+	--訂單編號	開單日	客戶	規範	國別	材質	尺寸	數量	重量	單價	備註	廠商	交期	訂單編號/案號	
+	select a.gno
+		,ROW_NUMBER()over(order by a.odate desc,a.noa,a.no2) rr
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.noa +'</a>' a01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.odate +'</a>' a02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.cust +'</a>' a03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.ucolor +'</a>' a04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.scolor +'</a>' a05
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.productno +'</a>' a06
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(a.size,'~#$',"'") +'</a>' a07
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.mount,-1)+a.unit2 +'</a>' a08 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[weight],-1)+a.unit +'</a>' a09 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[price],-1) +'</a>' a10
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.memo +'</a>' a11
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.tgg +'</a>' a12
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.datea +'</a>' a13
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.custorde +'</a>' a14
+		--傑期 / 換行
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+replace(a.addr,'/','<br>') +'</a>' a15
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[dime],-1) +'</a>' b01 
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+dbo.getComma(a.[width],-1) +'</a>' b02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.enda +'</a>' b03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.class +'</a>' c01
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.paytype +'</a>' c02
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.addr1 +'</a>' c03
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.addr2 +'</a>' c04
+		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">'+a.addr3 +'</a>' c05
+	from @tmp a
+	order by a.odate desc,a.noa,a.no2;
+
+z_ordest05:--z_ordest05	
 	SET QUOTED_IDENTIFIER OFF
 	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
 	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
