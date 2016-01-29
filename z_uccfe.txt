@@ -39,11 +39,11 @@ declare @tmp table(
 insert into @tmp(gno,noa,typea,paytype,salesno,custno,grp,productno,mount,weight,mntwei,salemoney,basemoney,tranmoney2,wcost)
 select 
 	'9',a.noa,a.typea,a.paytype,a.salesno,a.custno,c.memo,b.productno,b.mount,b.weight,
-	case when UPPER(b.unit)='KG' or  LEN(b.unit)=0 then b.weight else b.mount end,b.total,
-	case when UPPER(b.unit)='KG' or  LEN(b.unit)=0 
+	case when UPPER(b.unit)='KG' or LEN(b.unit)=0 then b.weight else b.mount end,b.total,
+	case when UPPER(b.unit)='KG' or LEN(b.unit)=0 
 		 then ROUND(b.weight*(case when b.sprice2>0 then b.sprice2 else b.sprice end),0) 
 		 else ROUND(b.mount*(case when b.sprice2>0 then b.sprice2 else b.sprice end),0) end,b.tranmoney2,
-	case when UPPER(b.unit)='KG' or  LEN(b.unit)=0 then b.wcost*b.weight else b.wcost*b.mount end
+	case when UPPER(b.unit)='KG' or LEN(b.unit)=0 then b.wcost*b.weight else b.wcost*b.mount end
 from view_vcc a
 left join view_vccs b on a.noa=b.noa
 left join ucc c on b.productno=c.noa
