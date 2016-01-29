@@ -23,9 +23,11 @@ declare @tmp table(
 	rankd nvarchar(50),
 	salesno nvarchar(30),
 	custno nvarchar(30),
+	grp nvarchar(10),
 	productno nvarchar(30),
 	mount float,
 	weight float,
+	mntwei float,
 	salemoney float,
 	basemoney float,
 	tranmoney2 float,
@@ -34,15 +36,17 @@ declare @tmp table(
 	profit float,
 	rate decimal(15,2)
 )
-insert into @tmp(gno,noa,typea,paytype,salesno,productno,mount,weight,salemoney,basemoney,tranmoney2,wcost)
+insert into @tmp(gno,noa,typea,paytype,salesno,custno,grp,productno,mount,weight,mntwei,salemoney,basemoney,tranmoney2,wcost)
 select 
-	'9',a.noa,a.typea,a.paytype,a.salesno,b.productno,b.mount,b.weight,b.total,
+	'9',a.noa,a.typea,a.paytype,a.salesno,a.custno,c.memo,b.productno,b.mount,b.weight,
+	case when UPPER(b.unit)='KG' or  LEN(b.unit)=0 then b.weight else b.mount end,b.total,
 	case when UPPER(b.unit)='KG' or  LEN(b.unit)=0 
 		 then ROUND(b.weight*(case when b.sprice2>0 then b.sprice2 else b.sprice end),0) 
 		 else ROUND(b.mount*(case when b.sprice2>0 then b.sprice2 else b.sprice end),0) end,b.tranmoney2,
 	case when UPPER(b.unit)='KG' or  LEN(b.unit)=0 then b.wcost*b.weight else b.wcost*b.mount end
 from view_vcc a
 left join view_vccs b on a.noa=b.noa
+left join ucc c on b.productno=c.noa
 where (a.datea between @t_bdate and @t_edate)and
 	  (a.custno between @t_bcustno and @t_ecustno)and
 	  (a.salesno between @t_bsalesno and @t_esalesno)and
@@ -84,51 +88,67 @@ deallocate cursor_table
 --3:業務分析 4:業務排行榜
 if(CHARINDEX('3',@t_sel)>0 or CHARINDEX('4',@t_sel)>0)
 begin    
-	insert into @tmp(gno,salesno,productno,mount,weight,salemoney,basemoney,tranmoney2,wcost,interest)	  
+	insert into @tmp(gno,salesno,grp,productno,mount,weight,salemoney,basemoney,tranmoney2,wcost,interest)	  
 	select 
-		'0',salesno,productno,
+		'0',salesno,grp,productno,
 		SUM(case when typea='1' then mount else -1*mount end),
 		SUM(case when typea='1' then weight else -1*weight end),
 		SUM(case when typea='1' then salemoney else -1*salemoney end),
 		SUM(case when typea='1' then basemoney else -1*basemoney end),
 		SUM(tranmoney2),SUM(wcost),
 		SUM(case when typea='1' then ROUND(salemoney*days*0.0004,0) else -1*ROUND(salemoney*days*0.0004,0)end)--利息
-	from @tmp group by salesno,productno
+	from @tmp group by salesno,grp,productno
+	
+	--5:中類分析->將gno=0的資料以中類合併
+	if(CHARINDEX('5',@t_sel)>0)
+	begin
+		insert into @tmp(gno,grp,salesno,mount,weight,salemoney,basemoney,tranmoney2,wcost,interest)
+		select '8',grp,salesno,SUM(mount),SUM(weight),SUM(salemoney),SUM(salemoney),SUM(tranmoney2),SUM(wcost),SUM(interest)from @tmp where gno='0' group by grp,salesno
+	end
 	
 	if(CHARINDEX('3',@t_sel)>0)
 	begin
 		--合計
-		insert into @tmp(gno,salesno,productno,mount,weight,salemoney)
-		select '3',salesno,'ZZZZZZ',SUM(mount),SUM(weight),SUM(salemoney)from @tmp where gno='0' group by salesno
+		insert into @tmp(gno,salesno,grp,productno,mount,weight,salemoney)
+		select '3',salesno,'ZZZ','ZZZZZZ',SUM(mount),SUM(weight),SUM(salemoney)
+		from @tmp where gno='0' 
+		group by salesno
 	end
 	if(CHARINDEX('4',@t_sel)>0)
-	begin
+	begin	
 		--合計
-		insert into @tmp(gno,ranks,salesno,productno,mount,weight,salemoney)
-		select '4',RANK()over(order by SUM(salemoney) desc),salesno,'ZZZZZZ',SUM(mount),SUM(weight),SUM(salemoney)from @tmp where gno='0' group by salesno				
+		insert into @tmp(gno,ranks,salesno,grp,productno,mount,weight,salemoney)
+		select '4',RANK()over(order by SUM(salemoney) desc),salesno,'ZZZ','ZZZZZZ',SUM(mount),SUM(weight),SUM(salemoney)
+		from @tmp where gno='0' 
+		group by salesno				
 		
 		delete @tmp where gno='3'		
 	end	
 end
 else
 begin
-	insert into @tmp(gno,productno,mount,weight,salemoney,basemoney,tranmoney2,wcost,interest)	  
+	insert into @tmp(gno,grp,productno,mount,weight,salemoney,basemoney,tranmoney2,wcost,interest)	  
 	select 
-		'0',productno,
+		'0',grp,productno,
 		SUM(case when typea='1' then mount else -1*mount end),
 		SUM(case when typea='1' then weight else -1*weight end),
 		SUM(case when typea='1' then salemoney else -1*salemoney end),
 		SUM(case when typea='1' then basemoney else -1*basemoney end),
 		SUM(tranmoney2),SUM(wcost),
 		SUM(case when typea='1' then ROUND(salemoney*days*0.0004,0) else -1*ROUND(salemoney*days*0.0004,0)end)--利息
-	from @tmp group by productno
+	from @tmp group by grp,productno
+	
+	--5:中類分析->將gno=0的資料以中類合併
+	if(CHARINDEX('5',@t_sel)>0)
+	begin
+		insert into @tmp(gno,grp,mount,weight,salemoney,basemoney,tranmoney2,wcost,interest)
+		select '8',grp,SUM(mount),SUM(weight),SUM(salemoney),SUM(salemoney),SUM(tranmoney2),SUM(wcost),SUM(interest)from @tmp where gno='0' group by grp
+	end
 	
 	--合計
-	insert into @tmp(gno,salesno,productno,mount,weight,salemoney)
-	select '2','ZZZZ','ZZZZZZ',SUM(mount),SUM(weight),SUM(salemoney)from @tmp where gno='0'
+	insert into @tmp(gno,salesno,grp,productno,mount,weight,salemoney)
+	select '2','ZZZZ','ZZZ','ZZZZZZ',SUM(mount),SUM(weight),SUM(salemoney)from @tmp where gno='0'
 end
-
-delete @tmp where gno='9'
 
 --毛利=出貨金額-基價金額-補運費-加工費-利息
 update @tmp set profit = salemoney-basemoney-tranmoney2-wcost-interest 
@@ -139,48 +159,69 @@ update @tmp set rate = case when salemoney=0 then 0 else profit/salemoney*100 en
 --2:客戶別統計
 if(CHARINDEX('2',@t_sel)>0)
 begin
+	declare @grp nvarchar(10)
+	declare @xgrp nvarchar(10)=''
 	declare @productno nvarchar(30)
 	
 	declare cursor_table cursor for 
-	select productno from @tmp group by productno
+	select grp,productno from @tmp group by grp,productno
 	open cursor_table 
 	fetch next from cursor_table 
-	into @productno
+	into @grp,@productno
 	while(@@FETCH_STATUS <> -1) 
-	begin
-	
-		insert into @tmp(gno,salesno,custno,productno,mount,salemoney)
-		select 
-			'1',a.salesno,a.custno,productno,
-			case when UPPER(unit)='KG' or  LEN(unit)=0 
-				 then SUM(case when a.typea='1' then b.weight else -1*b.weight end) 
-				 else SUM(case when a.typea='1' then b.mount else -1*b.mount end) end,SUM(b.total)			
-		from view_vcc a
-		left join view_vccs b on a.noa=b.noa
-		where (productno=@productno) and 
-			  (a.datea between @t_bdate and @t_edate) and 
-			  (a.custno between @t_bcustno and @t_ecustno)and
-			  (a.salesno between @t_bsalesno and @t_esalesno)and
-			  (LEN(@t_trantype)=0 or a.trantype=@t_trantype)and
-			  (CHARINDEX('1',@t_sel)=0 or a.typea='2')
-		group by a.salesno,a.custno,productno,unit
-
-		fetch next from cursor_table 
-		into @productno
-	end 
-	close cursor_table 
-	deallocate cursor_table 
+	begin	
+		--5:中類分析->將gno=0的資料以中類合併	
+		if(CHARINDEX('5',@t_sel)>0 and @grp!=@xgrp)
+		begin
+			insert into @tmp(gno,salesno,custno,grp,mount,salemoney)
+			select 
+				'1',salesno,custno,grp,
+				SUM(case when typea='1' then mntwei else -1*mntwei end),
+				SUM(case when typea='1' then salemoney else -1*salemoney end)		
+			from @tmp
+			where gno='9' and (grp=@grp)
+			group by salesno,custno,grp
+		end
+		if(CHARINDEX('5',@t_sel)=0)
+		begin
+			insert into @tmp(gno,salesno,custno,grp,productno,mount,salemoney)
+			select 
+				'1',salesno,custno,grp,productno,
+				SUM(case when typea='1' then mntwei else -1*mntwei end),
+				SUM(case when typea='1' then salemoney else -1*salemoney end)	
+			from @tmp
+			where gno='9' and (productno=@productno)
+			group by salesno,custno,grp,productno
+		end
+		
+		set @xgrp=@grp
+		
+		fetch next from cursor_table
+		into @grp,@productno
+	end
+	close cursor_table
+	deallocate cursor_table
 end
 
---名次(for業務排行榜)
-update @tmp set ranks=b.ranks 
-from @tmp a 
-left join (select salesno,ranks from @tmp where gno='4')b on a.salesno=b.salesno		
+delete @tmp where gno='9'
+
+--名次(for 4:業務排行榜)
+update @tmp set ranks=b.ranks
+from @tmp a
+left join (select salesno,ranks from @tmp where gno='4')b on a.salesno=b.salesno
 
 insert into @tmp(gno,ranks,rankd,salesno)
 select '5',ranks,'第'+CAST(ranks as nvarchar)+'名：',salesno from @tmp where gno='4'
 
-select 
+--5:中類分析
+if(CHARINDEX('5',@t_sel)>0)
+begin
+	delete @tmp where gno='0'
+	update @tmp set gno ='0' where gno='8'
+	update @tmp set productno = grp
+end
+
+select
 	a.*,
 	dbo.getComma(mount,0) mnt,
 	dbo.getComma(weight,0) wei, 
@@ -190,9 +231,9 @@ select
 	dbo.getComma(wcost,0) wcst,
 	dbo.getComma(interest,0) intt,
 	dbo.getComma(a.profit,0) pft,
-	b.product,c.nick,
-	case when CHARINDEX('3',@t_sel)>0 then '業務：'+a.salesno+'　'+d.namea else '' end sales,
-	rankd++a.salesno+'　'+d.namea [rank]
+	b.product,'＜'+a.custno+'＞' cno,c.nick,
+	case when CHARINDEX('3',@t_sel)>0 and CHARINDEX('4',@t_sel)=0 then '業務：'+a.salesno+'　'+isnull(d.namea,'') else '' end sales,
+	rankd+a.salesno+'　'+isnull(d.namea,'') [rank]
 from @tmp a
 left join ucc b on a.productno=b.noa
 left join cust c on a.custno=c.noa
