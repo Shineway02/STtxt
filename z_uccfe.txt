@@ -27,7 +27,6 @@ declare @tmp table(
 	productno nvarchar(30),
 	mount float,
 	weight float,
-	mntwei float,
 	salemoney float,
 	basemoney float,
 	tranmoney2 float,
@@ -36,14 +35,13 @@ declare @tmp table(
 	profit float,
 	rate decimal(15,2)
 )
-insert into @tmp(gno,noa,typea,paytype,salesno,custno,grp,productno,mount,weight,mntwei,salemoney,basemoney,tranmoney2,wcost)
+insert into @tmp(gno,noa,typea,paytype,salesno,custno,grp,productno,mount,weight,salemoney,basemoney,tranmoney2,wcost)
 select 
-	'9',a.noa,a.typea,a.paytype,a.salesno,a.custno,c.memo,b.productno,b.mount,b.weight,
-	case when UPPER(b.unit)='KG' or LEN(b.unit)=0 then b.weight else b.mount end,b.total,
-	case when UPPER(b.unit)='KG' or LEN(b.unit)=0 
+	'9',a.noa,a.typea,a.paytype,a.salesno,a.custno,c.memo,b.productno,b.mount,b.weight,b.total,
+	case when UPPER(b.unit)='KG' or RTRIM(LTRIM(b.unit))='' 
 		 then ROUND(b.weight*(case when b.sprice2>0 then b.sprice2 else b.sprice end),0) 
 		 else ROUND(b.mount*(case when b.sprice2>0 then b.sprice2 else b.sprice end),0) end,b.tranmoney2,
-	case when UPPER(b.unit)='KG' or LEN(b.unit)=0 then b.wcost*b.weight else b.wcost*b.mount end
+	case when UPPER(b.unit)='KG' or RTRIM(LTRIM(b.unit))='' then b.wcost*b.weight else b.wcost*b.mount end
 from view_vcc a
 left join view_vccs b on a.noa=b.noa
 left join ucc c on b.productno=c.noa
@@ -52,7 +50,8 @@ where (a.datea between @t_bdate and @t_edate)and
 	  (a.salesno between @t_bsalesno and @t_esalesno)and
 	  (LEN(@t_trantype)=0 or a.trantype=@t_trantype)and
 	  (b.productno between @t_bproductno and @t_eproductno)and
-	  (CHARINDEX('1',@t_sel)=0 or a.typea='2')
+	  (CHARINDEX('1',@t_sel)=0 or a.typea='2')and
+	  (b.lengthb=0)
 
 --取收款方式天數(供算利息)
 declare @noa nvarchar(30)
@@ -176,7 +175,7 @@ begin
 			insert into @tmp(gno,salesno,custno,grp,mount,salemoney)
 			select 
 				'1',salesno,custno,grp,
-				SUM(case when typea='1' then mntwei else -1*mntwei end),
+				SUM(case when typea='1' then mount else -1*mount end),
 				SUM(case when typea='1' then salemoney else -1*salemoney end)		
 			from @tmp
 			where gno='9' and (grp=@grp)
@@ -187,7 +186,7 @@ begin
 			insert into @tmp(gno,salesno,custno,grp,productno,mount,salemoney)
 			select 
 				'1',salesno,custno,grp,productno,
-				SUM(case when typea='1' then mntwei else -1*mntwei end),
+				SUM(case when typea='1' then mount else -1*mount end),
 				SUM(case when typea='1' then salemoney else -1*salemoney end)	
 			from @tmp
 			where gno='9' and (productno=@productno)
