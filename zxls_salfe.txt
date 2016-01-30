@@ -37,7 +37,7 @@ set timea=case when left(timea,2)!='12' then cast(cast(left(timea,2) as int)+12 
 where apm='下午'
 
 update a
-set sssno=isnull((select noa from sss where namea=a.namea),'')
+set sssno=isnull((select top 1 noa from sss where namea=a.namea and dbo.AD2ChineseEraName(datea) between indate and case when outdate='' then '999/99/99' else outdate end ),'')
 from #tmp a 
 
 --select * from #tmp
@@ -226,6 +226,10 @@ begin
 		from salpresent a 
 		outer apply (select SUM(w133)w133,SUM(w166)w166,SUM(w100)w100,count(*)mount from salpresents where noa=a.noa)b
 		where noa=@datea
+		--更新表頭順序
+		update a
+		set noq=right('000'+CAST(rr as nvarchar(10)),3)
+		from (select noq,ROW_NUMBER() over (order by sssno,namea)rr from salpresents where noa=@datea) a 
 	end
 
 	fetch next from cursor_table
