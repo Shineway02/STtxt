@@ -1,0 +1,254 @@
+﻿zxls_salfe:--zxls_salfe 打卡資料上傳
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#bbm')is not null
+BEGIN
+   drop table #bbm
+END
+
+IF OBJECT_ID('tempdb..#bbs')is not null
+BEGIN
+   drop table #bbs
+END
+
+create table #tmp(
+	sssno nvarchar(90),
+	namea nvarchar(90),
+	datea nvarchar(20),
+	apm nvarchar(20),
+	timea nvarchar(20),
+	memo nvarchar(100)
+)
+
+insert #tmp(namea,datea,apm,timea,memo)
+select 
+replace(dbo.split(a,' ',0),'&#34'+CHAR(59),''),
+dbo.split(a,' ',1),
+dbo.split(a,' ',2),
+dbo.split(a,' ',3),
+replace(dbo.split(a,' ',4),'&#34'+CHAR(59),'')
+from ztmpxls a
+
+update #tmp
+set timea=case when left(timea,2)!='12' then cast(cast(left(timea,2) as int)+12 as nvarchar(10))+RIGHT(timea,6) else timea end
+where apm='下午'
+
+update a
+set sssno=isnull((select top 1 noa from sss where namea=a.namea and dbo.AD2ChineseEraName(datea) between indate and case when outdate='' then '999/99/99' else outdate end ),'')
+from #tmp a 
+
+--select * from #tmp
+
+--bbm
+create table #bbm(
+		noa nvarchar(20),
+		w133 float,
+		w166 float,
+		w100 float,
+		mount float,
+		holiday bit,
+)
+
+--bbs
+create table #bbs(
+		noa nvarchar(20),
+		noq nvarchar(10),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		clockin nvarchar(50),
+		clockout nvarchar(50),
+		w133 float,
+		w166 float,
+		w100 float,
+		memo nvarchar(200),
+		bwork nvarchar(50),
+		ework nvarchar(50),
+		whours float,
+		tweek nvarchar(10)
+)
+declare @sssno nvarchar(50)
+declare @namea nvarchar(50)
+declare @datea nvarchar(50)
+declare @timea nvarchar(50)
+declare @memo nvarchar(MAX)
+declare @clockin nvarchar(50)
+declare @clockout nvarchar(50)
+
+
+declare cursor_table cursor for
+select sssno,namea,datea,timea,memo from #tmp order by datea,sssno,timea
+open cursor_table
+fetch next from cursor_table
+into @sssno,@namea,@datea,@timea,@memo
+while(@@FETCH_STATUS <> -1)
+begin
+	if(@memo='上班簽到' or @memo='外出返回' or @memo='加班簽到')
+	begin
+		if(select count(*) from #bbs where noa=@datea and sssno=@sssno and namea=@namea)=0
+		begin
+			insert #bbs(noa,sssno,namea,clockin,memo)
+			select @datea,@sssno,@namea,@timea,case when @memo!='上班簽到' then @timea+' '+@memo else '' end
+		end
+		else
+		begin
+			set @clockin=isnull((select clockin from #bbs where noa=@datea and sssno=@sssno and namea=@namea),'99:99:99')
+			if(@clockin>@timea)
+			begin
+				update #bbs
+				set clockin=@timea
+				where noa=@datea and sssno=@sssno and namea=@namea
+			end
+			if(@memo!='上班簽到')
+			begin
+				update #bbs
+				set memo=memo+case when len(memo)>0 then ' ' else '' end+@timea+' '+@memo
+				where noa=@datea and sssno=@sssno and namea=@namea
+			end
+		end
+		if(@memo='加班簽到')
+		begin
+			update #bbs
+			set bwork=@timea
+			where noa=@datea and sssno=@sssno and namea=@namea
+		end
+	end
+	else if(@memo='下班簽退' or @memo='外出' or @memo='加班簽退')
+	begin
+		if(select count(*) from #bbs where noa=@datea and sssno=@sssno and namea=@namea)=0
+		begin
+			insert #bbs(noa,sssno,namea,clockout,memo)
+			select @datea,@sssno,@namea,@timea,case when @memo!='下班簽退' then @timea+' '+@memo else '' end
+		end
+		else
+		begin
+			set @clockout=isnull((select clockout from #bbs where noa=@datea and sssno=@sssno and namea=@namea),'00:00:00')
+			if(@clockout<@timea)
+			begin
+				update #bbs
+				set clockout=@timea
+				where noa=@datea and sssno=@sssno and namea=@namea
+			end
+			if(@memo!='下班簽退')
+			begin
+				update #bbs
+				set memo=memo+case when len(memo)>0 then ' ' else '' end+@timea+' '+@memo
+				where noa=@datea and sssno=@sssno and namea=@namea
+			end
+		end
+		if(@memo='加班簽退')
+		begin
+			update #bbs
+			set ework=@timea
+			where noa=@datea and sssno=@sssno and namea=@namea
+		end
+	end
+	
+	fetch next from cursor_table
+	into @sssno,@namea,@datea,@timea,@memo
+end
+close cursor_table
+deallocate cursor_table
+
+update a
+set noq=right('000'+cast(rr as nvarchar(10)),3)
+from (select ROW_NUMBER()over (partition by noa order by noa,sssno,namea) rr,noq from #bbs)a
+
+update #bbs
+set whours=round((cast(datediff(MINUTE,noa+' '+bwork,noa+' '+ework)as float)/60),1)
+where isnull(bwork,'')!='' and isnull(ework,'')!=''
+
+update #bbs set tweek=DATEPART(WEEKDAY,noa)-1
+
+update #bbs
+set noa=dbo.AD2ChineseEraName(noa)
+
+update a
+set w133=case when whours>2 then 2 else whours end
+,w166=case when whours>2 then whours-2 else 0 end
+from #bbs a
+where whours>0 and
+((( select count(*) from holiday where noa=a.noa and isnull(iswork,0)!=1)=0 --不是假日
+and tweek!='0')--不是周日
+or (select count(*) from holiday where noa=@datea and isnull(iswork,0)=1)>0)--上班日
+
+update a
+set w100=whours
+from #bbs a
+where whours>0 and
+not ((( select count(*) from holiday where noa=a.noa and isnull(iswork,0)!=1)=0 --不是假日
+and tweek!='0')--不是周日
+or (select count(*) from holiday where noa=@datea and isnull(iswork,0)=1)>0)--上班日
+
+update #bbs
+set clockin=ISNULL(clockin,''),clockout=ISNULL(clockout,'')
+,w133=ISNULL(w133,0),w166=ISNULL(w166,0),w100=ISNULL(w100,0)
+
+insert #bbm
+select noa,SUM(w133),SUM(w166),SUM(w100),count(*),case when MAX(tweek)='0' then 1 else 0 end from #bbs group by noa
+
+--select * from #bbm
+--select * from #bbs
+
+--更新資料
+declare cursor_table cursor for
+select noa from #bbm order by noa
+open cursor_table
+fetch next from cursor_table
+into @datea
+while(@@FETCH_STATUS <> -1)
+begin
+	if((select COUNT(*) from salpresent where noa=@datea)=0)
+	begin
+		insert salpresent (noa,w133,w166,w100,mount,holiday)
+		select noa,w133,w166,w100,mount,holiday from #bbm where noa=@datea
+		
+		insert salpresents (noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo)
+		select noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo from #bbs where noa=@datea
+	
+	end
+	else
+	begin
+		--更新目前資料的noq
+		update salpresents set noq='XX'+noq	where noa=@datea
+		--刪除已存的員工資料
+		delete a from salpresents a 
+		where noa=@datea and exists (select * from #bbm where noa=a.noa and sssno=a.sssno and namea=a.namea)
+		--插入上傳資料
+		insert salpresents (noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo)
+		select noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo from #bbs
+		where noa=@datea
+		--更新表頭資料
+		update a
+		set w133=b.w133,w166=b.w166,w100=b.w100,mount=b.mount
+		from salpresent a 
+		outer apply (select SUM(w133)w133,SUM(w166)w166,SUM(w100)w100,count(*)mount from salpresents where noa=a.noa)b
+		where noa=@datea
+		--更新表頭順序
+		update a
+		set noq=right('000'+CAST(rr as nvarchar(10)),3)
+		from (select noq,ROW_NUMBER() over (order by sssno,namea)rr from salpresents where noa=@datea) a 
+	end
+
+	fetch next from cursor_table
+	into @datea
+end
+close cursor_table
+deallocate cursor_table
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#bbm')is not null
+BEGIN
+   drop table #bbm
+END
+
+IF OBJECT_ID('tempdb..#bbs')is not null
+BEGIN
+   drop table #bbs
+END;
