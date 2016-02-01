@@ -204,6 +204,7 @@ create table #tmpa(
 	
 	productno nvarchar(50),
 	product nvarchar(100),
+	unit nvarchar(50),
 	style nvarchar(100),
 	size nvarchar(100),
 	spec nvarchar(200),
@@ -233,20 +234,20 @@ create table #tmpa(
 CREATE INDEX tmpa_index ON #tmpa(idno)
 
 --盤點ucce --不會有盤點
-insert #tmpa (tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa (tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort)
 select 'ucce',ua.accy,ua.datea,ub.noa,ub.noq
-,ub.productno,ub.product,ub.style,ub.size,ub.spec,ub.dime,ub.width,ub.lengthb,ub.storeno
+,ub.productno,ub.product,isnull(ub.unit,''),ub.style,ub.size,ub.spec,ub.dime,ub.width,ub.lengthb,ub.storeno
 ,ub.uno,ub.mount,ub.eweight,ub.price,ub.price,ub.total,'0'
 from view_ucce ua left join view_ucces ub on ua.noa=ub.noa 
 where ua.datea<=@t_edate and left(isnull(uno,''),1)='-' 
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=ub.uno))
 
 --進貨
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort)
 select 'rc2s',ra.accy,ra.datea,rb.noa,rb.noq
-,rb.productno,rb.product,rb.style,rb.size,rb.spec,rb.dime,rb.width,rb.lengthb,rb.storeno,rb.uno
+,rb.productno,rb.product,isnull(rb.unit,''),rb.style,rb.size,rb.spec,rb.dime,rb.width,rb.lengthb,rb.storeno,rb.uno
 ,(case when ra.typea='1' then 1 else -1 end)*rb.mount
 ,(case when ra.typea='1' then 1 else -1 end)*rb.weight
 ,rb.price,rb.price
@@ -256,40 +257,40 @@ where left(isnull(rb.uno,''),1)='-' and ra.datea<=@t_edate
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=rb.uno))
 
 --入庫
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort)
 select 'inas',ia.accy,ia.datea,ib.noa,ib.noq
-,ib.productno,ib.product,ib.style,ib.size,ib.spec,ib.dime,ib.width,ib.lengthb,ib.storeno
+,ib.productno,ib.product,isnull(ib.unit,''),ib.style,ib.size,ib.spec,ib.dime,ib.width,ib.lengthb,ib.storeno
 ,ib.uno,ib.mount,ib.weight,ib.price,ib.price,ib.total,'2'
 from view_ina ia left join view_inas ib on ia.noa=ib.noa 
 where left(isnull(ib.uno,''),1)='-' and ia.datea<=@t_edate 
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=ib.uno))
 
 --裁入
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,cuno,mount,weight,price,sprice,money,sort)
 select 'cuts',ca.accy,ca.datea,cb.noa,cb.noq
-,cb.productno,cb.product,cb.style,cb.size,cb.spec,cb.dime,cb.width,cb.lengthb,cb.storeno
+,cb.productno,cb.product,'',cb.style,cb.size,cb.spec,cb.dime,cb.width,cb.lengthb,cb.storeno
 ,cb.bno,isnull(ca.uno,''),cb.mount,cb.weight,wprice,0,0,'3'
 from view_cut ca left join view_cuts cb on ca.noa=cb.noa 
 where left(isnull(cb.bno,''),1)='-' and ca.datea<=@t_edate 
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=cb.bno))
 
 --裁領
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort)
 select 'cut',ca.accy,ca.datea,ca.noa,''
-,ca.productno,ca.product,'','',ca.spec,ca.dime,ca.width,ca.lengthb,ca.storeno
+,ca.productno,ca.product,'','','',ca.spec,ca.dime,ca.width,ca.lengthb,ca.storeno
 ,ca.uno,ca.gmount,ca.gweight,0,0,0,'4'
 from view_cut ca 
 where left(isnull(ca.uno,''),1)='-' and ca.datea<=@t_edate 
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=ca.uno))
 
 --銷售
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort)
 select 'vccs',va.accy,va.datea,va.noa,vb.noq
-,vb.productno,vb.product,vb.style,vb.size,vb.spec,vb.dime,vb.width,vb.lengthb,vb.storeno,vb.uno
+,vb.productno,vb.product,isnull(vb.unit,''),vb.style,vb.size,vb.spec,vb.dime,vb.width,vb.lengthb,vb.storeno,vb.uno
 ,(case when va.typea='1' then 1 else -1 end)*vb.mount
 ,(case when va.typea='1' then 1 else -1 end)*case when isnull(vb.gweight,0)!=0 then vb.gweight else vb.weight end
 ,0,0,0,(case when va.typea='1' then '5' else '2' end)
@@ -298,10 +299,10 @@ where left(isnull(vb.uno,''),1)='-' and va.datea<=@t_edate
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=vb.uno))
 
 --領料
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort)
 select 'gets',ga.accy,ga.datea,ga.noa,gb.noq
-,gb.productno,gb.product,gb.style,gb.size,gb.spec,gb.dime,gb.width,gb.lengthb,gb.storeno
+,gb.productno,gb.product,isnull(gb.unit,''),gb.style,gb.size,gb.spec,gb.dime,gb.width,gb.lengthb,gb.storeno
 ,gb.uno,gb.gmount,gb.gweight,0,0,0,'6'
 from view_get ga left join view_gets gb on ga.noa=gb.noa 
 left join view_ucaucc c on gb.productno=c.noa 
@@ -320,6 +321,7 @@ declare @noa nvarchar(90)
 declare @noq nvarchar(90)
 declare @productno nvarchar(50)
 declare @product nvarchar(100)
+declare @unit nvarchar(50)
 declare @size nvarchar(100)
 declare @style nvarchar(100)
 declare	@spec nvarchar(200)
@@ -379,15 +381,16 @@ where isnull(a.cuno,'')!='' and left(a.cuno,1)!='-' group by a.cuno
 
 --計算成本--不能以批號優先排 會有 cut成本找不到的問題
 --成本負數歸0 不處理 由使用者自行調整
+--105/02/01 成本單價以當時的單位為主
 declare cursor_table cursor for
 select datea,sort,idno,accy,noa,noq
-,productno,product,style,size,spec,dime,width,lengthb,storeno
+,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
 order by datea,sort,noa,noq,tablea,uno
 open cursor_table
 fetch next from cursor_table
 into @datea,@sort,@idno,@accy,@noa,@noq
-,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+,@productno,@product,@unit,@style,@size,@spec,@dime,@width,@lengthb,@storeno
 ,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 while(@@FETCH_STATUS <> -1)
 begin
@@ -407,7 +410,13 @@ begin
 		--set @x_money=@money
 	end
 	
-	--更新到資料庫--get ucces cut 沒有sprice 
+	--成本單價以當時的單位為主
+	if(@unit!='' and @unit!='KG')
+		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,3) end
+	else
+		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,3)end
+	
+	--更新到資料庫--ucces cut 沒有sprice 
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
@@ -432,10 +441,14 @@ begin
 		--set @x_mount=@x_mount+@mount
 		--set @x_weight=@x_weight+@weight
 		
+		--進退
 		if(@tablea='rc2s' and @sort='5')
 		begin
-			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@uno),0)
-			set @s_money=@s_money+(@s_sprice*case when @t1>0 then @weight else @mount end)
+			--set @s_sprice=isnull((select sprice from #tmpsprice where uno=@uno),0)
+			--set @s_money=@s_money+(@s_sprice*case when @t1>0 then @weight else @mount end)
+			--成本單價以當時的單位為主
+			set @s_money=@s_money+(@s_sprice*(case when (@unit!='' and @unit!='KG') then @mount else @weight end))
+			
 		end
 		else if(@tablea='cuts')
 		begin
@@ -443,9 +456,13 @@ begin
 			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@cuno),0)
 			--set @x_sprice=isnull((select tsprice from #tmpsprice where uno=@cuno),0)
 			
+			--set @s_money=@s_money
+			--+(@s_sprice*case when @t1>0 then @weight else @mount end)--成本金額
+			--+(isnull(@price,0)*case when @t1>0 then @weight else @mount end)--加工金額
+			--成本單價以當時的單位為主 cut 一律是重量
 			set @s_money=@s_money
-			+(@s_sprice*case when @t1>0 then @weight else @mount end)--成本金額
-			+(isnull(@price,0)*case when @t1>0 then @weight else @mount end)--加工金額
+			+(@s_sprice*@weight)--成本金額
+			+(isnull(@price,0)*@weight)--加工金額
 			
 			--update #tmpa set price=@s_sprice where idno=@idno --回寫成本單價 庫存表不須要
 		
@@ -471,10 +488,13 @@ begin
 		
 		set @s_mount=@s_mount-@mount
 		set @s_weight=@s_weight-@weight
+		--成本單價以當時的單位為主
 		if(@tablea='vccs' and @sort='2' and (select count(*) from view_vccs where uno=@uno and datea<@datea and typea='1')>0)--出貨退回 抓上一次成本
-			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
+			--set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
+			set @s_money=@s_money-round((case when (@unit!='' and @unit!='KG') then @mount else @weight end) * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
 		else
-			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
+			--set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
+			set @s_money=@s_money-round((case when (@unit!='' and @unit!='KG') then @mount else @weight end) * @s_sprice ,0)
 			
 		--set @x_mount=@x_mount-@mount
 		--set @x_weight=@x_weight-@weight
@@ -488,17 +508,20 @@ begin
 	--	set @x_money=0
 	--	set @x_sprice=0
 	--end
-		
-	if(@t1>0)
-	begin
-		--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
-		set @s_sprice=case when @s_weight=0 then @s_sprice else round(@s_money/@s_weight,3) end
-	end
-	else
-	begin
-		--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
-		set @s_sprice=case when @s_mount=0 then @s_sprice else round(@s_money/@s_mount,3) end
-	end	
+	
+	--if(@t1>0)
+	--begin
+	--	--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
+	--	set @s_sprice=case when @s_weight=0 then @s_sprice else round(@s_money/@s_weight,3) end
+	--end
+	--else
+	--begin
+	--	--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
+	--	set @s_sprice=case when @s_mount=0 then @s_sprice else round(@s_money/@s_mount,3) end
+	--end	
+	--成本單價以當時的單位為主
+	set @s_sprice=case when (case when (@unit!='' and @unit!='KG') then @s_mount else @s_weight end)=0 then @s_sprice else round(@s_money/(case when (@unit!='' and @unit!='KG') then @s_mount else @s_weight end),3) end
+	
 	
 	--更新回暫存表(庫存表可不執行)
 	--update #tmpa 
@@ -513,7 +536,7 @@ begin
 	--,tmount=@x_mount,tweight=@x_weight,tmoney=@x_money,tsprice=@x_sprice
 	where uno=@uno
 	
-	--更新到資料庫--get ucces cut 沒有sprice
+	--更新到資料庫
 	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
@@ -538,7 +561,7 @@ begin
 		
 	fetch next from cursor_table
 	into @datea,@sort,@idno,@accy,@noa,@noq
-	,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+	,@productno,@product,@unit,@style,@size,@spec,@dime,@width,@lengthb,@storeno
 	,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 end
 close cursor_table
@@ -734,6 +757,7 @@ create table #tmpa(
 	
 	productno nvarchar(50),
 	product nvarchar(100),
+	unit nvarchar(50),
 	style nvarchar(100),
 	size nvarchar(100),
 	spec nvarchar(200),
@@ -764,20 +788,20 @@ create table #tmpa(
 CREATE INDEX tmpa_index ON #tmpa(idno)
 
 --盤點ucce --不會有盤點
-insert #tmpa (tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa (tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort)
 select 'ucce',ua.accy,ua.datea,ub.noa,ub.noq
-,ub.productno,ub.product,ub.style,ub.size,ub.spec,ub.dime,ub.width,ub.lengthb,ub.storeno
+,ub.productno,ub.product,isnull(ub.unit,''),ub.style,ub.size,ub.spec,ub.dime,ub.width,ub.lengthb,ub.storeno
 ,ub.uno,ub.mount,ub.eweight,ub.price,ub.price,ub.total,'0'
 from view_ucce ua left join view_ucces ub on ua.noa=ub.noa 
 where ua.datea<=@t_edate and left(isnull(uno,''),1)='-'
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=ub.uno))
 
 --進貨
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort,typea,comp)
 select 'rc2s',ra.accy,ra.datea,rb.noa,rb.noq
-,rb.productno,rb.product,rb.style,rb.size,rb.spec,rb.dime,rb.width,rb.lengthb,rb.storeno,rb.uno
+,rb.productno,rb.product,isnull(rb.unit,''),rb.style,rb.size,rb.spec,rb.dime,rb.width,rb.lengthb,rb.storeno,rb.uno
 ,(case when ra.typea='1' then 1 else -1 end)*rb.mount
 ,(case when ra.typea='1' then 1 else -1 end)*rb.weight
 ,rb.price,rb.price
@@ -787,40 +811,40 @@ where left(isnull(rb.uno,''),1)='-' and ra.datea<=@t_edate
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=rb.uno))
 
 --入庫
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort,comp)
 select 'inas',ia.accy,ia.datea,ib.noa,ib.noq
-,ib.productno,ib.product,ib.style,ib.size,ib.spec,ib.dime,ib.width,ib.lengthb,ib.storeno
+,ib.productno,ib.product,isnull(ib.unit,''),ib.style,ib.size,ib.spec,ib.dime,ib.width,ib.lengthb,ib.storeno
 ,ib.uno,ib.mount,ib.weight,ib.price,ib.price,ib.total,'2',ia.comp
 from view_ina ia left join view_inas ib on ia.noa=ib.noa 
 where left(isnull(ib.uno,''),1)='-' and ia.datea<=@t_edate 
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=ib.uno))
 
 --裁入
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,cuno,mount,weight,price,sprice,money,sort,comp)
 select 'cuts',ca.accy,ca.datea,cb.noa,cb.noq
-,cb.productno,cb.product,cb.style,cb.size,cb.spec,cb.dime,cb.width,cb.lengthb,cb.storeno
+,cb.productno,cb.product,'',cb.style,cb.size,cb.spec,cb.dime,cb.width,cb.lengthb,cb.storeno
 ,cb.bno,isnull(ca.uno,''),cb.mount,cb.weight,wprice,0,0,'3',cb.cust
 from view_cut ca left join view_cuts cb on ca.noa=cb.noa 
 where left(isnull(cb.bno,''),1)='-' and ca.datea<=@t_edate 
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=cb.bno))
 
 --裁領
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort,comp)
 select 'cut',ca.accy,ca.datea,ca.noa,''
-,ca.productno,ca.product,'','',ca.spec,ca.dime,ca.width,ca.lengthb,ca.storeno
+,ca.productno,ca.product,'','','',ca.spec,ca.dime,ca.width,ca.lengthb,ca.storeno
 ,ca.uno,ca.gmount,ca.gweight,0,0,0,'4',ca.cust
 from view_cut ca 
 where left(isnull(ca.uno,''),1)='-' and ca.datea<=@t_edate 
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=ca.uno))
 
 --銷售
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort,typea,comp)
 select 'vccs',va.accy,va.datea,va.noa,vb.noq
-,vb.productno,vb.product,vb.style,vb.size,vb.spec,vb.dime,vb.width,vb.lengthb,vb.storeno,vb.uno
+,vb.productno,vb.product,isnull(vb.unit,''),vb.style,vb.size,vb.spec,vb.dime,vb.width,vb.lengthb,vb.storeno,vb.uno
 ,(case when va.typea='1' then 1 else -1 end)*vb.mount
 ,(case when va.typea='1' then 1 else -1 end)*case when isnull(vb.gweight,0)!=0 then vb.gweight else vb.weight end
 ,0,0,0,(case when va.typea='1' then '5' else '2' end),va.typea,va.nick
@@ -829,10 +853,10 @@ where left(isnull(vb.uno,''),1)='-' and va.datea<=@t_edate
 and (len(@t_uno)=0 or exists(select * from #tmpuno where uno=vb.uno))
 
 --領料
-insert #tmpa(tablea,accy,datea,noa,noq,productno,product,style,size,spec,dime,width,lengthb,storeno
+insert #tmpa(tablea,accy,datea,noa,noq,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,mount,weight,price,sprice,money,sort,comp)
 select 'gets',ga.accy,ga.datea,ga.noa,gb.noq
-,gb.productno,gb.product,gb.style,gb.size,gb.spec,gb.dime,gb.width,gb.lengthb,gb.storeno
+,gb.productno,gb.product,isnull(gb.unit,''),gb.style,gb.size,gb.spec,gb.dime,gb.width,gb.lengthb,gb.storeno
 ,gb.uno,gb.gmount,gb.gweight,0,0,0,'6',ga.comp
 from view_get ga left join view_gets gb on ga.noa=gb.noa 
 left join view_ucaucc c on gb.productno=c.noa 
@@ -852,6 +876,7 @@ declare @noq nvarchar(90)
 
 declare @productno nvarchar(50)
 declare @product nvarchar(100)
+declare @unit nvarchar(50)
 declare @size nvarchar(100)
 declare @style nvarchar(100)
 declare	@spec nvarchar(200)
@@ -913,15 +938,16 @@ where isnull(a.cuno,'')!='' and left(a.cuno,1)!='-' group by a.cuno
 
 --計算成本--不能以批號優先排 會有 cut成本找不到的問題
 --成本負數歸0 不處理 由使用者自行調整
+--105/02/01 成本單價以當時的單位為主
 declare cursor_table cursor for
 select datea,sort,idno,accy,noa,noq
-,productno,product,style,size,spec,dime,width,lengthb,storeno
+,productno,product,unit,style,size,spec,dime,width,lengthb,storeno
 ,uno,tablea,isnull(mount,0),isnull(weight,0),price,money,t1,cuno from #tmpa 
 order by datea,sort,noa,noq,tablea,uno
 open cursor_table
 fetch next from cursor_table
 into @datea,@sort,@idno,@accy,@noa,@noq
-,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+,@productno,@product,@unit,@style,@size,@spec,@dime,@width,@lengthb,@storeno
 ,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 while(@@FETCH_STATUS <> -1)
 begin
@@ -941,7 +967,13 @@ begin
 		--set @x_money=@money
 	end
 	
-	--更新到資料庫--get ucces cut 沒有sprice
+	--成本單價以當時的單位為主
+	if(@unit!='' and @unit!='KG')
+		set @s_sprice=case when @s_mount=0 then 0 else round(@s_money/@s_mount,3) end
+	else
+		set @s_sprice=case when @s_weight=0 then 0 else round(@s_money/@s_weight,3)end
+	
+	--更新到資料庫--ucces cut 沒有sprice
 	if(@tablea='vccs')
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
@@ -966,10 +998,13 @@ begin
 		--set @x_mount=@x_mount+@mount
 		--set @x_weight=@x_weight+@weight
 		
+		--進退
 		if(@tablea='rc2s' and @sort='5')
 		begin
-			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@uno),0)
-			set @s_money=@s_money+(@s_sprice*case when @t1>0 then @weight else @mount end)
+			--set @s_sprice=isnull((select sprice from #tmpsprice where uno=@uno),0)
+			--set @s_money=@s_money+(@s_sprice*case when @t1>0 then @weight else @mount end)
+			--成本單價以當時的單位為主
+			set @s_money=@s_money+(@s_sprice*(case when (@unit!='' and @unit!='KG') then @mount else @weight end))
 		end
 		else if(@tablea='cuts')
 		begin
@@ -977,9 +1012,13 @@ begin
 			set @s_sprice=isnull((select sprice from #tmpsprice where uno=@cuno),0)
 			--set @x_sprice=isnull((select tsprice from #tmpsprice where uno=@cuno),0)
 		
+			--set @s_money=@s_money
+			--+(@s_sprice*case when @t1>0 then @weight else @mount end)--成本金額
+			--+(isnull(@price,0)*case when @t1>0 then @weight else @mount end)--加工金額
+			--成本單價以當時的單位為主 cut 一律是重量
 			set @s_money=@s_money
-			+(@s_sprice*case when @t1>0 then @weight else @mount end)--成本金額
-			+(isnull(@price,0)*case when @t1>0 then @weight else @mount end)--加工金額
+			+(@s_sprice*@weight)--成本金額
+			+(isnull(@price,0)*@weight)--加工金額
 			
 			update #tmpa set price=@s_sprice where idno=@idno --回寫成本單價
 		
@@ -1006,16 +1045,19 @@ begin
 		
 		set @s_mount=@s_mount-@mount
 		set @s_weight=@s_weight-@weight
+		--成本單價以當時的單位為主
 		if(@tablea='vccs' and @sort='2' and (select count(*) from view_vccs where uno=@uno and datea<@datea and typea='1')>0)--出貨退回 抓上一次成本
 		begin
-			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
+			--set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
+			set @s_money=@s_money-round((case when (@unit!='' and @unit!='KG') then @mount else @weight end) * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0)
 			
 			--if(@tablea='vccs') --回寫出貨成本
 			update #tmpa set vmoney=round(case when @t1>0 then @weight else @mount end * isnull((select top 1 sprice from view_vccs where uno=@uno and datea<@datea and typea='1' order by datea desc,noa desc),0) ,0) where idno=@idno
 		end
 		else
 		begin
-			set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
+			--set @s_money=@s_money-round(case when @t1>0 then @weight else @mount end * @s_sprice ,0)
+			set @s_money=@s_money-round((case when (@unit!='' and @unit!='KG') then @mount else @weight end) * @s_sprice ,0)
 			
 			--if(@tablea='vccs') --回寫出貨成本
 			update #tmpa set vmoney=round(case when @t1>0 then @weight else @mount end * @s_sprice ,0) where idno=@idno
@@ -1034,16 +1076,18 @@ begin
 	--	set @x_sprice=0
 	--end
 		
-	if(@t1>0)
-	begin
-		set @s_sprice=case when @s_weight=0 then @s_sprice else round(@s_money/@s_weight,3) end
-		--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
-	end
-	else
-	begin
-		set @s_sprice=case when @s_mount=0 then @s_sprice else round(@s_money/@s_mount,3) end
-		--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
-	end	
+	--if(@t1>0)
+	--begin
+	--	set @s_sprice=case when @s_weight=0 then @s_sprice else round(@s_money/@s_weight,3) end
+	--	--set @x_sprice=case when @x_weight=0 then 0 else round(@x_money/@x_weight,2) end
+	--end
+	--else
+	--begin
+	--	set @s_sprice=case when @s_mount=0 then @s_sprice else round(@s_money/@s_mount,3) end
+	--	--set @x_sprice=case when @x_mount=0 then 0 else round(@x_money/@x_mount,2) end
+	--end	
+	--成本單價以當時的單位為主
+	set @s_sprice=case when (case when (@unit!='' and @unit!='KG') then @s_mount else @s_weight end)=0 then @s_sprice else round(@s_money/(case when (@unit!='' and @unit!='KG') then @s_mount else @s_weight end),3) end
 	
 	--更新回暫存表
 	update #tmpa 
@@ -1058,7 +1102,7 @@ begin
 	--,tmount=@x_mount,tweight=@x_weight,tmoney=@x_money,tsprice=@x_sprice
 	where uno=@uno
 	
-	--更新到資料庫--get ucces cut 沒有sprice 
+	--更新到資料庫--ucces cut 沒有sprice 
 	if(@tablea='rc2s' or @tablea='inas' or (@tablea='vccs' and @sort='2'))
 	begin
 		set @cmd = "update "+@tablea+@accy+" set sprice=@s_sprice where noa=@noa and noq=@noq and uno=@uno"
@@ -1083,7 +1127,7 @@ begin
 		
 	fetch next from cursor_table
 	into @datea,@sort,@idno,@accy,@noa,@noq
-	,@productno,@product,@style,@size,@spec,@dime,@width,@lengthb,@storeno
+	,@productno,@product,@unit,@style,@size,@spec,@dime,@width,@lengthb,@storeno
 	,@uno,@tablea,@mount,@weight,@price,@money,@t1,@cuno
 end
 close cursor_table
