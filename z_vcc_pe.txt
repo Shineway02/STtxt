@@ -554,7 +554,7 @@ begin
 	--1041228 更新損益
 	if(@tablea='vccs')
 	begin
-		set @cmd = "update a set benifit=isnull((select sum(total-(weight*sprice)) from vccs"+@accy+" where noa=a.noa),0) from vcc"+@accy+" a where noa=@noa "
+		set @cmd = "update a set benifit=isnull((select sum(total-((case when isnull(unit,'')!='' and unit!='KG' then mount else weight end)*sprice)) from vccs"+@accy+" where noa=a.noa),0) from vcc"+@accy+" a where noa=@noa "
 		EXECUTE sp_executesql @cmd,N'@noa nvarchar(90)'
 		,@noa=@noa
 	end
@@ -1120,7 +1120,7 @@ begin
 	--1041228 更新損益
 	if(@tablea='vccs')
 	begin
-		set @cmd = "update a set benifit=isnull((select sum(total-(weight*sprice)) from vccs"+@accy+" where noa=a.noa),0) from vcc"+@accy+" a where noa=@noa "
+		set @cmd = "update a set benifit=isnull((select sum(total-((case when isnull(unit,'')!='' and unit!='KG' then mount else weight end)*sprice)) from vccs"+@accy+" where noa=a.noa),0) from vcc"+@accy+" a where noa=@noa "
 		EXECUTE sp_executesql @cmd,N'@noa nvarchar(90)'
 		,@noa=@noa
 	end
