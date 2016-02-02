@@ -691,6 +691,7 @@ z_uccfe3:--z_uccfe3
 	--declare @t_bdate nvarchar(20) = case when '#non'=[6] then '' else [6] end
 	--declare @t_edate nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
 	--declare @t_option01 nvarchar(max) = case when '#non'=[8] then '' else [8] end
+	declare @t_showcarton nvarchar(20) = case when '#non'=[9] then '' else [9] end
 	declare @t_project nvarchar(20) = case when '#non'='[10]' then '' else '[10]' end
 	declare @t_showprice nvarchar(20) = case when '#non'=[14] then '0' else [14] end
 	------------------------------------------------------------------------------------
@@ -795,6 +796,63 @@ z_uccfe3:--z_uccfe3
 		update #z_uccfe3 set price=null,money=null
 	end
 	
+	declare @tmp table(
+		gno nvarchar(10),
+		pno nvarchar(10),
+		recno int,
+		pp int,
+		qq int,
+		storeno nvarchar(30),
+		store nvarchar(50),
+		productno nvarchar(30),
+		product nvarchar(100),
+		unit nvarchar(30),
+		mount decimal(20,4),
+		[weight] decimal(20,4),
+		price decimal(20,4),
+		[money] decimal(20,4),
+		carton decimal(20,4)
+	)
+	
+	if (@t_showcarton!='1')
+	begin
+		insert @tmp
+		select a.*,null
+		from #z_uccfe3 a 
+		
+		update @tmp set gno=CAST(CAST(gno as int )+1 as nvarchar(10))
+		
+		--插入表頭分頁
+		insert @tmp(gno,pp,qq,storeno,recno,pno)
+		select '1',pp,MAX(qq),storeno,MIN(recno)-1,MIN(pno)
+		from @tmp where gno!='4' group by pp,storeno
+		
+		insert @tmp(gno,pp,qq,storeno,recno,pno)
+		select '5',pp,MAX(qq),storeno,MAX(recno),MAX(pno)
+		from @tmp where gno!='1' and gno!='4' group by pp,storeno
+	
+		update @tmp set pp=null,qq=null,recno=0,pno='4' where gno='5' and pp=qq
+	end
+	else
+	begin
+		insert @tmp
+		select a.*,CEILING(a.mount/NULLIF(b.stdmount,0))
+		from #z_uccfe3 a left join ucc b on a.productno = b.noa order by productno,recno
+		
+		update @tmp set gno=CAST(CAST(gno as int )+6 as nvarchar(10))
+		
+		--插入表頭分頁
+		insert @tmp(gno,pp,qq,storeno,recno,pno)
+		select '6',pp,MAX(qq),storeno,MIN(recno)-1,MIN(pno)
+		from @tmp where gno!='9' group by pp,storeno
+		
+		insert @tmp(gno,pp,qq,storeno,recno,pno)
+		select '10',pp,MAX(qq),storeno,MAX(recno),MAX(pno)
+		from @tmp where gno!='1' and gno!='9' group by pp,storeno
+	
+		update @tmp set pp=null,qq=null,recno=0,pno='9' where gno='10' and pp=qq
+	end
+	
 	select * 
 		,recno rr
 		,'<a style="font-family:'+ "'Times New Roman','標楷體', serif"+char(59)+'">倉庫：'+storeno +'&nbsp'+char(59)+store+'</a>' title
@@ -806,7 +864,7 @@ z_uccfe3:--z_uccfe3
 		,dbo.getComma([weight],2) a06
 		,dbo.getComma(price,2) a07
 		,dbo.getComma([money],0) a08
-	from #z_uccfe3 order by storeno,pno,recno
+	from @tmp order by storeno,pno,recno,pp
 	drop table #z_uccfe3
 	
 	IF OBJECT_ID('tempdb..#z_uccfe3')is not null
