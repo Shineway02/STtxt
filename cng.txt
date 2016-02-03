@@ -1,0 +1,114 @@
+storecng:--cng.txt storecng
+	declare @t_storeoutno nvarchar(50) = [1]
+	declare @t_storeinno nvarchar(50) = [2]
+	declare @t_bproductno nvarchar(50) = case when '#non'=[3] then '' else [3] end 
+	declare @t_eproductno nvarchar(MAX) = case when '#non'=[4] then char(255) else [4] end 
+	declare @userno nvarchar(MAX) = [5] 
+	declare @namea nvarchar(MAX) = [6] 
+	declare @project nvarchar(MAX) = [7] 
+	--------------------------------------------------------------------------------------------------------
+	SET QUOTED_IDENTIFIER OFF
+	declare @now_date nvarchar(90)
+	set @now_date=CONVERT (VARCHAR(7), GETDATE(),12 )+0890000
+	set @now_date=left(@now_date,3)+'/'+substring(@now_date,4,2)+'/'+right(@now_date,2)
+	declare @accy nvarchar(50)=left(@now_date,3)	
+	declare @noa nvarchar(50)=''
+	declare @cmd nvarchar(max)
+	
+	IF OBJECT_ID('tempdb..#tmpa')is not null
+	BEGIN
+		set @cmd = 'drop table #tmpa'
+		EXECUTE sp_executesql @cmd
+	END
+
+	IF OBJECT_ID('tempdb..#tmpb')is not null
+	BEGIN
+		set @cmd = 'drop table #tmpb'
+		EXECUTE sp_executesql @cmd
+	END
+	
+	create table #tmpa( --bbs
+		noa nvarchar(50),
+		noq nvarchar(10),
+		datea nvarchar(20),
+		productno nvarchar(100),
+		product nvarchar(200),
+		spec nvarchar(50),
+		unit nvarchar(50),
+		lengthb float,
+		mount float,
+		weight float,
+		storeno nvarchar(50),
+		storeinno nvarchar(50)
+	)
+	
+	create table #tmpb( --bbm
+		noa nvarchar(50),
+		datea nvarchar(20),
+		custno nvarchar(100),
+		comp nvarchar(200),
+		sssno nvarchar(50),
+		namea nvarchar(50),
+		storeno nvarchar(50),
+		store nvarchar(50),
+		storeinno nvarchar(50),
+		storein nvarchar(50),
+		rackno nvarchar(50),
+		rackinno nvarchar(50),
+		worker nvarchar(50)
+	)
+	
+	insert #tmpa
+	select '' noa,cast(ROW_NUMBER()over (order by a.idno) as nvarchar(10))
+	,@now_date,a.productno,a.product,isnull(b.spec,''),b.unit
+	,case when isnull(b.stdmount,0)=0 then 0 else round(a.mount/b.stdmount,0) end
+	,a.mount,a.mount*isnull(b.uweight,0),@t_storeoutno,@t_storeinno
+	from stkucc(@now_date,@t_storeoutno,'') a
+	left join ucc b on a.productno=b.noa
+	where productno!='' and productno between @t_bproductno and @t_eproductno
+	and mount!=0
+	
+	if((select count(*) from #tmpa)>0)
+	begin
+		set @noa='X'+REPLACE(@now_date,'/','')+
+		right('000'+CAST(CAST(right(isnull((select noa from view_cng where noa like 'X'+REPLACE(@now_date,'/','')),'000'),3) as int)+1 as nvarchar(10)),3)
+		
+		update a
+		set noa=@noa,noq=right(REPLICATE('0',b.noqlen)+noq,noqlen)
+		from #tmpa a outer apply (select len(MAX(cast(noq as int))) noqlen from #tmpa)b
+		
+		insert #tmpb
+		select @noa noa,@now_date datea,'','',@userno,@namea
+		,@t_storeoutno,(select store from store where noa=@t_storeoutno)
+		,@t_storeinno,(select store from store where noa=@t_storeinno)
+		,'','',@namea
+		
+		EXEC("
+			insert cngs"+@accy+"(noa,noq,datea,productno,product,spec,unit,lengthb,mount,weight,storeno,storeinno)
+			select noa,noq,datea,productno,product,spec,unit,lengthb,mount,weight,storeno,storeinno from #tmpa
+		")
+		
+		EXEC("
+			insert cng"+@accy+"(noa,datea,custno,comp,sssno,namea,storeno,store,storeinno,storein,rackno,rackinno,worker)
+			select noa,datea,custno,comp,sssno,namea,storeno,store,storeinno,storein,rackno,rackinno,worker from #tmpb
+		")
+		
+		insert dno(tablea,noa,usera,mech)
+		select 'cng',@noa,@userno,replace(convert(nvarchar(20),GETDATE(),20),'-','/')
+		
+	end
+	
+	select @noa noa
+	
+	IF OBJECT_ID('tempdb..#tmpa')is not null
+	BEGIN
+		set @cmd = 'drop table #tmpa'
+		EXECUTE sp_executesql @cmd
+	END
+	
+	IF OBJECT_ID('tempdb..#tmpb')is not null
+	BEGIN
+		set @cmd = 'drop table #tmpb'
+		EXECUTE sp_executesql @cmd
+	END
+;
