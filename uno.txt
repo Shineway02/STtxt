@@ -63,7 +63,15 @@ genUno:--uno.txt genUno
 
 		set @datea = dbo.ChineseEraName2AD(@t_date)
 		set @key =  right('00'+cast(year(@datea) as nvarchar),2) + substring(@sign,month(@datea)+1,1)
-		--找出最大批號 
+		 
+		--我司編碼原則以日期為主,若今日進貨皮膜1支,批號則為16101,若有十支,則批號會編為16101-01~10
+		--可是鋼捲批號又要加母號
+		--16101代表2016年1月第一次進貨
+		--請問若是客供的材料,一般公司如何辨別?廠內才不致於拿錯
+		--我們以前是批號前要加C,如:C16101
+		--編碼月份的表達10月為A, 11月為B ,12月為 C
+
+		--找出最大批號
 		-- 16101-01
 		select top 1 @maxuno1=uno from view_uccb where uno like ''+@key+'[0-9,A-Z][0-9,A-C]-[0-9,A-Z][0-9]' order by substring(uno,1,len(@key)+2) desc
 		-- C16101-01
