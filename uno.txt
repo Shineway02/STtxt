@@ -1,3 +1,109 @@
+genUno:--uno.txt genUno 
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_noa nvarchar(max) = [1]
+	declare @t_para nvarchar(max) = [2] --控制由哪個表單執行, 預設 rc2
+	-----------------------------------------------------------------------------------------------
+	declare @sign nvarchar(max) = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	if exists(select * from acomp where CHARINDEX('聯琦',acomp)>0)
+		goto genUno_rk
+	else
+		goto genUno
+	
+	declare @t_accy nvarchar(20) = ''
+	declare @t_date nvarchar(20) = ''
+	declare @t_custno nvarchar(20) = ''
+	declare @datea datetime
+	declare @key nvarchar(max)
+	declare @num nvarchar(max)
+	declare @maxuno1 nvarchar(max) = ''
+	declare @maxuno2 nvarchar(max) = ''
+	declare @n int
+	declare @table nvarchar(max) = ''
+	-----------------------------------------------------------------------------------------------
+	genUno_rk:
+		IF OBJECT_ID('tempdb..#getuno')is not null
+		BEGIN
+			drop table #getuno
+		END
+		create table #getuno(
+			noq nvarchar(10)
+			,uno nvarchar(30)
+		)
+
+		if (len(@t_para)=0 or UPPER(@t_para)='RC2') and exists(select * from view_rc2 where noa=@t_noa)
+		begin
+
+			select @t_accy=accy,@t_date = datea from view_rc2 where noa=@t_noa
+			insert into #getuno(noq)
+			select noq
+			from view_rc2s 
+			where accy=@t_accy and noa=@t_noa
+			and [weight]>0
+			and len(ISNULL(uno,''))=0
+			order by noq
+		end
+		else if (UPPER(@t_para)='INA') and exists(select * from view_ina where noa=@t_noa)
+		begin
+			select @t_accy=accy,@t_date = datea,@t_custno=custno from view_ina where noa=@t_noa
+			insert into #getuno(noq)
+			select noq
+			from view_inas
+			where accy=@t_accy and noa=@t_noa
+			and [weight]>0
+			and len(ISNULL(uno,''))=0
+			order by noq
+		end
+		else
+		begin
+			--找不到單據
+			drop table #getuno
+			return
+		end
+
+		set @datea = dbo.ChineseEraName2AD(@t_date)
+		set @key =  right('00'+cast(year(@datea) as nvarchar),2) + substring(@sign,month(@datea)+1,1)
+		--找出最大批號 
+		-- 16101-01
+		select top 1 @maxuno1=uno from view_uccb where uno like ''+@key+'[0-9,A-Z][0-9,A-C]-[0-9,A-Z][0-9]' order by substring(uno,1,len(@key)+2) desc
+		-- C16101-01
+		select top 1 @maxuno2=uno from view_uccb where uno like '[A-Z]'+@key+'[0-9,A-Z][0-9,A-C]-[0-9,A-Z][0-9]' order by substring(uno,2,1+len(@key)+2) desc
+		
+		if SUBSTRING(isnull(@maxuno1,''),4,2)>=SUBSTRING(isnull(@maxuno2,''),5,2)
+			set @num = SUBSTRING(@maxuno1,4,2)
+		else 
+			set @num = SUBSTRING(@maxuno2,5,2)
+		if len(isnull(@num,''))=0
+			set @num = '00'
+
+		set @n = (charindex(LEFT(@num,1),@sign)-1)*10 + CAST(RIGHT(@num,1) as int) + 1
+		set @num = SUBSTRING(@sign,floor(@n/10)+1,1)+SUBSTRING(@sign,(@n%10)+1,1)
+
+		update #getuno set uno= case when UPPER(@t_para)='INA' and len(ISNULL(@t_custno,''))>0 then 'C' else '' end +@key+@num+'-'+SUBSTRING(@sign,floor(b.recno/10)+1,1)+SUBSTRING(@sign,(b.recno%10)+1,1)
+		from #getuno a
+		left join (select noq,ROW_NUMBER()over(order by noq) recno from #getuno) b on a.noq=b.noq
+
+		--更新資料
+		if UPPER(@t_para)='INA'
+			set @table = 'inas'
+		else 
+			set @table = 'rc2s'
+		
+		set @cmd = "update "+@table+@t_accy+" set uno=b.uno
+			from "+@table+@t_accy+" a 
+			left join #getuno b on a.noq=b.noq
+			where b.uno is not null and a.noa=@t_noa"
+		execute sp_executesql @cmd,N'@t_noa nvarchar(20)',@t_noa=@t_noa
+
+		drop table #getuno
+		return
+	genUno:
+		--default
+		return;
+
+
+
+
 getuno_bydate:--getuno_bydate 
 	SET QUOTED_IDENTIFIER OFF
 	declare @cmd nvarchar(max)
