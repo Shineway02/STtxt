@@ -1,12 +1,31 @@
 ﻿z_anavccfe1:--z_anavccfe1
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
-set @t_bdate = case when '#non'=[2] then '' else [2] end
-set @t_edate = case when '#non'=[3] then char(255) else [3] end
+declare @t_bcustno nvarchar(100)
+declare @t_ecustno nvarchar(100)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
+declare @t_bproductno nvarchar(90)
+declare @t_eproductno nvarchar(90)
 declare @t_groupano nvarchar(30)
 declare @t_salesgroupano nvarchar(50)
+declare @t_vccstype nvarchar(10)
+declare @t_vcctypea nvarchar(10)
+declare @t_acomp nvarchar(50)
+
+set @t_bdate = case when '#non'=[2] then '' else [2] end
+set @t_edate = case when '#non'=[3] then char(255) else [3] end
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
+set @t_bproductno = case when '#non'=[10] then '' else [10] end
+set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
 set @t_salesgroupano = case when '#non'=[18] then '' else (case when [18] = ' ' then '' else [18] end) end
+set @t_vccstype = case when '#non'=[20] then '' else [20] end
+set @t_vcctypea = case when '#non'=[23] then '' else [23] end
+set @t_acomp = case when '#non'=[24] then '' else [24] end
 
 declare @tmp table(
 	gno nvarchar(1),
@@ -19,9 +38,9 @@ declare @tmp table(
 	maori float,
 	perscnt float
 )
+
 insert into @tmp
-select
-	'0',a.salesno,a.sales
+select '0',a.salesno,a.sales
 	,sum((case when a.typea='1' then 1 else -1 end)*b.mount)
 	,sum((case when a.typea='1' then 1 else -1 end)*b.weight)
 	,sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)),0
@@ -32,9 +51,15 @@ left join view_vccs b on a.noa = b.noa
 left join view_costs c on b.productno = c.productno and left(a.datea,6) = c.mon
 left join view_ucaucc d on b.productno = d.noa
 left join sss s on a.salesno=s.noa
-where isnull(a.salesno,'') != '' and (a.datea between @t_bdate and @t_edate) and
-		  (len(@t_groupano)=0 or d.groupano = @t_groupano)
-		  and (len(@t_salesgroupano)=0 or @t_salesgroupano=s.salesgroup)   	    	  
+where isnull(a.salesno,'') != '' and (a.datea between @t_bdate and @t_edate) 
+and (len(@t_groupano)=0 or isnull(d.groupano,'') = @t_groupano) 
+and (len(@t_salesgroupano)=0 or @t_salesgroupano=isnull(s.salesgroup,'')) 
+and isnull(a.custno,'') between @t_bcustno and @t_ecustno
+and isnull(a.salesno,'') between @t_bsalesno and @t_esalesno
+and isnull(b.productno,'') between @t_bproductno and @t_eproductno
+and (len(@t_vccstype)=0 or isnull(a.stype,'')=@t_vccstype)
+and (len(@t_vcctypea)=0 or isnull(a.typea,'')=@t_vcctypea)
+and (len(@t_acomp)=0 or isnull(a.cno,'')=@t_acomp)
 group by a.salesno,a.sales
 order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) desc,sum((case when a.typea='1' then 1 else -1 end)*b.mount)
 
@@ -72,6 +97,8 @@ declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
 declare @t_groupano nvarchar(30)
 declare @t_custtype nvarchar(30)
+declare @t_vccstype nvarchar(10)
+declare @t_vcctypea nvarchar(10)
 declare @t_acomp nvarchar(50)
 
 set @t_bdate = case when '#non'=[2] then '' else [2] end
@@ -84,7 +111,9 @@ set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
 set @t_custtype = case when '#non'=[19] then '' else [19] end
-set @t_acomp = case when '#non'=[23] then '' else [23] end
+set @t_vccstype = case when '#non'=[20] then '' else [20] end
+set @t_vcctypea = case when '#non'=[23] then '' else [23] end
+set @t_acomp = case when '#non'=[24] then '' else [24] end
 ------------------------------------------------------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -114,11 +143,13 @@ left join view_ucaucc e on b.productno = e.noa
 left join acomp f on a.cno = f.noa
 where isnull(a.custno,'') != '' and (a.datea between @t_bdate and @t_edate) and
 		  (len(@t_groupano)=0 or e.groupano = @t_groupano)
-		  and a.custno between @t_bcustno and @t_ecustno
-		  and d.salesno between @t_bsalesno and @t_esalesno
-		  and b.productno between @t_bproductno and @t_eproductno
+		  and isnull(a.custno,'') between @t_bcustno and @t_ecustno
+		  and isnull(a.salesno,'') between @t_bsalesno and @t_esalesno
+		  and isnull(b.productno,'') between @t_bproductno and @t_eproductno
 		  and (len(@t_custtype)=0 or @t_custtype=d.typea)
-		  and (len(@t_acomp)=0 or @t_acomp=a.cno)
+		  and (len(@t_vccstype)=0 or isnull(a.stype,'')=@t_vccstype)
+		  and (len(@t_vcctypea)=0 or isnull(a.typea,'')=@t_vcctypea)
+		  and (len(@t_acomp)=0 or @t_acomp=isnull(a.cno,''))
 group by a.custno,d.comp
 order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0))  desc
 ,sum((case when a.typea='1' then 1 else -1 end)*b.mount) desc
@@ -151,17 +182,27 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bcustno nvarchar(100)
 declare @t_ecustno nvarchar(100)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
 declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
 declare @t_groupano nvarchar(30)
+declare @t_vccstype nvarchar(10)
+declare @t_vcctypea nvarchar(10)
+declare @t_acomp nvarchar(50)
 
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+set @t_vccstype = case when '#non'=[20] then '' else [20] end
+set @t_vcctypea = case when '#non'=[23] then '' else [23] end
+set @t_acomp = case when '#non'=[24] then '' else [24] end
 
 declare @tmp table(
 	gno nvarchar(1),
@@ -190,10 +231,14 @@ from view_vcc a
 left join view_vccs b on a.noa = b.noa
 left join view_costs c on b.productno = c.productno and left(a.datea,6) = c.mon
 left join view_ucaucc d on b.productno = d.noa
-where isnull(b.productno,'') != '' and (a.datea between @t_bdate and @t_edate) and
-		  (isnull(a.custno,'') between @t_bcustno and @t_ecustno) and
-		  (len(@t_groupano)=0 or d.groupano = @t_groupano) and 
-		  (isnull(b.productno,'') between @t_bproductno and @t_eproductno) 
+where isnull(b.productno,'') != '' and (a.datea between @t_bdate and @t_edate) 
+	and isnull(a.custno,'') between @t_bcustno and @t_ecustno 
+	and isnull(a.salesno,'') between @t_bsalesno and @t_esalesno
+	and isnull(b.productno,'') between @t_bproductno and @t_eproductno
+	and (len(@t_groupano)=0 or d.groupano = @t_groupano)
+	and (len(@t_vccstype)=0 or isnull(a.stype,'')=@t_vccstype)
+	and (len(@t_vcctypea)=0 or isnull(a.typea,'')=@t_vcctypea)
+	and (len(@t_acomp)=0 or isnull(a.cno,'')=@t_acomp) 
 group by b.productno,b.product
 order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) desc,sum((case when a.typea='1' then 1 else -1 end)*b.mount) desc
 
@@ -226,22 +271,26 @@ from @tmp order by rankno;
 ---************************************************************************************
 z_anavccfe4:--z_anavccfe4
 declare @t_year nvarchar(10)
-declare @t_bsalesno nvarchar(35)
-declare @t_esalesno nvarchar(35)
 declare @t_bcustno nvarchar(35)
 declare @t_ecustno nvarchar(35)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
 declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
 declare @t_vccstype nvarchar(10)
+declare @t_vcctypea nvarchar(10)
+declare @t_acomp nvarchar(50)
 
 set @t_year = [16]
-set @t_bsalesno = case when '#non'=[8] then '' else [8] end
-set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_vccstype = case when '#non'=[20] then '' else [20] end
+set @t_vcctypea = case when '#non'=[23] then '' else [23] end
+set @t_acomp = case when '#non'=[24] then '' else [24] end
 
 declare @tmp table(
 	gno nvarchar(10),
@@ -336,10 +385,13 @@ insert into @tmp
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
 	left join cust c on a.custno = c.noa
-	where (left(a.datea,3) = @t_year) and 
-			 (a.custno between @t_bcustno and @t_ecustno) and
-			 (b.productno between @t_bproductno and @t_eproductno) and
-			 (a.salesno between @t_bsalesno and @t_esalesno) and (len(@t_vccstype)=0 or @t_vccstype=a.stype)
+	where (left(a.datea,3) = @t_year) 
+		and (isnull(a.custno,'') between @t_bcustno and @t_ecustno) 
+		and (isnull(b.productno,'') between @t_bproductno and @t_eproductno) 
+		and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) 
+		and (len(@t_vccstype)=0 or isnull(a.stype,'')=@t_vccstype)
+		and (len(@t_vcctypea)=0 or isnull(a.typea,'')=@t_vcctypea)
+		and (len(@t_acomp)=0 or isnull(a.cno,'')=@t_acomp)
 	group by a.salesno,a.sales,a.custno,c.nick,b.productno,b.product,substring(a.datea,5,2)
 	
 insert into @tmp
@@ -457,21 +509,26 @@ order by a.salesno,a.saless,a.custno,a.gno,a.productno,a.products;
 ---************************************************************************************
 z_anavccfe5:--z_anavccfe5
 declare @t_year nvarchar(10)
-declare @t_bsalesno nvarchar(35)
-declare @t_esalesno nvarchar(35)
 declare @t_bcustno nvarchar(35)
 declare @t_ecustno nvarchar(35)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
 declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
 declare @t_vccstype nvarchar(10)
+declare @t_vcctypea nvarchar(10)
+declare @t_acomp nvarchar(50)
+
 set @t_year = [16]
-set @t_bsalesno = case when '#non'=[8] then '' else [8] end
-set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_vccstype = case when '#non'=[20] then '' else [20] end
+set @t_vcctypea = case when '#non'=[23] then '' else [23] end
+set @t_acomp = case when '#non'=[24] then '' else [24] end
 
 declare @tmp table(
 	gno nvarchar(10),
@@ -563,10 +620,13 @@ insert into @tmp
 		0 ttotal
 	from view_vcc a
 	left join view_vccs b on a.noa=b.noa
-	where (left(a.datea,3) = @t_year) and 
-			 (a.custno between @t_bcustno and @t_ecustno) and
-			 (b.productno between @t_bproductno and @t_eproductno) and
-			 (a.salesno between @t_bsalesno and @t_esalesno) and (len(@t_vccstype)=0 or @t_vccstype=a.stype)
+	where (left(a.datea,3) = @t_year) 
+		and (isnull(a.custno,'') between @t_bcustno and @t_ecustno) 
+		and (isnull(b.productno,'') between @t_bproductno and @t_eproductno) 
+		and (isnull(a.salesno,'') between @t_bsalesno and @t_esalesno) 
+		and (len(@t_vccstype)=0 or isnull(a.stype,'')=@t_vccstype)
+		and (len(@t_vcctypea)=0 or isnull(a.typea,'')=@t_vcctypea)
+		and (len(@t_acomp)=0 or isnull(a.cno,'')=@t_acomp)
 	group by a.salesno,a.sales,b.productno,b.product,substring(a.datea,5,2)
 	
 insert into @tmp
@@ -668,11 +728,15 @@ order by a.salesno,a.saless,a.gno,a.productno,a.products;
 
 ---************************************************************************************
 z_anavccfe6:--z_anavccfe6
+declare @t_bcustno nvarchar(100)
+declare @t_ecustno nvarchar(100)
 declare @t_bsalesno nvarchar(35)
 declare @t_esalesno nvarchar(35)
 declare @t_lostdate nvarchar(90)
 declare @t_lostorder nvarchar(10)
 
+set @t_bcustno = case when '#non'=[6] then '' else [6] end
+set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
 set @t_bsalesno = case when '#non'=[8] then '' else [8] end
 set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_lostdate = case when '#non'=[21] then '0' else [21] end
@@ -698,7 +762,8 @@ declare @tmp table(
 insert @tmp 
 select '0',noa,comp,salesno,sales,isnull((select MAX(datea) from view_vcc where custno=a.noa),'')
 ,tel,fax,mobile,addr_comp,addr_home from cust a
-where isnull(salesno,'') between @t_bsalesno and @t_esalesno
+where isnull(a.salesno,'') between @t_bsalesno and @t_esalesno
+and a.noa between @t_bcustno and @t_ecustno
 
 delete @tmp where datea>dbo.q_cdn(@now_date,-1*cast(@t_lostdate as int))
 
@@ -719,17 +784,27 @@ declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bcustno nvarchar(100)
 declare @t_ecustno nvarchar(100)
+declare @t_bsalesno nvarchar(35)
+declare @t_esalesno nvarchar(35)
 declare @t_bproductno nvarchar(90)
 declare @t_eproductno nvarchar(90)
 declare @t_groupano nvarchar(30)
+declare @t_vccstype nvarchar(10)
+declare @t_vcctypea nvarchar(10)
+declare @t_acomp nvarchar(50)
 
 set @t_bdate = case when '#non'=[2] then '' else [2] end
 set @t_edate = case when '#non'=[3] then char(255) else [3] end
 set @t_bcustno = case when '#non'=[6] then '' else [6] end
 set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
+set @t_bsalesno = case when '#non'=[8] then '' else [8] end
+set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
 set @t_bproductno = case when '#non'=[10] then '' else [10] end
 set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
 set @t_groupano = case when '#non'=[17] then '' else (case when [17] = ' ' then '' else [17] end) end
+set @t_vccstype = case when '#non'=[20] then '' else [20] end
+set @t_vcctypea = case when '#non'=[23] then '' else [23] end
+set @t_acomp = case when '#non'=[24] then '' else [24] end
 
 declare @tmp table(
 	gno nvarchar(1),
@@ -747,8 +822,7 @@ declare @tmp table(
 	costa float
 )
 insert into @tmp
-select
-	'0',b.productno,b.product,MAX(b.unit)
+select '0',b.productno,b.product,MAX(b.unit)
 	,sum((case when a.typea='1' then 1 else -1 end)*b.lengthc)
 	,sum((case when a.typea='1' then 1 else -1 end)*b.mount)
 	,sum((case when a.typea='1' then 1 else -1 end)*b.weight)
@@ -760,10 +834,15 @@ from view_vcc a
 left join view_vccs b on a.noa = b.noa
 left join view_costs c on b.productno = c.productno and left(a.datea,6) = c.mon
 left join view_ucaucc d on b.productno = d.noa
-where isnull(b.productno,'') != '' and (a.datea between @t_bdate and @t_edate)
-		  and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)		  
-		  and (isnull(b.productno,'') between @t_bproductno and @t_eproductno)
-		  and (len(@t_groupano)=0 or d.groupano = @t_groupano)
+where isnull(b.productno,'') != '' 
+		and (a.datea between @t_bdate and @t_edate)
+		and (isnull(a.custno,'') between @t_bcustno and @t_ecustno)
+		and isnull(a.salesno,'') between @t_bsalesno and @t_esalesno
+		and (isnull(b.productno,'') between @t_bproductno and @t_eproductno)
+		and (len(@t_groupano)=0 or d.groupano = @t_groupano)
+		and (len(@t_vccstype)=0 or isnull(a.stype,'')=@t_vccstype)
+		and (len(@t_vcctypea)=0 or isnull(a.typea,'')=@t_vcctypea)
+		and (len(@t_acomp)=0 or isnull(a.cno,'')=@t_acomp)
 group by b.productno,b.product
 order by sum((case when a.typea='1' then 1 else -1 end)*round(b.total/(case when a.taxtype='3' then 1.05 else 1 end),0)) desc,sum((case when a.typea='1' then 1 else -1 end)*b.mount) desc
 
