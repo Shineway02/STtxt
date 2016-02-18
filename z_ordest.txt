@@ -624,7 +624,7 @@ insert into @tmp
 	      and (b.radius between @t_bradius and @t_eradius) and (b.width between @t_bwidth and @t_ewidth) and
 		  (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) and
 		  (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
-	order by a.odate,a.noa,b.no2
+	order by left(a.odate,6),a.noa,b.no2
 update @tmp set csize = replace(csize,'~#$','''')
 insert into @tmp(gno,odate,mount,weight,total)
 	select '1',left(odate,6),sum(mount),sum(weight),sum(total) from @tmp where gno='0' group by left(odate,6)
@@ -639,8 +639,8 @@ insert into @tmp(gno,odate,productno,products,spec,csize,mount,weight,total)
 	group by productno,products,spec,csize
 select
 	gno,odate,e,noa,no2,custno,comp,productno,products,spec,csize,dime,unit,mount,weight,price,total,
-	row_number()over(partition by left(odate,6) order by left(odate,6),gno) idno,qhref
-from @tmp order by left(odate,6),gno,odate,noa,productno,products,spec,csize;
+	row_number()over(partition by left(odate,6) order by left(odate,6),gno,noa,no2) idno,qhref
+from @tmp order by left(odate,6),gno,noa,no2,odate,productno,products,spec,csize;
 --*****************************************************************************************
 z_ordest2a:--z_ordest2a
 declare @t_bdate nvarchar(10)
