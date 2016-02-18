@@ -8,7 +8,7 @@ genUno:--uno.txt genUno
 	if exists(select * from acomp where CHARINDEX('聯琦',acomp)>0)
 		goto genUno_rk
 	else
-		goto genUno
+		goto genUno_default
 	
 	declare @t_accy nvarchar(20) = ''
 	declare @t_date nvarchar(20) = ''
@@ -27,7 +27,9 @@ genUno:--uno.txt genUno
 			drop table #getuno
 		END
 		create table #getuno(
-			noq nvarchar(10)
+			sel int identity(1,1)
+			,noq nvarchar(10)
+			,productno nvarchar(30)
 			,uno nvarchar(30)
 		)
 
@@ -35,8 +37,8 @@ genUno:--uno.txt genUno
 		begin
 
 			select @t_accy=accy,@t_date = datea from view_rc2 where noa=@t_noa
-			insert into #getuno(noq)
-			select noq
+			insert into #getuno(noq,productno)
+			select noq,productno
 			from view_rc2s 
 			where accy=@t_accy and noa=@t_noa
 			and [weight]>0
@@ -46,8 +48,8 @@ genUno:--uno.txt genUno
 		else if (UPPER(@t_para)='INA') and exists(select * from view_ina where noa=@t_noa)
 		begin
 			select @t_accy=accy,@t_date = datea,@t_custno=custno from view_ina where noa=@t_noa
-			insert into #getuno(noq)
-			select noq
+			insert into #getuno(noq,productno)
+			select noq,productno
 			from view_inas
 			where accy=@t_accy and noa=@t_noa
 			and [weight]>0
@@ -83,13 +85,49 @@ genUno:--uno.txt genUno
 			set @num = SUBSTRING(@maxuno2,5,2)
 		if len(isnull(@num,''))=0
 			set @num = '00'
-
-		set @n = (charindex(LEFT(@num,1),@sign)-1)*10 + CAST(RIGHT(@num,1) as int) + 1
-		set @num = SUBSTRING(@sign,floor(@n/10)+1,1)+SUBSTRING(@sign,(@n%10)+1,1)
-
-		update #getuno set uno= case when UPPER(@t_para)='INA' and len(ISNULL(@t_custno,''))>0 then 'C' else '' end +@key+@num+'-'+SUBSTRING(@sign,floor(b.recno/10)+1,1)+SUBSTRING(@sign,(b.recno%10)+1,1)
-		from #getuno a
-		left join (select noq,ROW_NUMBER()over(order by noq) recno from #getuno) b on a.noq=b.noq
+		-------------------------------------------------------------------------------------------------------		
+		--同一單據同一品號算同一批
+		declare @productno nvarchar(30)
+		declare @sel int
+		declare @uno nvarchar(30)
+		declare @m int
+	
+		declare cursor_table cursor for
+		select productno from #getuno group by productno
+		open cursor_table
+		fetch next from cursor_table
+		into @productno
+		while(@@FETCH_STATUS <> -1)
+		begin
+	
+			set @n = (charindex(LEFT(@num,1),@sign)-1)*10 + CAST(RIGHT(@num,1) as int) + 1
+			set @num = SUBSTRING(@sign,floor(@n/10)+1,1)+SUBSTRING(@sign,(@n%10)+1,1)
+			set @m = 1
+			
+			declare cursor_table2 cursor for
+			select sel from #getuno where productno=@productno order by noq
+			open cursor_table2
+			fetch next from cursor_table2
+			into @sel
+			while(@@FETCH_STATUS <> -1)
+			begin
+				
+				set @uno= case when UPPER(@t_para)='INA' and len(ISNULL(@t_custno,''))>0 then 'C' else '' end 
+					+@key+@num+'-'+SUBSTRING(@sign,floor(@m/10)+1,1)+SUBSTRING(@sign,(@m%10)+1,1)
+				update #getuno set uno=@uno where sel=@sel
+				set @m = @m +1
+				fetch next from cursor_table2
+				into @sel
+			end
+			close cursor_table2
+			deallocate cursor_table2
+			
+			
+			fetch next from cursor_table
+			into @productno
+		end
+		close cursor_table
+		deallocate cursor_table	
 
 		--更新資料
 		if UPPER(@t_para)='INA'
@@ -105,7 +143,7 @@ genUno:--uno.txt genUno
 
 		drop table #getuno
 		return
-	genUno:
+	genUno_default:
 		--default
 		return;
 
