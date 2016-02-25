@@ -18,14 +18,18 @@ declare @tmp table(
 	code nvarchar(50),
 	detail nvarchar(50),
 	frame nvarchar(10),
-	mount float
+	mount float,
+	namea nvarchar(50),
+	tmount float
 )
 
 insert into @tmp
-select '0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.noa,a.modnoa,a.mech,a.datea,b.code,b.detail,b.frame,SUM(b.mount) from modout a
+select '0',ROW_NUMBER()over(partition by a.modnoa order by b.code),a.noa,a.modnoa,a.mech,a.datea,b.code,b.detail,b.frame,SUM(b.mount) 
+,a.namea,SUM(b.mount)
+from modout a
 left join modouts b on a.noa = b.noa
 where(a.noa between @t_bnoa and @t_enoa)
-group by a.noa,a.modnoa,a.mech,a.datea,b.code,b.detail,b.frame
+group by a.noa,a.modnoa,a.mech,a.datea,b.code,b.detail,b.frame,a.namea
 
 declare @noa nvarchar(50)
 declare @cnt  int
