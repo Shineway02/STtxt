@@ -11,6 +11,7 @@ declare @eproductno nvarchar(50)= case when '#non'=[6] then CHAR(255) else [6] e
 declare @ucceno nvarchar(30)
 declare @accy nvarchar(5)
 declare @noqlen int
+declare @mon nvarchar(10)
 
 declare @cmd nvarchar(max)
 IF OBJECT_ID('tempdb..#tmp')is not null
@@ -20,9 +21,15 @@ BEGIN
 END
 
 if(len(@datea)=10)
+begin
 	set @accy=right('000'+cast(cast(left(@datea,4) as int)-1911 as nvarchar(10)),3)
+	set @mon=left(@datea,7)
+end
 else
+begin
 	set @accy=left(@datea,3)
+	set @mon=left(@datea,6)
+end
 	
 --該日期中最大的noa
 select @ucceno=MAX(noa) from view_ucce where noa like @uccekey+REPLACE(@datea,'/','')+'%' 
@@ -53,6 +60,11 @@ update a
 set mount=isnull(b.mount,0),weight=isnull(b.weight,0)
 from #tmp a left join stkucc(@datea,'','') b on a.productno=b.productno and a.storeno=b.storeno
 
+update a
+set price=isnull(b.price,0),total=isnull(a.mount,0)*isnull(b.price,0)
+from #tmp a 
+outer apply (select top 1 mon,price from view_costs where productno=a.productno and mon<=@mon order by mon desc) b
+
 delete #tmp where mount=0 and weight=0
 
 set @noqlen=len(cast((select count(*) from #tmp) as nvarchar(50)))
@@ -67,8 +79,8 @@ if((select count(*) from #tmp)>0)
 begin
 	exec("insert ucce"+@accy+" (noa,datea,kind)	 select '"+@ucceno+"' ,'"+@datea+"','1' ")
 
-	EXEC(" insert ucces"+@accy+"(noa,noq,storeno,store,productno,product,spec,unit,mount,weight,emount2,eweight2,price,total)
-		select '"+@ucceno+"',noq,storeno,store,productno,product,spec,unit,mount,weight,mount,weight,price,total from #tmp
+	EXEC(" insert ucces"+@accy+"(noa,noq,datea,storeno,store,productno,product,spec,unit,mount,weight,emount2,eweight2,price,total)
+		select '"+@ucceno+"',noq,'"+@datea+"',storeno,store,productno,product,spec,unit,mount,weight,mount,weight,price,total from #tmp
 	")
 end
 
