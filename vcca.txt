@@ -1,3 +1,25 @@
+checkMoney:-- vcca.txt  checkMoney 	
+	declare @t_noa nvarchar(20) = N[1]
+	declare @t_custno nvarchar(20) = N[2]
+	declare @t_mon nvarchar(20) = N[3]
+	------------------------------------------------------------------------------------------
+	declare @vcc float = 0
+	declare @vcca float = 0
+	
+	select @vcc=SUM(ISNULL([money],0)) from view_vcc where custno=@t_custno and mon=@t_mon
+	--本月其他張發票金額
+	----項目有預收款排除
+	select @vcca=SUM(ISNULL([money],0)) from vcca 
+	where custno=@t_custno and mon=@t_mon and noa!=@t_noa
+	and not exists(select * from vccas where vcca.noa=vccas.noa and CHARINDEX('預收',productno)>0)
+	
+	declare @tmp table(
+		vcc float
+		,vcca float
+	)
+	insert into @tmp(vcc,vcca)values(ISNULL(@vcc,0),ISNULL(@vcca,0))
+	select * from @tmp;
+
 checkdata:-- vcca.txt  checkdata 
 	declare @q_cur nvarchar(max) = N[1]
 	declare @t_vccano nvarchar(max) = N[2]
