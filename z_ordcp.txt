@@ -2,6 +2,9 @@
 declare @t_xkind nvarchar(max) = case when '#non' = '[2]' then '' else '[2]' end
 declare @t_bnoa nvarchar(30) = case when '#non' = [5] then '' else [5] end
 declare @t_enoa nvarchar(30) = case when '#non' = [6] then CHAR(255) else [6] end
+declare @t_project nvarchar(max) = case when '#non' = '[7]' then '' else '[7]' end
+declare @t_isspec nvarchar(max) = case when '#non' = '[8]' then '' else '[8]' end
+
 declare @t_pageline int = 5   --------一頁幾行
 declare @tmp table(
 	gno nvarchar(1),
@@ -26,26 +29,28 @@ declare @tmp table(
 	a_tax float,
 	a_total float,
 	b_productno nvarchar(30),
-	b_products nvarchar(90),
+	b_products nvarchar(100),
+	b_spec nvarchar(100),
 	b_unit nvarchar(15),
 	b_mount float,
 	b_price float,
 	b_total float,
-	b_memo nvarchar(max)
+	b_memo nvarchar(max),
+	b_comp nvarchar(50)
 )
 insert into @tmp
 select
-	'0',ROW_NUMBER()over(partition by a.noa order by a.noa),1	,0,
-	a.noa,a.odate,a.kind,a.tggno,c.comp,a.tel,a.fax,a.addr,a.addr2,a.trantype,a.trandate,a.paytype,replace(a.memo,'chr(10)','<BR>'),a.money,a.tax,a.total,
-	b.productno,b.product,b.unit,b.mount,b.price,b.total,replace(b.memo,'chr(10)','<BR>')
+	'0',ROW_NUMBER()over(partition by a.noa order by a.noa),1,0
+	,a.noa,a.odate,a.kind,a.tggno,c.comp,a.tel,a.fax,a.addr,a.addr2,a.trantype,a.trandate,a.paytype,replace(a.memo,'chr(10)','<BR>'),a.money,a.tax,a.total
+	,b.productno,b.product,b.spec,b.unit,b.mount,b.price,b.total,replace(b.memo,'chr(10)','<BR>'),b.comp
 from view_ordc[1] a
 left join view_ordcs[1] b on a.noa = b.noa
 left join tgg c on a.tggno = c.noa
 where (a.noa between @t_bnoa and @t_enoa)
 and isnull(a.cancel,0)=0
 and isnull(b.cancel,0)=0
-
 order by a.noa,b.no2
+
 update @tmp set a_kind = (
 		case a_kind when '1' then '原料' when '2' then '物料' when '3' then '費用' when '4' then '費用(製)' 
 			when '5' then '維修' when '6' then '加工' end
@@ -100,12 +105,12 @@ begin
 		end
 	end
 	
-	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,b_mount,b_total,a_money,a_tax,a_total,a_memo,a_addr_a) 
-	select '1',(@t_pageline+1),pageno,a_noa,a_tggno,a_tggs,sum(b_mount),sum(b_total),max(a_money),max(a_tax),max(a_total),MAX(a_memo),MAX(a_addr_a)
+	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,b_mount,b_total,a_money,a_tax,a_total,a_memo,a_addr_a,a_addr_b) 
+	select '1',(@t_pageline+1),pageno,a_noa,a_tggno,a_tggs,sum(b_mount),sum(b_total),max(a_money),max(a_tax),max(a_total),MAX(a_memo),MAX(a_addr_a),MAX(a_addr_b)
 	from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_tggno,a_tggs
 	
-	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,a_memo,a_addr_a) 
-	select '2',(@t_pageline+2),pageno,a_noa,a_tggno,a_tggs,MAX(a_memo),MAX(a_addr_a)
+	insert into @tmp(gno,orderno,pageno,a_noa,a_tggno,a_tggs,a_memo,a_addr_a,a_addr_b) 
+	select '2',(@t_pageline+2),pageno,a_noa,a_tggno,a_tggs,MAX(a_memo),MAX(a_addr_a),MAX(a_addr_b)
 	from @tmp where gno=0 and a_noa=@a_noa and pageno=@pageno group by a_noa,pageno,a_tggno,a_tggs
 		
 	fetch next from cursor_table
@@ -129,12 +134,17 @@ close cursor_table
 deallocate cursor_table
 
 select
-	gno,pageno,w_totpage,a_noa,a_odate,a_kind,a_tggno,a_tggs,a_tel,a_fax,a_addr_a,a_addr_b,a_trantype,a_trandate,a_paytype,
-	a_memo,b_productno,b_products,b_unit,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_tax),1)),4,12)) a_tax,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_total),1)),4,12)) a_total,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_mount),1)),4,12)) b_mount,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_price),1)),4,12)) b_price,
-	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,b_total),1)),4,12)) b_total,b_memo
+	gno,pageno,w_totpage,a_noa,a_odate,case when @t_project='XY' then '' else a_kind end a_kind,a_tggno,a_tggs,a_tel,a_fax
+	,case when len(a_addr_b)>0 then a_addr_b else a_addr_a end a_addr
+	,a_trantype,a_trandate,a_paytype,a_memo
+	,b_productno,b_products+(case when @t_isspec='1' then b_spec else '' end) b_products
+	,b_unit
+	,dbo.getComma(case when @t_project='XY' then null else a_money end,-1) a_money
+	,dbo.getComma(case when @t_project='XY' then null else a_tax end,-1) a_tax
+	,dbo.getComma(case when @t_project='XY' then null else a_total end,-1) a_total
+	,dbo.getComma(b_mount,-1) b_mount
+	,dbo.getComma(case when @t_project='XY' then null else b_price end,-1) b_price --1050223 XY 暫時不顯示
+	,dbo.getComma(case when @t_project='XY' then null else b_total end,-1) b_total --1050223 XY 暫時不顯示
+	,b_memo+(case when @t_project='XY' then b_comp else '' end) b_memo
+	,case when @t_project='XY' then '' else '類別：' end lblkind
 from @tmp order by a_tggno,a_noa desc,pageno,gno,orderno;
