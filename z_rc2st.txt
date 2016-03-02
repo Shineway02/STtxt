@@ -34,6 +34,7 @@ z_rc2st1:--z_rc2st1
 	end catch
 	declare @t_style nvarchar(max) = case when '#non'=[20] then '' else [20] end
 	----------------------------------------------------------------------------------------------
+	----------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(1),
 		noa nvarchar(20),
@@ -53,15 +54,17 @@ z_rc2st1:--z_rc2st1
 		csize nvarchar(max),
 		qhref nvarchar(max),
 		coin nvarchar(50),
+		floata float,
 		spec nvarchar(50),
 		source nvarchar(50),
 		uno nvarchar(30)
+		
 	)
-	insert into @tmp(gno,noa,noq,type,datea,mon,tggno,comp,productno,xproduct,unit,mount,weight,price,total,csize,qhref,coin,spec,source,uno)
+	insert into @tmp(gno,noa,noq,type,datea,mon,tggno,comp,productno,xproduct,unit,mount,weight,price,total,csize,qhref,coin,floata,spec,source,uno)
 	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) type, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit, 
 		   b.mount, b.weight, b.price, b.total,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-		   ,a.coin,b.spec,b.source,b.uno
+		   ,a.coin,a.floata,b.spec,b.source,b.uno
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	where a.noa is not null
@@ -83,6 +86,11 @@ z_rc2st1:--z_rc2st1
 	insert into @tmp(gno,datea,mount,total)
 		select '2',left(datea,6),sum(mount),sum(total) from @tmp where gno='0' group by left(datea,6)
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	--轉來的要回去抓匯率
+	update @tmp set coin=b.coin,floata=b.floata
+	from @tmp a
+	left join deli b on a.noa=b.rc2no
+	where b.noa is not null
 	
 	select gno, noa, noq, type, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4) comp, productno, xproduct,unit,csize
 	,dbo.getComma(mount,-1) mount
