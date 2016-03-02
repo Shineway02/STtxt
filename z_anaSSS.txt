@@ -6,7 +6,8 @@ declare @t_mwage float = case when '#non'=[3] then 1 else [3] end
 declare @t_bwage float= case when '#non'=[4] then 1  else [4] end
 declare @t_rage float= case when '#non'=[5] then 1  else [5] end
 declare @t_rwage float= case when '#non'=[6] then 0 else [6] end
-declare @r_len nvarchar(10)='[22]'  
+declare @r_len nvarchar(10)='[22]'
+declare @r_proj nvarchar(10)='[23]'  
 ---------------------------------------------------------------------------------
 SET QUOTED_IDENTIFIER OFF
 IF OBJECT_ID('tempdb..#tmp')is not null
@@ -45,7 +46,7 @@ begin
 			case when len(outdate)=0 then convert(float,year(getdate()))-1911 else CONVERT(float,left(outdate,3)) end -CONVERT(float,left(indate,3)) 
 			+round((case when len(outdate)=0 then convert(float,month(getdate())) else CONVERT(float,left(right(outdate,5),2)) end -CONVERT(float,left(right(indate,5),2)))/12,1)
 			end
-	from sss where len(indate)>0 and len(birthday)>0 and len(outdate)=0
+	from sss where len(indate)>0 and len(birthday)>0 and len(outdate)=0 and (@r_proj!='RB' or typea!='其他')
 end
 else 
 begin
@@ -57,7 +58,7 @@ begin
 			+round((case when len(outdate)=0 then convert(float,month(getdate())) else CONVERT(float,left(right(outdate,5),2)) end -CONVERT(float,left(right(indate,5),2)))/12,1)
 			end
 	from sss 
-	where len(indate)>0 and len(birthday)>0 and len(outdate)=0
+	where len(indate)>0 and len(birthday)>0 and len(outdate)=0 and (@r_proj!='RB' or typea!='其他')
 end
 
 --select * from #tmp
@@ -196,6 +197,7 @@ declare @t_smon nvarchar(max)=case when '#non'=[8] then '' else [8] end
 declare @t_emon nvarchar(max)=case when '#non'=[9] then '' else [9] end
 declare @type1 nvarchar(10)=case when '#non'=[12] then '' else [12] end  
 declare @r_len int=[22]
+declare @r_proj nvarchar(10)='[23]'
 
 declare @result table(
 	gno nvarchar(max),
@@ -268,12 +270,12 @@ begin
 	
 	insert @result (gno,aa,ab,ac,ad,ae,ah,ai)
 	select '0',@t_tmpmon
-	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_premon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_premon) and CHARINDEX(sex,@sex)>0)
-	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_tmpmon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_tmpmon) and CHARINDEX(sex,@sex)>0)
-	,(select count(*) from sss where left(indate,@r_lenm)=@t_tmpmon and CHARINDEX(sex,@sex)>0)
-	,(select count(*) from sss where left(outdate,@r_lenm)=@t_tmpmon and CHARINDEX(sex,@sex)>0)
-	,(select count(*) from sss where (indate<=@t_tmpmon+'/01' or isnull(indate,'')='') and (isnull(outdate,'')='' or outdate>@t_tmpmon+'/01') and CHARINDEX(sex,@sex)>0)
-	,(select count(*) from sss where (indate<=@t_tmpmon+'/31' or isnull(indate,'')='') and (isnull(outdate,'')='' or outdate>@t_tmpmon+'/31') and CHARINDEX(sex,@sex)>0)
+	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_premon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_premon) and CHARINDEX(sex,@sex)>0 and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_tmpmon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_tmpmon) and CHARINDEX(sex,@sex)>0 and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where left(indate,@r_lenm)=@t_tmpmon and CHARINDEX(sex,@sex)>0 and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where left(outdate,@r_lenm)=@t_tmpmon and CHARINDEX(sex,@sex)>0 and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where (indate<=@t_tmpmon+'/01' or isnull(indate,'')='') and (isnull(outdate,'')='' or outdate>@t_tmpmon+'/01') and CHARINDEX(sex,@sex)>0 and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where (indate<=@t_tmpmon+'/31' or isnull(indate,'')='') and (isnull(outdate,'')='' or outdate>@t_tmpmon+'/31') and CHARINDEX(sex,@sex)>0 and (@r_proj!='RB' or typea!='其他'))
 
 	set @t_tmpmon=dbo.q_cdn(@t_tmpmon+'/01',35)
 	set @t_tmpmon=LEFT(@t_tmpmon,@r_lenm)
@@ -320,6 +322,7 @@ declare @t_smon nvarchar(max)=case when '#non'=[13] then '' else [13] end
 declare @t_emon nvarchar(max)=case when '#non'=[14] then '' else [14] end
 declare @type nvarchar(10)=case when '#non'=[15] then '' else [15] end  
 declare @r_len int=[22]  
+declare @r_proj nvarchar(10)='[23]'
 
 declare @tmp table(
 	gno nvarchar(10), 
@@ -382,10 +385,10 @@ begin
 	
 	insert @tmp (gno,mon,yy,mm,ab,ac,ad,ae)
 	select '0',@t_tmpmon,LEFT(@t_tmpmon,@r_len),RIGHT(@t_tmpmon,2)
-	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_premon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_premon))
-	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_tmpmon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_tmpmon))
-	,(select count(*) from sss where (left(indate,@r_lenm)=@t_tmpmon ))
-	,(select count(*) from sss where (left(outdate,@r_lenm)=@t_tmpmon))
+	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_premon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_premon) and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where (left(indate,@r_lenm)<=@t_tmpmon or isnull(indate,'')='') and (isnull(outdate,'')='' or left(outdate,@r_lenm)>@t_tmpmon) and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where (left(indate,@r_lenm)=@t_tmpmon ) and (@r_proj!='RB' or typea!='其他'))
+	,(select count(*) from sss where (left(outdate,@r_lenm)=@t_tmpmon) and (@r_proj!='RB' or typea!='其他'))
 
 	set @t_tmpmon=dbo.q_cdn(@t_tmpmon+'/01',35)
 	set @t_tmpmon=LEFT(@t_tmpmon,@r_lenm)
@@ -397,7 +400,7 @@ select '1',mon from @tmp group by mon
 insert @tmp (gno,mon,indate,outdate,partno,part,noa,nass)
 select '2',a.mon,b.indate,b.outdate,b.partno,b.part,b.noa,b.namea 
 from @tmp a left join sss b on (a.mon=left(isnull(b.indate,''),@r_lenm) or a.mon=left(isnull(b.outdate,''),@r_lenm))
-where a.gno='1' and isnull(b.noa,'')!=''
+where a.gno='1' and isnull(b.noa,'')!='' and (@r_proj!='RB' or b.typea!='其他')
 
 update @tmp
 set st=(case when LEFT(indate,@r_lenm)=mon and LEFT(outdate,@r_lenm)=mon then '新進,離職'
@@ -419,6 +422,7 @@ declare @t_edate nvarchar(15) =case when '#non'=[11] then '' else [11] end
 declare @type1 nvarchar(max) =case when '#non'=[15] then '' else [15] end 
 declare @type2 nvarchar(10)=case when '#non'=[12] then '' else [12] end
 declare @r_len nvarchar(10)='[22]'  
+declare @r_proj nvarchar(10)='[23]'
 -------------------------------------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
@@ -452,6 +456,7 @@ begin
 		  case when @type1 like '現況在職' then '0' when @type1 like '現況離職' then '1' when @type1='' then '' else '%' end 
 		  and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' when @type2='' then '' else '%' end 
 		  and left(right(birthday,5),2) between @t_bdate and @t_edate 
+		  and (@r_proj!='RB' or typea!='其他')
 end
 else 
 begin
@@ -469,6 +474,7 @@ begin
 		  case when @type1 like '現況在職' then '0' when @type1 like '現況離職' then '1' when @type1='' then '' else '%' end 
 		  and sex like case when @type2 like '女' then '0' when @type2 like '男' then '1' when @type2='' then '' else '%' end 
 		  and left(right(birthday,5),2) between @t_bdate and @t_edate 
+		  and (@r_proj!='RB' or typea!='其他')
 end
 	  
 select namea nnas,*
@@ -484,6 +490,7 @@ declare @t_option03 nvarchar(max) = case when '#non'=[18] then '' else [18] end
 declare @t_sort03 nvarchar(max) = case when '#non'=[19] then '' else [19] end 
 declare @t_accy nvarchar(max) = '[20]'
 declare @t_nameb nvarchar(max) = '[21]'
+declare @r_proj nvarchar(10)='[23]'
 declare @cmd nvarchar(max)
 --------------------------------------------------------------------------------------- 
 set @t_sort03 = case when @t_sort03 ='partno' then 'partno,a.jobno,a.noa' else @t_sort03 end 
@@ -496,7 +503,8 @@ set @cmd =
 " from sss a"+ 
 " left join part b on a.partno=b.noa"+ 
 " where a.noa between @t_bsssno and @t_esssno"+ 
-" and ((charindex('in',@t_option03)>0 and len(isnull(outdate,''))=0) or (charindex('out',@t_option03)>0 and len(isnull(outdate,''))>0))"+ 
+" and ((charindex('in',@t_option03)>0 and len(isnull(outdate,''))=0) or (charindex('out',@t_option03)>0 and len(isnull(outdate,''))>0))"+
+" and ('"+@r_proj+"' != 'RB' or typea!='其他')"+ 
 " order by a."+@t_sort03 
 execute sp_executesql @cmd,N'@t_bsssno nvarchar(20),@t_esssno nvarchar(20),@t_nameb nvarchar(max),@t_option03 nvarchar(max)' 
 ,@t_bsssno=@t_bsssno,@t_esssno=@t_esssno,@t_nameb=@t_nameb,@t_option03=@t_option03
