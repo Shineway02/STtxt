@@ -1346,6 +1346,8 @@ z_ordbp1:--z_ordbp1
 	declare @t_kind nvarchar(max) = case when '#non' = '[20]' then '' else '[20]' end
 	declare @t_bno nvarchar(20) = case when '#non' = [30] then '' else [30] end
 	declare @t_eno nvarchar(20) = case when '#non' = [31] then char(255) else [31] end
+	declare @xproj nvarchar(20) = '[39]'
+	declare @isspec nvarchar(20) = '[40]'
 	declare @t_pageline int = 6
 	----------------------------------------------------------------------------------------
 	declare @n int
@@ -1391,8 +1393,8 @@ z_ordbp1:--z_ordbp1
 		trantype nvarchar(20),
 		paytype nvarchar(20),
 		
-		productno nvarchar(20),
-		product nvarchar(50),
+		productno nvarchar(50),
+		product nvarchar(200),
 		unit nvarchar(20),
 		mount float,
 		price float,
@@ -1408,7 +1410,8 @@ z_ordbp1:--z_ordbp1
 		,a.tggno,a.tgg,c.addr_comp,c.tel,c.fax
 		,case when len(isnull(d.kind,''))=0 then a.kind else d.kind end
 		,a.trantype,a.paytype
-		,b.productno,b.product,b.unit,b.mount,b.price,b.total,b.memo
+		,b.productno,b.product+(case when @isspec='1' then ' '+b.spec else '' end)
+		,b.unit,b.mount,b.price,b.total,b.memo
 	from view_ordb a
 	left join view_ordbs b on a.noa=b.noa
 	left join tgg c on a.tggno = c.noa
@@ -1573,6 +1576,8 @@ declare @t_eldate nvarchar(20) = case when '#non' = [24] then char(255) else [24
 declare @t_bpno nvarchar(20) = case when '#non' = [25] then '' else [25] end
 declare @t_epno nvarchar(20) = case when '#non' = [26] then char(255) else [26] end
 declare @t_ordc nvarchar(20) = case when '#non' = [27] then '' else [27] end
+declare @xproj nvarchar(20) = '[39]'
+declare @isspec nvarchar(20) = '[40]'
 --****************************************************************************************
 declare @tmp table(
 	gno nvarchar(1),
@@ -1592,7 +1597,8 @@ declare @tmp table(
 	umount float
 )
 	insert @tmp
-	select '0',a.noa,b.no3,b.productno,b.product,b.unit,b.style,a.tgg,a.odate,b.ldate,b.mount,b.omount
+	select '0',a.noa,b.no3,b.productno,b.product+(case when @isspec='1' then ' '+b.spec else '' end)
+	,b.unit,b.style,a.tgg,a.odate,b.ldate,b.mount,b.omount
 	,isnull((select sum(mount) from view_ordcs where productno=b.productno and ordbno=b.noa and no3=b.no3),0)
 	,isnull((select sum(c1) from view_ordcs where productno=b.productno and ordbno=b.noa and no3=b.no3),0)
 	,isnull((select sum(notv) from view_ordcs where productno=b.productno and ordbno=b.noa and no3=b.no3),0)

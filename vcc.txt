@@ -282,11 +282,14 @@ set @accy=isnull((select top 1 accy from view_quat where noa=@t_quatno1),@t_accy
 EXEC("
 	update a
 	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
-	--,enda=(case when eweight=0 then 1 else enda end)
+	,enda=(case when eweight!=0 then 0 else enda end)
 	from quat"+@accy+" a
-	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
-	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
-	from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
+	outer apply(select SUM(gweight)gweight from(
+		select (case when typea='2' then -1 else 1 end) * 
+		(case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end) gweight
+		from view_vcc where charindex(a.noa,apvmemo)>0
+	)tmp)b
 	where a.noa='"+@t_quatno1+"'
 ")
 
@@ -302,11 +305,14 @@ set @accy=isnull((select top 1 accy from view_quat where noa=@t_quatno2),@t_accy
 EXEC("
 	update a
 	set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
-	--,enda=(case when eweight=0 then 1 else enda end)
+	,enda=(case when eweight!=0 then 0 else enda end)
 	from quat"+@accy+" a
-	outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
-	+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
-	from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
+	outer apply(select SUM(gweight)gweight from(
+		select (case when typea='2' then -1 else 1 end) *
+		(case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end) gweight
+		from view_vcc where charindex(a.noa,apvmemo)>0
+	)tmp)b
 	where a.noa='"+@t_quatno2+"'
 ")
 
@@ -324,11 +330,14 @@ begin
 	EXEC("
 		update a
 		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
-		--,enda=(case when eweight=0 then 1 else enda end)
+		,enda=(case when eweight!=0 then 0 else enda end)
 		from quat"+@accy+" a
-		outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
-		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
-		from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
+		outer apply(select SUM(gweight)gweight from(
+			select (case when typea='2' then -1 else 1 end) *
+			(case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+			+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end) gweight
+			from view_vcc where charindex(a.noa,apvmemo)>0
+		)tmp)b
 		where a.noa='"+@t_cont1+"'
 	")
 	
@@ -347,11 +356,14 @@ begin
 	EXEC("
 		update a
 		set gweight=isnull(b.gweight,0),eweight=isnull(weight,0)-isnull(b.gweight,0)
-		--,enda=(case when eweight=0 then 1 else enda end)
+		,enda=(case when eweight!=0 then 0 else enda end)
 		from quat"+@accy+" a
-		outer apply(select SUM(gweight)gweight from(select case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
-		+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end gweight
-		from view_vcc where charindex(a.noa,apvmemo)>0)tmp)b
+		outer apply(select SUM(gweight)gweight from(
+			select (case when typea='2' then -1 else 1 end) * 
+			(case when dbo.split(dbo.split(apvmemo,'##',0),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',0),'@',1) else 0 end
+			+case when dbo.split(dbo.split(apvmemo,'##',1),'@',0)=a.noa then dbo.split(dbo.split(apvmemo,'##',1),'@',1) else 0 end) gweight
+			from view_vcc where charindex(a.noa,apvmemo)>0
+		)tmp)b
 		where a.noa='"+@t_cont2+"'
 	")
 	
