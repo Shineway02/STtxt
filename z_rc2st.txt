@@ -34,7 +34,6 @@ z_rc2st1:--z_rc2st1
 	end catch
 	declare @t_style nvarchar(max) = case when '#non'=[20] then '' else [20] end
 	----------------------------------------------------------------------------------------------
-	----------------------------------------------------------------------------------------------
 	declare @tmp table(
 		gno nvarchar(1),
 		noa nvarchar(20),
@@ -44,27 +43,33 @@ z_rc2st1:--z_rc2st1
 		mon nvarchar(10),
 		tggno nvarchar(20),
 		comp nvarchar(max),
+		nick nvarchar(20),
 		productno nvarchar(max),
 		xproduct nvarchar(max),
 		unit nvarchar(20),
 		mount float,
 		weight float,
-		price float,
 		total float,
 		csize nvarchar(max),
 		qhref nvarchar(max),
-		coin nvarchar(50),
-		floata float,
 		spec nvarchar(50),
-		source nvarchar(50),
-		uno nvarchar(30)
-		
+		source nvarchar(50)
+		,uno nvarchar(30)
+		,price float  --台幣單價: 進貨單上的單價都是台幣,有幣別、匯率才是外幣
+		,aprice float --原幣單價: 進口報單轉來的都會變成台幣單價,因此要回去抓單價
+		,coin nvarchar(50) --幣別
+		,floata float      --匯率
 	)
-	insert into @tmp(gno,noa,noq,type,datea,mon,tggno,comp,productno,xproduct,unit,mount,weight,price,total,csize,qhref,coin,floata,spec,source,uno)
+	insert into @tmp(gno,noa,noq,type,datea,mon,tggno,comp,productno,xproduct,unit,mount,weight,total,csize,qhref
+		,spec,source,uno
+		,price,aprice,coin,floata)
 	select '0' gno, a.noa noa, b.noq noq, (case when a.typea='2' then '退' else '進' end) type, a.datea datea, (case when a.mon='' then left(a.datea,6) else a.mon end), a.tggno, a.tgg, b.productno, b.product, b.unit, 
-		   b.mount, b.weight, b.price, b.total,
+		   b.mount, b.weight, b.total,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end),'rc2st'+b.accy
-		   ,a.coin,a.floata,b.spec,b.source,b.uno
+		   ,b.spec,b.source,b.uno
+		   ,case when ISNULL(a.floata,0)=0 then b.price else round(b.price/a.floata,2) end
+		   ,case when ISNULL(a.floata,0)=0 then 0 else b.price end
+		   ,a.coin,a.floata
 	from view_rc2s b
 	left join view_rc2 a on a.noa = b.noa
 	where a.noa is not null
@@ -86,8 +91,9 @@ z_rc2st1:--z_rc2st1
 	insert into @tmp(gno,datea,mount,total)
 		select '2',left(datea,6),sum(mount),sum(total) from @tmp where gno='0' group by left(datea,6)
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	---------~~~~~~~~
 	--轉來的要回去抓匯率
-	update @tmp set coin=b.coin,floata=b.floata
+	update @tmp set coin=b.coin,floata=b.floata,aprice=case when ISNULL(b.floata,0)=0 then 0 else round(price/b.floata,2) end
 	from @tmp a
 	left join deli b on a.noa=b.rc2no
 	where b.noa is not null
@@ -95,7 +101,10 @@ z_rc2st1:--z_rc2st1
 	select gno, noa, noq, type, datea, LEFT(datea,6) xdatea, mon, tggno, left(comp,4) comp, productno, xproduct,unit,csize
 	,dbo.getComma(mount,-1) mount
 	,dbo.getComma(weight,-1) weight
-	,isnull(coin+' ','')+dbo.getComma(price,-1) price
+	,dbo.getComma(price,-1) price
+	,case when ISNULL(aprice,0)=0 then '' else dbo.getComma(aprice,-1) end aprice
+	,coin
+	,case when ISNULL(floata,0)=0 then '' else dbo.getComma(floata,-1) end floata
 	,dbo.getComma(total,0) total
 	,row_number()over(partition by datea,left(datea,6) order by datea desc,gno,noa,noq) idno,qhref
 	,spec,source,uno
