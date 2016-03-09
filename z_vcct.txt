@@ -47,7 +47,7 @@ select
 		 when taxtype='6' then '作廢' 
 		 when taxtype='D' then '空白' 
 		 end,
-	serial,memo+(case when @t_proj='RB' then (case when len(memo)>0 then ' '+sono else '' end) else '' end)
+	serial,memo+(case when @t_proj='RB' then (case when len(sono)>0 then ' '+isnull(sono,'') else '' end) else '' end)
 from vcct
 where(datea between @t_bdate and @t_edate) and (noa between @t_bnoa and @t_enoa) and
 	 (LEN(@t_serial)=0 or serial=@t_serial) and(LEN(@t_book)=0 or book=@t_book) and
