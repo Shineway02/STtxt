@@ -128,7 +128,7 @@ begin
 	
 	set @isasset = CAST(@h as bit)
 	set @isself = CAST(@i as bit)
-	set @money = CAST(REPLACE(@j,',','') as float)
+	set @money = round(CAST(REPLACE(@j,',','') as float),0)
 	--case when @k='9' then CAST(REPLACE(@m,',','') as float) else CAST(REPLACE(@j,',','') as float) end
 	
 	--"0@,1@應稅,6@作廢,2@零稅率,3@內含,4@免稅,5@自訂" --內含拿掉
@@ -138,8 +138,8 @@ begin
 						--when @k = '9' then '3'
 						when @k = 'D' then 'D'
 						when @k = 'F' then '6' else '1' end
-	set @tax = CAST(REPLACE(@l,',','') as float) --case when @k='9' then 0 else CAST(REPLACE(@l,',','') as float) end
-	set @total = CAST(REPLACE(@m,',','') as float)
+	set @tax = round(CAST(REPLACE(@l,',','') as float),0) --case when @k='9' then 0 else CAST(REPLACE(@l,',','') as float) end
+	set @total = round(CAST(REPLACE(@m,',','') as float),0)
 	set @mount = CAST(REPLACE(@n,',','') as float)
 	set @dutymemo = @o
 	set @book = @p
@@ -217,8 +217,8 @@ begin
 		end
 	end
 	
-	insert into vcct(typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo)
-	select typea,kind,cno,acomp,datea,mon,noa,case when serial='00000000' then '' else serial end
+	insert into vcct(typea,kind,noq,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo)
+	select typea,kind,kind,cno,acomp,datea,mon,noa,case when serial='00000000' then '' else serial end
 	,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo from #z_vcctrb where noa = @noa
 	
 	
