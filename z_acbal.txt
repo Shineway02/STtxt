@@ -260,7 +260,6 @@ from #tmp   order by accc5,gno
 drop table #tmp;
 --*******************************************************************************
 z_acbal03:--z_acbal03
-
 SET QUOTED_IDENTIFIER OFF
 
 declare @t_bdate nvarchar(10)
@@ -269,6 +268,8 @@ declare @t_bal nvarchar(50)
 declare @t_bacc nvarchar(20)
 declare @t_eacc nvarchar(20)
 declare @accy nvarchar(5)
+declare @t_proj nvarchar(20)='[8]'
+declare @t_href nvarchar(20)=''
 
 set @t_bdate = case when '#non' = [3] then '' else [3] end
 set @t_edate = case when '#non' = [4] then char(255) else [4] end
@@ -276,6 +277,8 @@ set @t_bal = case when '#non' = [5] then '' else [5] end
 set @t_bacc = case when '#non' = [6] then '' else [6] end
 set @t_eacc = case when '#non' = [7] then char(255) else [7] end
 set @accy = case when LEN(dbo.split(@t_bdate,'/',0))>3 then CAST(CAST(dbo.split(@t_bdate,'/',0)as int)-1911 as nvarchar(5)) else dbo.split(@t_bdate,'/',0) end
+if(@t_proj='VU')
+	set @t_href='_vu'
 ---------------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
 BEGIN
@@ -294,6 +297,7 @@ create table #tmp(
 	accc2 nvarchar(20),
 	accc3 nvarchar(30),
 	bal nvarchar(50),
+	zno nvarchar(50),
 	accc7 nvarchar(max),
 	money1 float,
 	money2 float,
@@ -302,10 +306,10 @@ create table #tmp(
 )
 --期初
 set @cmd = 
-	"insert into #tmp(gno,rec,accc5,accc6,bal,accc3,money1,money2)
-	select '0',0,acc1,acc2,bal,'期初沖帳',SUM(money1),SUM(money2) from(
+	"insert into #tmp(gno,rec,accc5,accc6,bal,zno,accc3,money1,money2)
+	select '0',0,acc1,acc2,bal,zno,'期初沖帳',SUM(money1),SUM(money2) from(
 			select 
-				accc5 acc1,accc6 acc2,bal,
+				accc5 acc1,accc6 acc2,bal,zno,
 				case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney) else SUM(cmoney) end money1,
 				case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(cmoney) else SUM(dmoney) end money2				 
 			from acccs"+@accy+"_1
@@ -313,22 +317,22 @@ set @cmd =
 				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
 				  (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and
 				  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
-			group by accc5,accc6,bal
+			group by accc5,accc6,bal,zno
 			union
-			select acc1,'','',case when RIGHT('"+@t_bdate+"',5)='01/01' and RIGHT('"+@t_edate+"',5)='01/01' then 0 else SUM(money) end,''
-			from acbab"+@accy+"_1
-			where (LEN(bal)>0) and
-				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and				  
-				  (acc1 between '"+@t_bacc+"' and '"+@t_eacc+"')				  
-			group by acc1
-	)tmp group by acc1,acc2,bal"
+			select a.acc1,b.acc2,'','',case when RIGHT('"+@t_bdate+"',5)='01/01' and RIGHT('"+@t_edate+"',5)='01/01' then 0 else SUM(a.money) end,''
+			from acbab"+@accy+"_1 a left join acc"+@accy+"_1 b on a.acc1=b.acc1
+			where (LEN(a.bal)>0) and
+				  (LEN('"+@t_bal+"')=0 or (a.bal like '%"+@t_bal+"%')) and				  
+				  (a.acc1 between '"+@t_bacc+"' and '"+@t_eacc+"')				  
+			group by a.acc1,b.acc2
+	)tmp group by acc1,acc2,bal,zno"
 execute sp_executesql @cmd
 
 --原始金額(accc5 1.5.6.8.9開頭:dmoney-cmoney/2.3.4.7開頭:cmoney-dmoney)
 set @cmd = 
 	"insert into #tmp
-	select gno,row_number()over(partition by accc5 order by accc3),accc5,accc6,type1,type2,accc2,accc3,bal,accc7,money1,money2,total,blance from(
-	select '0' gno,'' rec,accc5,accc6,accc4 type1,accc4 type2,accc2,accc3,bal,accc7,dmoney money1,0 money2,0 total,0 blance
+	select gno,row_number()over(partition by accc5 order by accc3),accc5,accc6,type1,type2,accc2,accc3,bal,zno,accc7,money1,money2,total,blance from(
+	select '0' gno,'' rec,accc5,accc6,accc4 type1,accc4 type2,accc2,accc3,bal,zno,accc7,dmoney money1,0 money2,0 total,0 blance
 	from acccs"+@accy+"_1
 	where (LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9') and
 		  (LEN(bal)>0) and
@@ -337,7 +341,7 @@ set @cmd =
 		  (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and
 		  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
 	union
-	select '0' gno,'' rec,accc5,accc6,accc4 type1,accc4 type2,accc2,accc3,bal,accc7,cmoney money1,0 money2,0 total,0 blance
+	select '0' gno,'' rec,accc5,accc6,accc4 type1,accc4 type2,accc2,accc3,bal,zno,accc7,cmoney money1,0 money2,0 total,0 blance
 	from acccs"+@accy+"_1
 	where (LEFT(accc5,1)='2' or LEFT(accc5,1)='3' or LEFT(accc5,1)='4' or LEFT(accc5,1)='7') and
 		  (LEN(bal)>0) and
@@ -348,7 +352,7 @@ set @cmd =
 	"
 declare @str nvarchar(max)=
 	"union
-	select '0' gno,'' rec,acc1,'',''type1,''type2,'','',bal,accc7,null money1,null money2,money total,0 blance
+	select '0' gno,'' rec,acc1,'',''type1,''type2,'','',bal,zno,accc7,null money1,null money2,money total,0 blance
 	from acbab"+@accy+"_1
 	where (LEN(bal)>0) and
 		  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
@@ -428,7 +432,7 @@ deallocate cursor_table
 
 --排版
 update #tmp set accc2 = case when LEN(accc2)>0 then dbo.split(@t_bdate,'/',0)+'/'+accc2 else '' end
-update #tmp set accc3 = case when LEN(accc3)>0 then accc3+'<br>'+ISNULL(bal,'') else '' end
+--update #tmp set accc3 = case when LEN(accc3)>0 then accc3+'<br>'+ISNULL(bal,'') else '' end
 update #tmp set accc7 = REPLACE(REPLACE(accc7,'NO','<br>NO'),'到期日','<br>到期日')
 
 --小計
@@ -451,7 +455,9 @@ select
 	dbo.getComma(total ,0)ttl,
 	dbo.getComma(money1,0)mny1,
 	dbo.getComma(money2,0)mny2,
-	dbo.getComma(blance,0)blnc
+	dbo.getComma(blance,0)blnc,
+	case when accc3='期初沖帳' or len(isnull(accc3,''))=0 then '' else 'accc?accc3=$accc3' end qhrefa,
+	case when len(isnull(bal,''))=0 then '' else zno+@t_href+'?bal=$bal' end qhrefb
 from #tmp order by accc5,gno,rec,accc2
 
 drop table #tmp;
