@@ -192,10 +192,10 @@ declare @accy nvarchar(50)
 declare @vccno nvarchar(50)
 declare @t_sono nvarchar(50)
 declare cursor_table cursor for
-select isexist,noa,sono,kind from #z_vcctrb
+select isexist,noa,sono,kind,mon from #z_vcctrb
 open cursor_table
 fetch next from cursor_table
-into @isexist,@noa,@sono,@kind
+into @isexist,@noa,@sono,@kind,@mon
 while(@@FETCH_STATUS <> -1)
 begin
 	set @t_sono=''
@@ -212,8 +212,16 @@ begin
 			set @accy=isnull((select accy from view_vcc where noa=@t_sono),'')
 		end
 		
-		delete vcct where noa = @noa
-		and (case when @kind in ('33','34','23','24') then '1' else '0' end=case when kind in ('33','34','23','24') then '1' else '0' end)
+		if(@kind not in ('33','34','23','24'))
+		begin
+			delete vcct where noa = @noa and kind not in ('33','34','23','24')
+		end
+		else --刪除同月份的折讓單否則就新增
+		begin
+			delete vcct where noa = @noa and kind in ('33','34','23','24') and mon=@mon
+		end
+		
+		--delete vcct where noa = @noa and (case when @kind in ('33','34','23','24') then '1' else '0' end=case when kind in ('33','34','23','24') then '1' else '0' end)
 		
 		if(@vccno!='')
 		begin
@@ -222,9 +230,10 @@ begin
 	end
 	
 	insert into vcct(typea,kind,noq,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo,iscarrier)
-	select typea,kind,kind,cno,acomp,datea,mon,noa,case when serial='00000000' then '' else serial end
-	,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo,iscarrier from #z_vcctrb where noa = @noa
-	
+	select typea,kind
+	,right('000'+cast(cast(isnull((select MAX(noq) from vcct where noa=a.noa),'0') as int)+1 as nvarchar(10)),3)
+	,cno,acomp,datea,mon,noa,case when serial='00000000' then '' else serial end
+	,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo,iscarrier from #z_vcctrb a where noa = @noa
 	
 	if(@sono!='')
 	begin
@@ -238,7 +247,7 @@ begin
 	end
 	
 	fetch next from cursor_table
-	into @isexist,@noa,@sono,@kind
+	into @isexist,@noa,@sono,@kind,@mon
 end
 close cursor_table
 deallocate cursor_table
