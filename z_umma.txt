@@ -44,10 +44,10 @@ from umma a where a.datea <=@t_edate group by cno,custno
 update a
 set bmoney=isnull((select SUM(total) from umma where a.cno=cno and a.custno=custno and datea< @t_bdate),0)
 -isnull((select SUM(discount) from umma where a.cno=cno and a.custno=custno and ddate< @t_bdate),0)
--isnull((select SUM(pb.money) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_bdate and pb.datea<@t_bdate),0)
+-isnull((select SUM((case when pb.typea='1' then 1 else -1 end)*pb.money) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_bdate and pb.datea<@t_bdate),0)
 ,money1=isnull((select SUM(money) from umma where a.cno=cno and a.custno=custno and datea between @t_bdate and @t_edate),0)
 ,money2=isnull((select SUM(total) from umma where a.cno=cno and a.custno=custno and datea between @t_bdate and @t_edate),0)
-,paysale=isnull((select SUM(pb.money) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_edate and pb.datea between @t_bdate and @t_edate),0)
+,paysale=isnull((select SUM((case when pb.typea='1' then 1 else -1 end)*pb.money) from umma pa left join view_vcc pb on pa.noa=pb.ummano where a.cno=pa.cno and a.custno=pa.custno and pa.datea < @t_edate and pb.datea between @t_bdate and @t_edate),0)
 ,discount=isnull((select SUM(discount) from umma where a.cno=cno and a.custno=custno and ddate between @t_bdate and @t_edate),0)
 from #tmp a
 
@@ -123,8 +123,8 @@ insert #tmp (gno,cno,acomp,custno,comp,a.noa,btotal,btax,ptotal,ptax,discount)
 select '9',a.cno,(select acomp from acomp where a.cno=noa)
 ,a.custno,(select case when isnull(nick,'')='' then left(comp,6) else nick end from cust where a.custno=noa)
 ,a.noa,a.total,round(a.total*0.05,2)
-,isnull((select SUM(pb.money) from view_vcc pb where a.noa=pb.ummano),0)
-,round(isnull((select SUM(pb.money) from view_vcc pb where a.noa=pb.ummano),0)*0.05,2)
+,isnull((select SUM((case when pb.typea='1' then 1 else -1 end)*pb.money) from view_vcc pb where a.noa=pb.ummano),0)
+,round(isnull((select SUM((case when pb.typea='1' then 1 else -1 end)*pb.money) from view_vcc pb where a.noa=pb.ummano),0)*0.05,2)
 ,discount
 from umma a where a.datea between @t_bdate and @t_edate
 and a.cno between @t_bcno and @t_ecno 
@@ -207,10 +207,10 @@ insert #tmp
 select '0',a.cno,(select acomp from acomp where a.cno=noa)
 ,a.custno,(select case when isnull(nick,'')='' then left(comp,6) else nick end from cust where a.custno=noa)
 ,a.noa,a.total
-,isnull((select SUM(pb.money) from view_vcc pb where a.noa=pb.ummano),0)
+,isnull((select SUM((case when pb.typea='1' then 1 else -1 end)*pb.money) from view_vcc pb where a.noa=pb.ummano),0)
 ,isnull(a.discount,0)
-,a.total-isnull((select SUM(pb.money) from view_vcc pb where a.noa=pb.ummano),0)-isnull(a.discount,0)
-,b.noa,b.money
+,a.total-isnull((select SUM((case when pb.typea='1' then 1 else -1 end)*pb.money) from view_vcc pb where a.noa=pb.ummano),0)-isnull(a.discount,0)
+,b.noa,(case when b.typea='1' then 1 else -1 end)*b.money
 from umma a left join view_vcc b on a.noa=b.ummano 
 where a.datea between @t_bdate and @t_edate
 and a.cno between @t_bcno and @t_ecno 
@@ -288,7 +288,10 @@ and a.custno between @t_bcustno and @t_ecustno
 insert #tmp
 select '0',a.cno,(select acomp from acomp where a.cno=noa)
 ,a.custno,(select case when isnull(nick,'')='' then left(comp,6) else nick end from cust where a.custno=noa),a.noa
-,b.datea,c.productno,replace(c.product,'~#$',char(39)),c.price,c.mount,c.total,round(c.total*0.05,0),c.noa,c.noq
+,b.datea,c.productno,replace(c.product,'~#$',char(39)),c.price
+,(case when b.typea='1' then 1 else -1 end)*c.mount
+,(case when b.typea='1' then 1 else -1 end)*c.total
+,round((case when b.typea='1' then 1 else -1 end)*c.total*0.05,0),c.noa,c.noq
 from umma a left join view_vcc b on a.noa=b.ummano left join view_vccs c on b.noa=c.noa
 where a.datea between @t_bdate and @t_edate
 and a.cno between @t_bcno and @t_ecno 
