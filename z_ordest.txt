@@ -528,123 +528,107 @@ z_ordest5:--z_ordest5
 	 order by case when gno='1' or gno='2' then 0 else 1 end, a.recno;
 
 z_ordest1:--z_ordest1
-declare @t_bdate nvarchar(10)
-declare @t_edate nvarchar(10)
-declare @t_bodate nvarchar(10)
-declare @t_eodate nvarchar(10)
-declare @t_bcustno nvarchar(20)
-declare @t_ecustno nvarchar(20)
-declare @t_bsalesno nvarchar(20)
-declare @t_esalesno nvarchar(20)
-declare @t_bproductno nvarchar(30)
-declare @t_eproductno nvarchar(30)
-declare @t_stype nvarchar(20)
-declare @t_trantype nvarchar(20)
-declare @t_cancel nvarchar(1)
-declare @t_enda nvarchar(1)
-declare @t_stktype nvarchar(15)
-declare @t_bradius float
-declare @t_eradius float
-declare @t_bwidth float
-declare @t_ewidth float
-declare @t_bdime float
-declare @t_edime float
-declare @t_blengthb float
-declare @t_elengthb float
-set @t_stktype = case when '#non'=[17] then '' else [17] end
-set @t_bradius = case when '#non'=[18] then 0.00 else cast([18] as float) end
-set @t_eradius = case when '#non'=[19] then 9999.99 else cast([19] as float) end
-set @t_bwidth = case when '#non'=[20] then 0.00 else cast([20] as float)end
-set @t_ewidth = case when '#non'=[21] then 9999.99 else cast([21] as float) end
-set @t_bdime = case when '#non'=[22] then 0.000 else cast([22] as float) end
-set @t_edime = case when '#non'=[23] then 999.990 else cast([23] as float) end
-set @t_blengthb = case when '#non'=[24] then 0.0 else cast([24] as float) end
-set @t_elengthb = case when '#non'=[25] then 99999.9 else cast([25] as float) end
+	declare @t_bdate nvarchar(10) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(10) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
+	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	declare @t_bsalesno nvarchar(20) = case when '#non'=[8] then '' else [8] end
+	declare @t_esalesno nvarchar(20) = case when '#non'=[9] then char(255) else [9] end
+	declare @t_bproductno nvarchar(30) = case when '#non'=[10] then '' else [10] end
+	declare @t_eproductno nvarchar(30) = case when '#non'=[11] then char(255) else [11] end
+	declare @t_stype nvarchar(20) = case when '#non'=[12] then '' else [12] end
+	declare @t_trantype nvarchar(20) = case when '#non'=[13] then '' else [13] end
+	declare @t_cancel nvarchar(1) = case when '#non'=[14] then '' else [14] end
+	declare @t_enda nvarchar(1) = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	declare @t_stktype nvarchar(15) = case when '#non'=[17] then '' else [17] end
+	declare @t_bradius float = case when '#non'=[18] then 0.00 else cast([18] as float) end
+	declare @t_eradius float = case when '#non'=[19] then 9999.99 else cast([19] as float) end
+	declare @t_bwidth float = case when '#non'=[20] then 0.00 else cast([20] as float)end
+	declare @t_ewidth float = case when '#non'=[21] then 9999.99 else cast([21] as float) end
+	declare @t_bdime float = case when '#non'=[22] then 0.000 else cast([22] as float) end
+	declare @t_edime float = case when '#non'=[23] then 999.990 else cast([23] as float) end
+	declare @t_blengthb float = case when '#non'=[24] then 0.0 else cast([24] as float) end
+	declare @t_elengthb float = case when '#non'=[25] then 99999.9 else cast([25] as float) end
+	------------------------------------------------------------------------------------------------------
 
-set @t_bdate = case when '#non'=[2] then '' else [2] end
-set @t_edate = case when '#non'=[3] then char(255) else [3] end
-set @t_bodate = case when '#non'=[4] then '' else [4] end
-set @t_eodate = case when '#non'=[5] then char(255) else [5] end
-set @t_bcustno = case when '#non'=[6] then '' else [6] end
-set @t_ecustno = case when '#non'=[7] then char(255) else [7] end
-set @t_bsalesno = case when '#non'=[8] then '' else [8] end
-set @t_esalesno = case when '#non'=[9] then char(255) else [9] end
-set @t_bproductno = case when '#non'=[10] then '' else [10] end
-set @t_eproductno = case when '#non'=[11] then char(255) else [11] end
-set @t_stype = case when '#non'=[12] then '' else [12] end
-set @t_trantype = case when '#non'=[13] then '' else [13] end
-set @t_cancel = case when '#non'=[14] then '' else [14] end
-set @t_enda = case when '#non'=[15] then '' when '0' = [15] then '0' when '1' = [15] then '1' end
+	set @t_stktype = upper(@t_stktype)
+	declare @swapTmp1 int = 0
+	declare @swapTmp2 int = 0
+	if(left(@t_stktype,1) != 'B' and left(@t_stktype,1) != '')
+	begin
+		set @swapTmp1 = @t_bwidth
+		set @swapTmp2 = @t_ewidth
+		set @t_bwidth = @t_bdime
+		set @t_ewidth = @t_edime
+		set @t_bdime = @swapTmp1
+		set @t_edime = @swapTmp2	
+	end
 
-set @t_stktype = upper(@t_stktype)
-declare @swapTmp1 int = 0
-declare @swapTmp2 int = 0
-if(left(@t_stktype,1) != 'B' and left(@t_stktype,1) != '')
-begin
-	set @swapTmp1 = @t_bwidth
-	set @swapTmp2 = @t_ewidth
-	set @t_bwidth = @t_bdime
-	set @t_ewidth = @t_edime
-	set @t_bdime = @swapTmp1
-	set @t_edime = @swapTmp2	
-end
-
-declare @tmp table(
-	gno nvarchar(1),
-	odate nvarchar(10),
-	e nvarchar(10),
-	noa nvarchar(35),
-	no2 nvarchar(10),
-	custno nvarchar(30),
-	comp nvarchar(90),
-	productno nvarchar(30),
-	products nvarchar(90),
-	spec nvarchar(max),
-	csize nvarchar(max),
-	dime float,
-	unit nvarchar(12),
-	mount float,
-	weight float,
-	price float,
-	total float,
-	qhref nvarchar(max)
-)
-insert into @tmp
+	declare @tmp table(
+		sel int identity(1,1),
+		gno nvarchar(1),
+		odate nvarchar(10),
+		e nvarchar(10),
+		noa nvarchar(35),
+		no2 nvarchar(10),
+		custno nvarchar(30),
+		comp nvarchar(90),
+		productno nvarchar(30),
+		products nvarchar(90),
+		spec nvarchar(max),
+		csize nvarchar(max),
+		dime float,
+		unit nvarchar(12),
+		mount float,
+		weight float,
+		price float,
+		total float,
+		qhref nvarchar(max),
+		coin nvarchar(20),
+		floata float
+	)
+	insert into @tmp
+		select
+			'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
+			a.custno,c.nick,b.productno,b.product,b.spec
+			,(case when exists(select * from acomp where charindex('聯琦',acomp)>0) then cast(b.dime as nvarchar)+'+'+cast(b.radius as nvarchar)+'*'+cast(b.width as nvarchar)+'*'+case when isnull(b.lengthb,0)=0 then 'C' else cast(b.lengthb as nvarchar) end
+		 		when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
+			,b.dime,b.unit,b.mount,b.weight,b.price,b.total,'ordest'+a.accy
+			,a.coin,a.floata
+		from view_orde a
+		left join view_ordes b on a.noa = b.noa
+		left join cust c on a.custno = c.noa
+		where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
+			and (a.odate between @t_bodate and @t_eodate) and 
+			  (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
+			  (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
+			  (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) 
+			  and (len(@t_enda)=0 or (@t_enda='1' and (ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1)) or (@t_enda='0' and ISNULL(a.enda,0)=0 and ISNULL(b.enda,0)=0)  )
+			  and (b.radius between @t_bradius and @t_eradius) and (b.width between @t_bwidth and @t_ewidth) and
+			  (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) and
+			  (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
+		order by left(a.odate,6),a.noa,b.no2
+	update @tmp set csize = replace(csize,'~#$','''')
+	insert into @tmp(gno,odate,mount,weight,total)
+		select '1',left(odate,6),sum(mount),sum(weight),sum(total) from @tmp where gno='0' group by left(odate,6)
+	insert into @tmp(gno,odate,mount,weight,total)
+		select '2',char(255),sum(mount),sum(weight),sum(total) from @tmp where gno='0'
+	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
+	insert into @tmp(gno,odate,productno,products,spec,csize,mount,weight,total)
+		select
+			'3',char(255),productno,products,spec,csize,sum(mount),sum(weight),sum(total)
+		from @tmp
+		where gno='0'
+		group by productno,products,spec,csize
+	
 	select
-		'0',a.odate,(case b.enda when '1' then 'Y' else 'N' end) e,a.noa,b.no2,
-		a.custno,c.nick,b.productno,b.product,b.spec
-		,(case when exists(select * from acomp where charindex('聯琦',acomp)>0) then cast(b.dime as nvarchar)+'+'+cast(b.radius as nvarchar)+'*'+cast(b.width as nvarchar)+'*'+case when isnull(b.lengthb,0)=0 then 'C' else cast(b.lengthb as nvarchar) end
-		 	when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end)
-		,b.dime,b.unit,b.mount,b.weight,b.price,b.total,'ordest'+a.accy
-	from view_orde a
-	left join view_ordes b on a.noa = b.noa
-	left join cust c on a.custno = c.noa
-	where ((len(ISNULL(b.datea,''))>0 and (b.datea between @t_bdate and @t_edate)) or (len(ISNULL(b.datea,''))=0 and (a.datea between @t_bdate and @t_edate)))
-		and (a.odate between @t_bodate and @t_eodate) and 
-	      (a.custno between @t_bcustno and @t_ecustno) and (a.salesno between @t_bsalesno and @t_esalesno)and 
-	      (b.productno between @t_bproductno and @t_eproductno) and (len(@t_stype)=0 or @t_stype=a.stype) and
-	      (len(@t_trantype)=0 or @t_trantype=a.trantype) and (len(@t_cancel)=0 or @t_cancel=b.cancel) 
-	      and (len(@t_enda)=0 or (@t_enda='1' and (ISNULL(a.enda,0)=1 or ISNULL(b.enda,0)=1)) or (@t_enda='0' and ISNULL(a.enda,0)=0 and ISNULL(b.enda,0)=0)  )
-	      and (b.radius between @t_bradius and @t_eradius) and (b.width between @t_bwidth and @t_ewidth) and
-		  (b.dime between @t_bdime and @t_edime) and (b.lengthb between @t_blengthb and @t_elengthb) and
-		  (len(@t_stktype) = 0 or upper(a.kind) = @t_stktype)
-	order by left(a.odate,6),a.noa,b.no2
-update @tmp set csize = replace(csize,'~#$','''')
-insert into @tmp(gno,odate,mount,weight,total)
-	select '1',left(odate,6),sum(mount),sum(weight),sum(total) from @tmp where gno='0' group by left(odate,6)
-insert into @tmp(gno,odate,mount,weight,total)
-	select '2',char(255),sum(mount),sum(weight),sum(total) from @tmp where gno='0'
-update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
-insert into @tmp(gno,odate,productno,products,spec,csize,mount,weight,total)
-	select
-		'3',char(255),productno,products,spec,csize,sum(mount),sum(weight),sum(total)
-	from @tmp
-	where gno='0'
-	group by productno,products,spec,csize
-select
-	gno,odate,e,noa,no2,custno,comp,productno,products,spec,csize,dime,unit,mount,weight,price,total,
-	row_number()over(partition by left(odate,6) order by left(odate,6),gno,noa,no2) idno,qhref
-from @tmp order by left(odate,6),gno,noa,no2,odate,productno,products,spec,csize;
+		gno,odate,e,noa,no2,custno,comp,productno,products,spec,csize,dime,unit,mount,weight,price,total,
+		row_number()over(partition by left(odate,6) order by left(odate,6),gno,noa,no2) idno,qhref
+		,coin a01
+		,case when ISNULL(floata,0)=0 then '' else dbo.getComma(floata,-1) end a02
+	from @tmp order by left(odate,6),gno,noa,no2,odate,productno,products,spec,csize;
 --*****************************************************************************************
 z_ordest2a:--z_ordest2a
 declare @t_bdate nvarchar(10)
