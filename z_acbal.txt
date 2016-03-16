@@ -309,7 +309,7 @@ set @cmd =
 	"insert into #tmp(gno,rec,accc5,accc6,bal,zno,accc3,money1,money2)
 	select '0',0,acc1,acc2,bal,zno,'期初沖帳',SUM(money1),SUM(money2) from(
 			select 
-				accc5 acc1,accc6 acc2,bal,zno,
+				accc5 acc1,accc6 acc2,'' bal,'' zno,
 				case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(dmoney) else SUM(cmoney) end money1,
 				case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then SUM(cmoney) else SUM(dmoney) end money2				 
 			from acccs"+@accy+"_1
@@ -317,7 +317,7 @@ set @cmd =
 				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
 				  (accc2 > '01/01' and accc2 < RIGHT('"+@t_bdate+"',5)) and
 				  (accc5 between '"+@t_bacc+"' and '"+@t_eacc+"')
-			group by accc5,accc6,bal,zno
+			group by accc5,accc6
 			union
 			select a.acc1,b.acc2,'','',case when RIGHT('"+@t_bdate+"',5)='01/01' and RIGHT('"+@t_edate+"',5)='01/01' then 0 else SUM(a.money) end,''
 			from acbab"+@accy+"_1 a left join acc"+@accy+"_1 b on a.acc1=b.acc1
@@ -457,7 +457,7 @@ select
 	dbo.getComma(money2,0)mny2,
 	dbo.getComma(blance,0)blnc,
 	case when accc3='期初沖帳' or len(isnull(accc3,''))=0 then '' else 'accc?accc3=$accc3' end qhrefa,
-	case when len(isnull(bal,''))=0 then '' else zno+@t_href+'?bal=$bal' end qhrefb
+	case when len(isnull(bal,''))=0 or len(zno)=0 then '' else zno+@t_href+'?noa=$bal' end qhrefb
 from #tmp order by accc5,gno,rec,accc2
 
 drop table #tmp;
