@@ -1,13 +1,13 @@
 z_acbal01:--z_acbal01
-
 SET QUOTED_IDENTIFIER OFF
-
 declare @t_bdate nvarchar(10)
 declare @t_edate nvarchar(10)
 declare @t_bal nvarchar(50)
 declare @t_bacc nvarchar(20)
 declare @t_eacc nvarchar(20)
 declare @accy nvarchar(5)
+declare @t_proj nvarchar(20)='[8]'
+declare @t_href nvarchar(20)=''
 
 set @t_bdate = case when '#non' = [3] then '' else [3] end
 set @t_edate = case when '#non' = [4] then char(255) else [4] end
@@ -15,6 +15,9 @@ set @t_bal = case when '#non' = [5] then '' else [5] end
 set @t_bacc = case when '#non' = [6] then '' else [6] end
 set @t_eacc = case when '#non' = [7] then char(255) else [7] end
 set @accy = case when LEN(dbo.split(@t_bdate,'/',0))>3 then CAST(CAST(dbo.split(@t_bdate,'/',0)as int)-1911 as nvarchar(5)) else dbo.split(@t_bdate,'/',0) end
+if(@t_proj='VU')
+	set @t_href='_vu'
+
 ---------------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#tmp')is not null
 BEGIN
@@ -35,16 +38,17 @@ create table #tmp(
 	money0 float,
 	money1 float,
 	money2 float,
-	total float
+	total float,
+	zno nvarchar(50)
 )
 --accc5 1.5.6.8.9開頭:dmoney-cmoney/2.3.4.7開頭:cmoney-dmoney
 set @cmd = 
 	"insert into #tmp
-	select gno,row_number()over(partition by accc5 order by accc3,bal),accc5,accc6,accc2,bal,accc3,accc7,money0,money1,money2,total from (
+	select gno,row_number()over(partition by accc5 order by accc3,bal),accc5,accc6,accc2,bal,accc3,accc7,money0,money1,money2,total,zno from (
 	select '0' gno,'' rec,accc5,accc6,accc2,bal,accc3,accc7,null money0,
 		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then dmoney else cmoney end money1,
 		   case when LEFT(accc5,1)='1' or LEFT(accc5,1)='5' or LEFT(accc5,1)='6' or LEFT(accc5,1)='8' or LEFT(accc5,1)='9' then cmoney else dmoney end money2,
-		   0 total
+		   0 total,zno
 	from acccs"+@accy+"_1
 	where (LEN(bal)>0) and
 		  (accc2 between '"+RIGHT(@t_bdate,5)+"' and '"+RIGHT(@t_edate,5)+"') and
@@ -53,7 +57,7 @@ set @cmd =
 	"
 declare @str nvarchar(max)=
 	"union
-	select '0' gno,'' rec,acc1,'' accc6,'' accc2,'' bal,bal accc3,accc7,null money0,money money1,0 money2,0 total
+	select '0' gno,'' rec,acc1,'' accc6,'' accc2,'' bal,bal accc3,accc7,null money0,money money1,0 money2,0 total,'' zno
 	from acbab"+@accy+"_1
 	where (LEN(bal)>0) and
 		  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
@@ -124,11 +128,14 @@ update #tmp set total = money0+money1-money2 where gno = '2'
 --from #tmp where gno = '1' group by accc5,accc6
 
 select 
+	substring(accc7,0,case when charindex('<BR>',dbo.charbr(accc7,44))=0 then len(accc7) else charindex('<BR>',dbo.charbr(accc7,44)) end ) accc7,
 	*,
 	dbo.getComma(total ,0)ttl,
 	dbo.getComma(money0,0)mny0,
 	dbo.getComma(money1,0)mny1,
-	dbo.getComma(money2,0)mny2 
+	dbo.getComma(money2,0)mny2, 
+	case when len(isnull(accc3,''))=0 then '' else 'accc?accc3=$accc3' end qhrefa,
+	case when len(isnull(bal,''))=0 or len(zno)=0 then '' else zno+@t_href+'?noa=$bal' end qhrefb
 from #tmp order by accc5,accc6,gno,accc2
 
 drop table #tmp;
