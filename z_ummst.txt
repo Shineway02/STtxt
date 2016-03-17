@@ -26,7 +26,6 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		,unit nvarchar(20)
 		,price float
 		,[money] float
-		,itemno nvarchar(20)
 		,size nvarchar(max)
 		,memo nvarchar(max)
 		
@@ -45,10 +44,10 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		,tmount nvarchar(max)
 	)
 	insert into @tmp(gno,custno,datea,accy,noa,ordeno,quatno,product,dime,radius,width,lengthb,unit,price
-		,itemno,size,memo
+		,size,memo
 		,[weight],mount,[money])
 	select '1',b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price
-		,a.itemno,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+		,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
 		,sum(isnull(a.[weight],0)),sum(isnull(a.[mount],0)),sum(isnull(a.[total],0))
 	from view_vccs a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
@@ -57,8 +56,8 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 	where ISNULL(b.custno,'') between @t_bcustno and @t_ecustno
 	and ISNULL(b.mon,'') between @t_bmon and @t_emon
 	and ISNULL(b.typea,'')='1'
-	group by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,itemno,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
-	order by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,itemno,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+	group by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+	order by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
 	------------------------------------------------------------------------------------------------------
 	insert into @tmp(gno,custno)select '2',custno from @tmp group by custno
 	insert into @tmp(gno,custno)select '3',custno from @tmp group by custno
