@@ -155,8 +155,18 @@ if(@condition='1')
 					--沒有rc2no產生入庫單號 
 				if(@rc2no ='' ) 
 					begin 
-						--取得當天最後一個入庫單號	
-						select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%' 
+						--取得當天最後一個入庫單號
+						--105/03/17 避免 同一張製令單產生同一天帳款日期的進貨單
+						if(isnull((select MAX(ordeno) from view_cubs where ordeno like @rc2key+REPLACE(@datea,'/','')+'%'),'')>
+						isnull((select MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'),'') )
+						begin
+							select @rc2no=MAX(ordeno) from view_cubs where ordeno like @rc2key+REPLACE(@datea,'/','')+'%'
+						end
+						else
+						begin
+							select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
+						end
+						 
 						--新的入庫單號(後面號碼+1) 
 						set @rc2no=@rc2key+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)	
 					end 
