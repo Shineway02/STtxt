@@ -392,3 +392,136 @@ BEGIN
 	EXECUTE sp_executesql @cmd
 END
 ;
+---------------------------------------------------------------------------------------------------------
+cubs2rc2_xy:--cubs2rc2_xy
+SET QUOTED_IDENTIFIER OFF
+declare @year nvarchar(20)=[1]--年度[1]
+declare @noa nvarchar(50)=[2]
+declare @condition nvarchar(20)=[3]--動作 0 刪除, 1 新增[3]
+declare @rc2key nvarchar(50)=[4]--RC2KEY
+-----------------------------------------------------------------------
+declare @cmd nvarchar(max)
+declare @accy nvarchar(20)
+------------------------------------------------------------------------
+--進貨單號
+declare @datea nvarchar(50),@tggno nvarchar(20),@ordeno nvarchar(50),@noq nvarchar(50)
+declare @rc2no nvarchar(50) = '' 
+
+if(@condition='0') 
+begin 
+	if(len(@noa)>0) 
+	begin 
+		set @accy=(select top 1 accy from view_rc2 where postname=@noa) 
+		set @cmd="delete a from rc2s"+@accy+" a left join rc2"+@accy+" b on a.noa=b.noa 
+				  where postname='"+@noa+"'" 
+		EXECUTE sp_executesql @cmd 
+			set @cmd="delete rc2"+@accy+" where postname='"+@noa+"'" 
+		EXECUTE sp_executesql @cmd 
+	end 
+end 
+
+--產生進貨單 
+if(@condition='1') 
+begin		
+	set @rc2no='' 
+	BEGIN TRY 
+		
+		declare cursor_table cursor for 
+		select noq,datea,tggno,ordeno from view_cubs where noa =@noa and cut=1 
+		and isnull(datea,'')!='' and isnull(tggno,'')!='' --group by datea,tggno,cut 
+		open cursor_table 
+		fetch next from cursor_table 
+		into @noq,@datea,@tggno,@ordeno
+		while(@@FETCH_STATUS <> -1) 
+		begin 
+			--讀取已產生的rc2no 
+			set @rc2no=ISNULL(@ordeno,'')  
+			--沒有rc2no產生入庫單號 
+			if(@rc2no ='' ) 
+			begin 
+				--取得當天最後一個進貨單號
+				if(isnull((select MAX(ordeno) from view_cubs where ordeno like @rc2key+REPLACE(@datea,'/','')+'%'),'')>
+					isnull((select MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'),'') )
+				begin
+					select @rc2no=MAX(ordeno) from view_cubs where ordeno like @rc2key+REPLACE(@datea,'/','')+'%'
+				end
+				else
+				begin
+					select @rc2no=MAX(noa) from view_rc2 where noa like @rc2key+REPLACE(@datea,'/','')+'%'
+				end
+					 
+				--新的進貨單號(後面號碼+1) 
+				set @rc2no=@rc2key+REPLACE(@datea,'/','')+right('000'+cast(cast(RIGHT(isnull(@rc2no,'000'),3) as int)+1 as nvarchar(10)),3)	
+			end 
+			
+			--bbm 						
+			exec("insert rc2"+@year+"(noa,postname,datea,typea,stype,cno,acomp,mon,invono,invo,tggno, 
+			tgg,nick,tel,post,addr,post2,addr2,trantype,paytype,tax,memo) 
+			select '"+@rc2no+"','"+@noa+"' postname,'"+@datea+"' datea,'1' typea,'4' stype 
+			,(select top 1 noa from acomp) cno,(select top 1 acomp from acomp) acomp 
+			,LEFT('"+@datea+"',6),'' invono,'' invo,noa 
+			,comp,nick,tel,zip_comp,addr_comp,'' post2,'' addr2,trantype,paytype,0 tax 
+			,'由連續製令單作業("+@noa+")轉來 ' memo from tgg where noa='"+@tggno+"' 
+			") 
+			
+			--bbs 
+			exec("insert rc2s"+@year+" (noa,noq,productno,product,spec,unit,mount,price,total,memo) 
+			select '"+@rc2no+"' noa,a.noq,'_'+b.productno,a.process,a.need,a.unit,a.mount,a.price,a.mo total,a.memo 
+			from view_cubs a
+			left join view_cub b on a.noa=b.noa
+			where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.noq='"+@noq+"' ") 
+			
+			--更新bbm應收 
+			exec("update rc2"+@year+" 
+			set money =isnull((select mo from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0), 
+				tax=isnull((select w02 from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0),
+				total =isnull((select w01 from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0) 
+			where noa='"+@rc2no+"'") 
+			
+			set @accy=(select accy from view_cub where noa=@noa)
+			--更新cubs 
+			exec("update cubs"+@accy+" set ordeno='"+@rc2no+"' where noa='"+@noa+"' and noq='"+@noq+"'") 			
+		
+			fetch next from cursor_table 
+			into @noq,@datea,@tggno,@ordeno
+		end 
+		close cursor_table 
+		deallocate cursor_table 
+	END TRY 
+	BEGIN CATCH 
+		close cursor_table 
+		deallocate cursor_table 
+	END CATCH 
+
+end 
+
+set @accy=isnull((select accy from view_cub where noa=@noa),@year)
+
+EXEC("
+	update a
+	set notv=a.mount-isnull(b.mount,0),c1=isnull(b.mount,0)
+	,enda=(case when isnull(isproj,0)=1 and a.mount-isnull(b.mount,0)<=0 then 1 
+	when isnull(isproj,0)=1 and a.mount-isnull(b.mount,0)>0 then 0 else enda end) 
+	from cub"+@accy+" a outer apply (select SUM(mount)mount from view_inas where rc2no=a.noa)b
+	where noa='"+@noa+"'
+")
+;
+---------------------------------------------------------------------------------------------------------
+cubnotv_xy:--cubnotv_xy
+SET QUOTED_IDENTIFIER OFF
+declare @year nvarchar(20)=[1]--年度[1]
+declare @noa nvarchar(50)=[2]
+-----------------------------------------------------------------------
+declare @accy nvarchar(20)
+------------------------------------------------------------------------
+set @accy=isnull((select accy from view_cub where noa=@noa),@year)
+
+EXEC("
+	update a
+	set notv=a.mount-isnull(b.mount,0),c1=isnull(b.mount,0)
+	,enda=(case when isnull(isproj,0)=1 and a.mount-isnull(b.mount,0)<=0 then 1 
+	when isnull(isproj,0)=1 and a.mount-isnull(b.mount,0)>0 then 0 else enda end) 
+	from cub"+@accy+" a outer apply (select SUM(mount)mount from view_inas where rc2no=a.noa)b
+	where noa='"+@noa+"'
+")
+;
