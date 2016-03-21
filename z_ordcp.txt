@@ -145,6 +145,6 @@ select
 	,dbo.getComma(b_mount,-1) b_mount
 	,dbo.getComma(case when @t_project='XY' then null else b_price end,-1) b_price --1050223 XY 暫時不顯示
 	,dbo.getComma(case when @t_project='XY' then null else b_total end,-1) b_total --1050223 XY 暫時不顯示
-	,b_memo+(case when @t_project='XY' then b_comp else '' end) b_memo
+	,b_memo+(case when @t_project='XY' and charindex('-',b_productno)>0 then b_comp else '' end) b_memo --1050321 XY印刷品才顯示客戶
 	,case when @t_project='XY' then '' else '類別：' end lblkind
 from @tmp order by a_tggno,a_noa desc,pageno,gno,orderno;
