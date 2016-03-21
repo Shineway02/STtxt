@@ -194,7 +194,9 @@ if(@condition='1')
 						exec("update rc2"+@year+" set 
 							money =isnull((select sum(mo) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0), 
 							tax=isnull((select sum(w02) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0),
-							total =isnull((select sum(w01) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0) 
+							total =isnull((select sum(w01) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0),
+							payed=isnull((select sum(paysale) from pays where rc2no='"+@rc2no+"' ),0),
+							unpay=isnull((select sum(w01) from view_cubs a where a.tggno='"+@tggno+"' and a.noa='"+ @noa+"' and a.datea='"+@datea+"'	and cut='1'),0)-isnull((select sum(paysale) from pays where rc2no='"+@rc2no+"' ),0)
 							where noa='"+@rc2no+"'") 
 
 						set @accy=(select accy from view_cub where noa=@noa)
@@ -475,7 +477,9 @@ begin
 			exec("update rc2"+@year+" 
 			set money =isnull((select mo from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0), 
 				tax=isnull((select w02 from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0),
-				total =isnull((select w01 from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0) 
+				total =isnull((select w01 from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0),
+				payed=isnull((select sum(paysale) from pays where rc2no='"+@rc2no+"' ),0),
+				unpay=isnull((select w01 from view_cubs a where a.noq='"+@noq+"' and a.noa='"+ @noa+"'),0)-isnull((select sum(paysale) from pays where rc2no='"+@rc2no+"' ),0)
 			where noa='"+@rc2no+"'") 
 			
 			set @accy=(select accy from view_cub where noa=@noa)
