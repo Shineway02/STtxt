@@ -12,7 +12,7 @@ z_certi01:--z_certi01
 		noa nvarchar(20),
 		recno int,
 		custno nvarchar(20),
-		cust nvarchar(50),
+		comp nvarchar(50),
 		nick nvarchar(20),
 		
 		uno nvarchar(50),
@@ -54,12 +54,12 @@ z_certi01:--z_certi01
 	and a.datea between @t_bdate and @t_edate
 	and a.custno between @t_bcustno and @t_ecustno
 	
-	insert into @tmp(gno,pno,noa,recno,custno,cust,nick
+	insert into @tmp(gno,pno,noa,recno,custno,comp,nick
 		,uno,productno,product
 		,dime,width,lengtha,size
 		,typea,finish,heatno,spec,netweight)
 	
-	select '2','2', a.noa,ROW_NUMBER()over(partition by a.noa order by b.noq),a.custno,a.cust,a.nick
+	select '2','2', a.noa,ROW_NUMBER()over(partition by a.noa order by b.noq),a.custno,a.comp,a.nick
 		,b.uno,b.productno,b.product
 		,b.dime,b.width,b.lengtha,b.size
 		,b.typea,b.finish,b.heatno,b.spec,b.netweight
@@ -76,10 +76,10 @@ z_certi01:--z_certi01
 	and a.datea between @t_bdate and @t_edate
 	and a.custno between @t_bcustno and @t_ecustno
 	
-	insert into @tmp(gno,pno,noa,recno,custno,cust,nick
+	insert into @tmp(gno,pno,noa,recno,custno,comp,nick
 		,c,si,mn,p,s,ni,cr,mo,n,cu
 		,ts,ys,el,hrb,hv)
-	select '4','4',a.noa,ROW_NUMBER()over(partition by a.noa order by b.noq),a.custno,a.cust,a.nick
+	select '4','4',a.noa,ROW_NUMBER()over(partition by a.noa order by b.noq),a.custno,a.comp,a.nick
 		,b.c,b.si,b.mn,b.p,b.s,b.ni,b.cr,b.mo,b.n,b.cu
 		,b.ts,b.ys,b.el,b.hrb,b.hv
 	from certi a
