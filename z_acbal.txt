@@ -28,7 +28,7 @@ declare @cmd nvarchar(max)
 
 create table #tmp(
 	gno nvarchar(1),
-	rec int,
+	rec float,
 	accc5 nvarchar(20),
 	accc6 nvarchar(max),
 	accc2 nvarchar(20),
@@ -127,16 +127,37 @@ update #tmp set total = money0+money1-money2 where gno = '2'
 --select '2',accc5,accc6,SUM(money0),SUM(money1),SUM(money2),SUM(total) 
 --from #tmp where gno = '1' group by accc5,accc6
 
+--分行---------------------------------------------------------------------------------------------------------
+update #tmp set accc7=dbo.charbr(accc7,44)
+declare @t_rec float =0.01
+while((select count(*) from #tmp where CHARINDEX('<BR>',accc7)>0 and gno='0')>0)
+begin
+	insert #tmp (gno,rec,accc5,accc6,accc2,bal,accc3,accc7,zno)
+	select gno,rec+@t_rec,accc5,accc6,accc2,bal,accc3
+	,substring(accc7,charindex('<BR>',accc7)+4,len(accc7)),zno
+	from #tmp where CHARINDEX('<BR>',accc7)>0 and gno='0'
+	
+	update #tmp
+	set accc7=substring(accc7,0,case when charindex('<BR>',accc7)=0 then len(accc7) else charindex('<BR>',accc7) end )
+	where CHARINDEX('<BR>',accc7)>0 and gno='0'
+	and rec!=rec+@t_rec
+	
+	set @t_rec=@t_rec+0.01
+end
+--分行--------------------------------------------------------------------------------------------------------
+
 select 
-	substring(accc7,0,case when charindex('<BR>',dbo.charbr(accc7,44))=0 then len(accc7) else charindex('<BR>',dbo.charbr(accc7,44)) end ) accc7,
+	case when cast(rec as int)=rec then bal else '' end ybal,
+	case when cast(rec as int)=rec then accc2 else '' end xaccc2,
+	case when cast(rec as int)=rec then accc3 else '' end xaccc3,
 	*,
 	dbo.getComma(total ,0)ttl,
 	dbo.getComma(money0,0)mny0,
 	dbo.getComma(money1,0)mny1,
 	dbo.getComma(money2,0)mny2, 
-	case when len(isnull(accc3,''))=0 then '' else 'accc?accc3=$accc3' end qhrefa,
-	case when len(isnull(bal,''))=0 or len(zno)=0 then '' else zno+@t_href+'?noa=$bal' end qhrefb
-from #tmp order by accc5,accc6,gno,accc2
+	case when len(isnull(accc3,''))=0 then '' else 'accc?accc3=$xaccc3' end qhrefa,
+	case when len(isnull(bal,''))=0 or len(zno)=0 then '' else zno+@t_href+'?noa=$ybal' end qhrefb
+from #tmp order by accc5,accc6,gno,accc2,rec
 
 drop table #tmp;
 --*******************************************************************************
