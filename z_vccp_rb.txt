@@ -459,7 +459,7 @@ declare @t_exnoa nvarchar(20)
 set @t_bxnoa = case when '#non' = [2] then '' else [2] end
 set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
 -----------------------------------------------------------------------------------------------
-select '0' gno,noa,ordeno,REPLACE(invono,',',',<br>') invono
+select '0' gno,noa,ordeno,dbo.charbr('發票號碼： '+invono,22) invono --,REPLACE(invono,',',',<br>') invono
 ,right('0000000000'+cast(total as nvarchar(30)),1) a1
 ,case when len(cast(total as nvarchar(30)))<2  then null else left(right('0000000000'+cast(total as nvarchar(30)),2),1) end a2
 ,case when len(cast(total as nvarchar(30)))<3  then null else left(right('0000000000'+cast(total as nvarchar(30)),3),1) end a3
