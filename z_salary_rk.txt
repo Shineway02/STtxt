@@ -1909,3 +1909,38 @@ IF OBJECT_ID('tempdb..#tmpa')is not null
 BEGIN 
 drop table #tmpa
 END ;
+-------------------------------------------------------------------------------------------------------------------
+z_salary_rk13:--z_salary_rk13
+declare @t_xmon nvarchar(20) 
+declare @t_bsssno nvarchar(20)
+declare @t_esssno nvarchar(20)
+
+set @t_xmon = case when '#non' = [1] then '' else [1] end
+set @t_bsssno = case when '#non' = [4] then '' else [4] end
+set @t_esssno = case when '#non' = [5] then CHAR(255) else [5] end
+-----------------------------------------------------------------------------------
+declare @tmp table(
+		gno nvarchar(1),
+		partno nvarchar(20),
+		part nvarchar(10),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		money5 float
+)
+
+insert into @tmp 
+select '0' gno,b.partno,b.part,b.sno,b.namea,b.money5
+from salary a left join salarys b on a.noa=b.noa
+where a.mon =@t_xmon 
+and (b.sno between @t_bsssno and @t_esssno)
+and isnull(b.money5,0)>0 
+
+if((select count(*) from @tmp)>0)
+begin
+	insert into @tmp(gno,money5)
+	select '1' gno,sum(money5) from @tmp
+end
+
+select dbo.getComma(money5,0) money5
+,@t_xmon mon,*
+from @tmp order by gno,sssno;
