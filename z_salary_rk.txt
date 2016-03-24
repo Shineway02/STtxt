@@ -25,6 +25,7 @@ declare @tmp table(
 		botr float,
 		bosp float,
 		boot float,
+		money6 float,
 		total1 float,
 		chla1 float,
 		chla2 float,
@@ -61,46 +62,48 @@ declare @tmp table(
 		job nvarchar(50),
 		plus float,
 		minus float,
-		memo nvarchar(MAX)
+		memo nvarchar(MAX),
+		ssstypea nvarchar(50),
+		level1 nvarchar(5),
+		level2 nvarchar(5)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.money,b.pubmoney,b.bo_admin,
 b.money1,b.money2,b.money3,b.money4,
-b.bo_traffic,b.bo_special,b.bo_oth,b.total1,
+b.bo_traffic,b.bo_special,b.bo_oth,b.money6,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
 b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),
 b.addh100,ROUND((b.addh100*b.ostand),0),
 b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.hplus2,b.tax,b.tax5,
-b.welfare,b.ch_health,b.total4,b.total5,c.jobno,c.job,b.plus,b.minus,b.memo
+b.welfare,b.ch_health,b.total4,b.total5,c.jobno,c.job,b.plus,b.minus,b.memo,c.typea,d.level1,d.level2
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
+outer apply (select top 1 * from saladjust where noa=b.sno and datea<=a.datea order by datea) d
 where a.person = '本國' and @t_xmon = a.mon and @t_xkind = a.monkind and a.typea=@t_xtypea
 
-if(@t_order='部門')
-begin
-	insert into @tmp
-	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad)
-	,sum(money1),sum(money2),sum(money3),sum(money4)
-	,sum(botr),sum(bosp),sum(boot),sum(total1),
-	sum(chla1),sum(chla2),SUM(chhei),sum(miday),sum(mitotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-	sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
-	sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus),''
-	from @tmp
-	group by partno,part
-end
-
 insert into @tmp
-select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(total1),
+select '2' gno,partno,MAX(part),'','','',sum(sal),sum(pub),sum(boad)
+,sum(money1),sum(money2),sum(money3),sum(money4)
+,sum(botr),sum(bosp),sum(boot),sum(money6),sum(total1),
 sum(chla1),sum(chla2),SUM(chhei),sum(miday),sum(mitotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
 sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus),''
+sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus),'',ssstypea,'',''
+from @tmp
+group by partno,ssstypea
+
+insert into @tmp
+select '3' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad),sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(money6),sum(total1),
+sum(chla1),sum(chla2),SUM(chhei),sum(miday),sum(mitotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
+sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(hplus2),sum(taxs),sum(tax5),
+sum(wel),sum(heal),sum(total4),sum(total5),'','',sum(plus),sum(minus),'','','',''
 from @tmp
 where gno='0'
 
-if(@t_order='部門')
-begin
-	select gno,partno,part,indate,sno,namea,job,memo,
+insert into @tmp(gno) select '1'
+
+	select gno,partno,part,indate,sno,namea,job,memo
+	,case when gno='2' and ROW_NUMBER() over (partition by gno,ssstypea order by ssstypea,partno)!=1 then '' else ssstypea end xssstypea,
 	dbo.getComma(sal,0) sal,
 	dbo.getComma(pub,0) pub,
 	dbo.getComma(boad,0) boad,
@@ -111,6 +114,7 @@ begin
 	dbo.getComma(botr,0) botr,
 	dbo.getComma(bosp,0) bosp,
 	dbo.getComma(boot,0) boot,
+	dbo.getComma(money6,0) money6,
 	dbo.getComma(total1,0) total1,
 	dbo.getComma(chla1,0) chla1,
 	dbo.getComma(chla2,0) chla2,
@@ -146,58 +150,7 @@ begin
 	dbo.getComma(plus,0) plus,
 	dbo.getComma(minus,0) minus,
 	(select top 1 worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by partno,gno,jobno
-end
-else
-begin
-	select gno,partno,part,indate,sno,namea,job,memo,
-	dbo.getComma(sal,0) sal,
-	dbo.getComma(pub,0) pub,
-	dbo.getComma(boad,0) boad,
-	dbo.getComma(money1,0) money1,
-	dbo.getComma(money2,0) money2,
-	dbo.getComma(money3,0) money3,
-	dbo.getComma(money4,0) money4,
-	dbo.getComma(botr,0) botr,
-	dbo.getComma(bosp,0) bosp,
-	dbo.getComma(boot,0) boot,
-	dbo.getComma(total1,0) total1,
-	dbo.getComma(chla1,0) chla1,
-	dbo.getComma(chla2,0) chla2,
-	dbo.getComma(chhei,0) chhei,
-	dbo.getComma(miday,-1) miday,
-	dbo.getComma(mitotal,0) mitotal,
-	dbo.getComma(bofu,0) bofu,
-	dbo.getComma(taxot,0) taxot,
-	dbo.getComma(total2,0) total2,
-	dbo.getComma(addh1,-1) addh1,
-	dbo.getComma(addh2,-1) addh2,
-	dbo.getComma(addm,0) addm,
-	dbo.getComma(addh461,0) addh461,
-	dbo.getComma(addh462,0) addh462,
-	dbo.getComma(add46m,0) add46m,
-	dbo.getComma(addh00,0) addh00,
-	dbo.getComma(add0m,0) add0m,
-	dbo.getComma(taxno,0) taxno,
-	dbo.getComma(meals,0) meals,
-	dbo.getComma(total3,0) total3,
-	dbo.getComma(borrow,0) borrow,
-	dbo.getComma(labor,0) labor,
-	dbo.getComma(laco,0)laco,
-	dbo.getComma(lase,0)lase,
-	dbo.getComma(lopofee,0) lopofee,
-	dbo.getComma(hplus2,0) hplus2,
-	dbo.getComma(taxs,0) taxs,
-	dbo.getComma(tax5,0) tax5,
-	dbo.getComma(wel,0) wel,
-	dbo.getComma(heal,0) heal,
-	dbo.getComma(total4,0) total4,
-	dbo.getComma(total5,0) total5,
-	dbo.getComma(plus,0) plus,
-	dbo.getComma(minus,0) minus,
-	(select top 1 worker from salary where person = '本國' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by gno,sno,jobno
-end
+	from @tmp order by gno,level1 desc,level2 desc,sno,jobno,ssstypea,partno 
 ;
 ------------------------------------------------------------------------------------------------------------------------------
 z_salary_rk02:--z_salary_rk02
@@ -227,6 +180,7 @@ declare @tmp table(
 		botr float,
 		bosp float,
 		boot float,
+		money6 float,
 		plus float,
 		total1 float,
 		chla1 float,
@@ -261,44 +215,46 @@ declare @tmp table(
 		minus float,
 		total4 float,
 		total5 float,
-		memo nvarchar(MAX)
+		memo nvarchar(MAX),
+		ssstypea nvarchar(50),
+		level1 nvarchar(5),
+		level2 nvarchar(5)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.daymoney,b.pubmoney,b.bo_admin
-,b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.plus,b.total1,
+,b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.money6,b.plus,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
 b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0)
 ,b.addh100,ROUND((b.addh100*b.ostand),0),
 b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.tax,b.tax5,
-b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo
+b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo,c.typea,d.level1,d.level2
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
+outer apply (select top 1 * from saladjust where noa=b.sno and datea<=a.datea order by datea) d
 where a.person = '日薪' and @t_xmon = a.mon and @t_xkind = a.monkind and a.typea=@t_xtypea
 
-if(@t_order='部門')
-begin
-	insert into @tmp
-	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad),sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
-	sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-	sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-	sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
-	from @tmp
-	group by partno,part
-end
-
 insert into @tmp
-select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad)
-,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
+select '2' gno,partno,MAX(part),'','','',sum(sal),sum(pub),sum(boad),sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(money6),sum(plus),sum(total1),
 sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
 sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
+sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),'',ssstypea,'',''
+from @tmp
+group by partno,ssstypea
+
+insert into @tmp
+select '3' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad)
+,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(money6),sum(plus),sum(total1),
+sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
+sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
+sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),'','','',''
 from @tmp
 where gno='0'
 
-if(@t_order='部門')
-begin
+insert into @tmp(gno) select '1'
+
 	select gno,partno,part,indate,sno,namea,memo,
+	case when gno='2' and ROW_NUMBER() over (partition by gno,ssstypea order by ssstypea,partno)!=1 then '' else ssstypea end xssstypea,
 	dbo.getComma(sal,0) sal,
 	dbo.getComma(pub,0) pub,
 	dbo.getComma(boad,0) boad,
@@ -309,6 +265,7 @@ begin
 	dbo.getComma(botr,0) botr,
 	dbo.getComma(bosp,0) bosp,
 	dbo.getComma(boot,0) boot,
+	dbo.getComma(money6,0) money6,
 	dbo.getComma(plus,0) plus,
 	dbo.getComma(total1,0) total1,
 	dbo.getComma(chla1,0) chla1,
@@ -344,58 +301,8 @@ begin
 	dbo.getComma(total4,0) total4,
 	dbo.getComma(total5,0) total5,
 	(select top 1 worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by partno,gno
-end
-else
-begin
-	select gno,partno,part,indate,sno,namea,memo,
-	dbo.getComma(sal,0) sal,
-	dbo.getComma(pub,0) pub,
-	dbo.getComma(boad,0) boad,
-	dbo.getComma(money1,0) money1,
-	dbo.getComma(money2,0) money2,
-	dbo.getComma(money3,0) money3,
-	dbo.getComma(money4,0) money4,
-	dbo.getComma(botr,0) botr,
-	dbo.getComma(bosp,0) bosp,
-	dbo.getComma(boot,0) boot,
-	dbo.getComma(plus,0) plus,
-	dbo.getComma(total1,0) total1,
-	dbo.getComma(chla1,0) chla1,
-	dbo.getComma(chla2,0) chla2,
-	dbo.getComma(chhei,0) chhei,
-	dbo.getComma(day,0) day,
-	dbo.getComma(mtotal,0) mtotal,
-	dbo.getComma(bofu,0) bofu,
-	dbo.getComma(taxot,0) taxot,
-	dbo.getComma(total2,0) total2,
-	dbo.getComma(addh1,0) addh1,
-	dbo.getComma(addh2,0) addh2,
-	dbo.getComma(addm,0) addm,
-	dbo.getComma(addh461,0) addh461,
-	dbo.getComma(addh462,0) addh462,
-	dbo.getComma(add46m,0) add46m,
-	dbo.getComma(addh00,0) addh00,
-	dbo.getComma(add0m,0) add0m,
-	dbo.getComma(taxno,0) taxno,
-	dbo.getComma(meals,0) meals,
-	dbo.getComma(total3,0) total3,
-	dbo.getComma(borrow,0) borrow,
-	dbo.getComma(labor,0) labor,
-	dbo.getComma(laco,0)laco,
-	dbo.getComma(lase,0)lase,
-	dbo.getComma(lopofee,0) lopofee,
-	dbo.getComma(taxs,0) taxs,
-	dbo.getComma(tax5,0) tax5,
-	dbo.getComma(wel,0) wel,
-	dbo.getComma(heal,0) heal,
-	dbo.getComma(hplus2,0) hplus2,
-	dbo.getComma(minus,0) minus,
-	dbo.getComma(total4,0) total4,
-	dbo.getComma(total5,0) total5,
-	(select top 1 worker from salary where person = '日薪' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by gno,sno
-end
+	from @tmp order by gno,level1 desc,level2 desc,sno,ssstypea,partno
+
 ;
 --------------------------------------------------------------------------------------------------------------------
 z_salary_rk03:--z_salary_rk03
@@ -425,6 +332,7 @@ declare @tmp table(
 		botr float,
 		bosp float,
 		boot float,
+		money6 float,
 		plus float,
 		total1 float,
 		chla1 float,
@@ -459,44 +367,46 @@ declare @tmp table(
 		minus float,
 		total4 float,
 		total5 float,
-		memo nvarchar(MAX)
+		memo nvarchar(MAX),
+		ssstypea nvarchar(50),
+		level1 nvarchar(5),
+		level2 nvarchar(5)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.daymoney,b.pubmoney,b.bo_admin,
-b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.plus,b.total1,
+b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.money6,b.plus,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
 b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
 b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.lodging_power_fee,b.tax,b.tax5,
-b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo
+b.welfare,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo,c.typea,d.level1,d.level2
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
+outer apply (select top 1 * from saladjust where noa=b.sno and datea<=a.datea order by datea) d
 where a.person = '時薪' and @t_xmon = a.mon and @t_xkind = a.monkind and a.typea=@t_xtypea
 
-if(@t_order='部門')
-begin
-	insert into @tmp
-	select '1' gno,partno,part,'','','',sum(sal),sum(pub),sum(boad)
-	,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
-	sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
-	sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-	sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
-	from @tmp
-	group by partno,part
-end
-
 insert into @tmp
-select '2' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad)
-,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
+select '2' gno,partno,MAX(part),'','','',sum(sal),sum(pub),sum(boad)
+,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(money6),sum(plus),sum(total1),
 sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
 sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
-sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
+sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),'',ssstypea,'',''
+from @tmp
+group by partno,ssstypea
+
+insert into @tmp
+select '3' gno,'ZZZ','','','','',sum(sal),sum(pub),sum(boad)
+,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(money6),sum(plus),sum(total1),
+sum(chla1),sum(chla2),SUM(chhei),sum(day),sum(mtotal),sum(bofu),sum(taxot),sum(total2),sum(addh1),sum(addh2),
+sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),sum(borrow),sum(labor),sum(laco),sum(lase),sum(lopofee),sum(taxs),sum(tax5),
+sum(wel),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),'','','',''
 from @tmp
 where gno='0'
 
-if(@t_order='部門')
-begin
+insert into @tmp(gno) select '1'
+
 	select gno,partno,part,indate,sno,namea,memo,
+	case when gno='2' and ROW_NUMBER() over (partition by gno,ssstypea order by ssstypea,partno)!=1 then '' else ssstypea end xssstypea,
 	dbo.getComma(sal,0) sal,
 	dbo.getComma(pub,0) pub,
 	dbo.getComma(boad,0) boad,
@@ -507,6 +417,7 @@ begin
 	dbo.getComma(botr,0) botr,
 	dbo.getComma(bosp,0) bosp,
 	dbo.getComma(boot,0) boot,
+	dbo.getComma(money6,0) money6,
 	dbo.getComma(plus,0) plus,
 	dbo.getComma(total1,0) total1,
 	dbo.getComma(chla1,0) chla1,
@@ -542,58 +453,8 @@ begin
 	dbo.getComma(total4,0) total4,
 	dbo.getComma(total5,0) total5,
 	(select top 1 worker from salary where person = '時薪' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by partno,gno
-end
-else
-begin
-	select gno,partno,part,indate,sno,namea,memo,
-	dbo.getComma(sal,0) sal,
-	dbo.getComma(pub,0) pub,
-	dbo.getComma(boad,0) boad,
-	dbo.getComma(money1,0) money1,
-	dbo.getComma(money2,0) money2,
-	dbo.getComma(money3,0) money3,
-	dbo.getComma(money4,0) money4,
-	dbo.getComma(botr,0) botr,
-	dbo.getComma(bosp,0) bosp,
-	dbo.getComma(boot,0) boot,
-	dbo.getComma(plus,0) plus,
-	dbo.getComma(total1,0) total1,
-	dbo.getComma(chla1,0) chla1,
-	dbo.getComma(chla2,0) chla2,
-	dbo.getComma(chhei,0) chhei,
-	dbo.getComma(day,0) day,
-	dbo.getComma(mtotal,0) mtotal,
-	dbo.getComma(bofu,0) bofu,
-	dbo.getComma(taxot,0) taxot,
-	dbo.getComma(total2,0) total2,
-	dbo.getComma(addh1,0) addh1,
-	dbo.getComma(addh2,0) addh2,
-	dbo.getComma(addm,0) addm,
-	dbo.getComma(addh461,0) addh461,
-	dbo.getComma(addh462,0) addh462,
-	dbo.getComma(add46m,0) add46m,
-	dbo.getComma(addh00,0) addh00,
-	dbo.getComma(add0m,0) add0m,
-	dbo.getComma(taxno,0) taxno,
-	dbo.getComma(meals,0) meals,
-	dbo.getComma(total3,0) total3,
-	dbo.getComma(borrow,0) borrow,
-	dbo.getComma(labor,0) labor,
-	dbo.getComma(laco,0)laco,
-	dbo.getComma(lase,0)lase,
-	dbo.getComma(lopofee,0) lopofee,
-	dbo.getComma(taxs,0) taxs,
-	dbo.getComma(tax5,0) tax5,
-	dbo.getComma(wel,0) wel,
-	dbo.getComma(heal,0) heal,
-	dbo.getComma(hplus2,0) hplus2,
-	dbo.getComma(minus,0) minus,
-	dbo.getComma(total4,0) total4,
-	dbo.getComma(total5,0) total5,
-	(select top 1 worker from salary where person = '時薪' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by gno,sno
-end
+	from @tmp order by gno,level1 desc,level2 desc,sno,ssstypea,partno
+
 ;
 ---------------------------------------------------------------------------------------------------
 z_salary_rk04:--z_salary_rk04
@@ -623,6 +484,7 @@ declare @tmp table(
 		botr float,
 		bosp float,
 		boot float,
+		money6 float,
 		plus float,
 		total1 float,
 		chla1 float,
@@ -665,41 +527,46 @@ declare @tmp table(
 		minus float,
 		total4 float,
 		total5 float,
-		memo nvarchar(MAX)
+		memo nvarchar(MAX),
+		ssstypea nvarchar(50),
+		level1 nvarchar(5),
+		level2 nvarchar(5)
 )
 insert into @tmp
 select '0' gno,c.partno,c.part,c.indate,b.sno,b.namea,b.money,b.pubmoney,b.bo_admin,
-b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.plus,b.total1,
+b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.money6,b.plus,b.total1,
 b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_born,b.bo_night,b.bo_full,b.bo_duty,b.tax_other,b.total2,
 b.addh2_1,b.addh2_2,b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),b.tax_other2,b.meals,b.total3,
-b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.chgcash,b.tax,b.tax5,b.tax6,b.stay_tax,b.tax12,b.tax18,b.welfare,b.stay_money,b.ch_health,b.hplus2,b.minus,b.total4,b.total5,b.memo
+b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,b.chgcash,b.tax,b.tax5,b.tax6,b.stay_tax,b.tax12,b.tax18,b.welfare,b.stay_money,b.ch_health
+,b.hplus2,b.minus,b.total4,b.total5,b.memo,c.typea,d.level1,d.level2
 from salary a
 left join salarys b on a.noa = b.noa
 left join sss c on c.noa = b.sno
+outer apply (select top 1 * from saladjust where noa=b.sno and datea<=a.datea order by datea) d
 where a.person = '外勞' and @t_xmon = a.mon and @t_xkind = a.monkind and a.typea=@t_xtypea
 
-if(@t_order='部門')
-begin
-	insert into @tmp
-	select '1',partno,part,'','','',sum(sal),sum(pub),sum(boad)
-	,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
-	sum(chla1),sum(chla2),sum(chhei),sum(miday),sum(mitotal),sum(bobo),sum(boni),sum(bofu),sum(bodu),sum(taxot),sum(total2),sum(addh1),sum(addh2),sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),
-	sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),'' 
-	from @tmp
-	group by partno,part
-end
+insert into @tmp
+select '2',partno,MAX(part),'','','',sum(sal),sum(pub),sum(boad)
+,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(money6),sum(plus),sum(total1),
+sum(chla1),sum(chla2),sum(chhei),sum(miday),sum(mitotal),sum(bobo),sum(boni),sum(bofu),sum(bodu),sum(taxot),sum(total2),sum(addh1),sum(addh2),sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),
+sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2)
+,sum(minus),sum(total4),sum(total5),'',ssstypea,'',''
+from @tmp
+group by partno,ssstypea
 
 insert into @tmp
-select '2','ZZZ','','','','',sum(sal),sum(pub),sum(boad)
-,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(plus),sum(total1),
+select '3','ZZZ','','','','',sum(sal),sum(pub),sum(boad)
+,sum(money1),sum(money2),sum(money3),sum(money4),sum(botr),sum(bosp),sum(boot),sum(money6),sum(plus),sum(total1),
 sum(chla1),sum(chla2),sum(chhei),sum(miday),sum(mitotal),sum(bobo),sum(boni),sum(bofu),sum(bodu),sum(taxot),sum(total2),sum(addh1),sum(addh2),sum(addm),sum(addh461),sum(addh462),sum(add46m),sum(addh00),sum(add0m),sum(taxno),sum(meals),sum(total3),
-sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2),sum(minus),sum(total4),sum(total5),''
+sum(borrow),sum(labor),sum(laco),sum(lase),sum(chg),sum(taxs),sum(tax5),sum(tax6),sum(tax10),sum(tax12),sum(tax18),sum(wel),sum(staym),sum(heal),sum(hplus2)
+,sum(minus),sum(total4),sum(total5),'','','',''
 from @tmp
 where gno='0'
 
-if(@t_order='部門')
-begin
+insert into @tmp(gno) select '1'
+
 	select gno,partno,part,indate,sno,namea,memo,
+	case when gno='2' and ROW_NUMBER() over (partition by gno,ssstypea order by ssstypea,partno)!=1 then '' else ssstypea end xssstypea,
 	dbo.getComma(sal,0) sal,
 	dbo.getComma(pub,0) pub,
 	dbo.getComma(boad,0) boad,
@@ -710,6 +577,7 @@ begin
 	dbo.getComma(botr,0) botr,
 	dbo.getComma(bosp,0) bosp,
 	dbo.getComma(boot,0) boot,
+	dbo.getComma(money6,0) money6,
 	dbo.getComma(plus,0) plus,
 	dbo.getComma(total1,0) total1,
 	dbo.getComma(chla1,0) chla1,
@@ -753,66 +621,8 @@ begin
 	dbo.getComma(total4,0) total4,
 	dbo.getComma(total5,0) total5,
 	(select top 1 worker from salary where person = '外勞' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by partno,gno
-end
-else
-begin
-	select gno,partno,part,indate,sno,namea,memo,
-	dbo.getComma(sal,0) sal,
-	dbo.getComma(pub,0) pub,
-	dbo.getComma(boad,0) boad,
-	dbo.getComma(money1,0) money1,
-	dbo.getComma(money2,0) money2,
-	dbo.getComma(money3,0) money3,
-	dbo.getComma(money4,0) money4,
-	dbo.getComma(botr,0) botr,
-	dbo.getComma(bosp,0) bosp,
-	dbo.getComma(boot,0) boot,
-	dbo.getComma(plus,0) plus,
-	dbo.getComma(total1,0) total1,
-	dbo.getComma(chla1,0) chla1,
-	dbo.getComma(chla2,0) chla2,
-	dbo.getComma(chhei,0) chhei,
-	dbo.getComma(miday,0) miday,
-	dbo.getComma(mitotal,0) mitotal,
-	dbo.getComma(bobo,0) bobo,
-	dbo.getComma(boni,0) boni,
-	dbo.getComma(bofu,0) bofu,
-	dbo.getComma(bodu,0) bodu,
-	dbo.getComma(taxot,0) taxot,
-	dbo.getComma(total2,0) total2,
-	dbo.getComma(addh1,0) addh1,
-	dbo.getComma(addh2,0) addh2,
-	dbo.getComma(addm,0) addm,
-	dbo.getComma(addh461,0) addh461,
-	dbo.getComma(addh462,0) addh462,
-	dbo.getComma(add46m,0) add46m,
-	dbo.getComma(addh00,0) addh00,
-	dbo.getComma(add0m,0) add0m,
-	dbo.getComma(taxno,0) taxno,
-	dbo.getComma(meals,0) meals,
-	dbo.getComma(total3,0) total3,
-	dbo.getComma(borrow,0) borrow,
-	dbo.getComma(labor,0) labor,
-	dbo.getComma(laco,0) laco,
-	dbo.getComma(lase,0) lase,
-	dbo.getComma(chg,0) chg,
-	dbo.getComma(taxs,0) taxs,
-	dbo.getComma(tax5,0) tax5,
-	dbo.getComma(tax6,0) tax6,
-	dbo.getComma(tax10,0) tax10,
-	dbo.getComma(tax12,0) tax12,
-	dbo.getComma(tax18,0) tax18,
-	dbo.getComma(wel,0) wel,
-	dbo.getComma(staym,0) staym,
-	dbo.getComma(heal,0) heal,
-	dbo.getComma(hplus2,0) hplus2,
-	dbo.getComma(minus,0) minus,
-	dbo.getComma(total4,0) total4,
-	dbo.getComma(total5,0) total5,
-	(select top 1 worker from salary where person = '外勞' and @t_xmon = mon and @t_xkind = monkind and typea=@t_xtypea order by noa desc) worker
-	from @tmp order by gno,sno
-end
+	from @tmp order by gno,level1 desc,level2 desc,sno,ssstypea,partno
+	
 ;
 -----------------------------------------------------------------------------------------------
 z_salary_rk05:--z_salary_rk05
@@ -844,7 +654,8 @@ declare @tmp table(
 	money4 int,
 	bo_traffic int, 
 	bo_special int, 
-	bo_oth int, 
+	bo_oth int,
+	money6 int, 
 	total1 int, 
 	ch_labor1 int, 
 	ch_labor2 int, 
@@ -890,8 +701,8 @@ declare @tmp table(
 ) 
 insert into @tmp 
 select '0' gno, a.noa,b.noq,b.sno,b.namea,c.indate,c.ft_date,b.money,b.pubmoney,b.bo_admin,
-b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special, 
-b.bo_oth,b.total1,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2, 
+b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.money6,b.total1
+,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2, 
 b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
 b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5, 
 b.welfare,b.ch_health,b.total4,b.total5,a.monkind,a.mon,isnull(b.minus,0),isnull(b.plus,0), 
@@ -918,7 +729,8 @@ dbo.getComma(money3,0)mo3,
 dbo.getComma(money4,0)mo4,  
 dbo.getComma(bo_traffic,0) botr, 
 dbo.getComma(bo_special,0) bosp, 
-dbo.getComma(bo_oth,0) boot, 
+dbo.getComma(bo_oth,0) boot,
+dbo.getComma(money6,0)mo6, 
 dbo.getComma(total1,0) total1, 
 dbo.getComma(ch_labor1,0) chla, 
 dbo.getComma(ch_labor2,0) chlb, 
@@ -985,6 +797,7 @@ declare @tmp table(
 		bo_traffic int,
 		bo_special int,
 		bo_oth int,
+		money6 int,
 		total1 int,
 		ch_labor1 int,
 		ch_labor2 int,
@@ -1031,8 +844,8 @@ declare @tmp table(
 )
 insert into @tmp
 select '0' gno,b.sno,b.namea,c.indate,c.ft_date,b.daymoney,b.pubmoney,b.bo_admin,
-b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,
-b.bo_oth,b.total1,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.mi_saliday,b.mi_total,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
+b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.money6,b.total1
+,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.mi_saliday,b.mi_total,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
 b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0)
 ,b.addh100,ROUND((b.addh100*b.ostand),0),b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5,
 b.welfare,b.ch_health,b.total4,b.total5,a.monkind,a.mon,isnull(b.minus,0),isnull(b.plus,0), 
@@ -1059,6 +872,7 @@ dbo.getComma(money4,0)mo4,
 dbo.getComma(bo_traffic,0) bo_traffic,
 dbo.getComma(bo_special,0) bo_special,
 dbo.getComma(bo_oth,0) bo_oth,
+dbo.getComma(money6,0)mo6,
 dbo.getComma(total1,0) total1,
 dbo.getComma(ch_labor1,0) ch_labor1,
 dbo.getComma(ch_labor2,0) ch_labor2,
@@ -1129,6 +943,7 @@ declare @tmp table(
 		bo_traffic int,
 		bo_special int,
 		bo_oth int,
+		money6 int,
 		total1 int,
 		ch_labor1 int,
 		ch_labor2 int,
@@ -1173,8 +988,8 @@ declare @tmp table(
 )
 insert into @tmp
 select '0' gno,b.sno,b.namea,c.indate,c.ft_date,b.daymoney,b.pubmoney,b.bo_admin,
-b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,
-b.bo_oth,b.total1,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
+b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.money6,b.total1
+,b.ch_labor1,b.ch_labor2,b.ch_health_insure,b.day,b.mtotal,b.bo_full,b.tax_other,b.total2,b.addh2_1,b.addh2_2,
 b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*addh46_1*1.33 + b.ostand*addh46_2*1.66),0),b.addh100,ROUND((b.addh100*b.ostand),0),
 b.tax_other2,b.meals,b.total3,b.borrow,b.ch_labor,b.ch_labor_comp,b.ch_labor_self,isnull(b.hplus2,0),b.lodging_power_fee,b.tax,b.tax5,
 b.welfare,b.ch_health,b.total4,b.total5,
@@ -1202,6 +1017,7 @@ dbo.getComma(money4,0)mo4,
 dbo.getComma(bo_traffic,0) bo_traffic,
 dbo.getComma(bo_special,0) bo_special,
 dbo.getComma(bo_oth,0) bo_oth,
+dbo.getComma(money6,0)mo6,  
 dbo.getComma(total1,0) total1,
 dbo.getComma(ch_labor1,0) ch_labor1,
 dbo.getComma(ch_labor2,0) ch_labor2,
@@ -1270,6 +1086,7 @@ declare @tmp table(
 		bo_traffic int,
 		bo_special int,
 		bo_oth int,
+		money6 int,
 		total1 int,
 		ch_labor1 int,
 		ich_health int,
@@ -1320,8 +1137,8 @@ declare @tmp table(
 )
 insert into @tmp
 select '0' gno, a.noa,b.noq,b.sno,b.namea,c.indate,b.money,b.bo_admin,
-b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,
-b.bo_oth,b.total1,b.ch_labor1,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_born,b.bo_night,b.bo_full,b.bo_duty,
+b.money1,b.money2,b.money3,b.money4,b.bo_traffic,b.bo_special,b.bo_oth,b.money,b.total1
+,b.ch_labor1,b.ch_health_insure,b.mi_saliday,b.mi_total,b.bo_born,b.bo_night,b.bo_full,b.bo_duty,
 b.tax_other,b.total2,b.addh2_1,b.addh2_2,b.addmoney,b.addh46_1,b.addh46_2,ROUND((b.ostand*1.33*addh46_1 + b.ostand*1.66*addh46_2),0),
 b.addh100,ROUND((b.ostand*b.addh100),0),
 b.tax_other2,b.meals,a.total3,b.borrow,b.ch_labor,b.chgcash,b.tax6,b.stay_tax,b.tax12,b.tax18,
@@ -1347,6 +1164,7 @@ dbo.getComma(money4,0)mo4,
 dbo.getComma(bo_traffic,0) bo_traffic,
 dbo.getComma(bo_special,0) bo_special,
 dbo.getComma(bo_oth,0) bo_oth,
+dbo.getComma(money6,0)mo6,
 dbo.getComma(total1,0) total1,
 dbo.getComma(ch_labor1,0) ch_labor1,
 dbo.getComma(ich_health,0) ich_health,
@@ -1460,28 +1278,29 @@ begin
 		insert into @list (recno,namea,list) values(7,'交通津貼','b.bo_traffic') 
 		insert into @list (recno,namea,list) values(8,'工作津貼','b.bo_special') 
 		insert into @list (recno,namea,list) values(9,'其他津貼','b.bo_oth')
-		insert into @list (recno,namea,list) values(10,'伙食費','b.meals') 
-		insert into @list (recno,namea,list) values(11,'其他加項','b.plus') 
-		insert into @list (recno,namea,list) values(12,'小計','b.total1') 
-		insert into @list (recno,namea,list) values(13,'扣薪時數','b.mi_saliday') 
-		insert into @list (recno,namea,list) values(14,'扣薪金額','b.mi_total') 
-		insert into @list (recno,namea,list) values(15,'全勤','b.bo_full') 
-		insert into @list (recno,namea,list) values(16,'應稅其他','b.tax_other') 
-		insert into @list (recno,namea,list) values(17,'給付總額','b.total2') 
-		insert into @list (recno,namea,list) values(18,'加班費','b.addmoney')  
-		insert into @list (recno,namea,list) values(19,'免稅其他','b.tax_other2') 
-		insert into @list (recno,namea,list) values(20,'應領總額','b.total3') 
-		insert into @list (recno,namea,list) values(21,'借支','b.borrow') 
-		insert into @list (recno,namea,list) values(22,'勞保費','b.ch_labor') 
-		insert into @list (recno,namea,list) values(23,'勞退個人提繳','b.ch_labor_self') 
-		insert into @list (recno,namea,list) values(24,'健保費','b.ch_health')
-		insert into @list (recno,namea,list) values(25,'二代健保費','b.hplus2')
-		insert into @list (recno,namea,list) values(26,'所得稅5%','b.tax5')  
-		insert into @list (recno,namea,list) values(27,'所得稅','b.tax') 
-		insert into @list (recno,namea,list) values(28,'福利金','b.welfare') 
-		insert into @list (recno,namea,list) values(29,'其他扣款','b.minus') 
-		insert into @list (recno,namea,list) values(30,'應扣總額','b.total4') 
-		insert into @list (recno,namea,list) values(31,'實發金額','b.total5') 
+		insert into @list (recno,namea,list) values(10,'業績獎金','b.money6')
+		insert into @list (recno,namea,list) values(11,'伙食費','b.meals') 
+		insert into @list (recno,namea,list) values(12,'其他加項','b.plus') 
+		insert into @list (recno,namea,list) values(13,'小計','b.total1') 
+		insert into @list (recno,namea,list) values(14,'扣薪時數','b.mi_saliday') 
+		insert into @list (recno,namea,list) values(15,'扣薪金額','b.mi_total') 
+		insert into @list (recno,namea,list) values(16,'全勤','b.bo_full') 
+		insert into @list (recno,namea,list) values(17,'應稅其他','b.tax_other') 
+		insert into @list (recno,namea,list) values(18,'給付總額','b.total2') 
+		insert into @list (recno,namea,list) values(19,'加班費','b.addmoney')  
+		insert into @list (recno,namea,list) values(20,'免稅其他','b.tax_other2') 
+		insert into @list (recno,namea,list) values(21,'應領總額','b.total3') 
+		insert into @list (recno,namea,list) values(22,'借支','b.borrow') 
+		insert into @list (recno,namea,list) values(23,'勞保費','b.ch_labor') 
+		insert into @list (recno,namea,list) values(24,'勞退個人提繳','b.ch_labor_self') 
+		insert into @list (recno,namea,list) values(25,'健保費','b.ch_health')
+		insert into @list (recno,namea,list) values(26,'二代健保費','b.hplus2')
+		insert into @list (recno,namea,list) values(27,'所得稅5%','b.tax5')  
+		insert into @list (recno,namea,list) values(28,'所得稅','b.tax') 
+		insert into @list (recno,namea,list) values(29,'福利金','b.welfare') 
+		insert into @list (recno,namea,list) values(30,'其他扣款','b.minus') 
+		insert into @list (recno,namea,list) values(31,'應扣總額','b.total4') 
+		insert into @list (recno,namea,list) values(32,'實發金額','b.total5') 
 	end
 	
 	if(@person='日薪')
@@ -1497,28 +1316,29 @@ begin
 		insert into @list (recno,namea,list) values(9,'交通津貼','b.bo_traffic') 
 		insert into @list (recno,namea,list) values(10,'工作津貼','b.bo_special') 
 		insert into @list (recno,namea,list) values(11,'其他津貼','b.bo_oth')
-		insert into @list (recno,namea,list) values(12,'伙食費','b.meals') 
-		insert into @list (recno,namea,list) values(13,'其他加項','b.plus')
-		insert into @list (recno,namea,list) values(14,'小計','b.total1')  
-		insert into @list (recno,namea,list) values(15,'扣薪時數','b.mi_saliday') 
-		insert into @list (recno,namea,list) values(16,'扣薪金額','b.mi_total') 
-		insert into @list (recno,namea,list) values(17,'全勤','b.bo_full') 
-		insert into @list (recno,namea,list) values(18,'應稅其他','b.tax_other') 
-		insert into @list (recno,namea,list) values(19,'給付總額','b.total2') 
-		insert into @list (recno,namea,list) values(20,'加班費','b.addmoney') 
-		insert into @list (recno,namea,list) values(21,'免稅其他','b.tax_other2') 
-		insert into @list (recno,namea,list) values(22,'應領總額','b.total3') 
-		insert into @list (recno,namea,list) values(23,'借支','b.borrow') 
-		insert into @list (recno,namea,list) values(24,'勞保費','b.ch_labor') 
-		insert into @list (recno,namea,list) values(25,'勞退個人提繳','b.ch_labor_self') 
-		insert into @list (recno,namea,list) values(26,'健保費','b.ch_health')
-		insert into @list (recno,namea,list) values(27,'二代健保費','b.hplus2')
-		insert into @list (recno,namea,list) values(28,'所得稅5%','b.tax5')  
-		insert into @list (recno,namea,list) values(29,'所得稅','b.tax') 
-		insert into @list (recno,namea,list) values(30,'福利金','b.welfare') 
-		insert into @list (recno,namea,list) values(31,'其他扣款','b.minus') 
-		insert into @list (recno,namea,list) values(32,'應扣總額','b.total4') 
-		insert into @list (recno,namea,list) values(33,'實發金額','b.total5') 
+		insert into @list (recno,namea,list) values(12,'業績獎金','b.money6')
+		insert into @list (recno,namea,list) values(13,'伙食費','b.meals') 
+		insert into @list (recno,namea,list) values(14,'其他加項','b.plus')
+		insert into @list (recno,namea,list) values(15,'小計','b.total1')  
+		insert into @list (recno,namea,list) values(16,'扣薪時數','b.mi_saliday') 
+		insert into @list (recno,namea,list) values(17,'扣薪金額','b.mi_total') 
+		insert into @list (recno,namea,list) values(18,'全勤','b.bo_full') 
+		insert into @list (recno,namea,list) values(19,'應稅其他','b.tax_other') 
+		insert into @list (recno,namea,list) values(20,'給付總額','b.total2') 
+		insert into @list (recno,namea,list) values(21,'加班費','b.addmoney') 
+		insert into @list (recno,namea,list) values(22,'免稅其他','b.tax_other2') 
+		insert into @list (recno,namea,list) values(23,'應領總額','b.total3') 
+		insert into @list (recno,namea,list) values(24,'借支','b.borrow') 
+		insert into @list (recno,namea,list) values(25,'勞保費','b.ch_labor') 
+		insert into @list (recno,namea,list) values(26,'勞退個人提繳','b.ch_labor_self') 
+		insert into @list (recno,namea,list) values(27,'健保費','b.ch_health')
+		insert into @list (recno,namea,list) values(28,'二代健保費','b.hplus2')
+		insert into @list (recno,namea,list) values(29,'所得稅5%','b.tax5')  
+		insert into @list (recno,namea,list) values(30,'所得稅','b.tax') 
+		insert into @list (recno,namea,list) values(31,'福利金','b.welfare') 
+		insert into @list (recno,namea,list) values(32,'其他扣款','b.minus') 
+		insert into @list (recno,namea,list) values(33,'應扣總額','b.total4') 
+		insert into @list (recno,namea,list) values(34,'實發金額','b.total5') 
 	end
 	
 	if(@person='時薪')
@@ -1534,26 +1354,27 @@ begin
 		insert into @list (recno,namea,list) values(9,'交通津貼','b.bo_traffic') 
 		insert into @list (recno,namea,list) values(10,'工作津貼','b.bo_special') 
 		insert into @list (recno,namea,list) values(11,'其他津貼','b.bo_oth')
-		insert into @list (recno,namea,list) values(12,'伙食費','b.meals')
-		insert into @list (recno,namea,list) values(13,'其他加項','b.plus') 
-		insert into @list (recno,namea,list) values(14,'小計','b.total1') 
-		insert into @list (recno,namea,list) values(15,'全勤','b.bo_full') 
-		insert into @list (recno,namea,list) values(16,'應稅其他','b.tax_other') 
-		insert into @list (recno,namea,list) values(17,'給付總額','b.total2') 
-		insert into @list (recno,namea,list) values(18,'加班費','b.addmoney') 
-		insert into @list (recno,namea,list) values(19,'免稅其他','b.tax_other2') 
-		insert into @list (recno,namea,list) values(20,'應領總額','b.total3') 
-		insert into @list (recno,namea,list) values(21,'借支','b.borrow') 
-		insert into @list (recno,namea,list) values(22,'勞保費','b.ch_labor') 
-		insert into @list (recno,namea,list) values(23,'勞退個人提繳','b.ch_labor_self') 
-		insert into @list (recno,namea,list) values(24,'健保費','b.ch_health')
-		insert into @list (recno,namea,list) values(25,'二代健保費','b.hplus2')
-		insert into @list (recno,namea,list) values(26,'所得稅5%','b.tax5')  
-		insert into @list (recno,namea,list) values(27,'所得稅','b.tax') 
-		insert into @list (recno,namea,list) values(28,'福利金','b.welfare') 
-		insert into @list (recno,namea,list) values(29,'其他扣款','b.minus') 
-		insert into @list (recno,namea,list) values(30,'應扣總額','b.total4') 
-		insert into @list (recno,namea,list) values(31,'實發金額','b.total5') 
+		insert into @list (recno,namea,list) values(12,'業績獎金','b.money6')
+		insert into @list (recno,namea,list) values(13,'伙食費','b.meals')
+		insert into @list (recno,namea,list) values(14,'其他加項','b.plus') 
+		insert into @list (recno,namea,list) values(15,'小計','b.total1') 
+		insert into @list (recno,namea,list) values(16,'全勤','b.bo_full') 
+		insert into @list (recno,namea,list) values(17,'應稅其他','b.tax_other') 
+		insert into @list (recno,namea,list) values(18,'給付總額','b.total2') 
+		insert into @list (recno,namea,list) values(19,'加班費','b.addmoney') 
+		insert into @list (recno,namea,list) values(20,'免稅其他','b.tax_other2') 
+		insert into @list (recno,namea,list) values(21,'應領總額','b.total3') 
+		insert into @list (recno,namea,list) values(22,'借支','b.borrow') 
+		insert into @list (recno,namea,list) values(23,'勞保費','b.ch_labor') 
+		insert into @list (recno,namea,list) values(24,'勞退個人提繳','b.ch_labor_self') 
+		insert into @list (recno,namea,list) values(25,'健保費','b.ch_health')
+		insert into @list (recno,namea,list) values(26,'二代健保費','b.hplus2')
+		insert into @list (recno,namea,list) values(27,'所得稅5%','b.tax5')  
+		insert into @list (recno,namea,list) values(28,'所得稅','b.tax') 
+		insert into @list (recno,namea,list) values(29,'福利金','b.welfare') 
+		insert into @list (recno,namea,list) values(30,'其他扣款','b.minus') 
+		insert into @list (recno,namea,list) values(31,'應扣總額','b.total4') 
+		insert into @list (recno,namea,list) values(32,'實發金額','b.total5') 
 	end
 	
 	if(@person='外勞')
@@ -1567,37 +1388,38 @@ begin
 		insert into @list (recno,namea,list) values(7,'交通津貼','b.bo_traffic') 
 		insert into @list (recno,namea,list) values(8,'工作津貼','b.bo_special') 
 		insert into @list (recno,namea,list) values(9,'其他津貼','b.bo_oth')
-		insert into @list (recno,namea,list) values(10,'伙食費','b.meals') 
-		insert into @list (recno,namea,list) values(11,'其他加項','b.plus') 
-		insert into @list (recno,namea,list) values(12,'小計','b.total1') 
-		insert into @list (recno,namea,list) values(13,'扣薪時數','b.mi_saliday') 
-		insert into @list (recno,namea,list) values(14,'扣薪金額','b.mi_total') 
-		insert into @list (recno,namea,list) values(15,'生產獎金','b.bo_born')
-		insert into @list (recno,namea,list) values(16,'夜班津貼','b.bo_night')
-		insert into @list (recno,namea,list) values(17,'全勤','b.bo_full') 
-		insert into @list (recno,namea,list) values(18,'值班津貼','b.bo_duty')
-		insert into @list (recno,namea,list) values(19,'應稅其他','b.tax_other') 
-		insert into @list (recno,namea,list) values(20,'給付總額','b.total2') 
-		insert into @list (recno,namea,list) values(21,'加班費','b.addmoney')  
-		insert into @list (recno,namea,list) values(21,'加班費>46H','ROUND((b.ostand*1.33*addh46_1 + b.ostand*1.66*addh46_2),0)')  
-		insert into @list (recno,namea,list) values(22,'免稅其他','b.tax_other2') 
-		insert into @list (recno,namea,list) values(23,'應領總額','b.total3') 
-		insert into @list (recno,namea,list) values(24,'借支','b.borrow') 
-		insert into @list (recno,namea,list) values(25,'代扣費用','b.chgcash')
-		insert into @list (recno,namea,list) values(26,'所得稅6%','b.tax6')  
-		insert into @list (recno,namea,list) values(27,'暫留稅10%','b.stay_tax')  
-		insert into @list (recno,namea,list) values(28,'所得稅12%','b.tax12')  
-		insert into @list (recno,namea,list) values(29,'所得稅18%','b.tax18')  
-		insert into @list (recno,namea,list) values(30,'勞保費','b.ch_labor') 
-		insert into @list (recno,namea,list) values(31,'勞退個人提繳','b.ch_labor_self') 
-		insert into @list (recno,namea,list) values(32,'健保費','b.ch_health')
-		insert into @list (recno,namea,list) values(33,'二代健保費','b.hplus2')
-		insert into @list (recno,namea,list) values(34,'所得稅5%','b.tax5')  
-		insert into @list (recno,namea,list) values(35,'所得稅','b.tax') 
-		insert into @list (recno,namea,list) values(36,'福利金','b.welfare') 
-		insert into @list (recno,namea,list) values(37,'其他扣款','b.minus') 
-		insert into @list (recno,namea,list) values(38,'應扣總額','b.total4') 
-		insert into @list (recno,namea,list) values(39,'實發金額','b.total5') 
+		insert into @list (recno,namea,list) values(10,'業績獎金','b.money6')
+		insert into @list (recno,namea,list) values(11,'伙食費','b.meals') 
+		insert into @list (recno,namea,list) values(12,'其他加項','b.plus') 
+		insert into @list (recno,namea,list) values(13,'小計','b.total1') 
+		insert into @list (recno,namea,list) values(14,'扣薪時數','b.mi_saliday') 
+		insert into @list (recno,namea,list) values(15,'扣薪金額','b.mi_total') 
+		insert into @list (recno,namea,list) values(16,'生產獎金','b.bo_born')
+		insert into @list (recno,namea,list) values(17,'夜班津貼','b.bo_night')
+		insert into @list (recno,namea,list) values(18,'全勤','b.bo_full') 
+		insert into @list (recno,namea,list) values(19,'值班津貼','b.bo_duty')
+		insert into @list (recno,namea,list) values(20,'應稅其他','b.tax_other') 
+		insert into @list (recno,namea,list) values(21,'給付總額','b.total2') 
+		insert into @list (recno,namea,list) values(22,'加班費','b.addmoney')  
+		insert into @list (recno,namea,list) values(23,'加班費>46H','ROUND((b.ostand*1.33*addh46_1 + b.ostand*1.66*addh46_2),0)')  
+		insert into @list (recno,namea,list) values(24,'免稅其他','b.tax_other2') 
+		insert into @list (recno,namea,list) values(25,'應領總額','b.total3') 
+		insert into @list (recno,namea,list) values(26,'借支','b.borrow') 
+		insert into @list (recno,namea,list) values(27,'代扣費用','b.chgcash')
+		insert into @list (recno,namea,list) values(28,'所得稅6%','b.tax6')  
+		insert into @list (recno,namea,list) values(29,'暫留稅10%','b.stay_tax')  
+		insert into @list (recno,namea,list) values(30,'所得稅12%','b.tax12')  
+		insert into @list (recno,namea,list) values(31,'所得稅18%','b.tax18')  
+		insert into @list (recno,namea,list) values(32,'勞保費','b.ch_labor') 
+		insert into @list (recno,namea,list) values(33,'勞退個人提繳','b.ch_labor_self') 
+		insert into @list (recno,namea,list) values(34,'健保費','b.ch_health')
+		insert into @list (recno,namea,list) values(35,'二代健保費','b.hplus2')
+		insert into @list (recno,namea,list) values(36,'所得稅5%','b.tax5')  
+		insert into @list (recno,namea,list) values(37,'所得稅','b.tax') 
+		insert into @list (recno,namea,list) values(38,'福利金','b.welfare') 
+		insert into @list (recno,namea,list) values(39,'其他扣款','b.minus') 
+		insert into @list (recno,namea,list) values(40,'應扣總額','b.total4') 
+		insert into @list (recno,namea,list) values(41,'實發金額','b.total5') 
 	end
 	
 	
