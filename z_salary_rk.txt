@@ -1588,6 +1588,13 @@ if(@t_service='0')
 insert into @tmp (gno,noa,namea)
 select '2',noa,MAX(namea) from @tmp group by noa
 
+insert into @tmp (gno,noa,moneys,boad,botr,bosp,boot,bofu,money1,money2,money3,money4,meals,salary) 
+select '3',CHAR(255),sum(moneys),sum(boad),sum(botr),sum(bosp),sum(boot),sum(bofu)
+,sum(money1),sum(money2),sum(money3),sum(money4),sum(meals),sum(salary)
+from (
+	select noa from @tmp group by noa
+)a outer apply(select top 1 * from @tmp where noa=a.noa and (gno='0' or gno='1') order by gno,datea desc)b
+
 select gno,noa,namea,datea,jobno,job,level1,level2,
 dbo.getComma(moneys,0) moneys,
 dbo.getComma(boad,0) boad,
