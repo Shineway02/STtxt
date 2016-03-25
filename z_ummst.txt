@@ -6,160 +6,195 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 	declare @t_ecustno nvarchar(20) = case when '#non'=[6] then char(255) else [6] end
 	declare @t_bmon nvarchar(20) = case when '#non'=[13] then '' else [13] end 
 	declare @t_emon nvarchar(20) = case when '#non'=[14] then char(255) else [14] end
+	declare @t_curnoa nvarchar(max) = case when '#non'=[26] then '' else [26] end
 	------------------------------------------------------------------------
 	declare @tmp table(
-		gno nvarchar(10)
-		,sel int identity(1,1)
+		sel int identity(1,1)
+		,gno nvarchar(10)
+		,datea nvarchar(20)
 		,accy nvarchar(20)
 		,noa nvarchar(20)
-		,noq nvarchar(10)
-		,custno nvarchar(20)
-		,cust nvarchar(50)
-		,nick nvarchar(20)
-		,tel nvarchar(50)
-		,fax nvarchar(50)
-		,addr nvarchar(50)
-		,serial nvarchar(10)
-		,invodate nvarchar(10)
-		,invono nvarchar(max)
-			
-		,datea nvarchar(20)
 		,ordeno nvarchar(20)
-		,no2 nvarchar(10)
 		,quatno nvarchar(20)
-		
-		,product nvarchar(20)
+		,product nvarchar(50)
 		,dime float
 		,radius float
 		,width float
 		,lengthb float
-		
+		,[weight] float
 		,mount float
+		,unit nvarchar(20)
 		,price float
 		,[money] float
+		,size nvarchar(max)
 		,memo nvarchar(max)
 		
-		,b01 float
-		,b02 float
-		,b03 float
-	)
-	insert into @tmp(gno,accy,noa,noq,custno,cust,nick,tel,fax,addr,serial,invono,invodate
-		,datea,ordeno,no2,product,dime,radius,width,lengthb,mount,price,[money],memo)
-	select '1',a.accy,a.noa,a.noq,b.custno,c.comp,c.nick,c.tel,c.fax
-		,case when len(isnull(c.zip_invo,''))>0 then c.zip_invo else isnull(c.zip_comp,'') end
-		,c.serial,b.invono,''
-		,b.datea,a.ordeno,a.no2,a.product,a.dime,a.radius,a.width,a.lengthb,a.mount,a.price,a.[total],a.memo
-	from view_vccs a
-	left join view_vcc b on a.accy=b.accy and a.noa=b.noa 
-	left join cust c on a.custno=c.noa
-	where ISNULL(b.mon,'') between @t_bmon and @t_emon
-	and ISNULL(b.custno,'') between @t_bcustno and @t_ecustno
-	and ISNULL(b.typea,'')='1'
-	order by a.noa,a.noq desc
-	---------------------------------------------------------------------------------
-	update @tmp set quatno=isnull(b.quatno,'')
-	from @tmp a
-	left join view_ordes b on a.ordeno=b.noa and a.no2=b.no2
-	
-	declare @tmpb table(
-		custno nvarchar(20)
-		,[money] float
-		,tax float
-		,total float
+		,custno nvarchar(20)
+		,cust nvarchar(50)
+		,serial nvarchar(20)
+		,tel nvarchar(50)
+		,fax nvarchar(50)
+		,post nvarchar(20)
+		,zip nvarchar(20)
+		,addr nvarchar(50)
+		,tmoney float
+		,ttax float
+		,ttotal float
 		,invono nvarchar(max)
+		,tmount nvarchar(max)
 	)
+	insert into @tmp(gno,custno,datea,accy,noa,ordeno,quatno,product,dime,radius,width,lengthb,unit,price
+		,size,memo
+		,[weight],mount,[money])
+	select '1',b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price
+		,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+		,sum(isnull(a.[weight],0)),sum(isnull(a.[mount],0)),sum(isnull(a.[total],0))
+	from view_vccs a
+	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
+	left join view_orde c on b.ordeno=c.noa
+	left join view_quat d on c.quatno=d.noa
+	where ISNULL(b.custno,'') between @t_bcustno and @t_ecustno
+	and ISNULL(b.mon,'') between @t_bmon and @t_emon
+	and ISNULL(b.typea,'')='1'
+	group by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+	order by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+	------------------------------------------------------------------------------------------------------
+	insert into @tmp(gno,custno)select '2',custno from @tmp group by custno
+	insert into @tmp(gno,custno)select '3',custno from @tmp group by custno
+	------------------------------------------------------------------------------------------------------
+	update @tmp set cust=ISNULL(b.comp,''),serial=ISNULL(b.serial,'')
+		,tel=ISNULL(b.tel,''),fax=ISNULL(b.fax,''),zip=ISNULL(b.zip_comp,''),addr=ISNULL(b.addr_comp,'')
+	from @tmp a
+	left join cust b on a.custno=b.noa
+	
+	update @tmp set tmoney=ISNULL(b.[money],0)
+	from @tmp a
+	left join (select custno, SUM(ISNULL([money],0)) [money] from @tmp group by custno) b on a.custno=b.custno
+	update @tmp set ttax=ROUND(tmoney*0.05,0)
+	update @tmp set ttotal=tmoney+ttax
+	------------------------------------------------------------------------------------------------------
 	declare @custno nvarchar(20)
-	declare @money float
-	declare @tax float
-	declare @total float
+	declare @noa nvarchar(20)
+	declare @unit nvarchar(20)
+	declare @mount float
+	declare @weight float
 	declare @invono nvarchar(max)
+	declare @tmount nvarchar(max)
+	
+	declare @t_invono nvarchar(max)
+	declare @t_tmount nvarchar(max)
 	
 	declare cursor_table cursor for
-	select custno,[money],tax,total,invono 
-	from view_vcc b
-	where ISNULL(b.mon,'') between @t_bmon and @t_emon
-	and ISNULL(b.custno,'') between @t_bcustno and @t_ecustno
-	and ISNULL(b.typea,'')='1'
+	select custno from @tmp group by custno
 	open cursor_table
 	fetch next from cursor_table
-	into @custno,@money,@tax,@total,@invono
+	into @custno
 	while(@@FETCH_STATUS <> -1)
 	begin
-		if exists(select * from @tmpb where custno=@custno)
+		select @t_invono='',@t_tmount=''
+		declare cursor_table2 cursor for
+		select noa from @tmp where custno=@custno group by noa
+		open cursor_table2
+		fetch next from cursor_table2
+		into @noa
+		while(@@FETCH_STATUS <> -1)
 		begin
-			update @tmpb set [money]= ISNULL([money],0)+@money
-				,[tax]= ISNULL([tax],0)+@tax
-				,[total]= ISNULL([total],0)+@total
-				,invono=case when len(ISNULL(invono,''))>0 then ISNULL(invono,'')+',' else '' end +@invono
-			where custno=@custno
+			set @invono = ''
+			select @invono = invono from view_vcc where noa=@noa 
+			set @t_invono = @t_invono + case when len(@t_invono)>0 and len(ISNULL(@invono,''))>0 then ',' else '' end + ISNULL(@invono,'')
+			
+			fetch next from cursor_table2
+			into @noa
 		end
-		else
+		close cursor_table2
+		deallocate cursor_table2
+		
+		declare cursor_table2 cursor for
+		select unit,sum(isnull(mount,0)),sum(isnull([weight],0)) from @tmp where custno=@custno group by unit
+		open cursor_table2
+		fetch next from cursor_table2
+		into @unit,@mount,@weight
+		while(@@FETCH_STATUS <> -1)
 		begin
-			insert into @tmpb(custno,[money],tax,total,invono)
-			select @custno,@money,@tax,@total,@invono
+			set @tmount = ''
+			if upper(isnull(@unit,''))='KG' 
+				or upper(isnull(@unit,''))='公斤' 
+				or upper(isnull(@unit,''))='噸' 
+				or upper(isnull(@unit,''))='頓' 
+				or len(ISNULL(@unit,''))=0 
+				or upper(ISNULL(@unit,''))='M2' 
+				or upper(ISNULL(@unit,''))=N'M²' 
+				or upper(ISNULL(@unit,''))='M'
+				or upper(ISNULL(@unit,''))='批' 
+			begin
+				if ISNULL(@weight,0)!=0
+					set @tmount = dbo.getComma(@weight,-1) + isnull(@unit,'')
+			end
+			else
+			begin
+				if ISNULL(@mount,0)!=0
+					set @tmount = dbo.getComma(@mount,-1) + isnull(@unit,'')
+			end
+			set @t_tmount = @t_tmount + case when len(@t_tmount)>0 and len(ISNULL(@tmount,''))>0 then '、' else '' end + ISNULL(@tmount,'')
+			
+			fetch next from cursor_table2
+			into @unit,@mount,@weight
 		end
+		close cursor_table2
+		deallocate cursor_table2
+		
+		update @tmp set invono=@t_invono,tmount=@t_tmount where custno=@custno
 		
 		fetch next from cursor_table
-		into @custno,@money,@tax,@total,@invono
+		into @custno
 	end
 	close cursor_table
 	deallocate cursor_table
 	
-	
-	--小計
-	insert into @tmp(gno,custno,cust,nick,tel,fax,addr,serial,mount,b01,b02,b03)
-	select '2',a.custno,b.comp,b.nick,b.tel,b.fax
-		,case when len(isnull(b.zip_invo,''))>0 then b.zip_invo else isnull(b.zip_comp,'') end
-		,b.serial
-		,ISNULL(c.mount,0)
-		,ISNULL(a.[money],0)
-		,ISNULL(a.[tax],0)
-		,ISNULL(a.[total],0)
-	from @tmpb a
-	left join cust b on a.custno=b.noa
-	outer apply (select SUM(ISNULL(mount,0)) mount from @tmp where custno=a.custno )c
-	
-	insert into @tmp(gno,custno,cust,nick,tel,fax,addr,serial,mount,b01,b02,b03)
-	select '3',a.custno,b.comp,b.nick,b.tel,b.fax
-		,case when len(isnull(b.zip_invo,''))>0 then b.zip_invo else isnull(b.zip_comp,'') end
-		,b.serial
-		,ISNULL(c.mount,0)
-		,ISNULL(a.[money],0)
-		,ISNULL(a.[tax],0)
-		,ISNULL(a.[total],0)
-	from @tmpb a
-	left join cust b on a.custno=b.noa
-	outer apply (select SUM(ISNULL(mount,0)) mount from @tmp where custno=a.custno )c
-	
+	------------------------------------------------------------------------------------------------------
 	select gno
-		,'<img src="'+@t_path+'getlogo.aspx?noa=LC01'+CHAR(38)+'db='+@t_db+'"/>' logo 
-		,custno d01
-		,dbo.AD2ChineseEraName(GETDATE()) d02
-		,replace(cust,'~#$',"'") d03
-		,tel d04
-		,fax d05
-		,addr d06
-		,serial d07
+		,'<img src="'+@t_path+'getlogo.aspx?noa=lienchy'+CHAR(38)+'db='+@t_db+'"/>' logo
+		,custno a01
+		,cust a02
+		,tel a03
+		,fax a04
+		,post+addr a05
+		,serial a06
+		,@t_curnoa a07
+		,dbo.AD2ChineseEraName(GETDATE()) a08
 		
-		,datea a01
-		,noa a02
-		,quatno a03
-		,ordeno a04
-		,product a05
-		,dime a06
-		,radius a07
-		,width a08
-		,lengthb a09
-		,dbo.getComma(mount,-1) a10
-		,dbo.getComma(price,-1) a11
-		,dbo.getComma([money],0) a12
-		,memo a13
-		,dbo.getComma(b01,0) b01
-		,dbo.getComma(b02,0) b02
-		,dbo.getComma(b03,0) b03
-		,invono c01
-	from @tmp
-	order by custno,gno,datea;
+		,datea b01
+		,noa b02
+		,quatno b03
+		,ordeno b04
+		,product b05
+		,case when len(size)>0 then size
+			else dbo.getComma(dime,-1)
+			+case when ISNULL(radius,0)!=0 then '+'+cast(radius as nvarchar) else '' end
+			+case when ISNULL(width,0)!=0 then '*'+cast(width as nvarchar) else '' end
+			+case when ISNULL(lengthb,0)!=0 then '*'+cast(lengthb as nvarchar) else '' end end  b06
+		,case when upper(isnull(unit,''))='KG' 
+			or upper(isnull(unit,''))='公斤' 
+			or upper(isnull(unit,''))='噸' 
+			or upper(isnull(unit,''))='頓' 
+			or len(ISNULL(unit,''))=0 
+			or upper(ISNULL(unit,''))='M2' 
+			or upper(ISNULL(unit,''))=N'M²' 
+			or upper(ISNULL(unit,''))='M'
+			or upper(ISNULL(unit,''))='批' 
+			then dbo.getComma([weight],-1)  
+			else dbo.getComma(mount,-1) end + isnull(unit,'') b07
+		,dbo.getComma(price,-1) b08
+		,dbo.getComma([money],-1) b09
+		,'' b10
+		
+		,dbo.getComma(tmoney,-1) c01
+		,dbo.getComma(ttax,-1) c02
+		,dbo.getComma(ttotal,-1) c03
+		,invono c04
+		,tmount c05
+		
+	from @tmp order by custno,sel;
 
 z_ummst9:--z_ummst9
 	SET QUOTED_IDENTIFIER OFF

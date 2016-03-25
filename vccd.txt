@@ -9,7 +9,7 @@ changeapv:--changeapv
 	if len(@accy)>0
 	begin
 		select @apv=apv from view_vccd where accy=@accy and noa=@t_noa
-		set @apv = case when len(isnull(@apv,''))=0 then '*' else '' end
+		set @apv = case when len(isnull(@apv,''))=0 then 'Y' else '' end
 		set @cmd = "update vccd"+@accy+" set apv=@apv where noa=@t_noa"
 		execute sp_executesql @cmd,N'@t_noa nvarchar(20),@apv nvarchar(10)',@t_noa=@t_noa,@apv=@apv
 	end

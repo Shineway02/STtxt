@@ -118,3 +118,92 @@ select dbo.charbr(product,38) product,replace(tmemo,'chr(10)','<br>') tmemo
 ,*
 from @tmp 
 order by noa ,pageno,gno,orderno;
+--**************************************************************************************
+z_cngfep_yc1:--z_cngfep_yc1 
+declare @t_pageline int = 9    --------一頁幾行
+declare @t_bnoa nvarchar(50) 
+declare @t_enoa nvarchar(50)  
+set @t_bnoa = case when '#non' = [5] then '' else [5] end
+set @t_enoa = case when '#non' = [6] then CHAR(255) else [6] end
+--******************************************************************
+declare @tmp table( 
+	gno nvarchar(10),
+	idno int,
+	pageno int,
+	tpage int,
+	noa nvarchar(30),
+	noq nvarchar(20),
+	datea nvarchar(20),
+	stinno nvarchar(50),
+	stin nvarchar(50),
+	stoutno nvarchar(50),
+	stout nvarchar(50),
+	tel nvarchar(100),
+	addr nvarchar(200),
+	sssno nvarchar(50),
+	namea nvarchar(50),
+	worker nvarchar(50),
+	
+	productno nvarchar(100),
+	product nvarchar(200),
+	unit nvarchar(50),
+	lengthb decimal(20,0),
+	mount decimal(20,2),
+	weight decimal(20,3),
+	memo nvarchar(200)
+)
+
+insert @tmp
+select '0',ROW_NUMBER()over (order by a.noa,b.noq) 
+,CEILING(cast(ROW_NUMBER()over (order by a.noa,b.noq) as float)/@t_pageline)
+,1,a.noa,b.noq,a.datea,a.storeinno,a.storein,a.storeno,a.store
+,a.tel,isnull(c.addr_home,''),a.sssno,a.namea,a.worker
+,b.productno,b.product,b.unit,b.lengthb,b.mount,b.weight,b.memo
+from view_cng a left join view_cngs b on a.noa=b.noa
+left join cust c on a.custno=c.noa
+where a.noa between @t_bnoa and @t_enoa
+
+update a
+set tpage=(select MAX(pageno) from @tmp where noa=a.noa)
+from @tmp a
+
+insert @tmp(gno,noa,pageno,tpage,lengthb,mount,weight)
+select '1',noa,pageno,MAX(tpage),SUM(lengthb),SUM(mount),SUM(weight) from @tmp 
+where gno='0'
+group by noa,pageno
+
+insert @tmp(gno,noa,pageno,tpage,worker,sssno,namea)
+select '2',noa,pageno,MAX(tpage),MAX(worker),MAX(sssno),MAX(namea) from @tmp 
+where gno='0'
+group by noa,pageno
+
+declare @counts int = 0
+declare @noa nvarchar(50) 
+declare @pege int
+
+declare cursor_table cursor for
+select noa,count(*),MAX(pageno) from @tmp where gno='0' group by noa
+open cursor_table
+fetch next from cursor_table
+into @noa,@counts,@pege
+while(@@FETCH_STATUS <> -1)
+begin
+	while (@counts%@t_pageline!=0)
+	begin
+		insert @tmp(gno,noa,pageno,tpage,idno)
+		select '0',@noa,@pege,@pege,999
+		set @counts=@counts+1
+	end
+	fetch next from cursor_table
+	into @noa,@counts,@pege
+end
+close cursor_table
+deallocate cursor_table
+
+select 
+cast(pageno as nvarchar(10))+'/'+cast(tpage as nvarchar(10)) page,
+dbo.getComma(lengthb,0)lengthb,
+dbo.getComma(mount,2)mount,
+dbo.getComma(weight,3)weight,
+*
+from @tmp order by noa,pageno,gno,idno;

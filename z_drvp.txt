@@ -83,12 +83,12 @@ select '0',a.noa,b.no2,a.custno,a.comp
 ,(select handle from @handle2 where noa=a.noa)
 ,a.memo
 ,b.productno,b.product,b.lengthb,b.unit
---,b.mount-b.vmount,b.weight-b.vweight
-,b.mount,b.weight
+,b.mount-isnull(b.vmount,0),b.weight-isnull(b.vweight,0)
+--,b.mount,b.weight
 ,(select store from @store where noa=a.noa+'-'+b.no2)
 ,b.memo
 from view_orde a left join view_ordes b on a.noa=b.noa
-where charindex(a.noa,@t_noa)>0
+where charindex(a.noa,@t_noa)>0 and isnull(b.enda,0)!=1 and isnull(b.cancel,0)!=1
 and a.noa in (select ordeno from view_vcces where charindex(ordeno,@t_noa)>0) 
 order by a.noa,b.no2
 

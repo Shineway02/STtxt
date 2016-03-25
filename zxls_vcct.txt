@@ -31,7 +31,8 @@ create table #z_vcctrb(
 	dutymemo nvarchar(50),
 	book nvarchar(50),
 	sono nvarchar(50),
-	memo nvarchar(max)
+	memo nvarchar(max),
+	iscarrier bit
 )
 declare @a nvarchar(max)
 declare @b nvarchar(max)
@@ -51,6 +52,7 @@ declare @o nvarchar(max)
 declare @p nvarchar(max)
 declare @q nvarchar(max)
 declare @r nvarchar(max)
+declare @s nvarchar(max)
 
 declare @isexist int
 declare	@noa nvarchar(50)
@@ -74,6 +76,7 @@ declare	@dutymemo nvarchar(50)
 declare	@book nvarchar(50)
 declare	@sono nvarchar(50)
 declare	@memo nvarchar(50)
+declare	@iscarrier bit
 
 declare @sumnum nvarchar(50)='12121241'
 declare @str nvarchar(50)
@@ -83,11 +86,11 @@ declare @bdate nvarchar(10)
 declare @edate nvarchar(10)
 
 declare cursor_table cursor for
-select noa,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r from ztmpxls 
+select noa,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s from ztmpxls 
 where isnull(f,'')!='' and len(f)=10 and f like '[A-Z][A-Z][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
 open cursor_table
 fetch next from cursor_table
-into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q,@r
+into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q,@r,@s
 while(@@FETCH_STATUS <> -1)
 begin
 	set @typea = case when @a = '進' then '1' else '2' end
@@ -128,7 +131,7 @@ begin
 	
 	set @isasset = CAST(@h as bit)
 	set @isself = CAST(@i as bit)
-	set @money = CAST(REPLACE(@j,',','') as float)
+	set @money = round(CAST(REPLACE(@j,',','') as float),0)
 	--case when @k='9' then CAST(REPLACE(@m,',','') as float) else CAST(REPLACE(@j,',','') as float) end
 	
 	--"0@,1@應稅,6@作廢,2@零稅率,3@內含,4@免稅,5@自訂" --內含拿掉
@@ -138,13 +141,14 @@ begin
 						--when @k = '9' then '3'
 						when @k = 'D' then 'D'
 						when @k = 'F' then '6' else '1' end
-	set @tax = CAST(REPLACE(@l,',','') as float) --case when @k='9' then 0 else CAST(REPLACE(@l,',','') as float) end
-	set @total = CAST(REPLACE(@m,',','') as float)
+	set @tax = round(CAST(REPLACE(@l,',','') as float),0) --case when @k='9' then 0 else CAST(REPLACE(@l,',','') as float) end
+	set @total = round(CAST(REPLACE(@m,',','') as float),0)
 	set @mount = CAST(REPLACE(@n,',','') as float)
 	set @dutymemo = @o
 	set @book = @p
 	set @sono = @q
 	set @memo = @r
+	set @iscarrier = CAST(@s as bit)
 	
 	set @noa = @f
 	set @isexist = case when (LEN(ISNULL((select noa from vcct where noa = @noa and (case when @kind in ('33','34','23','24') then '1' else '0' end=case when kind in ('33','34','23','24') then '1' else '0' end) ),''))=0) then 0 else 1 end
@@ -168,10 +172,10 @@ begin
 	end	
 		
 	insert into #z_vcctrb
-	select @isexist,@noa,@ishave,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@istrue,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono,@memo
+	select @isexist,@noa,@ishave,@typea,@kind,@cno,@acomp,@datea,@mon,@serial,@istrue,@isasset,@isself,@money,@taxtype,@tax,@total,@mount,@dutymemo,@book,@sono,@memo,@iscarrier
 
 	fetch next from cursor_table
-	into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q,@r
+	into @noa,@a,@b,@c,@d,@e,@f,@g,@h,@i,@j,@k,@l,@m,@n,@o,@p,@q,@r,@s
 end
 close cursor_table
 deallocate cursor_table
@@ -188,10 +192,10 @@ declare @accy nvarchar(50)
 declare @vccno nvarchar(50)
 declare @t_sono nvarchar(50)
 declare cursor_table cursor for
-select isexist,noa,sono,kind from #z_vcctrb
+select isexist,noa,sono,kind,mon from #z_vcctrb
 open cursor_table
 fetch next from cursor_table
-into @isexist,@noa,@sono,@kind
+into @isexist,@noa,@sono,@kind,@mon
 while(@@FETCH_STATUS <> -1)
 begin
 	set @t_sono=''
@@ -208,8 +212,16 @@ begin
 			set @accy=isnull((select accy from view_vcc where noa=@t_sono),'')
 		end
 		
-		delete vcct where noa = @noa
-		and (case when @kind in ('33','34','23','24') then '1' else '0' end=case when kind in ('33','34','23','24') then '1' else '0' end)
+		if(@kind not in ('33','34','23','24'))
+		begin
+			delete vcct where noa = @noa and kind not in ('33','34','23','24')
+		end
+		else --刪除同月份的折讓單否則就新增
+		begin
+			delete vcct where noa = @noa and kind in ('33','34','23','24') and mon=@mon
+		end
+		
+		--delete vcct where noa = @noa and (case when @kind in ('33','34','23','24') then '1' else '0' end=case when kind in ('33','34','23','24') then '1' else '0' end)
 		
 		if(@vccno!='')
 		begin
@@ -217,10 +229,11 @@ begin
 		end
 	end
 	
-	insert into vcct(typea,kind,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo)
-	select typea,kind,cno,acomp,datea,mon,noa,case when serial='00000000' then '' else serial end
-	,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo from #z_vcctrb where noa = @noa
-	
+	insert into vcct(typea,kind,noq,cno,acomp,datea,mon,noa,serial,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo,iscarrier)
+	select typea,kind
+	,right('000'+cast(cast(isnull((select MAX(noq) from vcct where noa=a.noa),'0') as int)+1 as nvarchar(10)),3)
+	,cno,acomp,datea,mon,noa,case when serial='00000000' then '' else serial end
+	,isasset,isself,money,taxtype,tax,total,mount,dutymemo,book,sono,memo,iscarrier from #z_vcctrb a where noa = @noa
 	
 	if(@sono!='')
 	begin
@@ -234,7 +247,7 @@ begin
 	end
 	
 	fetch next from cursor_table
-	into @isexist,@noa,@sono,@kind
+	into @isexist,@noa,@sono,@kind,@mon
 end
 close cursor_table
 deallocate cursor_table

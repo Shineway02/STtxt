@@ -37,7 +37,7 @@ declare @tmp table(
 	a_paytype nvarchar(100),
 	a_addr nvarchar(max),
 	a_datea nvarchar(10),
-	a_cardeal nvarchar(20),
+	a_store nvarchar(20),
 	a_ordeno nvarchar(max),
 	a_memo nvarchar(max),
 	a_tax float,
@@ -57,7 +57,7 @@ insert into @tmp
 		'0',
 		ROW_NUMBER()over(partition by a.noa order by a.noa,b.noq),1,1,a.cno,a.acomp,d.tel,d.fax,d.addr
 		,a.noa,a.typea,a.stype,a.custno,c.comp,a.tel,a.fax,a.sales,a.sales2,a.invono,c.invoicetitle,a.trantype,a.paytype
-		,(case when a.addr2!='' then a.addr2 else a.addr end),a.datea,a.cardeal,a.ordeno,a.memo
+		,(case when a.addr2!='' then a.addr2 else a.addr end),a.datea,a.store,a.ordeno,a.memo
 		,a.tax,a.money,a.total
 		--,(case when a.taxtype='1' then round(a.money*0.05,0) when a.taxtype='3' then e.tax else 0 end)
 		--,(case when a.taxtype='1' then a.money when a.taxtype='3' then a.total-e.tax else a.money end)
@@ -150,7 +150,7 @@ update @tmp set a_invo = case when LEN(a_invo)>88 then SUBSTRING(a_invo,1,88)+'<
 update @tmp set b_products=REPLACE(REPLACE(b_products,'<','&#60'),'>','&#62') where b_products like '%<[A-Z]>%' or b_products like '%<[A-Z][A-Z]>%'
 
 select
-	gno,a_noa,a_typea,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_sale2s,a_invo,a_title,a_trantype,a_paytype,a_cardeal,a_ordeno
+	gno,a_noa,a_typea,a_stype,a_custno,a_comp,a_tel,a_fax,a_sales,a_addr,a_datea,a_sale2s,a_invo,a_title,a_trantype,a_paytype,a_store,a_ordeno
 	,Replace(a_memo,'chr(10)','</BR>&nbsp') a_memo,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_tax),1)),4,12)) a_tax,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a_money),1)),4,12)) a_money,
@@ -230,7 +230,7 @@ insert into @tmp
 	left join view_vcc c on a.vccno = c.noa
 	left join cust d on a.buyerno=d.noa
 	where (a.taxtype != '6') and (a.noa between @t_binvo and @t_einvo)
-	and c.noa between @t_bxnoa and @t_exnoa
+	and isnull(c.noa,'') between @t_bxnoa and @t_exnoa
 ------------單筆處理<<Start>>-----------
 insert into @tmp(
 		gno,pageno,pageorder,datea,noa,noq,buyer,serial,invoaddr,chkno,
@@ -459,7 +459,7 @@ declare @t_exnoa nvarchar(20)
 set @t_bxnoa = case when '#non' = [2] then '' else [2] end
 set @t_exnoa = case when '#non' = [3] then CHAR(255) else [3] end
 -----------------------------------------------------------------------------------------------
-select '0' gno,noa,ordeno,REPLACE(invono,',',',<br>') invono
+select '0' gno,noa,ordeno,dbo.charbr('發票號碼： '+invono,22) invono --,REPLACE(invono,',',',<br>') invono
 ,right('0000000000'+cast(total as nvarchar(30)),1) a1
 ,case when len(cast(total as nvarchar(30)))<2  then null else left(right('0000000000'+cast(total as nvarchar(30)),2),1) end a2
 ,case when len(cast(total as nvarchar(30)))<3  then null else left(right('0000000000'+cast(total as nvarchar(30)),3),1) end a3
@@ -550,7 +550,7 @@ insert into @tmp
 	left join view_vcc c on a.vccno = c.noa
 	left join cust d on a.buyerno=d.noa
 	where (a.taxtype != '6') and (a.noa between @t_binvo and @t_einvo)
-	and c.noa between @t_bxnoa and @t_exnoa
+	and isnull(c.noa,'') between @t_bxnoa and @t_exnoa
 ------------單筆處理<<Start>>-----------
 insert into @tmp(
 		gno,pageno,pageorder,datea,noa,noq,buyer,serial,invoaddr,chkno,
