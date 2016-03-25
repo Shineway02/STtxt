@@ -486,6 +486,8 @@ select
 	dbo.getComma(blance,0)blance,*,
 	case when accc3='期初沖帳' or len(isnull(accc3,''))=0 then '' else 'accc?accc3=$accc3' end qhrefa,
 	case when len(isnull(bal,''))=0 or len(zno)=0 then '' else zno+@t_href+'?noa=$bal' end qhrefb
-from #tmp order by accc5,gno,rec,accc2
+from #tmp 
+where accc5!=''
+order by accc5,gno,rec,accc2
 
 drop table #tmp;
