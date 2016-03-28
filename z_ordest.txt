@@ -1,5 +1,147 @@
-﻿z_ordest7:--z_ordest7	
+﻿z_ordest8:--z_ordest8        pk
 	SET QUOTED_IDENTIFIER OFF
+	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
+	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
+	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
+	declare @t_eodate nvarchar(10) = case when '#non'=[5] then char(255) else [5] end
+	declare @t_bcustno nvarchar(20) = case when '#non'=[6] then '' else [6] end
+	declare @t_ecustno nvarchar(20) = case when '#non'=[7] then char(255) else [7] end
+	declare @t_bdime float = case when '#non'=[28] then 0.000 else cast([28] as float) end
+	declare @t_edime float = case when '#non'=[29] then 999.990 else cast([29] as float) end
+	declare @t_bwidth float = case when '#non'=[30] then 0.00 else cast([30] as float)end
+	declare @t_ewidth float = case when '#non'=[31] then 9999.99 else cast([31] as float) end
+	declare @t_bproductno nvarchar(max) = case when '#non'=[34] then '' else [34] end
+	declare @t_eproductno nvarchar(max) = case when '#non'=[35] then '' else [35] end
+	declare @t_style nvarchar(max) = case when '#non'=[36] then '' else [36] end
+	---------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1)
+		,gno nvarchar(10)
+		,pno int
+		,accy nvarchar(10)
+		,noa nvarchar(20)
+		,no2 nvarchar(10)
+		,datea nvarchar(10)
+		,odate nvarchar(10)
+		,custno nvarchar(20)
+		,cust nvarchar(30)
+		,ucolor nvarchar(30)--規範
+		,scolor nvarchar(30)--國別
+		,productno nvarchar(30)
+		,product nvarchar(50)
+		,[class] nvarchar(20)
+		,dime float
+		,width float
+		,lengthb float
+		,radius float
+		,size nvarchar(50)
+		--ordes
+		,mount float
+		,unit2 nvarchar(20)
+		,[weight] float
+		,unit nvarchar(20)
+		
+		--ordet
+		,mount1 float  
+		,weight1 float
+		
+		--ordct
+		,mount2 float
+		,weight2 float
+		
+		,result float
+	)
+	
+	insert into @tmp(gno,pno,accy,noa,no2
+		,datea,odate,custno,cust,ucolor,scolor
+		,productno,product,[class],dime,width,lengthb,radius,size
+		,mount,unit2,[weight],unit)
+	select '1',1,a.accy,a.noa,a.no2
+		,b.datea,b.odate,b.custno,b.nick,a.ucolor,a.scolor
+		,a.productno,a.product,a.[class],a.dime,a.width,a.lengthb,a.radius,a.size
+		,a.mount,a.unit2,a.[weight],a.unit
+	from view_ordes a
+	left join view_orde b on a.accy=b.accy and a.noa=b.noa
+	where ISNULL(a.[weight],0)!=0
+	and len(isnull(a.productno,''))>0
+	and isnull(a.enda,0)=0
+	and ISNULL(a.cancel,0)=0
+	and isnull(b.enda,0)=0
+	and ISNULL(b.cancel,0)=0
+	and ISNULL(b.datea,'') between @t_bdate and @t_edate
+	and isnull(b.odate,'') between @t_bodate and @t_eodate
+	and ISNULL(a.productno,'') between @t_bproductno and @t_eproductno 
+	and (len(@t_style)=0 or CHARINDEX(','+a.style+',',','+@t_style+',')>0)
+	and isnull(a.dime,0) between @t_bdime and @t_edime
+	and isnull(a.width,0) between @t_bwidth and @t_ewidth
+	and ISNULL(b.custno,'') between @t_bcustno and @t_ecustno 
+	------------------------------------------------------------------------------
+	declare @sel int
+	declare @accy nvarchar(10)
+	declare @noa nvarchar(20)
+	declare @no2 nvarchar(10)
+	declare @mount float
+	declare @weight float
+	
+	declare cursor_table cursor for
+	select sel,accy,noa,no2 from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @sel,@accy,@noa,@no2
+	while(@@FETCH_STATUS <> -1)
+	begin	
+		--ordet	
+		select @mount=0,@weight=0
+		select @mount=SUM(isnull(mount,0)),@weight=SUM(isnull([weight],0)) 
+		from view_ordet where noa=@noa and no3=@no2
+		update @tmp set mount1=ISNULL(@mount,0),weight1=ISNULL(@weight,0) where sel=@sel
+		
+		--ordct
+		select @mount=0,@weight=0
+		select @mount=SUM(isnull(mount,0)),@weight=SUM(isnull([weight],0)) 
+		from view_ordct where ordeno=@noa and no4=@no2
+		update @tmp set mount2=ISNULL(@mount,0),weight2=ISNULL(@weight,0) where sel=@sel
+		
+		fetch next from cursor_table
+		into @sel,@accy,@noa,@no2
+	end
+	close cursor_table
+	deallocate cursor_table
+	
+	update @tmp set result=ISNULL([weight],0)-ISNULL([weight1],0)-ISNULL([weight2],0)
+	delete @tmp where result<=0
+	
+	insert into @tmp(gno,pno,mount,[weight],mount1,[weight1],mount2,[weight2],result)
+	select '2',2,SUM(ISNULL(mount,0)),SUM(ISNULL([weight],0))
+		,SUM(ISNULL(mount1,0)),SUM(ISNULL([weight1],0))
+		,SUM(ISNULL(mount2,0)),SUM(ISNULL([weight2],0))
+		,SUM(ISNULL(result,0))
+	from @tmp
+	
+	select gno
+		,"orde_pk?noa=\'"+noa+"\' and "+cast(ROW_NUMBER()over(order by pno,productno,dime,width,accy,noa,no2) as nvarchar)+"=$rr?"+accy ghref
+		,ROW_NUMBER()over(order by pno,productno,dime,width,accy,noa,no2) rr
+		,noa+'-'+no2 a01
+		,datea a02
+		,cust a03
+		,ucolor a04
+		,scolor a05
+		,product a06
+		,[class] a07
+		,dime a08
+		,width a09
+		,REPLACE(size,'~#$',"'") a10
+		,dbo.getComma(mount,-1) a11
+		,unit2 a12
+		,dbo.getComma([weight],-1) a13
+		,unit a14
+		,dbo.getComma(weight1,-1) a15
+		,dbo.getComma(weight2,-1) a16
+		,dbo.getComma(result,-1) a17
+	from @tmp order by pno,productno,dime,width,accy,noa,no2;
+
+z_ordest7:--z_ordest7	    pk
+	SET QUOTED_IDENTIFIER OFF  
 	declare @t_bdate nvarchar(20) = case when '#non'=[2] then '' else [2] end
 	declare @t_edate nvarchar(20) = case when '#non'=[3] then char(255) else [3] end
 	declare @t_bodate nvarchar(10) = case when '#non'=[4] then '' else [4] end
