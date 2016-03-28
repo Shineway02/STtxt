@@ -1,0 +1,252 @@
+﻿zxls_salrk:--打卡上傳
+
+declare @t_weekday nvarchar(10)--星期
+
+declare @t_blate int=3
+declare @t_elate int=15
+declare @t_gowork nvarchar(10)='17:00' --中班上班時間
+declare @t_offwork nvarchar(10)='24:30' --中班下班時間
+declare @t_gowork2 nvarchar(10)='00:30' --晚班上班時間
+declare @t_offwork2 nvarchar(10)='08:00' --晚班下班時間
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#bbm')is not null
+BEGIN
+   drop table #bbm
+END
+
+IF OBJECT_ID('tempdb..#bbs')is not null
+BEGIN
+   drop table #bbs
+END
+
+--bbm
+create table #bbm(
+		noa nvarchar(20),
+		w133 float,
+		w166 float,
+		w100 float,
+		mount float,
+		holiday bit,
+)
+
+--bbs
+create table #bbs(
+		noa nvarchar(20),
+		noq nvarchar(10),
+		sssno nvarchar(20),
+		namea nvarchar(50),
+		clockin nvarchar(50),
+		clockout nvarchar(50),
+		w133 float,
+		w166 float,
+		w100 float,
+		memo nvarchar(50),
+		barcode nvarchar(50),
+		stype nvarchar(100),
+)
+
+--拆解傳入的資料
+create table #tmp(
+	datea nvarchar(100),
+	timea nvarchar(100),
+	sssno nvarchar(100),
+	namea nvarchar(100)
+)
+--85191--85146--56558 中班
+insert into #tmp
+select SUBSTRING(a.a,3,8)datea,SUBSTRING(a.a,11,4) timea,b.noa,b.namea
+--,SUBSTRING(a.a,15,2) work,SUBSTRING(a.a,17,5) barcode,b.class5,c.btime,c.etime
+from ztmpxls a left join sss b on SUBSTRING(a.a,17,10)=b.barcode
+--left join class5 c on b.class5=c.noa
+where a.a!='' and isnull(b.noa,'')!=''
+
+update #tmp
+set datea=dbo.AD2ChineseEraName(datea)
+,timea=left(timea,2)+':'+RIGHT(timea,2)
+
+declare @datea nvarchar(MAX)
+declare @tomorrow nvarchar(MAX)
+declare @yesterday nvarchar(MAX)
+declare @eradate nvarchar(MAX)
+declare @sssno nvarchar(50)
+declare @namea nvarchar(50)
+declare @barcode nvarchar(50)
+declare @typea nvarchar(50)
+declare @clockin nvarchar(50)
+declare @clockout nvarchar(50)
+declare @whileend int
+
+declare cursor_table cursor for
+select datea from #tmp group by datea order by datea --匯入日期
+open cursor_table
+fetch next from cursor_table
+into @datea
+while(@@FETCH_STATUS <> -1)
+begin
+	
+	set @tomorrow=dbo.q_cdn(@datea,1)
+	set @eradate=dbo.ChineseEraName2AD(@datea)
+	set @yesterday=dbo.q_cdn(@datea,-1)
+	set @t_weekday=DATEPART(WEEKDAY,@eradate)-1
+	
+	--處理員工上班時間
+	declare cursor_table2 cursor for
+	select noa,namea,barcode,typea from sss a where isnull(outdate,'')='' or isnull(outdate,'')>@datea
+	open cursor_table2
+	fetch next from cursor_table2
+	into @sssno,@namea,@barcode,@typea
+	while(@@FETCH_STATUS <> -1)
+	begin
+	
+		set @clockin=isnull((select top 1 timea from #tmp where sssno=@sssno and datea=@datea order by timea),'')
+		set @clockout=isnull((select top 1 timea from #tmp where sssno=@sssno and datea=@datea order by timea desc),'')
+		
+		if(@clockin=@clockout) --可能是中班或晚班抓取隔天的時間
+		begin
+			set @clockout=isnull((select top 1 timea from #tmp where sssno=@sssno and datea=@tomorrow order by timea),'')
+		end
+		
+		if(@clockout<'06:00')
+		begin
+			set @clockout=cast(cast(left(@clockout,2) as int)+24 as nvarchar(10))+RIGHT(@clockout,3)
+		end
+		
+		set @whileend=0 --避免無窮迴圈
+		while(datediff(HOUR,@eradate+' '+@clockin,case when @clockout>'24:00' 
+			then cast(dbo.ChineseEraName2AD(@tomorrow) as nvarchar(10))+' '+right('00'+cast(cast(left(@clockout,2) as int)-24 as nvarchar(10)),2)+RIGHT(@clockout,3)
+			else @eradate+' '+@clockout end)>15 and @whileend< 10)
+		begin			
+			set @clockin=isnull((select top 1 timea from #tmp where sssno=@sssno 
+			and datea=@datea and timea!=@clockin order by timea),'')
+			
+			set @whileend=@whileend+1
+		end
+	
+		insert #bbs	
+		select @datea,'',@sssno,@namea,@clockin,@clockout,0,0,0,'',@barcode,@typea
+	
+		fetch next from cursor_table2
+		into @sssno,@namea,@barcode,@typea
+	end
+	close cursor_table2
+	deallocate cursor_table2
+	
+	--判斷中班,晚班		
+	update a set memo=
+		case when clockin<=@t_gowork and clockout>=@t_offwork then '中班'
+		when clockin<=@t_gowork2 and clockout>=@t_offwork2 then '晚班'
+		else '' end
+	from #bbs a
+	
+	--一般日
+	if(
+		((select count(*) from holiday where noa=@datea and isnull(iswork,0)!=1)=0 --不是假日
+		and @t_weekday!='0' and @t_weekday!='6')--不是周六日
+		or (select count(*) from holiday where noa=@datea and isnull(iswork,0)=1)>0--上班日
+	)
+	begin	
+		--判斷遲到
+		update a
+		set memo=
+		case when (select count(*) from salvacause where sssno=a.sssno and @datea between bdate and edate and btime=c.btime and a.clockin<=etime)>0	then '請假'
+		when a.clockin between left(c.btime,3)+right('00'+cast(cast(right(c.btime,2) as int)+@t_blate as nvarchar(10)),2)
+		and left(c.btime,3)+right('00'+cast(cast(right(c.btime,2) as int)+@t_elate as nvarchar(10)),2) then '遲到' else '曠職' end
+		from #bbs a left join sss b on a.sssno=b.noa left join class5 c on b.class5=c.noa
+		where a.memo='' and a.clockin!=''
+		and a.clockin>left(c.btime,3)+right('00'+cast(cast(right(c.btime,2) as int)+@t_blate as nvarchar(10)),2)
+		
+		--判斷早退
+		update a
+		set memo=a.memo+(case when len(a.memo)>0 then ',' else '' end)+'早退'
+		from #bbs a left join sss b on a.sssno=b.noa left join class5 c on b.class5=c.noa
+		where charindex('中班',a.memo)=0 and charindex('晚班',a.memo)=0
+		and a.clockout!='' and a.clockout<c.etime
+		and (select count(*) from salvacause where sssno=a.sssno and @datea between bdate and edate and etime=c.etime and a.clockout>=btime)=0
+	
+		--更新加班時數
+		update a
+		set w133=isnull((select sum(hours) from saladd where isnull(isapv,0)=1 and sssno=a.sssno and datea=@datea),0)
+		from #bbs a
+		
+		update #bbs set w166=case when w133>2 then w133-2 else 0 end
+		update #bbs set w133=case when w133>2 then 2 else w133 end
+	end
+	else --假日
+	begin
+		--更新加班時數
+		update a
+		set w100=isnull((select sum(hours) from saladd where isnull(isapv,0)=1 and sssno=a.sssno and datea=@datea),0)
+		from #bbs a
+		
+	end
+	
+	delete a
+	from salpresents a
+	where noa=@datea and exists (select * from #bbs where sssno=a.sssno)
+	
+	update salpresents set noq='z'+noq where noa=@datea
+	
+	insert salpresents (noa,noq,sssno,namea,clockin,clockout,cardno,w133,w166,w100,memo,hr_special)
+	select noa,right('000'+cast(ROW_NUMBER()over (order by sssno) as nvarchar(10)),3)
+	,sssno,namea,clockin,clockout,barcode,w133,w166,w100,memo,0
+	from #bbs where noa=@datea
+	
+	update a
+	set noq=right('000'+cast(a.xnoq as nvarchar(10)),3)
+	from (select noq,ROW_NUMBER ()over (order by sssno) xnoq from salpresents a where noa=@datea )a
+	
+	if((select count(*) from salpresent where noa=@datea)=0)
+	begin
+		insert salpresent(noa,holiday,mount,w100,w133,w166,hr_special)
+		select noa,
+		case when (((select count(*) from holiday where noa=@datea and isnull(iswork,0)!=1)=0 --不是假日
+		and @t_weekday!='0' and @t_weekday!='6')--不是周六日
+		or (select count(*) from holiday where noa=@datea and isnull(iswork,0)=1)>0)--上班日
+		then 0 else 1 end
+		,count(*),SUM(w100),SUM(w133),SUM(w166),SUM(hr_special)
+		from salpresents where noa=@datea group by noa
+	end
+	else
+	begin
+		update a
+		set holiday=
+		case when (((select count(*) from holiday where noa=@datea and isnull(iswork,0)!=1)=0 --不是假日
+		and @t_weekday!='0' and @t_weekday!='6')--不是周六日
+		or (select count(*) from holiday where noa=@datea and isnull(iswork,0)=1)>0)--上班日
+		then 0 else 1 end
+		,mount=b.mount,w100=b.w100,w133=b.w133,w166=b.w166,hr_special=b.hr_special
+		from salpresent a outer apply (
+		select count(*)mount,SUM(w100)w100,SUM(w133)w133,SUM(w166)w166,SUM(hr_special)hr_special 
+		from salpresents where noa=a.noa)b
+		where noa=@datea
+	end
+	
+	delete #bbm
+	delete #bbs
+	
+	fetch next from cursor_table
+	into @datea
+end
+close cursor_table
+deallocate cursor_table
+
+IF OBJECT_ID('tempdb..#tmp')is not null
+BEGIN
+   drop table #tmp
+END
+
+IF OBJECT_ID('tempdb..#bbm')is not null
+BEGIN
+   drop table #bbm
+END
+
+IF OBJECT_ID('tempdb..#bbs')is not null
+BEGIN
+   drop table #bbs
+END
+;
