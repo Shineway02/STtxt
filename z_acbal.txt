@@ -228,7 +228,7 @@ execute sp_executesql @cmd
 
 --期初
 set @cmd = 
-	"update #tmp set bmoney = 0
+	"update #tmp set bmoney = ISNULL(b.money,0)
 	from #tmp a
 	left join(
 		select acc1,case when RIGHT('"+@t_bdate+"',5)='01/01' and RIGHT('"+@t_edate+"',5)='01/01' then 0 else SUM(money) end money from(
@@ -246,7 +246,9 @@ set @cmd =
 				  (LEN('"+@t_bal+"')=0 or (bal like '%"+@t_bal+"%')) and
 				  (acc1 between '"+@t_bacc+"' and '"+@t_eacc+"')
 		)tmp group by acc1
-	)b on a.accc5 = b.acc1"
+	)b on a.accc5 = b.acc1
+	where rec = 1"
+	
 execute sp_executesql @cmd
 
 set @cmd = 
