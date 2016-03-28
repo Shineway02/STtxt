@@ -228,7 +228,7 @@ execute sp_executesql @cmd
 
 --期初
 set @cmd = 
-	"update #tmp set bmoney = ISNULL(b.money,0)
+	"update #tmp set bmoney = 0
 	from #tmp a
 	left join(
 		select acc1,case when RIGHT('"+@t_bdate+"',5)='01/01' and RIGHT('"+@t_edate+"',5)='01/01' then 0 else SUM(money) end money from(
