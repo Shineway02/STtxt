@@ -1,3 +1,93 @@
+vcca_mount:--vcca_mount 產品庫存, 只查詢一個產品, 不分倉庫, 排除當前的銷貨發票, 有日期	
+	declare @t_vccano nvarchar(20)=[1]
+	declare @t_cno nvarchar(10) = [2]
+	declare @t_date nvarchar(10) = [3]
+	declare @t_productno nvarchar(max) = [4]
+	---------------------------------------------------------------
+	declare @tmp table(
+		sel int identity(1,1)
+		,datea nvarchar(10)
+		,typea nvarchar(20)
+		,noa nvarchar(20)
+		,mount float
+		,result float
+	)
+	
+	insert into @tmp(datea,typea,noa,mount)
+	select a.mon,'0',a.noa,a.beginmount
+	from uccas a
+	left join ucca b on a.noa=b.noa
+	where a.noa=@t_productno 
+	and a.mon<=@t_date
+	and a.cno=@t_cno
+	
+	insert into @tmp(datea,typea,noa,mount)
+	select b.datea,'1',a.noa,a.mount
+	from rc2as a
+	left join rc2a b on a.noa=b.noa
+	where a.productno=@t_productno
+	and b.datea<=@t_date
+	and b.cno=@t_cno
+	
+	insert into @tmp(datea,typea,noa,mount)
+	select b.datea,'3',a.noa,a.mount
+	from vccas a
+	left join vcca b on a.noa=b.noa
+	where a.productno=@t_productno
+	and b.datea<=@t_date
+	and a.noa!=@t_vccano
+	and b.cno=@t_cno
+	
+	insert into @tmp(datea,typea,noa,mount)
+	select b.datea,case when b.typea='1' then '2' else '3' end,a.noa,a.mount
+	from vccbs a
+	left join vccb b on a.noa=b.noa
+	where a.productno=@t_productno
+	and b.datea<=@t_date 
+	and b.cno=@t_cno
+	--------------------------------------------------------------------
+	declare @result float = 0
+	
+	declare @sel int
+	declare @datea nvarchar(20)
+	declare @typea nvarchar(20)
+	declare @mount float
+	
+	declare cursor_table cursor for
+	select sel,datea,typea,mount from @tmp order by datea,typea,sel
+	open cursor_table
+	fetch next from cursor_table
+	into @sel,@datea,@typea,@mount
+	while(@@FETCH_STATUS <> -1)
+	begin		
+		if @typea='0'
+		begin
+			set @result = @mount
+		end
+		else if @typea='1' or @typea='2'
+		begin
+			set @result = @result + @mount
+		end
+		else 
+		begin
+			set @result = @result - @mount
+		end
+		--update @tmp set result=@result where sel=@sel
+		fetch next from cursor_table
+		into @sel,@datea,@typea,@mount
+	end
+	close cursor_table
+	deallocate cursor_table
+	----------------------------------------------------------------------
+	declare @tmpa table(
+		productno nvarchar(30)
+		,mount float
+	)
+	insert into @tmpa(productno,mount)values(@t_productno,@result)
+	select * from @tmpa;
+	
+	
+
 checkMoney:-- vcca.txt  checkMoney 	
 	declare @t_noa nvarchar(20) = N[1]
 	declare @t_custno nvarchar(20) = N[2]
