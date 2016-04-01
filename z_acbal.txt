@@ -460,6 +460,9 @@ end
 close cursor_table 
 deallocate cursor_table 
 
+if(@t_proj='VU')
+	delete #tmp where accc5!='' and total=0
+
 --排版
 update #tmp set accc2 = case when LEN(accc2)>0 then dbo.split(@t_bdate,'/',0)+'/'+accc2 else '' end
 --update #tmp set accc3 = case when LEN(accc3)>0 then accc3+'<br>'+ISNULL(bal,'') else '' end
