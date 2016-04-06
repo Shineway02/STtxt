@@ -575,6 +575,7 @@ declare @strNum nvarchar(max) = N'零壹貳叁肆伍陸柒捌玖'
 set @t_bsno = case when '#non' = [2] then '' else [2] end 
 set @t_esno = case when '#non' = [3] then CHAR(255) else [3] end 
 set @t_xyears = case when '#non' = [12] then '' else [12] end 
+-----------------------------------------------------------------------------------------------------
 declare @tmp table(
 	gno nvarchar(1),
 	noa nvarchar(20),
@@ -595,31 +596,69 @@ declare @tmp table(
 	m04 nvarchar(10),
 	m05 nvarchar(10)
 )
+
+declare @tmpa table(
+	noa nvarchar(20),
+	noq nvarchar(20),
+	mon nvarchar(10),
+	ch_labor int,
+	ch_health int
+)
+insert @tmpa
+select a.noa,'000',b.mon,sum(b.ch_labor),sum(b.ch_health)
+from sss a left join salarys b on a.noa=b.sno
+where exists (select * from labase where a.noa=a.noa)
+and (a.noa between @t_bsno and @t_esno) and
+(left(b.mon,3) = @t_xyears) and
+(isnull(a.outdate,'')='' or left(a.outdate,3)>=@t_xyears)
+group by a.noa,b.mon
+
+insert @tmpa
+select a.noa,b.noq,a.mon,0,isnull(b.ch_money,0)-isnull(b.as_health,0)
+from @tmpa a outer apply (select top 3 * from labases where noa=a.noa
+and isnull(ch_money,0)-isnull(as_health,0)>0
+and a.mon between case when isnull(indate,'')='' then CHAR(255) else LEFT(indate,len(a.mon)) end
+and case when isnull(outdate,'')='' then CHAR(255) else LEFT(outdate,len(a.mon)) end
+)b where isnull(b.noq,'')!='' 
+
+update a
+set ch_health=ch_health-isnull((select SUM(ch_health) from @tmpa where noa=a.noa and mon=a.mon and noq!='000'),0)
+from @tmpa a 
+where noq='000'
+
 insert into @tmp
-	select
-		'0' gno,a.noa, a.namea,'','本人',a.namea,sum(d.ch_labor),
-		sum(d.ch_health),0,isnull(c.acomp,''),isnull(c.serial,''),isnull(c.boss,''),isnull(c.addr,''),
-		'' m01,'' m02,'' m03,'' m04,'' m05
-	from sss a
-	left join acomp c on c.noa = a.cno
-	left join salarys d on d.sno = a.noa
-	where (a.noa between @t_bsno and @t_esno) and
-			 (left(d.mon,3) = @t_xyears) and
-			 (isnull(a.outdate,'')='' or left(a.outdate,3)>=@t_xyears)
-	group by a.noa, a.namea,isnull(c.acomp,''),isnull(c.serial,''),isnull(c.boss,''),isnull(c.addr,'')
-delete @tmp where isnull(ch_labor,0)+isnull(ch_labor,0)=0
+select '0' gno,a.noa,b.namea,'','本人','',sum(a.ch_labor),sum(a.ch_health),0
+,isnull(c.acomp,''),isnull(c.serial,''),isnull(c.boss,''),isnull(c.addr,'')
+,'' m01,'' m02,'' m03,'' m04,'' m05
+from @tmpa a
+left join sss b on a.noa=b.noa
+left join acomp c on c.noa = b.cno
+where a.noq='000'
+group by a.noa,b.namea,isnull(c.acomp,''),isnull(c.serial,''),isnull(c.boss,''),isnull(c.addr,'')
+
+insert into @tmp
+select '0' gno,a.noa,b.namea,'',c.prefix,c.namea,sum(a.ch_labor),sum(a.ch_health),0
+,isnull(d.acomp,''),isnull(d.serial,''),isnull(d.boss,''),isnull(d.addr,'')
+,'' m01,'' m02,'' m03,'' m04,'' m05
+from @tmpa a
+left join sss b on a.noa=b.noa
+left join labases c on a.noa=c.noa and a.noq=c.noq
+left join acomp d on d.noa = b.cno
+where a.noq!='000'
+group by a.noa,b.namea,c.prefix,c.namea,isnull(d.acomp,''),isnull(d.serial,''),isnull(d.boss,''),isnull(d.addr,'')
+	
+delete @tmp where isnull(ch_labor,0)+isnull(ch_health,0)=0
+
 insert into @tmp(gno,noa,total,comp,serial,boss,addr)
-	select
-		'1' gno,noa,SUM(ch_labor)+SUM(ch_health),comp,serial,boss,addr
-	from @tmp
-	where gno='0'
-	group by noa,comp,serial,boss,addr
+select '1' gno,noa,SUM(ch_labor)+SUM(ch_health),comp,serial,boss,addr
+from @tmp where gno='0'
+group by noa,comp,serial,boss,addr
+	
 insert into @tmp(gno,noa,total,comp,serial,boss,addr)
-	select
-		'2' gno,noa,SUM(ch_labor)+SUM(ch_health),comp,serial,boss,addr
-	from @tmp
-	where gno='0'
-	group by noa,comp,serial,boss,addr
+select '2' gno,noa,SUM(ch_labor)+SUM(ch_health),comp,serial,boss,addr
+from @tmp where gno='0'
+group by noa,comp,serial,boss,addr
+
 update a  
 	set m01 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),1,1) as int)+1,1),
 	m02 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),2,1) as int)+1,1),
@@ -627,6 +666,7 @@ update a
 	m04 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),4,1) as int)+1,1),
 	m05 = substring(@strNum,cast(substring(RIGHT(REPLICATE('0', 5) + cast(CAST(total as int) as nvarchar), 5),5,1) as int)+1,1)
 from @tmp a
+
 select
 	a.gno,a.noa,a.namea,a.years,a.prefix,a.fnamea,
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.ch_labor),1)),4,12)) ch_labor,
@@ -634,4 +674,4 @@ select
 	reverse(substring(reverse(convert(nvarchar(15),CONVERT(money,a.total),1)),4,12)) total,
 	a.comp,a.serial,a.boss,a.addr,a.m01,a.m02,a.m03,a.m04,a.m05,@t_xyears wyear
 from @tmp a
-order by a.noa,a.gno;
+order by a.noa,a.gno,case when prefix='本人' then 0 else 1 end;
