@@ -98,8 +98,11 @@
 		
 		--ordct
 		select @mount=0,@weight=0
-		select @mount=SUM(isnull(mount,0)),@weight=SUM(isnull([weight],0)) 
-		from view_ordct where ordeno=@noa and no4=@no2
+		select @mount=SUM(isnull(b.mount,0)),@weight=SUM(isnull(b.[weight],0)) 
+		from view_ordct  a
+		left join view_ordcs b on a.accy=b.accy and a.noa=b.noa and a.no2=b.no2
+		where a.ordeno=@noa and a.no4=@no2 
+		
 		update @tmp set mount2=ISNULL(@mount,0),weight2=ISNULL(@weight,0) where sel=@sel
 		
 		fetch next from cursor_table

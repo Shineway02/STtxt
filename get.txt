@@ -1,0 +1,21 @@
+get_vcc:--get_vcc   
+	SET QUOTED_IDENTIFIER OFF
+	declare @cmd nvarchar(max)
+	declare @t_noa nvarchar(20) = [1]
+	-----------------------------------------------------------------------------------
+	declare @getWeight float = 0
+	select @getWeight =SUM(ISNULL([gweight],0)) from view_gets where noa=@t_noa	
+	declare @accy nvarchar(20)
+	select @accy = accy from view_vcc where noa=@t_noa
+	
+	declare @tmp table(msg nvarchar(max))
+	begin try
+		set @cmd ="update vcc"+@accy+" set cartrips=isnull(@getWeight,0) where noa=@t_noa"
+		execute sp_executesql @cmd,N'@getWeight float,@t_noa nvarchar(20)',@getWeight=@getWeight,@t_noa=@t_noa
+		insert into @tmp(msg)values('')
+	end try
+	begin catch
+		insert into @tmp(msg)values('資料更新異常：'+@t_noa)
+	end catch
+	select * from @tmp;
+	
