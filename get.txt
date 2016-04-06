@@ -10,7 +10,7 @@ get_vcc:--get_vcc
 	
 	declare @tmp table(msg nvarchar(max))
 	begin try
-		set @cmd ="update vcc"+@accy+" set cartrips=@getWeight where noa=@t_noa"
+		set @cmd ="update vcc"+@accy+" set cartrips=isnull(@getWeight,0) where noa=@t_noa"
 		execute sp_executesql @cmd,N'@getWeight float,@t_noa nvarchar(20)',@getWeight=@getWeight,@t_noa=@t_noa
 		insert into @tmp(msg)values('')
 	end try
