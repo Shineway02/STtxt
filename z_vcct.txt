@@ -81,10 +81,10 @@ declare @tmp table(
 	tpg nvarchar(10),
 	mon nvarchar(30),
 	
-	id1 nvarchar(10),noa1 nvarchar(50),serial1 nvarchar(50),total1 float,
+	id1 nvarchar(10),noa1 nvarchar(50),serial1 nvarchar(50),money01 float,total1 float,
 	tt11 nvarchar(10),tt12 nvarchar(10),tt13 nvarchar(10),tax1 float,
 	
-	id2 nvarchar(10),noa2 nvarchar(50),serial2 nvarchar(50),total2 float,
+	id2 nvarchar(10),noa2 nvarchar(50),serial2 nvarchar(50),money02 float,total2 float,
 	tt21 nvarchar(10),tt22 nvarchar(10),tt23 nvarchar(10),tax2 float,
 	
 	cnt1 float,cnt2 float,cnt3 float,cnt4 float,cnt5 float, --合計張數
@@ -151,7 +151,7 @@ end
 close cursor_table 
 deallocate cursor_table 
 --依發票號碼更新資料內容
-update @tmp set serial1=b.serial,total1=b.money,tt11=b.tt1,tt12=b.tt2,tt13=b.tt3,tax1=b.tax
+update @tmp set serial1=b.serial,money01=b.money,total1=b.total,tt11=b.tt1,tt12=b.tt2,tt13=b.tt3,tax1=b.tax
 from @tmp a
 left join(
 	select 
@@ -163,7 +163,7 @@ left join(
 		money,total,tax from vcct
 )b on a.noa1 = b.noa
 
-update @tmp set serial2=b.serial,total2=b.money,tt21=b.tt1,tt22=b.tt2,tt23=b.tt3,tax2=b.tax
+update @tmp set serial2=b.serial,money02=b.money,total2=b.total,tt21=b.tt1,tt22=b.tt2,tt23=b.tt3,tax2=b.tax
 from @tmp a
 left join(
 	select 
@@ -213,8 +213,8 @@ left join(
 )b on a.rec=b.rec and a.npg=b.npg
 where a.gno='3' and a.npg='0001'
 
-update @tmp set money4=ROUND(money3*100/105,0) where gno='3'
-update @tmp set money5=ROUND(money4*0.05,0) where gno='3'
+update @tmp set money4=ROUND(money3*100/105,0) where gno='3' or gno='2'
+update @tmp set money5=ROUND(money4*0.05,0) where gno='3' or gno='2'
 --判斷以下空白
 declare @noa nvarchar(50)
 declare @max nvarchar(50)
@@ -270,7 +270,8 @@ select
 	a.*,b.serial,b.acomp,c.taxno,LEFT(noa1,2)srl,SUBSTRING(noa1,3,6)num,
 	case when rev = '2' then '二聯式' when rev = '3' then '三聯式' end typea,
 	dbo.getComma(a.total1,0)ttl1,dbo.getComma(a.tax1,0)tx1,
-	dbo.getComma(a.total1,0)ttl2,dbo.getComma(a.tax1,0)tx2,
+	dbo.getComma(a.total2,0)ttl2,dbo.getComma(a.tax1,0)tx2,
+	dbo.getComma(a.money01,0)mny01,dbo.getComma(a.money02,0)mny02,
 	dbo.getComma(a.money1,0)mny1,dbo.getComma(a.money2,0)mny2,dbo.getComma(a.money3,0)mny3,dbo.getComma(a.money4,0)mny4,
 	dbo.getComma(a.money5,0)mny5,dbo.getComma(a.money6,0)mny6,dbo.getComma(a.money7,0)mny7
 from @tmp a
