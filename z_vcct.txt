@@ -151,7 +151,7 @@ end
 close cursor_table 
 deallocate cursor_table 
 --依發票號碼更新資料內容
-update @tmp set serial1=b.serial,total1=b.total,tt11=b.tt1,tt12=b.tt2,tt13=b.tt3,tax1=b.tax
+update @tmp set serial1=b.serial,total1=b.money,tt11=b.tt1,tt12=b.tt2,tt13=b.tt3,tax1=b.tax
 from @tmp a
 left join(
 	select 
@@ -160,10 +160,10 @@ left join(
 		case when taxtype = '1' then 'v' else '' end tt1,
 		case when taxtype = '2' then 'v' else '' end tt2,
 		case when taxtype = '4' then 'v' else '' end tt3,
-		total,tax from vcct
+		money,total,tax from vcct
 )b on a.noa1 = b.noa
 
-update @tmp set serial2=b.serial,total2=b.total,tt21=b.tt1,tt22=b.tt2,tt23=b.tt3,tax2=b.tax
+update @tmp set serial2=b.serial,total2=b.money,tt21=b.tt1,tt22=b.tt2,tt23=b.tt3,tax2=b.tax
 from @tmp a
 left join(
 	select 
@@ -172,7 +172,7 @@ left join(
 		case when taxtype = '1' then 'v' else '' end tt1,
 		case when taxtype = '2' then 'v' else '' end tt2,
 		case when taxtype = '4' then 'v' else '' end tt3,
-		total,tax from vcct
+		money,total,tax from vcct
 )b on a.noa2 = b.noa
 --單本發票合計張數&金額gno:2
 update @tmp set cnt1=ISNULL(b.cnt1,0),cnt2=ISNULL(b.cnt2,0),cnt3=ISNULL(b.cnt3,0),cnt4=ISNULL(b.cnt4,0),
