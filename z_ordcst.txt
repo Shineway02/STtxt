@@ -153,14 +153,16 @@ declare @tmp table(
 		rc2size nvarchar(max),
 		rc2memo nvarchar(max),
 		coin nvarchar(50)
+		,c1 float
+		,notv float
 	)
 	insert into @tmp(gno,noa,no2,datea,odate,tggno,comp,pno,pname,spec,csize,pmount,pweight
-		,price,ptotal,e,a,qhref,coin)
+		,price,ptotal,e,a,qhref,coin,c1,notv)
 	select '0' gno, a.noa, b.no2, a.datea, a.odate, a.tggno, a.tgg,
 		   b.productno pno,b.product pname,b.spec,
 		   (case when ltrim(rtrim(isnull(b.size,'')))='' then dbo.csize(a.kind,b.dime,b.width,b.lengthb,b.radius) else b.size end) size,
 		   b.mount pmount, b.weight pweight, b.price, b.total ptotal, a.enda e, (case when a.isproj='1' then 'Y' else 'N' end) a,
-		   'ordcst'+b.accy,a.coin
+		   'ordcst'+b.accy,a.coin,isnull(b.c1,0),isnull(b.notv,0)
 	from view_ordcs b
 	left join view_ordc a on a.accy=b.accy and a.noa=b.noa
 	where 
@@ -185,10 +187,10 @@ declare @tmp table(
 		where b.noa is not null
 	end
 	--小計
-	insert into @tmp(gno,odate,noa,no2,pmount,pweight,ptotal)
-		select '2',left(odate,6),CHAR(255),CHAR(255),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0' group by left(odate,6)
-	insert into @tmp(gno,odate,noa,no2,pmount,pweight,ptotal)
-		select '3',char(255),CHAR(255),CHAR(255),sum(pmount),sum(pweight),sum(ptotal) from @tmp where gno = '0'
+	insert into @tmp(gno,odate,noa,no2,pmount,pweight,ptotal,c1,notv)
+		select '2',left(odate,6),CHAR(255),CHAR(255),sum(pmount),sum(pweight),sum(ptotal),sum(c1),sum(notv) from @tmp where gno = '0' group by left(odate,6)
+	insert into @tmp(gno,odate,noa,no2,pmount,pweight,ptotal,c1,notv)
+		select '3',char(255),CHAR(255),CHAR(255),sum(pmount),sum(pweight),sum(ptotal),sum(c1),sum(notv) from @tmp where gno = '0'
 	update @tmp set qhref = substring(qhref,0,len(qhref)-2)+'?left(noa,'+cast(len(noa) as nvarchar)+')=$noa?'+substring(qhref,len(qhref)-2,len(qhref))
 	
 	select
@@ -202,6 +204,8 @@ declare @tmp table(
 		,dbo.getComma( rc2weight,1) rc2weight
 		,dbo.getComma( rc2mount,1) rc2mount
 		,rc2size
+		,dbo.getComma( c1,-1) c1
+		,dbo.getComma( notv,-1) notv
 	from @tmp order by left(odate,6),noa,no2,gno;
 --****************************************************************************************************
 z_ordcst2a:--z_ordcst2a
