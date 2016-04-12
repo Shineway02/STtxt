@@ -52,6 +52,8 @@ update #tmp
 set datea=left(datea,4)+'/'+left(RIGHT(datea,4),2)+'/'+RIGHT(datea,2)
 ,timea=left(timea,2)+':'+RIGHT(timea,2)
 
+delete a from #tmp a where exists (select * from salpresent where noa=a.datea and UPPER(isnull(rein,''))='Y')
+
 --select * from #tmp
 
 --bbm
@@ -275,27 +277,32 @@ begin
 	begin
 		--更新bbs
 		--目前有的上班時間比更新時間早
-		update b
-		set b.namea=a.namea,b.clockin=a.clockin
-		from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
-		where b.noa!='' and b.sssno!='' and a.clockin!='' 
-		and a.clockin<= (case when isnull(b.clockin,'99:99')='' then '99:99' 
-		when b.clockin<@t_timea then '99:99' --非正常上班時間 排除凌晨2點半之前上班
-		else b.clockin end)
+		--update b
+		--set b.namea=a.namea,b.clockin=a.clockin
+		--from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
+		--where b.noa!='' and b.sssno!='' and a.clockin!='' 
+		--and a.clockin<= (case when isnull(b.clockin,'99:99')='' then '99:99' 
+		--when b.clockin<@t_timea then '99:99' --非正常上班時間 排除凌晨2點半之前上班
+		--else b.clockin end)
 		
 		--目前有的下班時間比更新時間晚
-		update b
-		set b.namea=a.namea,b.clockout=a.clockout
-		from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
-		where b.noa!='' and b.sssno!='' and a.clockout!='' 
-		and (case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout
-		>= (case when b.clockout<=@t_timea and b.clockout!='' then dbo.q_cdn(b.noa,1) else b.noa end)+' '+(case when isnull(b.clockout,'')='' then '02:31' else b.clockout end)
+		--update b
+		--set b.namea=a.namea,b.clockout=a.clockout
+		--from #bbs a left join salpresents b on a.noa=b.noa and a.sssno=b.sssno
+		--where b.noa!='' and b.sssno!='' and a.clockout!='' 
+		--and (case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout
+		-->= (case when b.clockout<=@t_timea and b.clockout!='' then dbo.q_cdn(b.noa,1) else b.noa end)+' '+(case when isnull(b.clockout,'')='' then '02:31' else b.clockout end)
+		
+		delete a
+		from salpresents a
+		where noa=@datea and exists (select * from #bbs where sssno=a.sssno)
 		
 		--新增bbs(不存在的)
 		insert salpresents(noa,noq,sssno,namea,clockin,clockout,w133,w166,w100,memo)
 		select noa,'x'+noq,sssno,namea,clockin,clockout,w133,w166,w100,memo from #bbs a
 		where not exists (select * from salpresents where noa=@datea  and sssno=a.sssno)
 		
+		/*
 		--更新資料
 		--辦公室--------------------------------------------------
 		--非假日
@@ -369,7 +376,7 @@ begin
 			update a
 			set w133=round((cast(datediff(MINUTE,a.noa+' '+@a_offwork,(case when a.clockout<=@t_timea then dbo.q_cdn(a.noa,1) else a.noa end)+' '+a.clockout) as float)/60),1)
 			from salpresents a left join sss b on a.sssno=b.noa
-			where charindex('現場早班',b.typea)>0	and isnull(clockin,'')!='' and isnull(a.clockout,'')!='' 
+			where charindex('現場早班',b.typea)>0 and isnull(clockin,'')!='' and isnull(a.clockout,'')!='' 
 			and (a.clockout>@a_offwork or a.clockout<=@t_timea)
 			
 			update a
@@ -461,6 +468,7 @@ begin
 			and (a.clockout>=@b_offwork or a.clockout<=@t_timea)
 		end
 		----------------------------------------------------------
+		*/
 			
 		update a
 		set w100=isnull((select sum(w100) from salpresents where noa=a.noa),0)
