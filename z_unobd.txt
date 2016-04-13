@@ -176,8 +176,10 @@ z_unobd05:--z_unobd05 批號履歷
 				select 1,@rank+1,a.uno
 					,case when a.typea='1' then 'vccs' else 'vccbk' end
 					,a.accy,a.noa,a.noq,b.datea 
-					,case when a.typea='1' then null else a.mount end,case when a.typea='1' then null else a.weight end
-					,case when a.typea='1' then a.mount else null end,case when a.typea='1' then a.weight else null end
+					,case when a.typea='1' then null else case when isnull(a.gmount,0)!=0 then a.gmount else ISNULL(a.[mount],0) end end
+					,case when a.typea='1' then null else case when isnull(a.gweight,0)!=0 then a.gweight else ISNULL(a.[weight],0) end end
+					,case when a.typea='1' then case when isnull(a.gmount,0)!=0 then a.gmount else ISNULL(a.[mount],0) end else null end
+					,case when a.typea='1' then case when isnull(a.gweight,0)!=0 then a.gweight else ISNULL(a.[weight],0) end else null end
 					,null,null
 					--單價改為實際出貨單價   (鄭小姐 2015/10/26)
 					,case when ISNULL(b.floata,0)=0 then a.price else round(b.floata*a.price,2) end
