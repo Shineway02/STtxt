@@ -28,6 +28,10 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		,[money] float
 		,size nvarchar(max)
 		,memo nvarchar(max)
+		,ordememo nvarchar(max)
+		,po nvarchar(max)
+		,pn nvarchar(max)
+		,unit2 nvarchar(20)
 		
 		,custno nvarchar(20)
 		,cust nvarchar(50)
@@ -45,19 +49,53 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 	)
 	insert into @tmp(gno,custno,datea,accy,noa,ordeno,quatno,product,dime,radius,width,lengthb,unit,price
 		,size,memo
-		,[weight],mount,[money])
+		,[weight],mount,[money]
+		,ordememo,unit2)
 	select '1',b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price
 		,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
 		,sum(isnull(a.[weight],0)),sum(isnull(a.[mount],0)),sum(isnull(a.[total],0))
+		,LTRIM(rtrim(isnull(e.memo,''))),ISNULL(e.unit2,'')
 	from view_vccs a
 	left join view_vcc b on a.accy=b.accy and a.noa=b.noa
-	left join view_orde c on b.ordeno=c.noa
+	left join view_orde c on a.ordeno=c.noa
 	left join view_quat d on c.quatno=d.noa
+	left join view_ordes e on a.ordeno=e.noa and a.no2=e.no2
 	where ISNULL(b.custno,'') between @t_bcustno and @t_ecustno
 	and ISNULL(b.mon,'') between @t_bmon and @t_emon
 	and ISNULL(b.typea,'')='1'
-	group by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+	group by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,''))),LTRIM(rtrim(isnull(e.memo,''))),ISNULL(e.unit2,'')
 	order by b.custno,b.datea,b.accy,b.noa,b.ordeno,d.quatno,a.product,a.dime,a.radius,a.width,a.lengthb,a.unit,a.price,LTRIM(rtrim(isnull(a.size,''))),LTRIM(rtrim(isnull(a.memo,'')))
+	
+	-------------從ordememo 取得 PO,PN
+	declare @sel int
+	declare @memo nvarchar(max)
+	declare @po nvarchar(max)
+	declare @pn nvarchar(max)
+	
+	declare cursor_table cursor for
+	select sel,ordememo from @tmp
+	open cursor_table
+	fetch next from cursor_table
+	into @sel,@memo
+	while(@@FETCH_STATUS <> -1)
+	begin
+		select @po='',@pn=''
+		
+		if CHARINDEX('chr(10)',@memo)>0
+		begin
+			set @po = LEFT(@memo,CHARINDEX('chr(10)',@memo)-1)
+			set @pn = substring(@memo,CHARINDEX('chr(10)',@memo)+7,LEN(@memo))
+		end
+		else
+		begin
+			set @po = @memo
+		end
+		update @tmp set po=@po,pn=@pn where sel=@sel
+		fetch next from cursor_table
+		into @sel,@memo
+	end
+	close cursor_table
+	deallocate cursor_table
 	------------------------------------------------------------------------------------------------------
 	insert into @tmp(gno,custno)select '2',custno from @tmp group by custno
 	insert into @tmp(gno,custno)select '3',custno from @tmp group by custno
@@ -165,8 +203,8 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 		
 		,datea b01
 		,noa b02
-		,quatno b03
-		,ordeno b04
+		,ordeno b03
+		,po b04 --orde.po
 		,product b05
 		,case when len(size)>0 then size
 			else dbo.getComma(dime,-1)
@@ -186,7 +224,7 @@ z_umm_rk01:--z_umm_rk01 應收帳款明細表
 			else dbo.getComma(mount,-1) end + isnull(unit,'') b07
 		,dbo.getComma(price,-1) b08
 		,dbo.getComma([money],-1) b09
-		,'' b10
+		,case when unit!=unit2 then unit2 else '' end b10
 		
 		,dbo.getComma(tmoney,-1) c01
 		,dbo.getComma(ttax,-1) c02
